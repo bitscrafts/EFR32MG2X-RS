@@ -1,0 +1,163 @@
+#[doc = "Register `CTRL` reader"]
+pub type R = crate::R<CtrlSpec>;
+#[doc = "Register `CTRL` writer"]
+pub type W = crate::W<CtrlSpec>;
+#[doc = "DCDC/Bypass Mode Control\n\nValue on reset: 0"]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Mode {
+    #[doc = "0: DCDC is OFF, bypass switch is enabled"]
+    Bypass = 0,
+    #[doc = "1: Request DCDC regulation, bypass switch disabled"]
+    Dcdcregulation = 1,
+}
+impl From<Mode> for bool {
+    #[inline(always)]
+    fn from(variant: Mode) -> Self {
+        variant as u8 != 0
+    }
+}
+#[doc = "Field `MODE` reader - DCDC/Bypass Mode Control"]
+pub type ModeR = crate::BitReader<Mode>;
+impl ModeR {
+    #[doc = "Get enumerated values variant"]
+    #[inline(always)]
+    pub const fn variant(&self) -> Mode {
+        match self.bits {
+            false => Mode::Bypass,
+            true => Mode::Dcdcregulation,
+        }
+    }
+    #[doc = "DCDC is OFF, bypass switch is enabled"]
+    #[inline(always)]
+    pub fn is_bypass(&self) -> bool {
+        *self == Mode::Bypass
+    }
+    #[doc = "Request DCDC regulation, bypass switch disabled"]
+    #[inline(always)]
+    pub fn is_dcdcregulation(&self) -> bool {
+        *self == Mode::Dcdcregulation
+    }
+}
+#[doc = "Field `MODE` writer - DCDC/Bypass Mode Control"]
+pub type ModeW<'a, REG> = crate::BitWriter<'a, REG, Mode>;
+impl<'a, REG> ModeW<'a, REG>
+where
+    REG: crate::Writable + crate::RegisterSpec,
+{
+    #[doc = "DCDC is OFF, bypass switch is enabled"]
+    #[inline(always)]
+    pub fn bypass(self) -> &'a mut crate::W<REG> {
+        self.variant(Mode::Bypass)
+    }
+    #[doc = "Request DCDC regulation, bypass switch disabled"]
+    #[inline(always)]
+    pub fn dcdcregulation(self) -> &'a mut crate::W<REG> {
+        self.variant(Mode::Dcdcregulation)
+    }
+}
+#[doc = "Field `IPKTMAXCTRL` reader - Ton_max timeout control"]
+pub type IpktmaxctrlR = crate::FieldReader;
+#[doc = "Field `IPKTMAXCTRL` writer - Ton_max timeout control"]
+pub type IpktmaxctrlW<'a, REG> = crate::FieldWriter<'a, REG, 5>;
+#[doc = "PFMX Enable\n\nValue on reset: 0"]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Pfmxextreq {
+    #[doc = "0: Disable PFMX mode"]
+    Extlowload = 0,
+    #[doc = "1: Enable PFMX mode to support high load current"]
+    Exthighload = 1,
+}
+impl From<Pfmxextreq> for bool {
+    #[inline(always)]
+    fn from(variant: Pfmxextreq) -> Self {
+        variant as u8 != 0
+    }
+}
+#[doc = "Field `PFMXEXTREQ` reader - PFMX Enable"]
+pub type PfmxextreqR = crate::BitReader<Pfmxextreq>;
+impl PfmxextreqR {
+    #[doc = "Get enumerated values variant"]
+    #[inline(always)]
+    pub const fn variant(&self) -> Pfmxextreq {
+        match self.bits {
+            false => Pfmxextreq::Extlowload,
+            true => Pfmxextreq::Exthighload,
+        }
+    }
+    #[doc = "Disable PFMX mode"]
+    #[inline(always)]
+    pub fn is_extlowload(&self) -> bool {
+        *self == Pfmxextreq::Extlowload
+    }
+    #[doc = "Enable PFMX mode to support high load current"]
+    #[inline(always)]
+    pub fn is_exthighload(&self) -> bool {
+        *self == Pfmxextreq::Exthighload
+    }
+}
+#[doc = "Field `PFMXEXTREQ` writer - PFMX Enable"]
+pub type PfmxextreqW<'a, REG> = crate::BitWriter<'a, REG, Pfmxextreq>;
+impl<'a, REG> PfmxextreqW<'a, REG>
+where
+    REG: crate::Writable + crate::RegisterSpec,
+{
+    #[doc = "Disable PFMX mode"]
+    #[inline(always)]
+    pub fn extlowload(self) -> &'a mut crate::W<REG> {
+        self.variant(Pfmxextreq::Extlowload)
+    }
+    #[doc = "Enable PFMX mode to support high load current"]
+    #[inline(always)]
+    pub fn exthighload(self) -> &'a mut crate::W<REG> {
+        self.variant(Pfmxextreq::Exthighload)
+    }
+}
+impl R {
+    #[doc = "Bit 0 - DCDC/Bypass Mode Control"]
+    #[inline(always)]
+    pub fn mode(&self) -> ModeR {
+        ModeR::new((self.bits & 1) != 0)
+    }
+    #[doc = "Bits 4:8 - Ton_max timeout control"]
+    #[inline(always)]
+    pub fn ipktmaxctrl(&self) -> IpktmaxctrlR {
+        IpktmaxctrlR::new(((self.bits >> 4) & 0x1f) as u8)
+    }
+    #[doc = "Bit 31 - PFMX Enable"]
+    #[inline(always)]
+    pub fn pfmxextreq(&self) -> PfmxextreqR {
+        PfmxextreqR::new(((self.bits >> 31) & 1) != 0)
+    }
+}
+impl W {
+    #[doc = "Bit 0 - DCDC/Bypass Mode Control"]
+    #[inline(always)]
+    pub fn mode(&mut self) -> ModeW<'_, CtrlSpec> {
+        ModeW::new(self, 0)
+    }
+    #[doc = "Bits 4:8 - Ton_max timeout control"]
+    #[inline(always)]
+    pub fn ipktmaxctrl(&mut self) -> IpktmaxctrlW<'_, CtrlSpec> {
+        IpktmaxctrlW::new(self, 4)
+    }
+    #[doc = "Bit 31 - PFMX Enable"]
+    #[inline(always)]
+    pub fn pfmxextreq(&mut self) -> PfmxextreqW<'_, CtrlSpec> {
+        PfmxextreqW::new(self, 31)
+    }
+}
+#[doc = "Control\n\nYou can [`read`](crate::Reg::read) this register and get [`ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+pub struct CtrlSpec;
+impl crate::RegisterSpec for CtrlSpec {
+    type Ux = u32;
+}
+#[doc = "`read()` method returns [`ctrl::R`](R) reader structure"]
+impl crate::Readable for CtrlSpec {}
+#[doc = "`write(|w| ..)` method takes [`ctrl::W`](W) writer structure"]
+impl crate::Writable for CtrlSpec {
+    type Safety = crate::Unsafe;
+}
+#[doc = "`reset()` method sets CTRL to value 0x0100"]
+impl crate::Resettable for CtrlSpec {
+    const RESET_VALUE: u32 = 0x0100;
+}

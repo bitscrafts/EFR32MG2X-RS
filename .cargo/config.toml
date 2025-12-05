@@ -1,0 +1,21 @@
+[build]
+# Set default target for Cortex-M33 with hardware FPU
+target = "thumbv8m.main-none-eabihf"
+
+[target.thumbv8m.main-none-eabihf]
+# Use ARM's link.x linker script from cortex-m-rt
+# link.x will INCLUDE memory.x automatically - do NOT add -Tmemory.x here
+runner = "probe-rs run --chip EFR32MG24A020F1536GM48"
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+]
+
+# Alternative runners (uncomment as needed)
+# runner = "arm-none-eabi-gdb -q -x openocd.gdb"
+# runner = "pyocd gdb --target efr32mg24 --"
+
+[alias]
+# Convenient aliases
+rb = "build --release"
+rr = "run --release"
+size = "size --"
