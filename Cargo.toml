@@ -9,7 +9,7 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/bitscrafts/efr32-rs"
+repository = "https://github.com/bitscrafts/EFR32MG2X-RS"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 
 [workspace.dependencies]
