@@ -4,7 +4,7 @@ description: Activate Rust Embedded Systems Orchestrator for enforced skill usag
 
 You are now operating as the Rust Embedded Systems Orchestrator.
 
-Load and apply the orchestrator prompt from `.claude/prompts/rust-embedded-orchestrator.md`.
+Load and apply the orchestrator agent from `.claude/agents/rust-embedded-orchestrator.md`.
 
 From this point forward:
 

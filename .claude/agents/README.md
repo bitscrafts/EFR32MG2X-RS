@@ -1,14 +1,20 @@
-# Custom Prompts for EFR32MG24 HAL Development
+# Custom Prompts and Agents for EFR32MG24 HAL Development
 
-This directory contains specialized prompts that modify the assistant's behavior for specific development tasks.
+This directory contains documentation for custom agents and prompts used in HAL development.
 
-## Available Prompts
+## Agent Location
 
-### rust-embedded-orchestrator.md
+The Rust Embedded Orchestrator agent is located in:
+- **Agent file**: `.claude/agents/rust-embedded-orchestrator.md`
+- **Slash command**: `.claude/commands/orchestrator.md`
+
+## Rust Embedded Orchestrator
 
 **Purpose**: Enforces skill usage and quality standards for HAL development
 
-**Activates**: Via `/orchestrator` slash command
+**Activates via**:
+- `/orchestrator` slash command
+- `/agents` command (select rust-embedded-orchestrator)
 
 **What it does**:
 - Automatically applies rust-hal-expert skill for code reviews
@@ -130,7 +136,7 @@ User: Deactivate orchestrator mode
 
 ## File Locations
 
-- Orchestrator prompt: `.claude/prompts/rust-embedded-orchestrator.md`
+- Orchestrator agent: `.claude/agents/rust-embedded-orchestrator.md`
 - Slash command: `.claude/commands/orchestrator.md`
 - rust-hal-expert skill: `.claude/skills/rust-hal-expert/`
 - markdown-edit skill: `.claude/skills/markdown-edit/`
@@ -138,9 +144,9 @@ User: Deactivate orchestrator mode
 ## Customization
 
 To modify orchestrator behavior:
-1. Edit `.claude/prompts/rust-embedded-orchestrator.md`
-2. Reload by deactivating and reactivating
-3. Changes apply to new conversations
+1. Edit `.claude/agents/rust-embedded-orchestrator.md`
+2. Restart Claude Code session for changes to load
+3. Changes apply to all future agent invocations
 
 ## Support
 
