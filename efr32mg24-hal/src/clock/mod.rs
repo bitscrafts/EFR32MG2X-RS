@@ -70,4 +70,4 @@ mod types;
 // Re-export public types
 pub use clocks::Clocks;
 pub use frozen::FrozenClocks;
-pub use types::{ClockConfig, Hertz, HfxoConfig, LfxoConfig};
+pub use types::{ClockConfig, ClockError, Hertz, HfxoConfig, LfxoConfig};

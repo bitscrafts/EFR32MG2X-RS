@@ -64,3 +64,24 @@ pub struct ClockConfig {
     /// Low Frequency Crystal Oscillator configuration
     pub lfxo: Option<LfxoConfig>,
 }
+
+/// Clock configuration errors
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ClockError {
+    /// HFXO failed to stabilize within timeout
+    HfxoTimeout,
+    /// LFXO failed to stabilize within timeout
+    LfxoTimeout,
+    /// Invalid frequency configuration
+    InvalidFrequency,
+}
+
+impl core::fmt::Display for ClockError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ClockError::HfxoTimeout => write!(f, "HFXO stabilization timeout"),
+            ClockError::LfxoTimeout => write!(f, "LFXO stabilization timeout"),
+            ClockError::InvalidFrequency => write!(f, "Invalid frequency configuration"),
+        }
+    }
+}

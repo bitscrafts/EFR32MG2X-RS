@@ -79,9 +79,8 @@ impl Usart0 {
     /// let usart = Usart0::new(dp.USART0_S, config, &clocks);
     /// ```
     pub fn new(usart: pac::Usart0S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable USART0 clock in CMU (bit 1 in CLKEN0)
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*pac::CmuS::ptr()) };
+        // Enable USART0 clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|r, w| unsafe {
                 w.bits(r.bits() | (1 << 1)) // USART0 clock enable
             });

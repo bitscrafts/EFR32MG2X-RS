@@ -85,9 +85,8 @@ impl I2c0 {
     /// let i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), &clocks);
     /// ```
     pub fn new(i2c: pac::I2c0S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable I2C0 clock in CMU
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*pac::CmuS::ptr()) };
+        // Enable I2C0 clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_, w| w.i2c0().set_bit());
         });
 
@@ -262,9 +261,8 @@ impl I2c0 {
 impl I2c1 {
     /// Creates a new I2C1 instance
     pub fn new(i2c: pac::I2c1S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable I2C1 clock in CMU
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*pac::CmuS::ptr()) };
+        // Enable I2C1 clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_, w| w.i2c1().set_bit());
         });
 

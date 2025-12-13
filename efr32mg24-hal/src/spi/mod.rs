@@ -91,9 +91,8 @@ impl Spi0 {
     /// let spi = Spi0::new(dp.usart0_s, Config::new(Mode::Mode0, 1_000_000), &clocks);
     /// ```
     pub fn new(usart: pac::Usart0S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable USART0 clock in CMU (CLKEN0 bit 1)
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*pac::CmuS::ptr()) };
+        // Enable USART0 clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_, w| w.usart0().set_bit());
         });
 
@@ -228,9 +227,8 @@ impl Spi1 {
     /// let spi = Spi1::new(dp.eusart0_s, Config::new(Mode::Mode0, 1_000_000), &clocks);
     /// ```
     pub fn new(eusart: pac::Eusart0S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable EUSART0 clock in CMU (CLKEN1)
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*pac::CmuS::ptr()) };
+        // Enable EUSART0 clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken1().modify(|_, w| w.eusart0().set_bit());
         });
 
@@ -355,9 +353,8 @@ impl Spi2 {
     /// let spi = Spi2::new(dp.eusart1_s, Config::new(Mode::Mode0, 1_000_000), &clocks);
     /// ```
     pub fn new(eusart: pac::Eusart1S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable EUSART1 clock in CMU (CLKEN1)
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*pac::CmuS::ptr()) };
+        // Enable EUSART1 clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken1().modify(|_, w| w.eusart1().set_bit());
         });
 

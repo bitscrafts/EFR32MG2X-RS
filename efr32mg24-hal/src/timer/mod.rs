@@ -81,9 +81,8 @@ macro_rules! impl_timer {
             /// * `config` - Timer configuration
             /// * `clocks` - Frozen clock configuration
             pub fn new(timer: pac::$timerX_s, config: Config, clocks: &FrozenClocks) -> Self {
-                // Enable timer clock
-                critical_section::with(|_cs| {
-                    let cmu = unsafe { &(*pac::CmuS::ptr()) };
+                // Enable timer clock using safe accessor
+                clocks.enable_peripheral_clock(|cmu| {
                     cmu.clken0().modify(|_, w| w.$clken_bit().set_bit());
                 });
 

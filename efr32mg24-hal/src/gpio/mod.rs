@@ -82,15 +82,18 @@ pub use types::{
 /// Extension trait to split GPIO peripheral into independent pins
 pub trait GpioExt {
     /// Split the GPIO peripheral into independent ports
-    fn split(self) -> Parts;
+    ///
+    /// # Arguments
+    ///
+    /// * `clocks` - Frozen clock configuration (provides safe CMU access)
+    fn split(self, clocks: &crate::clock::FrozenClocks) -> Parts;
 }
 
 // Implement GpioExt for the GPIO_S peripheral (Secure GPIO)
 impl GpioExt for crate::pac::GpioS {
-    fn split(self) -> Parts {
-        // Enable GPIO clock in CMU
-        critical_section::with(|_cs| {
-            let cmu = unsafe { &(*crate::pac::CmuS::ptr()) };
+    fn split(self, clocks: &crate::clock::FrozenClocks) -> Parts {
+        // Enable GPIO clock in CMU using safe accessor
+        clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_r, w| w.gpio().set_bit());
         });
 

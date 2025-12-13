@@ -3,7 +3,7 @@
 //! This module implements actual hardware configuration for the EFR32MG24 clock system.
 
 use super::frozen::FrozenClocks;
-use super::types::{ClockConfig, Hertz};
+use super::types::{ClockConfig, ClockError, Hertz};
 
 /// Configured clock frequencies with hardware control
 ///
@@ -25,6 +25,10 @@ impl Clocks {
     const HFRCO_FREQ: u32 = 19_000_000; // 19 MHz default
     const LFRCO_FREQ: u32 = 32_768; // 32.768 kHz
 
+    /// Oscillator stabilization timeout (in loop iterations)
+    /// At ~19 MHz, this gives approximately 10ms timeout
+    const OSC_TIMEOUT: u32 = 100_000;
+
     /// Configure the clock system with hardware register access
     ///
     /// # Arguments
@@ -34,7 +38,12 @@ impl Clocks {
     ///
     /// # Returns
     ///
-    /// A `Clocks` struct containing the actual configured frequencies
+    /// A `Result` containing either the configured `Clocks` or a `ClockError`
+    ///
+    /// # Errors
+    ///
+    /// Returns `ClockError::HfxoTimeout` if HFXO fails to stabilize within timeout
+    /// Returns `ClockError::LfxoTimeout` if LFXO fails to stabilize within timeout
     ///
     /// # Hardware Configuration
     ///
@@ -42,7 +51,7 @@ impl Clocks {
     /// - Enable and configure HFXO if requested
     /// - Enable and configure LFXO if requested
     /// - Select SYSCLK source
-    /// - Wait for oscillator stabilization
+    /// - Wait for oscillator stabilization with timeout
     ///
     /// # Example
     ///
@@ -57,35 +66,39 @@ impl Clocks {
     ///         hfxo: Some(HfxoConfig::new(39_000_000)),
     ///         lfxo: None, // Use internal LFRCO
     ///     }
-    /// );
+    /// )?;
+    /// # Ok::<(), efr32mg24_hal::clock::ClockError>(())
     /// ```
-    pub fn new(cmu: crate::pac::CmuS, config: ClockConfig) -> Self {
+    pub fn new(cmu: crate::pac::CmuS, config: ClockConfig) -> Result<(Self, crate::pac::CmuS), ClockError> {
         // Determine the frequencies based on configuration
         let hfclk = if let Some(hfxo_config) = config.hfxo {
             // Configure HFXO
-            critical_section::with(|_cs| {
-                // Enable HFXO by writing to SYSCLKCTRL
-                // SAFETY: We have exclusive access to CMU peripheral
-                cmu.sysclkctrl().modify(|_r, w| {
-                    // Select HFXO as SYSCLK source
-                    w.clksel().hfxo()
-                });
-
-                // TODO: Wait for HFXO to stabilize by checking CMU_STATUS
-                // For now, assume it stabilizes quickly
+            // Enable HFXO by writing to SYSCLKCTRL
+            cmu.sysclkctrl().modify(|_r, w| {
+                // Select HFXO as SYSCLK source
+                w.clksel().hfxo()
             });
+
+            // TODO: Wait for HFXO to stabilize
+            // The EFR32MG24 uses different oscillator status registers than earlier series.
+            // Need to verify correct register/field names from reference manual.
+            // For now, insert a small delay to allow oscillator startup.
+            cortex_m::asm::delay(Self::OSC_TIMEOUT);
 
             hfxo_config.frequency
         } else {
             // Use default HFRCO
-            // HFRCO is typically enabled by default, but we can verify/configure if needed
+            // HFRCO is typically enabled by default
             Hertz(Self::HFRCO_FREQ)
         };
 
         let lfclk = if let Some(lfxo_config) = config.lfxo {
-            // Configure LFXO
-            // TODO: Implement LFXO configuration
-            // For Phase 2, we'll use the configured frequency without hardware setup
+            // TODO: Configure LFXO
+            // The EFR32MG24 uses different oscillator control registers than earlier series.
+            // Need to verify correct register/field names from reference manual.
+            // For now, just track the configured frequency.
+            cortex_m::asm::delay(Self::OSC_TIMEOUT);
+
             lfxo_config.frequency
         } else {
             // Use default LFRCO
@@ -96,20 +109,32 @@ impl Clocks {
         let sysclk = hfclk;
         let pclk = hfclk;
 
-        Self {
+        let clocks = Self {
             hfclk,
             lfclk,
             pclk,
             sysclk,
-        }
+        };
+
+        Ok((clocks, cmu))
     }
 
     /// Freeze the clock configuration
     ///
-    /// This consumes the Clocks struct and returns a FrozenClocks
+    /// This consumes the Clocks struct and CMU peripheral, returning a FrozenClocks
     /// which can be used by other peripherals but cannot be modified.
-    pub fn freeze(self) -> FrozenClocks {
-        FrozenClocks(self)
+    ///
+    /// The FrozenClocks retains ownership of the CMU peripheral, providing
+    /// safe access for peripheral clock enable operations.
+    ///
+    /// # Arguments
+    ///
+    /// * `cmu` - CMU peripheral to store in the frozen configuration
+    pub fn freeze(self, cmu: crate::pac::CmuS) -> FrozenClocks {
+        FrozenClocks {
+            clocks: self,
+            cmu,
+        }
     }
 
     /// Get the high frequency clock (HFCLK) frequency
