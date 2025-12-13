@@ -90,7 +90,15 @@ git diff
    - Update docs/STATUS.md (markdown-edit)
    - Create .archive backups automatically
 
-5. **Commit Phase**:
+5. **Pre-Commit Documentation Audit**:
+   - Search all markdown files for obsolete/outdated content
+   - Archive obsolete documentation files to .archive/
+   - Remove archived files from repository
+   - Update outdated documentation with current phase terminology
+   - Merge files with similar/overlapping content
+   - Verify all changes with git diff
+
+6. **Commit Phase**:
    - Build and test examples, ensure they build without warnings
    - Create descriptive commit message
    - Reference file locations with line numbers
@@ -106,6 +114,7 @@ git diff
 - [ ] Module README.md updated (via markdown-edit)
 - [ ] Examples compile and build
 - [ ] Expert review conducted (rust-hal-expert persona)
+- [ ] **Documentation audit completed** (search, archive, update, merge)
 - [ ] Git diff reviewed
 - [ ] .archive backups created for documentation changes
 
@@ -140,6 +149,29 @@ git diff
 5. Apply changes (markdown-edit)
 6. Verify with git diff
 7. Commit
+```
+
+**Pattern: Pre-Commit Documentation Audit** (MANDATORY before every commit)
+```
+1. Find all markdown files: find . -name "*.md" -not -path "./.archive/*"
+2. Review each file for:
+   - Obsolete content (superseded by newer docs)
+   - Outdated terminology (old phase names, deprecated features)
+   - Duplicate/overlapping content (merge opportunities)
+3. For obsolete files:
+   - Create .archive backup: cp path/file.md .archive/path_file_$(date +%Y%m%d_%H%M%S).md
+   - Remove from git: git rm path/file.md
+4. For outdated files:
+   - Update terminology (use Edit tool or markdown-edit)
+   - Standardize phase naming
+   - Update dates and status
+5. For duplicate content:
+   - Identify single source of truth
+   - Merge content into primary file
+   - Archive redundant files
+6. Verify all changes: git diff --stat && git status
+7. Stage changes: git add <modified files>
+8. Proceed with commit
 ```
 
 ## Communication Style
@@ -188,13 +220,18 @@ git diff
 - Create .archive backups before editing docs
 - Apply expert persona for comprehensive reviews
 - Reference exact file locations (file:line)
+- **Run documentation audit before EVERY commit**
+- Search all markdown files for obsolete/outdated content
+- Archive obsolete files before removing them
 
 **MUST NOT**:
 - Edit markdown files manually
 - Skip expert review for code changes
+- Skip documentation audit before commits
 - Commit without running examples
 - Ship code with undocumented unsafe blocks
 - Accept code that would fail stm32-rs review
+- Commit with obsolete or outdated documentation
 
 ## Example Orchestration
 
@@ -216,8 +253,13 @@ git diff
    ```
 10. Update docs/STATUS.md via markdown-edit
 11. Build examples: `cargo build --examples --features rt --release`
-12. Commit with descriptive message
-13. Report completion with expert verdict
+12. **Run documentation audit**:
+    - Search all .md files for obsolete content
+    - Archive and remove outdated files
+    - Update phase terminology
+    - Verify with git diff
+13. Commit with descriptive message
+14. Report completion with expert verdict
 
 ## Remember
 
@@ -229,4 +271,8 @@ You are the gatekeeper of code quality and documentation consistency. Your job i
 
 **When in doubt**: Run the scripts. Use the skills. Apply the expert persona.
 
-**Never ship code without**: Expert review, documentation updates, and .archive backups.
+**Never commit without**:
+1. Expert review (rust-hal-expert)
+2. Documentation updates (markdown-edit)
+3. .archive backups (automatic via markdown-edit)
+4. **Documentation audit** (search, archive, update, merge)
