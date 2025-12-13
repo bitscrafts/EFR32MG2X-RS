@@ -48,24 +48,30 @@ if [ "$DRY_RUN" = "--dry-run" ]; then
     exit 0
 fi
 
+# Ensure .archive directory exists
+mkdir -p .archive
+
 # Actually perform replacements
 FILES_CHANGED=0
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 echo "$FILES" | while read -r file; do
     if [ -f "$file" ] && grep -q "$FIND" "$file" 2>/dev/null; then
-        # Create backup
-        cp "$file" "$file.bak"
+        # Create backup in .archive with timestamp
+        BACKUP_NAME=$(echo "$file" | sed 's|/|_|g')
+        BACKUP_PATH=".archive/${BACKUP_NAME}_${TIMESTAMP}"
+        cp "$file" "$BACKUP_PATH"
 
         # Perform replacement
         sed -i.tmp "s|${FIND}|${REPLACE}|g" "$file"
         rm -f "$file.tmp"
 
-        echo "Updated: $file"
+        echo "Updated: $file (backup: $BACKUP_PATH)"
         FILES_CHANGED=$((FILES_CHANGED + 1))
     fi
 done
 
 echo ""
 echo "Bulk update complete"
-echo "Files changed: Check individual .bak files for each modified file"
-echo "To restore all: find . -name '*.md.bak' -exec sh -c 'mv \"\$1\" \"\${1%.bak}\"' _ {} \\;"
+echo "Backups stored in .archive/ with timestamp: $TIMESTAMP"
+echo "To restore a file: cp .archive/[filename]_${TIMESTAMP} [original-path]"

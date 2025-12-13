@@ -62,7 +62,7 @@ bash .claude/skills/markdown-edit/scripts/replace-in-section.sh \
   docs/STATUS.md 2 "Implementation Status" "Phase 2" "Phase A"
 ```
 
-**Safety**: Creates `.bak` backup before editing
+**Safety**: Creates timestamped backup in `.archive/` before editing
 
 ### 2. Update Section Content
 
@@ -82,7 +82,7 @@ bash .claude/skills/markdown-edit/scripts/update-section.sh \
   README.md 2 "Usage" /tmp/new-usage.txt
 ```
 
-**Safety**: Creates `.bak` backup, preserves heading
+**Safety**: Creates timestamped backup in `.archive/`, preserves heading
 
 ### 3. Find and Replace (Smart)
 
@@ -105,7 +105,7 @@ bash .claude/skills/markdown-edit/scripts/smart-replace.sh \
   CHANGELOG.md "v0.1.0" "v0.2.0" --in-code
 ```
 
-**Safety**: Creates `.bak` backup
+**Safety**: Creates timestamped backup in `.archive/`
 
 ### 4. Bulk Update Files
 
@@ -130,8 +130,8 @@ bash .claude/skills/markdown-edit/scripts/bulk-update.sh \
 
 **Safety**:
 - `--dry-run` shows what would change
-- Creates `.bak` for each file
-- Reports files changed
+- Creates timestamped backups in `.archive/` for each file
+- Reports files changed with backup paths
 
 ### 5. Section Append
 
@@ -264,15 +264,20 @@ bash .claude/skills/markdown-edit/scripts/replace-in-section.sh \
 
 ### Automatic Backups
 
-All edit scripts create `.bak` files:
+All edit scripts create timestamped backups in `.archive/`:
 ```bash
-# Before editing README.md
-# Creates README.md.bak automatically
+# Before editing docs/PLAN.md
+# Creates .archive/docs_PLAN.md_20251213_123045 automatically
 ```
+
+**Backup Format**: `path_filename_YYYYMMDD_HHMMSS`
+- Path slashes replaced with underscores
+- Timestamp ensures unique backup per edit
+- Stored in `.archive/` (gitignored)
 
 **To restore**:
 ```bash
-mv README.md.bak README.md
+cp .archive/docs_PLAN.md_20251213_123045 docs/PLAN.md
 ```
 
 ### Dry Run Mode
@@ -497,12 +502,15 @@ bash ~/.claude/skills/search-markdown/scripts/list-headings.sh file.md
 
 ### Backup Files Accumulating
 
-```bash
-# Clean up all .bak files after verification
-find . -name "*.md.bak" -delete
+Backups accumulate in `.archive/` by design for history tracking. The folder is gitignored.
 
-# Or restore all
-find . -name "*.md.bak" -exec sh -c 'mv "$1" "${1%.bak}"' _ {} \;
+```bash
+# List all backups for a specific file
+ls -lt .archive/ | grep "docs_PLAN.md"
+
+# Clean up old backups (manual - be careful!)
+# Keep only backups from last 30 days
+find .archive/ -name "*.md_*" -mtime +30 -delete
 ```
 
 ### Wrong Section Updated
@@ -511,7 +519,10 @@ If wrong section was changed:
 
 1. **Restore from backup**:
 ```bash
-mv file.md.bak file.md
+# Find the backup (look for most recent timestamp)
+ls -lt .archive/ | grep "filename.md"
+# Restore it
+cp .archive/path_filename.md_TIMESTAMP original/path/filename.md
 ```
 
 2. **Be more specific** with heading level and name
@@ -552,26 +563,27 @@ When making edits:
    - Show before/after if small change
 
 2. **Execute safely**:
-   - Create backup
+   - Create timestamped backup in `.archive/`
    - Apply change
    - Verify success
 
 3. **Report results**:
    - "Updated 5 files"
-   - "Backup created: file.md.bak"
+   - "Backup created: .archive/path_file.md_20251213_123045"
    - "Review with: git diff"
 
 4. **Offer next steps**:
    - "Review changes with git diff"
    - "Commit with: git commit -m '...'"
-   - "Restore with: mv *.md.bak"
+   - "Restore with: cp .archive/[backup] [original]"
 
 ## Remember
 
 - **Search first, edit second**: Always extract/verify before editing
 - **Dry run for bulk**: Use --dry-run for multi-file operations
 - **Git is your friend**: Commit before bulk edits
-- **Backups are automatic**: All edits create .bak files
+- **Backups are automatic**: All edits create timestamped backups in `.archive/`
+- **Backup format**: `path_filename_YYYYMMDD_HHMMSS` (slashes become underscores)
 - **Section targeting is precise**: Level + heading name
 - **Smart replace understands markdown**: Can skip code blocks
 - **Incremental is safer**: One file/section at a time when possible

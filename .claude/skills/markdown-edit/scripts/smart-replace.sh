@@ -20,9 +20,15 @@ if [ ! -f "$FILE" ]; then
     exit 1
 fi
 
-# Create backup
-cp "$FILE" "$FILE.bak"
-echo "Backup created: $FILE.bak"
+# Ensure .archive directory exists
+mkdir -p .archive
+
+# Create backup in .archive with timestamp
+TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+BACKUP_NAME=$(echo "$FILE" | sed 's|/|_|g')
+BACKUP_PATH=".archive/${BACKUP_NAME}_${TIMESTAMP}"
+cp "$FILE" "$BACKUP_PATH"
+echo "Backup created: $BACKUP_PATH"
 
 if [ "$MODE" = "--skip-code" ]; then
     # Skip code blocks
@@ -57,4 +63,4 @@ else
 fi
 
 echo "Updated: $FILE"
-echo "To restore: mv $FILE.bak $FILE"
+echo "To restore: cp $BACKUP_PATH $FILE"
