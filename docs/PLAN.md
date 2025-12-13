@@ -4,7 +4,7 @@
 
 **Goal**: Create production-ready Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoC in Rust.
 
-**Status**: Phase 5 Tier 2 Partial - GPIO, CMU, Delay, USART, I2C, SPI Implemented
+**Status**: Phase B Partial - GPIO, CMU, Delay, USART, I2C, SPI Implemented
 
 **Repository Structure**:
 ```
@@ -135,7 +135,7 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
 
 ---
 
-### ✅ Phase 5: Initial HAL Development - Tier 1 Complete
+### ✅ Phase A: Initial HAL Development - Essential Peripherals Complete
 
 **Prerequisites**: ✅ Phase 4 complete
 
@@ -183,14 +183,14 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
    - PWM generation
    - embedded-hal timer traits
 
-**Completed (Tier 1)**: December 4, 2025
-**Completed (Tier 2 - USART)**: December 4, 2025
-**Completed (Tier 2 - I2C)**: December 12, 2025
+**Completed (Phase A - Tier 1)**: December 4, 2025
+**Completed (Phase B - USART)**: December 4, 2025
+**Completed (Phase B - I2C)**: December 12, 2025
 **Examples**: 5 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c)
 
 ---
 
-### ⏳ Phase 6: Extended HAL Development (PENDING)
+### ⏳ Phase B: Extended HAL Development - Communication Peripherals (IN PROGRESS)
 
 **Tier 2 Peripherals** (Important):
 
@@ -576,7 +576,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 
 ---
 
-**Last Updated**: December 12, 2025
-**Current Phase**: 5 Tier 2 Partial - USART, I2C, and SPI Complete, Timers Next
-**Progress**: 5 of 9 phases partial (65%)
+**Last Updated**: December 13, 2025
+**Current Phase**: Phase B Partial - USART, I2C, and SPI Complete, Timers Next
+**Progress**: Phase B 70% complete (communication peripherals done)
 **Next Milestone**: Implement Timers/PWM

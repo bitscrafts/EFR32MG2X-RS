@@ -4,7 +4,7 @@
 
 This project provides Rust support (PAC + HAL) for the Silicon Labs EFR32MG24 wireless MCU.
 
-**Status**: Phase 5 Tier 2 Partial (70%) - Communication Peripherals Complete (USART, I2C, SPI)
+**Status**: Phase B Partial (70%) - Communication Peripherals Complete (USART, I2C, SPI)
 
 **Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
 
@@ -97,7 +97,7 @@ EFR32MG24/
 - Build time: ~3 minutes (release mode)
 - All examples compile without errors
 
-### Completed (Phase 5 Tier 2 - Communication Peripherals)
+### Completed (Phase B - Communication Peripherals)
 
 4. **USART0** - Complete
    - Hardware register access (CTRL, FRAME, CLKDIV, STATUS)
@@ -135,7 +135,7 @@ EFR32MG24/
 - Build time: ~3-8 minutes (release mode)
 - Zero compilation warnings or errors
 
-### In Progress (Phase 5 Tier 2)
+### In Progress (Phase B)
 
 Next implementation target:
 - Timer - Timers and PWM generation (TIMER0-4)
@@ -338,7 +338,7 @@ cargo doc --no-deps --features rt --open
 
 **Rust Target**: `thumbv8m.main-none-eabihf`
 
-## Phase 5 Tier 2 Completion Summary
+## Phase B Completion Summary
 
 **Communication Peripherals Completed**:
 
@@ -386,7 +386,7 @@ cargo doc --no-deps --features rt --open
 6. **General**: No async/await support (Embassy planned)
 7. **Testing**: No hardware testing yet (requires XIAO MG24 Sense board)
 
-### Future Work (Phase 5 Tier 2 Completion)
+### Future Work (Phase B Completion)
 1. ✅ ~~Implement USART0 for serial communication~~ (Complete)
 2. ✅ ~~Add I2C master mode support~~ (Complete)
 3. ✅ ~~Implement SPI master mode~~ (Complete - all 3 instances)
@@ -421,7 +421,7 @@ cargo doc --no-deps --features rt --open
 - [x] embedded-hal v1.0 traits implemented for GPIO/Delay
 - [x] Documentation updated
 
-**Phase 5 Tier 2** (70% Complete):
+**Phase B** (70% Complete):
 - [x] USART0 serial communication working
 - [x] I2C0/I2C1 master mode working
 - [x] SPI0/SPI1/SPI2 master mode working (all 3 instances)
@@ -446,6 +446,6 @@ cargo doc --no-deps --features rt --open
 ---
 
 **Last Updated**: December 12, 2025
-**Current Phase**: 5 Tier 2 Partial (70% complete)
+**Current Phase**: Phase B Partial (70% complete)
 **Current Status**: Communication peripherals complete (USART, I2C, SPI)
 **Next Milestone**: Implement Timer/PWM support (TIMER0-4)
