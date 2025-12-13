@@ -16,7 +16,7 @@
 //!
 //! # Status
 //!
-//! **Phase 5 Tier 2 - USART Implementation**: In Progress
+//! **Phase 5 Tier 2 - Complete**: All communication peripherals and timers implemented
 //!
 //! ## Tier 1 Peripherals (Complete)
 //!
@@ -24,12 +24,12 @@
 //! - **GPIO** - Type-safe pin modes with hardware register manipulation
 //! - **Delay** - SysTick-based delays integrated with CMU
 //!
-//! ## Tier 2 Peripherals (In Progress)
+//! ## Tier 2 Peripherals (Complete)
 //!
 //! - **USART** - Serial communication (USART0) with embedded-hal-nb traits ✅
 //! - **I2C** - I2C master mode (I2C0, I2C1) with embedded-hal traits ✅
 //! - **SPI** - SPI master mode (USART in SPI mode) with embedded-hal traits ✅
-//! - Timer (TIMER0-4) and PWM - Planned
+//! - **Timer** - Timer and PWM (TIMER0-4) with 3 channels each ✅
 //!
 //! ## Tier 3 Peripherals (Planned - Phase 4)
 //!
@@ -78,6 +78,7 @@
 //! - [`gpio`] - General Purpose I/O
 //! - [`i2c`] - I2C master mode
 //! - [`spi`] - SPI master mode (USART in SPI mode)
+//! - [`timer`] - Timer and PWM functionality (TIMER0-4)
 //! - [`usart`] - USART/UART serial communication
 //! - [`prelude`] - Common imports for convenience
 //!
@@ -94,6 +95,7 @@ pub mod delay;
 pub mod gpio;
 pub mod i2c;
 pub mod spi;
+pub mod timer;
 pub mod usart;
 
 /// Prelude module for convenient imports

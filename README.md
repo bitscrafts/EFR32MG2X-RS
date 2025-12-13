@@ -2,7 +2,7 @@
 
 Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoCs.
 
-> ✅ **Status**: HAL Phase 5 Tier 2 - USART, I2C, and SPI (3 instances) Complete, Timers Next
+> ✅ **Status**: HAL Phase 5 Tier 2 - Complete (USART, I2C, SPI, Timers/PWM)
 
 ## Overview
 
@@ -49,16 +49,13 @@ EFR32MG24/
 - [x] **Delay** - SysTick-based delays (ms/us/ns), embedded-hal v1.0 DelayNs trait
 - [x] **Documentation** - Module READMEs, phase 2 completion docs
 
-### ✅ Completed - HAL Tier 2 (Partial)
+### ✅ Completed - HAL Tier 2
 
 - [x] **USART0** - Serial communication with hardware register access, embedded-hal-nb v1.0 traits
 - [x] **I2C0/I2C1** - I2C master mode with 7-bit addressing, embedded-hal v1.0 I2C traits
 - [x] **SPI0/SPI1/SPI2** - SPI master mode using USART0, EUSART0, EUSART1 in SPI mode, all 4 modes (0-3), embedded-hal v1.0 SpiBus traits
-- [x] **Examples** - 6 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c, 06_spi)
-
-### 🚧 In Progress - HAL Tier 2
-
-- [ ] **Timer** - Timers and PWM (TIMER0-4)
+- [x] **Timer0-4** - Timers and PWM with 3 channels each, edge/center-aligned modes, configurable frequency and duty cycle
+- [x] **Examples** - 7 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c, 06_spi, 07_timer)
 
 ### ⏳ Planned - HAL Tier 3
 
@@ -125,11 +122,11 @@ See detailed PAC documentation:
 
 See [docs/PLAN.md](docs/PLAN.md) for the complete development roadmap.
 
-**Current Progress: Phase 5 Tier 2 Partial (70%)**
+**Current Progress: Phase 5 Tier 2 Complete (80%)**
 
 1. ✅ **Phase 1-4**: Project Setup, PAC Generation, PAC Verification
 2. ✅ **Phase 5 Tier 1**: HAL Core - GPIO, CMU, Delay with hardware register access
-3. 🚧 **Phase 5 Tier 2**: HAL Communication - USART ✅, I2C ✅, SPI (all 3 instances) ✅, Timers (Next)
+3. ✅ **Phase 5 Tier 2**: HAL Communication - USART, I2C, SPI, Timers/PWM all complete
 4. ⏳ **Phase 6-7**: HAL Advanced - ADC, DMA, Power Management
 5. ⏳ **Phase 8-9**: Testing, Examples, Ecosystem (Embassy, BSPs)
 
@@ -266,7 +263,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ---
 
-**Project Status**: Phase 5 Tier 2 Partial - USART, I2C, and SPI (3 instances) Complete
-**Last Updated**: December 12, 2025
+**Project Status**: Phase 5 Tier 2 Complete - All communication peripherals and timers implemented
+**Last Updated**: December 13, 2025
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/EFR32MG2X-RS
