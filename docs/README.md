@@ -22,16 +22,28 @@ This directory contains all documentation for the EFR32MG24 Rust PAC and HAL dev
   - What's completed, in progress, and planned
   - Current blockers and next steps
   - Handoff checklist for future sessions
+  - Project metrics and statistics
 
 - **[PLAN.md](PLAN.md)** - **Development roadmap**
   - 9-phase development plan with timelines
   - Milestones and deliverables
   - Progress tracking
 
-- **[DOCUMENTATION_AUDIT.md](DOCUMENTATION_AUDIT.md)** - Documentation organization
-  - Content overlap analysis
-  - Single source of truth assignments
-  - Reorganization rationale
+- **[BACKLOG.md](BACKLOG.md)** - **Kanban task board** (Daily tactical planning)
+  - Ready: Prioritized tasks for current sprint
+  - In Progress: Active tasks
+  - Review: Waiting for validation
+  - Blocked: Cannot proceed
+  - Done: Recent completions (last 30 days)
+  - Ideas: Unprioritized future work
+  - Task metadata: @priority, @phase, @started, @done, @blocked
+
+- **[LOG.md](LOG.md)** - **Milestone achievement log**
+  - Chronological record of significant milestones
+  - Key decisions and their rationale
+  - Technical achievements and metrics
+  - Retrospective notes and lessons learned
+  - Statistics summary (code, time, progress)
 
 ---
 
@@ -105,6 +117,8 @@ To avoid duplicate information, each topic has one authoritative document:
 | **Current PAC** | [pac/B220_VS_A020_COMPARISON.md](pac/B220_VS_A020_COMPARISON.md) | B220 PAC details and comparison |
 | **Project Status** | [STATUS.md](STATUS.md) | What's done, what's next, blockers |
 | **Development Roadmap** | [PLAN.md](PLAN.md) | Phases, timeline, milestones |
+| **Task Backlog** | [BACKLOG.md](BACKLOG.md) | Kanban board, daily tasks, priorities |
+| **Milestone Log** | [LOG.md](LOG.md) | Achievement history, decisions, retrospectives |
 | **HAL Architecture** | [hal/HAL_STRUCTURE_PLAN.md](hal/HAL_STRUCTURE_PLAN.md) | HAL structure, modules, implementation |
 
 **Principle**: If information appears in the SSOT document, other documents should **link to it** rather than duplicate it.
@@ -115,8 +129,10 @@ To avoid duplicate information, each topic has one authoritative document:
 
 ```
 README.md (you are here)
-├── STATUS.md → Current state
-├── PLAN.md → Future direction
+├── STATUS.md → Current state (what's done/in progress)
+├── PLAN.md → Strategic roadmap (phases, milestones)
+├── BACKLOG.md → Tactical tasks (daily Kanban board)
+├── LOG.md → Milestone history (achievements, decisions)
 │
 ├── hardware/
 │   └── XIAO_MG24_HARDWARE.md → Hardware specs (SSOT)
@@ -164,10 +180,9 @@ See [pac/B220_VS_A020_COMPARISON.md](pac/B220_VS_A020_COMPARISON.md) for details
 
 ### Current Phase
 
-**Phase 5 Tier 2 - USART Complete**: Serial communication with embedded-hal-nb traits (December 4, 2025)
-**Phase 5 Tier 2 Next**: I2C, SPI, Timers
+**Phase B - Communication Peripherals (70% complete)**: USART, I2C, SPI done; Timers next (December 13, 2025)
 
-See [PLAN.md](PLAN.md) for complete roadmap and [STATUS.md](STATUS.md) for detailed status.
+See [PLAN.md](PLAN.md) for strategic roadmap, [STATUS.md](STATUS.md) for implementation status, and [BACKLOG.md](BACKLOG.md) for daily task board.
 
 ---
 
@@ -218,18 +233,33 @@ Use this guide to know where specific information should be written:
 
 ### Project Management → Root `docs/`
 
-**Write in [STATUS.md](STATUS.md)** (update frequently):
-- Current phase and progress
-- Completed tasks
-- In-progress work
-- Next steps
-- Blockers and issues
+**Write in [STATUS.md](STATUS.md)** (update after milestones):
+- Current phase and overall progress
+- Completed milestones
+- Implementation metrics
+- Handoff checklist
+- Overall project status
 
-**Write in [PLAN.md](PLAN.md)** (update when plans change):
-- Development phases
+**Write in [PLAN.md](PLAN.md)** (update when strategy changes):
+- Development phases (strategic)
 - Timeline estimates
 - Milestone definitions
 - Resource requirements
+
+**Write in [BACKLOG.md](BACKLOG.md)** (update daily/weekly):
+- Tasks ready to start (prioritized)
+- Tasks in progress (actively working)
+- Tasks in review (waiting for validation)
+- Blocked tasks (cannot proceed)
+- Recent completions (last 30 days)
+- Future ideas (unprioritized)
+
+**Write in [LOG.md](LOG.md)** (append after significant events):
+- Milestone achievements with dates
+- Key technical decisions and rationale
+- Statistics and metrics snapshots
+- Retrospective notes (what went well, challenges, lessons)
+- Never edit historical entries - append only
 
 ### Historical Information → `archive/`
 
@@ -301,6 +331,7 @@ All documents should include:
 
 ## Document History
 
+- **December 13, 2025**: Added BACKLOG.md and LOG.md for project management
 - **December 4, 2025**: Updated for Phase 5 Tier 1 completion - Added backup workflow documentation
 - **December 3, 2025**: Major reorganization - created topic-based folders
 - **December 3, 2025**: Added B220 PAC documentation
@@ -312,6 +343,8 @@ All documents should include:
 ## Need Help?
 
 - **Project questions**: See [STATUS.md](STATUS.md) or main [../README.md](../README.md)
+- **Current tasks**: [BACKLOG.md](BACKLOG.md) (Kanban board)
+- **Milestone history**: [LOG.md](LOG.md) (achievement log)
 - **Hardware details**: [hardware/XIAO_MG24_HARDWARE.md](hardware/XIAO_MG24_HARDWARE.md)
 - **PAC issues**: [pac/](pac/) folder
 - **HAL status**: [../efr32mg24-hal/docs/STATUS.md](../efr32mg24-hal/docs/STATUS.md)
@@ -320,5 +353,5 @@ All documents should include:
 
 ---
 
-**Last Updated**: December 4, 2025
-**Total Documents**: 12+ (docs folder + HAL docs + module READMEs)
+**Last Updated**: December 13, 2025
+**Total Documents**: 16+ (docs folder + HAL docs + module READMEs + project management)
