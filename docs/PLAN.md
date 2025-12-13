@@ -4,7 +4,7 @@
 
 **Goal**: Create production-ready Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoC in Rust.
 
-**Status**: Phase 5 Tier 1 Complete - GPIO, CMU, Delay Implemented with Hardware Register Access
+**Status**: Phase 5 Tier 2 Partial - GPIO, CMU, Delay, USART, I2C Implemented
 
 **Repository Structure**:
 ```
@@ -172,19 +172,21 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
    - Voltage scaling
    - Power management
 
-5. **USART/EUSART** (Serial Communication) - ⏳ TIER 2
-   - UART mode
-   - Configuration (baud rate, parity, stop bits)
-   - embedded-hal serial traits
+5. **USART/EUSART** (Serial Communication) - ✅ TIER 2 COMPLETE
+   - ✅ UART mode
+   - ✅ Configuration (baud rate, parity, stop bits)
+   - ✅ embedded-hal-nb serial traits
+   - ✅ Example: 04_usart.rs
 
 6. **TIMER** (Timers) - ⏳ TIER 2
    - Basic timer functionality
    - PWM generation
    - embedded-hal timer traits
 
-**Completed**: December 4, 2025
-**Duration**: Phase 2 (Hardware Register Access) completed in 1 day
-**Examples**: 3 working examples (01_clock, 02_delay, 03_gpio)
+**Completed (Tier 1)**: December 4, 2025
+**Completed (Tier 2 - USART)**: December 4, 2025
+**Completed (Tier 2 - I2C)**: December 12, 2025
+**Examples**: 5 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c)
 
 ---
 
@@ -192,10 +194,14 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
 
 **Tier 2 Peripherals** (Important):
 
-6. **I2C**
-   - Master mode
-   - Slave mode (optional)
-   - embedded-hal I2C traits
+6. **I2C** - ✅ TIER 2 COMPLETE
+   - ✅ Master mode (I2C0, I2C1)
+   - ✅ 7-bit addressing
+   - ✅ Standard (100 kHz) and Fast (400 kHz) modes
+   - ✅ embedded-hal I2C traits
+   - ✅ Example: 05_i2c.rs
+   - ⏳ Slave mode (deferred)
+   - ⏳ 10-bit addressing (deferred)
 
 7. **IADC** (ADC)
    - Single-shot conversion
@@ -570,7 +576,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 
 ---
 
-**Last Updated**: December 4, 2025
-**Current Phase**: 5 Tier 1 Complete - Ready for Phase 5 Tier 2 (USART, I2C, Timers)
-**Progress**: 5 of 9 phases complete (56%)
-**Next Milestone**: Implement USART/EUSART for serial communication
+**Last Updated**: December 12, 2025
+**Current Phase**: 5 Tier 2 Partial - USART and I2C Complete, SPI/Timers Next
+**Progress**: 5 of 9 phases partial (62%)
+**Next Milestone**: Implement SPI or Timers/PWM

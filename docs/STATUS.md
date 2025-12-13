@@ -1,18 +1,18 @@
 # Project Status Report
 
-**Date**: December 4, 2025
+**Date**: December 12, 2025
 **Project**: EFR32MG24 Rust Support (PAC + HAL)
-**Phase**: 5 Tier 2 - USART Complete, I2C/SPI/Timers Planned
+**Phase**: 5 Tier 2 - USART and I2C Complete, SPI/Timers Planned
 
 ---
 
 ## Executive Summary
 
-The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART implementation. Core peripherals (GPIO, CMU, Delay) and serial communication (USART0) now have full hardware register access with embedded-hal v1.0 trait implementations. All 4 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL is ready for remaining Tier 2 peripherals (I2C, SPI, Timers).
+The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART and I2C implementation. Core peripherals (GPIO, CMU, Delay), serial communication (USART0), and I2C master mode (I2C0/I2C1) now have full hardware register access with embedded-hal v1.0 trait implementations. All 5 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL is ready for remaining Tier 2 peripherals (SPI, Timers).
 
-**Time Invested**: ~14 hours (8 hours Phase 1-4 + 4 hours Tier 1 + 2 hours USART)
-**Completion**: Phase 5 Tier 2 - USART complete (60% of overall plan)
-**Next Phase**: HAL Tier 2 - I2C, SPI, Timers
+**Time Invested**: ~16 hours (8 hours Phase 1-4 + 4 hours Tier 1 + 2 hours USART + 2 hours I2C)
+**Completion**: Phase 5 Tier 2 - USART and I2C complete (62% of overall plan)
+**Next Phase**: HAL Tier 2 - SPI, Timers
 
 ---
 
@@ -76,6 +76,21 @@ The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART imple
 - [x] Module README.md with hardware register documentation (237 lines)
 - [x] Example 04_usart.rs - UART echo with 115200 baud
 
+**I2C Module** - Complete with hardware register manipulation (Phase 5 Tier 2):
+- [x] I2C0/I2C1 register access (EN, CTRL, CMD, STATUS, CLKDIV, TXDATA, RXDATA, IF)
+- [x] I2C master mode with 7-bit addressing
+- [x] Configurable SCL frequency (Standard 100 kHz, Fast 400 kHz)
+- [x] Automatic clock divider calculation from HCLK
+- [x] Blocking write operations (write)
+- [x] Blocking read operations (read)
+- [x] Write-read combined operations (write_read)
+- [x] NACK detection and error handling
+- [x] embedded-hal v1.0 I2c and ErrorType traits
+- [x] CMU CLKEN0 I2C0/I2C1 clock enable (bits 14/15)
+- [x] Module split into 3 files (mod.rs: 400 lines, types.rs: 67 lines, traits.rs: 57 lines)
+- [x] Module README.md with hardware register documentation (237 lines)
+- [x] Example 05_i2c.rs - I2C master communication examples
+
 **Linker Configuration** - Complete:
 - [x] memory.x with EFR32MG24B220 memory layout (1536 KB Flash, 256 KB RAM)
 - [x] device.x with interrupt vector table (all 77 interrupts)
@@ -88,7 +103,8 @@ The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART imple
 - [x] 02_delay.rs - Millisecond/microsecond/nanosecond delays
 - [x] 03_gpio.rs - LED control, button input, type-safe pins
 - [x] 04_usart.rs - UART echo at 115200 baud (8N1)
-- [x] All 4 examples build to flashable ARM Cortex-M33 binaries
+- [x] 05_i2c.rs - I2C master read/write operations (100 kHz/400 kHz)
+- [x] All 5 examples build to flashable ARM Cortex-M33 binaries
 
 **Documentation**:
 - [x] All module READMEs updated with Phase 2 implementation status
@@ -102,7 +118,7 @@ The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART imple
 
 ## In Progress
 
-Currently no active development tasks. Ready for remaining Tier 2 peripheral implementation (I2C, SPI, Timers).
+Currently no active development tasks. Ready for remaining Tier 2 peripheral implementation (SPI, Timers).
 
 ---
 
@@ -116,11 +132,11 @@ Currently no active development tasks. Ready for remaining Tier 2 peripheral imp
 3. DMA support (optional, later)
 4. ✅ Example: 04_usart.rs - UART echo at 115200 baud
 
-**Priority 2: I2C** - I2C master mode (NEXT)
-1. I2C0/I2C1 register access
-2. Master mode (7-bit addressing)
-3. embedded-hal I2C traits
-4. Example: I2C sensor read (IMU on XIAO MG24)
+**Priority 2: I2C** - I2C master mode ✅ COMPLETE
+1. ✅ I2C0/I2C1 register access
+2. ✅ Master mode (7-bit addressing)
+3. ✅ embedded-hal I2C traits
+4. ✅ Example: 05_i2c.rs - I2C master communication
 
 **Priority 3: SPI** - SPI master mode
 1. USART in SPI mode or dedicated SPI peripheral
@@ -145,14 +161,15 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 - **CMU Module**: 317 lines across 4 files (mod.rs, types.rs, clocks.rs, frozen.rs)
 - **Delay Module**: ~100 lines in 1 file (mod.rs)
 - **USART Module**: 373 lines across 3 files + README (mod.rs: 212, types.rs: 105, traits.rs: 56)
+- **I2C Module**: 524 lines across 3 files + README (mod.rs: 400, types.rs: 67, traits.rs: 57)
 - **Examples**: 5 examples, all compile to ARM Cortex-M33 binaries
   - 01_clock.rs - Clock configuration
   - 02_delay.rs - SysTick delays
   - 03_gpio.rs - LED blink and button input
   - 04_usart.rs - UART echo at 115200 baud
-  - _01-04_checkpoint.rs - All modules integration test (252 lines)
+  - 05_i2c.rs - I2C master communication (100 kHz/400 kHz)
 - **Build Time**: ~3 minutes (release mode with optimizations)
-- **embedded-hal v1.0**: OutputPin, InputPin, DelayNs traits implemented
+- **embedded-hal v1.0**: OutputPin, InputPin, DelayNs, I2c, ErrorType traits implemented
 - **embedded-hal-nb v1.0**: Write<u8>, Read<u8>, ErrorType traits implemented
 
 ### PAC Generation Results
@@ -163,8 +180,8 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 - **SVD Files Available**: 41 device variants (27 A-series + 14 B-series)
 
 ### Documentation
-- **Total Documents**: 13+ organized documents
-- **Module READMEs**: GPIO, CMU, Delay, USART modules all documented
+- **Total Documents**: 14+ organized documents
+- **Module READMEs**: GPIO, CMU, Delay, USART, I2C modules all documented
 - **HAL Documentation**: PHASE2_PLAN.md, STATUS.md, BUILD_SYSTEM.md, LINKER_SETUP.md
 - **Backup System**: .archive folder with timestamped backups
 
@@ -173,8 +190,9 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 - PAC Generation & Troubleshooting (Phase 3-4): ~4 hours
 - HAL Tier 1 Implementation (Phase 5): ~4 hours
 - HAL Tier 2 USART Implementation: ~2 hours
+- HAL Tier 2 I2C Implementation: ~2 hours
 
-**Total Time**: ~14 hours
+**Total Time**: ~16 hours
 
 ---
 
@@ -221,16 +239,22 @@ EFR32MG24/
 │   │   ├── delay/                  # Delay module (1 file, ~100 lines)
 │   │   │   ├── mod.rs              # SysTick delays
 │   │   │   └── README.md           # Delay documentation
-│   │   └── usart/                  # USART module (3 files, 373 lines)
-│   │       ├── mod.rs              # USART implementation (212 lines)
-│   │       ├── types.rs            # Type definitions (105 lines)
-│   │       ├── traits.rs           # embedded-hal-nb traits (56 lines)
-│   │       └── README.md           # USART documentation (237 lines)
+│   │   ├── usart/                  # USART module (3 files, 373 lines)
+│   │   │   ├── mod.rs              # USART implementation (212 lines)
+│   │   │   ├── types.rs            # Type definitions (105 lines)
+│   │   │   ├── traits.rs           # embedded-hal-nb traits (56 lines)
+│   │   │   └── README.md           # USART documentation (237 lines)
+│   │   └── i2c/                    # I2C module (3 files, 524 lines)
+│   │       ├── mod.rs              # I2C implementation (400 lines)
+│   │       ├── types.rs            # Type definitions (67 lines)
+│   │       ├── traits.rs           # embedded-hal traits (57 lines)
+│   │       └── README.md           # I2C documentation (237 lines)
 │   ├── examples/
 │   │   ├── 01_clock.rs             # Clock configuration example
 │   │   ├── 02_delay.rs             # Delay usage example
 │   │   ├── 03_gpio.rs              # GPIO usage example
-│   │   └── 04_usart.rs             # UART echo example (115200 baud)
+│   │   ├── 04_usart.rs             # UART echo example (115200 baud)
+│   │   └── 05_i2c.rs               # I2C master communication example
 │   └── docs/                       # HAL-specific documentation
 │       ├── README.md
 │       ├── STATUS.md               # HAL status
@@ -331,13 +355,14 @@ For next developer/session:
 
 - [x] All Phase 1-5 Tier 1 tasks complete
 - [x] Phase 5 Tier 2 USART complete
-- [x] Documentation updated and current (December 4, 2025)
+- [x] Phase 5 Tier 2 I2C complete
+- [x] Documentation updated and current (December 12, 2025)
 - [x] Documentation backup workflow implemented
-- [x] All 4 examples compiling and building
-- [x] Module READMEs created for all implemented modules (GPIO, CMU, Delay, USART)
-- [x] CHANGELOG.md updated with Phase 2 changes
+- [x] All 5 examples compiling and building
+- [x] Module READMEs created for all implemented modules (GPIO, CMU, Delay, USART, I2C)
+- [x] CHANGELOG.md updated with Phase 5 Tier 2 changes
 - [x] Build system fully configured
-- [ ] HAL Tier 2 (I2C, SPI, Timers) - Ready to begin
+- [ ] HAL Tier 2 (SPI, Timers) - Ready to begin
 
 ---
 
@@ -386,17 +411,17 @@ cargo run --example 03_gpio --features rt --release
 
 ## Conclusion
 
-The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART implementation. Core peripherals (GPIO, CMU, Delay) and serial communication (USART0) now have full hardware register access with embedded-hal v1.0 and embedded-hal-nb v1.0 trait implementations. All 4 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL provides type-safe pin modes, peripheral consumption patterns, and non-blocking serial communication. The project is ready for remaining Tier 2 peripheral development (I2C, SPI, Timers).
+The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART and I2C implementation. Core peripherals (GPIO, CMU, Delay), serial communication (USART0), and I2C master mode (I2C0/I2C1) now have full hardware register access with embedded-hal v1.0 and embedded-hal-nb v1.0 trait implementations. All 5 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL provides type-safe pin modes, peripheral consumption patterns, non-blocking serial communication, and I2C master operations with automatic clock divider calculation. The project is ready for remaining Tier 2 peripheral development (SPI, Timers).
 
-**Recommended Next Action**: Continue Tier 2 implementation with I2C for sensor communication.
+**Recommended Next Action**: Continue Tier 2 implementation with SPI for peripheral communication or Timers for PWM generation.
 
 ---
 
-**Status**: Phase 5 Tier 2 - USART Complete, I2C/SPI/Timers Next
-**Phase Progress**: 5 of 9 phases, Tier 2 USART complete (60%)
+**Status**: Phase 5 Tier 2 - USART and I2C Complete, SPI/Timers Next
+**Phase Progress**: 5 of 9 phases, Tier 2 USART+I2C complete (62%)
 **Confidence**: High (proven with hardware register access and working examples)
 **Risk Level**: Low (core infrastructure validated, examples building successfully)
 
-**Last Updated**: December 4, 2025
+**Last Updated**: December 12, 2025
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/efr32-rs (planned)
