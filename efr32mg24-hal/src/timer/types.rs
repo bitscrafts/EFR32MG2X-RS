@@ -103,14 +103,5 @@ impl core::fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "defmt")]
-impl defmt::Format for Error {
-    fn format(&self, fmt: defmt::Formatter) {
-        match self {
-            Error::InvalidFrequency => defmt::write!(fmt, "InvalidFrequency"),
-            Error::InvalidDutyCycle => defmt::write!(fmt, "InvalidDutyCycle"),
-            Error::Locked => defmt::write!(fmt, "Locked"),
-            Error::InvalidChannel => defmt::write!(fmt, "InvalidChannel"),
-        }
-    }
-}
+// Note: defmt::Format implementation removed to avoid feature flag warnings.
+// To re-enable, add 'defmt' to Cargo.toml [features] and [dependencies]
