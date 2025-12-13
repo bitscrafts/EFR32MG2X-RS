@@ -35,13 +35,13 @@ fn main() -> ! {
 
     // Example 1: Using external crystals (XIAO MG24 default)
     // This provides the most accurate clock for radio and timing operations
-    let _clocks_external = Clocks::new(
+    let (_clocks_external, _cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)), // 39 MHz HFXO
             lfxo: Some(LfxoConfig::default()),         // 32.768 kHz LFXO
         }
-    );
+    ).expect("Clock configuration failed");
 
     // Access the frozen clock frequencies
     // In a real application, you would use these for peripheral configuration
@@ -79,13 +79,16 @@ fn main() -> ! {
 
     // Get a new CMU peripheral for this example
     let dp2 = unsafe { pac::Peripherals::steal() };
-    let frozen_clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp2.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(LfxoConfig::default()),
         }
-    ).freeze();
+    ).expect("Clock configuration failed");
+
+    // Freeze clocks for use with peripherals
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Now these frozen clocks can be passed to peripheral drivers
     // let delay = Delay::new(cp.SYST, &frozen_clocks);
