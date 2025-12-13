@@ -28,7 +28,7 @@
 //!
 //! - **USART** - Serial communication (USART0) with embedded-hal-nb traits ✅
 //! - **I2C** - I2C master mode (I2C0, I2C1) with embedded-hal traits ✅
-//! - SPI (USART in SPI mode) - Planned
+//! - **SPI** - SPI master mode (USART in SPI mode) with embedded-hal traits ✅
 //! - Timer (TIMER0-4) and PWM - Planned
 //!
 //! ## Tier 3 Peripherals (Planned - Phase 4)
@@ -77,6 +77,7 @@
 //! - [`delay`] - Blocking delays using SysTick
 //! - [`gpio`] - General Purpose I/O
 //! - [`i2c`] - I2C master mode
+//! - [`spi`] - SPI master mode (USART in SPI mode)
 //! - [`usart`] - USART/UART serial communication
 //! - [`prelude`] - Common imports for convenience
 //!
@@ -92,6 +93,7 @@ pub mod clock;
 pub mod delay;
 pub mod gpio;
 pub mod i2c;
+pub mod spi;
 pub mod usart;
 
 /// Prelude module for convenient imports
@@ -108,6 +110,9 @@ pub mod prelude {
 
     /// Re-export embedded-hal I2C trait
     pub use embedded_hal::i2c::I2c as _embedded_hal_i2c_I2c;
+
+    /// Re-export embedded-hal SPI trait
+    pub use embedded_hal::spi::SpiBus as _embedded_hal_spi_SpiBus;
 
     /// Re-export GPIO extension trait
     pub use crate::gpio::GpioExt as _efr32mg24_hal_gpio_GpioExt;

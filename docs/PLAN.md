@@ -4,7 +4,7 @@
 
 **Goal**: Create production-ready Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoC in Rust.
 
-**Status**: Phase 5 Tier 2 Partial - GPIO, CMU, Delay, USART, I2C Implemented
+**Status**: Phase 5 Tier 2 Partial - GPIO, CMU, Delay, USART, I2C, SPI Implemented
 
 **Repository Structure**:
 ```
@@ -577,6 +577,6 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 ---
 
 **Last Updated**: December 12, 2025
-**Current Phase**: 5 Tier 2 Partial - USART and I2C Complete, SPI/Timers Next
-**Progress**: 5 of 9 phases partial (62%)
-**Next Milestone**: Implement SPI or Timers/PWM
+**Current Phase**: 5 Tier 2 Partial - USART, I2C, and SPI Complete, Timers Next
+**Progress**: 5 of 9 phases partial (65%)
+**Next Milestone**: Implement Timers/PWM

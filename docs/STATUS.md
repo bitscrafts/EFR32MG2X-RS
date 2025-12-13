@@ -2,17 +2,17 @@
 
 **Date**: December 12, 2025
 **Project**: EFR32MG24 Rust Support (PAC + HAL)
-**Phase**: 5 Tier 2 - USART and I2C Complete, SPI/Timers Planned
+**Phase**: 5 Tier 2 - USART, I2C, and SPI Complete, Timers Planned
 
 ---
 
 ## Executive Summary
 
-The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART and I2C implementation. Core peripherals (GPIO, CMU, Delay), serial communication (USART0), and I2C master mode (I2C0/I2C1) now have full hardware register access with embedded-hal v1.0 trait implementations. All 5 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL is ready for remaining Tier 2 peripherals (SPI, Timers).
+The EFR32MG24 Rust project has successfully completed Phase 5 Tier 2 USART, I2C, and SPI implementation. Core peripherals (GPIO, CMU, Delay), serial communication (USART0), I2C master mode (I2C0/I2C1), and SPI master mode (SPI0) now have full hardware register access with embedded-hal v1.0 trait implementations. All 6 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL is ready for remaining Tier 2 peripherals (Timers).
 
-**Time Invested**: ~16 hours (8 hours Phase 1-4 + 4 hours Tier 1 + 2 hours USART + 2 hours I2C)
-**Completion**: Phase 5 Tier 2 - USART and I2C complete (62% of overall plan)
-**Next Phase**: HAL Tier 2 - SPI, Timers
+**Time Invested**: ~18 hours (8 hours Phase 1-4 + 4 hours Tier 1 + 2 hours USART + 2 hours I2C + 2 hours SPI)
+**Completion**: Phase 5 Tier 2 - USART, I2C, and SPI complete (65% of overall plan)
+**Next Phase**: HAL Tier 2 - Timers/PWM
 
 ---
 
