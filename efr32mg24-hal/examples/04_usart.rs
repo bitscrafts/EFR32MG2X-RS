@@ -52,10 +52,12 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
 
     // Initialize clocks with default configuration
-    let clocks = Clocks::new(dp.cmu_s, ClockConfig::default()).freeze();
+    let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
+        .expect("Clock configuration failed");
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Configure USART0 for 115200 baud, 8N1 (default)
-    let mut usart = Usart0::new(dp.usart0_s, Config::default(), &clocks);
+    let mut usart = Usart0::new(dp.usart0_s, Config::default(), &frozen_clocks);
 
     // Send welcome message
     usart.write(b"\r\n");

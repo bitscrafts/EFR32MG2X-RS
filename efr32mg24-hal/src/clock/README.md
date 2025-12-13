@@ -1,8 +1,80 @@
 # Clock Management Module
 
 **Module**: `efr32mg24_hal::clock`
-**Status**: Initial Implementation
+**Status**: Phase A - Critical Fixes Complete
 **Version**: 0.1.0
+
+---
+
+## Phase A Update (December 13, 2025)
+
+### Critical Fixes Implemented
+
+**CMU Ownership Architecture**: Fixed critical ownership violation where CMU peripheral was consumed but not stored, leading to unsafe peripheral access across all modules.
+
+**What Changed**:
+1. `Clocks::new()` now returns `Result<(Clocks, CmuS), ClockError>` instead of `Clocks`
+2. `freeze()` now requires the CMU peripheral: `freeze(cmu: CmuS) -> FrozenClocks`
+3. `FrozenClocks` now stores the CMU peripheral and provides safe access via `enable_peripheral_clock()`
+4. Added `ClockError` enum for proper error handling
+5. Oscillator stabilization now uses delay-based approach (pending hardware verification)
+
+### Migration Guide
+
+**Old API** (Pre-Phase A):
+```rust
+let clocks = Clocks::new(
+    dp.cmu_s,
+    ClockConfig {
+        hfxo: Some(HfxoConfig::new(39_000_000)),
+        lfxo: Some(Default::default()),
+    }
+).freeze();
+
+let delay = Delay::new(cp.SYST, &clocks);
+```
+
+**New API** (Phase A):
+```rust
+let (clocks, cmu) = Clocks::new(
+    dp.cmu_s,
+    ClockConfig {
+        hfxo: Some(HfxoConfig::new(39_000_000)),
+        lfxo: Some(Default::default()),
+    }
+).expect("Clock configuration failed");
+
+let frozen_clocks = clocks.freeze(cmu);
+
+let delay = Delay::new(cp.SYST, &frozen_clocks);
+```
+
+**Key Differences**:
+- `new()` returns `Result` - handle with `.expect()` or `?`
+- Destructure the tuple: `let (clocks, cmu) = ...`
+- Pass `cmu` to `freeze()`
+- Use `frozen_clocks` name to distinguish from `clocks`
+
+### Safe CMU Access Pattern
+
+All peripherals now use safe CMU access through `FrozenClocks`:
+
+```rust
+// Inside peripheral initialization
+clocks.enable_peripheral_clock(|cmu| {
+    cmu.clken0().modify(|_, w| w.usart0().set_bit());
+});
+```
+
+This replaces the unsafe pattern:
+```rust
+// DON'T DO THIS (old, unsafe)
+let cmu = unsafe { &(*pac::CmuS::ptr()) };
+```
+
+### Lessons Learned
+
+**CRITICAL**: Always check the PAC first before implementing HAL code. The EFR32MG24 registers may differ from expectations based on other chip families.
 
 ---
 
@@ -66,30 +138,38 @@ graph TD
 use efr32mg24_hal::clock::{Clocks, ClockConfig, HfxoConfig, LfxoConfig};
 
 // Configure with XIAO MG24's 39 MHz crystal
-let clocks = Clocks::new(
+let (clocks, cmu) = Clocks::new(
+    dp.cmu_s,
     ClockConfig {
         hfxo: Some(HfxoConfig::new(39_000_000)),
         lfxo: Some(LfxoConfig::default()), // 32.768 kHz
     }
-).freeze();
+).expect("Clock configuration failed");
+
+let frozen_clocks = clocks.freeze(cmu);
 
 // Use frozen clocks with peripherals
-let delay = Delay::new(cp.SYST, &clocks);
+let delay = Delay::new(cp.SYST, &frozen_clocks);
 ```
 
 ### Using Internal RC Oscillators
 
 ```rust
 // Use internal oscillators (no external crystals)
-let clocks = Clocks::new(
+let (clocks, cmu) = Clocks::new(
+    dp.cmu_s,
     ClockConfig::default() // Uses HFRCO (19 MHz) and LFRCO (32.768 kHz)
-).freeze();
+).expect("Clock configuration failed");
+
+let frozen_clocks = clocks.freeze(cmu);
 ```
 
 ### Accessing Clock Frequencies
 
 ```rust
-let frozen_clocks = clocks.freeze();
+let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
+    .expect("Clock configuration failed");
+let frozen_clocks = clocks.freeze(cmu);
 
 println!("HFCLK: {} Hz", frozen_clocks.hfclk().0);
 println!("LFCLK: {} Hz", frozen_clocks.lfclk().0);
@@ -151,17 +231,22 @@ Clock configuration changes should be atomic to prevent:
 
 ## Current Implementation Status
 
-**Version 0.1.0** - Phase 2: Hardware Register Access Implemented
+**Version 0.1.0** - Phase A: Critical Fixes Complete
 
 ### Implemented
 - [x] Clock configuration types (Hertz, HfxoConfig, LfxoConfig, ClockConfig)
+- [x] ClockError enum for error handling
 - [x] Default frequency constants (HFRCO 19 MHz, LFRCO 32.768 kHz)
 - [x] Frozen clock mechanism for peripheral sharing
+- [x] CMU peripheral storage in FrozenClocks (Phase A fix)
+- [x] Safe peripheral clock enable via enable_peripheral_clock() (Phase A fix)
+- [x] Result-based API for Clocks::new() (Phase A fix)
 - [x] Clean modular API structure
 - [x] CMU peripheral consumption pattern (ensures exclusive access)
 - [x] HFXO clock source selection via SYSCLKCTRL register
 - [x] Clock frequency tracking and reporting
 - [x] Safe register access with critical sections
+- [x] Delay-based oscillator stabilization (pending hardware verification)
 
 ### Module Structure
 
@@ -221,5 +306,5 @@ let clocks = Clocks::new(dp.cmu_s, config);
 
 ---
 
-**Last Updated**: December 4, 2025 (Phase 2 - Hardware Register Access)
+**Last Updated**: December 13, 2025 (Phase A - Critical Fixes)
 **Author**: EFR32MG24 HAL Project

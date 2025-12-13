@@ -2,6 +2,19 @@
 
 This module provides I2C (Inter-Integrated Circuit) master mode functionality for the EFR32MG24 microcontroller.
 
+## Phase A Update (December 13, 2025)
+
+**Internal Changes Only** - No API changes for users.
+
+**What Changed**:
+- I2C peripheral clock enable now uses safe `FrozenClocks::enable_peripheral_clock()` instead of unsafe CMU pointer
+- Fixed CMU ownership violation by using safe accessor pattern
+- No changes to public API - `I2c0::new()`, `I2c1::new()` remain unchanged
+
+Users do not need to modify their code. The internal implementation is now safer and follows Rust ownership semantics correctly.
+
+---
+
 ## Features
 
 - **I2C Master Mode**: Full I2C master implementation with 7-bit addressing

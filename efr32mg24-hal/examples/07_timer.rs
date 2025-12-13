@@ -43,19 +43,21 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
 
     // Configure clocks with XIAO MG24's 39 MHz crystal
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(Default::default()),
         }
-    ).freeze();
+    ).expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Create Timer0 with PWM mode at 10 kHz
     let mut timer = Timer0::new(
         dp.timer0_s,
         Config::new(10_000).with_pwm(PwmMode::EdgeAligned),
-        &clocks
+        &frozen_clocks
     );
 
     // Configure PWM channels with different duty cycles

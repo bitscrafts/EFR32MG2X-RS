@@ -63,23 +63,25 @@ fn main() -> ! {
     // Clock Initialization (CMU)
     // ========================================================================
     // Configure clocks with XIAO MG24's 39 MHz external crystal
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(Default::default()),
         }
-    ).freeze();
+    ).expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // ========================================================================
     // Delay Initialization (SysTick)
     // ========================================================================
-    let mut delay = Delay::new(cp.SYST, &clocks);
+    let mut delay = Delay::new(cp.SYST, &frozen_clocks);
 
     // ========================================================================
     // GPIO Initialization
     // ========================================================================
-    let gpio = dp.gpio_s.split();
+    let gpio = dp.gpio_s.split(&frozen_clocks);
 
     // Configure LED on PB2 as push-pull output (onboard LED on XIAO MG24)
     let mut led = gpio.portb.pb2.into_push_pull_output();
@@ -91,7 +93,7 @@ fn main() -> ! {
     // USART Initialization
     // ========================================================================
     // Configure USART0 for 115200 baud, 8N1 (default)
-    let mut usart = Usart0::new(dp.usart0_s, UsartConfig::default(), &clocks);
+    let mut usart = Usart0::new(dp.usart0_s, UsartConfig::default(), &frozen_clocks);
 
     // ========================================================================
     // Startup Banner
@@ -112,7 +114,7 @@ fn main() -> ! {
     usart.write(b"Clock Configuration:\r\n");
     usart.write(b"  HFXO: 39 MHz\r\n");
     usart.write(b"  PCLK: ");
-    write_u32(&mut usart, clocks.pclk().into());
+    write_u32(&mut usart, frozen_clocks.pclk().into());
     usart.write(b" Hz\r\n");
     usart.write(b"\r\n");
 

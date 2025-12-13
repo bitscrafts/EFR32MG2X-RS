@@ -2,6 +2,19 @@
 
 This module provides SPI (Serial Peripheral Interface) master mode functionality using USART and EUSART peripherals for the EFR32MG24 microcontroller.
 
+## Phase A Update (December 13, 2025)
+
+**Internal Changes Only** - No API changes for users.
+
+**What Changed**:
+- SPI peripheral clock enable now uses safe `FrozenClocks::enable_peripheral_clock()` instead of unsafe CMU pointer
+- Fixed CMU ownership violation by using safe accessor pattern
+- No changes to public API - `Spi0::new()`, `Spi1::new()`, `Spi2::new()` remain unchanged
+
+Users do not need to modify their code. The internal implementation is now safer and follows Rust ownership semantics correctly.
+
+---
+
 ## Features
 
 - **SPI Master Mode**: Full SPI master implementation using USART/EUSART in synchronous mode

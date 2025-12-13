@@ -38,16 +38,18 @@ fn main() -> ! {
 
     // Configure clocks with external crystals (XIAO MG24)
     // Using 39 MHz HFXO provides accurate timing for delays
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(LfxoConfig::default()),
         }
-    ).freeze();
+    ).expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Create delay provider using SysTick timer
-    let mut delay = Delay::new(cp.SYST, &clocks);
+    let mut delay = Delay::new(cp.SYST, &frozen_clocks);
 
     // Example 1: Millisecond delays
     // Suitable for LED blinking, debouncing, etc.

@@ -1,8 +1,43 @@
 # GPIO Module
 
 **Module**: `efr32mg24_hal::gpio`
-**Status**: Initial Implementation
+**Status**: Phase A - Critical Fixes Complete
 **Version**: 0.1.0
+
+---
+
+## Phase A Update (December 13, 2025)
+
+### API Changes
+
+**split() now requires FrozenClocks parameter**: To enable safe CMU access for peripheral clock enables, the `split()` method now requires a reference to `FrozenClocks`.
+
+**What Changed**:
+1. `split()` signature changed from `split(self)` to `split(self, clocks: &FrozenClocks)`
+2. Internal clock enable now uses safe `FrozenClocks::enable_peripheral_clock()` instead of unsafe CMU pointer
+3. No changes to pin modes, drive strength, or functionality
+
+### Migration Guide
+
+**Old API** (Pre-Phase A):
+```rust
+let gpio = dp.gpio_s.split();
+let mut led = gpio.portb.pb2.into_push_pull_output();
+```
+
+**New API** (Phase A):
+```rust
+// Get FrozenClocks first (see clock module documentation)
+let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
+    .expect("Clock configuration failed");
+let frozen_clocks = clocks.freeze(cmu);
+
+// Pass frozen_clocks to split()
+let gpio = dp.gpio_s.split(&frozen_clocks);
+let mut led = gpio.portb.pb2.into_push_pull_output();
+```
+
+**Why this change?**: The previous implementation used an unsafe CMU peripheral pointer that violated Rust ownership semantics. Phase A fixes this by storing CMU in `FrozenClocks` and providing safe accessor methods.
 
 ---
 
@@ -76,16 +111,17 @@ This module uses Rust's type system to enforce correct pin usage at compile time
 
 ```rust
 // Pins start in Input mode by default
-let gpio = dp.GPIO_S.split();
+// Note: split() now requires FrozenClocks (Phase A)
+let gpio = dp.gpio_s.split(&frozen_clocks);
 
 // Can read from input
-let is_high = gpio.pb1.is_high();  // OK
+let is_high = gpio.portb.pb1.is_high();  // OK
 
 // Cannot write to input - won't compile!
-// gpio.pb1.set_high();  // ERROR: no method `set_high` on type `Pin<Input>`
+// gpio.portb.pb1.set_high();  // ERROR: no method `set_high` on type `Pin<Input>`
 
 // Must convert to output first
-let mut led = gpio.pb2.into_push_pull_output();
+let mut led = gpio.portb.pb2.into_push_pull_output();
 led.set_high().unwrap();  // OK now
 ```
 
@@ -109,13 +145,20 @@ led.set_high().unwrap();  // OK now
 ### Example 1: LED Blink
 
 ```rust
-use efr32mg24_hal::{gpio::GpioExt, pac, prelude::*};
+use efr32mg24_hal::{gpio::GpioExt, pac, prelude::*, clock::{Clocks, ClockConfig}};
 
 let dp = pac::Peripherals::take().unwrap();
-let gpio = dp.GPIO_S.split();
+
+// Phase A: Initialize clocks first
+let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
+    .expect("Clock configuration failed");
+let frozen_clocks = clocks.freeze(cmu);
+
+// GPIO split now requires clocks reference
+let gpio = dp.gpio_s.split(&frozen_clocks);
 
 // Configure PB2 as output (built-in LED on XIAO MG24)
-let mut led = gpio.pb2.into_push_pull_output();
+let mut led = gpio.portb.pb2.into_push_pull_output();
 
 loop {
     led.set_high().unwrap();
@@ -128,13 +171,19 @@ loop {
 ### Example 2: Button Input with Pull-up
 
 ```rust
-use efr32mg24_hal::{gpio::GpioExt, pac, prelude::*};
+use efr32mg24_hal::{gpio::GpioExt, pac, prelude::*, clock::{Clocks, ClockConfig}};
 
 let dp = pac::Peripherals::take().unwrap();
-let gpio = dp.GPIO_S.split();
+
+// Phase A: Initialize clocks first
+let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
+    .expect("Clock configuration failed");
+let frozen_clocks = clocks.freeze(cmu);
+
+let gpio = dp.gpio_s.split(&frozen_clocks);
 
 // Configure button with internal pull-up (active low)
-let button = gpio.pb1.into_pull_up_input();
+let button = gpio.portb.pb1.into_pull_up_input();
 
 loop {
     if button.is_low().unwrap() {
@@ -152,13 +201,20 @@ loop {
 use efr32mg24_hal::{
     gpio::{GpioExt, DriveStrength},
     pac,
+    clock::{Clocks, ClockConfig},
 };
 
 let dp = pac::Peripherals::take().unwrap();
-let gpio = dp.GPIO_S.split();
+
+// Phase A: Initialize clocks first
+let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
+    .expect("Clock configuration failed");
+let frozen_clocks = clocks.freeze(cmu);
+
+let gpio = dp.gpio_s.split(&frozen_clocks);
 
 // Use strong drive for external LED with high current
-let mut external_led = gpio.pa0
+let mut external_led = gpio.porta.pa0
     .into_push_pull_output_with_drive(DriveStrength::Strong);
 
 external_led.set_high().unwrap();
@@ -168,12 +224,12 @@ external_led.set_high().unwrap();
 
 ```rust
 // Configure multiple pins
-let gpio = dp.GPIO_S.split();
+let gpio = dp.gpio_s.split(&frozen_clocks);
 
-let mut led1 = gpio.pb2.into_push_pull_output();
-let mut led2 = gpio.pa1.into_push_pull_output();
-let button1 = gpio.pb1.into_pull_up_input();
-let button2 = gpio.pb0.into_pull_down_input();
+let mut led1 = gpio.portb.pb2.into_push_pull_output();
+let mut led2 = gpio.porta.pa1.into_push_pull_output();
+let button1 = gpio.portb.pb1.into_pull_up_input();
+let button2 = gpio.portb.pb0.into_pull_down_input();
 
 // Control LEDs based on button states
 loop {

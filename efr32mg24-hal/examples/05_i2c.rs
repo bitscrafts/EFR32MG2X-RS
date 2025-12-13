@@ -45,18 +45,20 @@ fn main() -> ! {
     // - XIAO MG24 Sense: 39 MHz
     // - BRD4186C (Radio Board): 38.4 MHz
     // - Custom board: Check your schematic
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)), // Adjust for your board
             lfxo: Some(Default::default()),
         },
     )
-    .freeze();
+    .expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Create I2C0 instance with 100 kHz (standard mode)
     // For 400 kHz (fast mode), use Speed::Fast400kHz
-    let mut i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), &clocks);
+    let mut i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), &frozen_clocks);
 
     // NOTE: Pin configuration is not shown here!
     // In a real application, configure SCL/SDA pins using GPIO module

@@ -54,27 +54,29 @@ fn main() -> ! {
 
     // Configure clocks
     // IMPORTANT: Adjust HFXO frequency for your board!
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)), // Adjust for your board
             lfxo: Some(Default::default()),
         },
     )
-    .freeze();
+    .expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Create all three SPI instances
     // Mode 0: CPOL=0, CPHA=0 (most common)
     // 1 MHz clock frequency
 
     // SPI0: USART0 in SPI mode
-    let mut spi0 = Spi0::new(dp.usart0_s, Config::new(Mode::Mode0, 1_000_000), &clocks);
+    let mut spi0 = Spi0::new(dp.usart0_s, Config::new(Mode::Mode0, 1_000_000), &frozen_clocks);
 
     // SPI1: EUSART0 in SPI mode
-    let mut spi1 = Spi1::new(dp.eusart0_s, Config::new(Mode::Mode0, 1_000_000), &clocks);
+    let mut spi1 = Spi1::new(dp.eusart0_s, Config::new(Mode::Mode0, 1_000_000), &frozen_clocks);
 
     // SPI2: EUSART1 in SPI mode (using Mode 3 as example)
-    let mut spi2 = Spi2::new(dp.eusart1_s, Config::new(Mode::Mode3, 4_000_000), &clocks);
+    let mut spi2 = Spi2::new(dp.eusart1_s, Config::new(Mode::Mode3, 4_000_000), &frozen_clocks);
 
     // NOTE: Pin configuration is not shown here!
     // In a real application, configure MOSI/MISO/SCK pins using GPIO module

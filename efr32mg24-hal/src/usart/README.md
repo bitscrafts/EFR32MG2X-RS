@@ -4,10 +4,21 @@ Universal Synchronous/Asynchronous Receiver/Transmitter (USART) driver for EFR32
 
 ## Status
 
-**Implementation Status**: Complete (Phase 5 Tier 2)
+**Implementation Status**: Complete (Phase A - Safe CMU Access)
 **Hardware Register Access**: Yes (USART0_S)
 **embedded-hal-nb**: v1.0 traits implemented
-**Date**: December 4, 2025
+**Date**: December 13, 2025
+
+## Phase A Update (December 13, 2025)
+
+**Internal Changes Only** - No API changes for users.
+
+**What Changed**:
+- USART peripheral clock enable now uses safe `FrozenClocks::enable_peripheral_clock()` instead of unsafe CMU pointer
+- Fixed CMU ownership violation by using safe accessor pattern
+- No changes to public API - `Usart0::new()`, `Usart1::new()`, etc. remain unchanged
+
+Users do not need to modify their code. The internal implementation is now safer and follows Rust ownership semantics correctly.
 
 ## Features
 

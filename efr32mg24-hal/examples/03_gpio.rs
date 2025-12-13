@@ -48,16 +48,18 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
 
     // Configure clocks with external crystals (XIAO MG24)
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(LfxoConfig::default()),
         }
-    ).freeze();
+    ).expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Create delay provider
-    let mut delay = Delay::new(cp.SYST, &clocks);
+    let mut delay = Delay::new(cp.SYST, &frozen_clocks);
 
     // ===================================================================
     // SECTION 1: Basic Digital Output
@@ -65,7 +67,7 @@ fn main() -> ! {
 
     // Split GPIO peripheral into individual ports and pins
     // This consumes the GPIO peripheral and returns type-safe pin objects
-    let gpio = dp.gpio_s.split();
+    let gpio = dp.gpio_s.split(&frozen_clocks);
 
     // Configure PB2 as a push-pull output (built-in LED on XIAO MG24)
     // The type system ensures we can only use output methods on this pin
