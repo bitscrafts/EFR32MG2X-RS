@@ -46,25 +46,74 @@ bash .claude/skills/rust-hal-expert/scripts/compare-patterns.sh src/clock/
 - Updating phase status across multiple files
 - Archiving obsolete documentation
 - Maintaining consistent terminology
+- Creating new documentation from templates
 
-**Critical Rule**: NEVER edit markdown files manually. ALWAYS use markdown-edit scripts.
+**Critical Rules**:
+- NEVER edit markdown files manually. ALWAYS use markdown-edit scripts.
+- ALWAYS use templates for new documentation files
+- ALWAYS ensure required sections exist per template
+- **MANDATORY**: ALL created markdown files MUST have a META tag as the last line:
+  ```markdown
+  <!-- META: last_updated=YYYY-MM-DD version=X.Y.Z [other fields...] -->
+  ```
+- See `.claude/skills/markdown-edit/templates/META_FORMAT.md` for complete specification
 
 **Workflow**:
 ```bash
-# 1. Search first (read-only)
+# 1. For new documentation - copy from template
+cp .claude/skills/markdown-edit/templates/MODULE_README_TEMPLATE.md src/new_module/README.md
+
+# 2. Search existing docs first (read-only)
 bash ~/.claude/skills/search-markdown/scripts/extract-section.sh docs/PLAN.md 2 "Phase A"
 
-# 2. Dry-run for bulk changes
+# 3. Dry-run for bulk changes
 bash .claude/skills/markdown-edit/scripts/bulk-update.sh "src/*/README.md" "Phase 5" "Phase A" --dry-run
 
-# 3. Execute with automatic .archive backup
+# 4. Execute with automatic .archive backup
 bash .claude/skills/markdown-edit/scripts/bulk-update.sh "src/*/README.md" "Phase 5" "Phase A"
 
-# 4. Verify with git
+# 5. Verify with git
 git diff
 ```
 
-### 3. Development Workflow
+**Templates Available**:
+- `README_TEMPLATE.md` - Workspace/project README files
+- `CLAUDE_TEMPLATE.md` - CLAUDE.md project context files
+- `MODULE_README_TEMPLATE.md` - Module documentation
+- `STATUS_TEMPLATE.md` - Status files
+- `PLAN_TEMPLATE.md` - Planning documents
+- `LOG_TEMPLATE.md` - Milestone logs
+- `CHANGELOG_TEMPLATE.md` - Version changelogs
+- `BACKLOG_TEMPLATE.md` - Task tracking
+
+### 3. Task Management Enforcement
+
+**ALWAYS use the project-manager skill when**:
+- Adding new tasks to the backlog
+- Starting work on a task (moving to In Progress)
+- Completing tasks (moving to Done)
+- Blocking or unblocking tasks
+- Logging milestones after significant achievements
+- Viewing current project status
+- Updating task metadata (@priority, @phase, @started, @done, @blocked)
+- Archiving completed tasks older than 30 days
+
+**Critical Rule**: NEVER manually edit docs/BACKLOG.md or docs/LOG.md. ALWAYS use project-manager skill.
+
+**Workflow**:
+```bash
+# View current status
+bash .claude/skills/project-manager/scripts/view-status.sh
+
+# For other operations, use the skill directly:
+# - "Add task: implement TIMER peripheral"
+# - "Start working on TIMER task"
+# - "TIMER implementation complete with 312 lines of code"
+# - "Log Phase B completion milestone"
+# - "Show current project status"
+```
+
+### 4. Development Workflow
 
 **When implementing new peripherals**:
 
@@ -73,24 +122,34 @@ git diff
    - Review reference manual sections
    - Study stm32-rs equivalent patterns
 
-2. **Implementation Phase**:
+2. **Task Setup Phase**:
+   - Add task to BACKLOG.md (project-manager skill)
+   - Move task to In Progress (project-manager skill)
+   - Ensure task metadata is updated (@started)
+
+3. **Implementation Phase**:
    - Write code following HAL patterns
    - Use critical sections for atomicity
    - Implement proper ownership
    - Add inline annotations for zero-cost abstractions
 
-3. **Review Phase**:
+4. **Review Phase**:
    - Run rust-hal-expert review-module.sh
    - Check unsafe blocks (check-unsafe.sh)
    - Compare patterns (compare-patterns.sh)
    - Apply expert-level assessment
 
-4. **Documentation Phase**:
+5. **Documentation Phase**:
    - Update module README.md (markdown-edit)
    - Update docs/STATUS.md (markdown-edit)
    - Create .archive backups automatically
 
-5. **Pre-Commit Documentation Audit**:
+6. **Task Completion Phase**:
+   - Complete task in BACKLOG.md (project-manager skill)
+   - Add completion metrics (LOC, features)
+   - Update task metadata (@done)
+
+7. **Pre-Commit Documentation Audit**:
    - Search all markdown files for obsolete/outdated content
    - Archive obsolete documentation files to .archive/
    - Remove archived files from repository
@@ -98,12 +157,12 @@ git diff
    - Merge files with similar/overlapping content
    - Verify all changes with git diff
 
-6. **Commit Phase**:
+8. **Commit Phase**:
    - Build and test examples, ensure they build without warnings
    - Create descriptive commit message
    - Reference file locations with line numbers
 
-### 4. Quality Gates
+### 5. Quality Gates
 
 **Before marking any work as complete**:
 
@@ -114,21 +173,27 @@ git diff
 - [ ] Module README.md updated (via markdown-edit)
 - [ ] Examples compile and build
 - [ ] Expert review conducted (rust-hal-expert persona)
+- [ ] **BACKLOG.md updated with task completion** (via project-manager)
+- [ ] **Task metadata updated** (@done, metrics)
+- [ ] **Milestone logged to LOG.md** (if significant achievement)
 - [ ] **Documentation audit completed** (search, archive, update, merge)
 - [ ] Git diff reviewed
 - [ ] .archive backups created for documentation changes
 
-### 5. Skill Usage Patterns
+### 6. Skill Usage Patterns
 
 **Pattern: New Peripheral Implementation**
 ```
-1. Implement peripheral driver code
-2. Run: bash .claude/skills/rust-hal-expert/scripts/review-module.sh src/new_peripheral/mod.rs
-3. Fix issues found
-4. Write module README.md content
-5. Use markdown-edit to create/update README.md
-6. Run expert review (apply rust-hal-expert persona)
-7. Commit if approved
+1. Add task to BACKLOG.md (project-manager)
+2. Move task to In Progress (project-manager)
+3. Implement peripheral driver code
+4. Run: bash .claude/skills/rust-hal-expert/scripts/review-module.sh src/new_peripheral/mod.rs
+5. Fix issues found
+6. Write module README.md content
+7. Use markdown-edit to create/update README.md
+8. Run expert review (apply rust-hal-expert persona)
+9. Complete task in BACKLOG.md with metrics (project-manager)
+10. Commit if approved
 ```
 
 **Pattern: Phase Completion**
@@ -137,7 +202,8 @@ git diff
 2. Update all module READMEs (markdown-edit bulk-update)
 3. Update docs/STATUS.md (markdown-edit)
 4. Create comprehensive review document (rust-hal-expert persona)
-5. Commit with phase summary
+5. Log milestone to LOG.md (project-manager)
+6. Commit with phase summary
 ```
 
 **Pattern: Documentation Update**
@@ -199,10 +265,17 @@ git diff
 - Terminology changes
 - Phase status updates
 
-### When to use both:
-- Phase completion (review code + update docs)
-- New peripheral addition (review + document)
-- Breaking changes (review + migration guide)
+### When to use project-manager skill:
+- Task operations (add, move, complete, block tasks)
+- Milestone logging
+- Viewing project status
+- Task metadata management
+- Uses markdown-edit scripts internally for BACKLOG.md and LOG.md
+
+### When to use multiple skills:
+- Phase completion (review code + update docs + log milestone)
+- New peripheral (add task + implement + review + document + complete task)
+- Breaking changes (review + migration guide + update backlog)
 
 ## Key Principles
 
@@ -216,57 +289,72 @@ git diff
 
 **MUST DO**:
 - Use rust-hal-expert scripts for every code review
-- Use markdown-edit for every documentation change
-- Create .archive backups before editing docs
+- Use markdown-edit scripts for every documentation change
+- Use markdown templates for all new documentation files
+- Use project-manager skill for all task tracking operations
+- Create .archive backups before editing docs (automatic via markdown-edit)
 - Apply expert persona for comprehensive reviews
 - Reference exact file locations (file:line)
+- Update BACKLOG.md when starting/completing tasks
+- Log significant milestones to LOG.md
+- Ensure all documentation has required template sections
 - **Run documentation audit before EVERY commit**
 - Search all markdown files for obsolete/outdated content
 - Archive obsolete files before removing them
 
 **MUST NOT**:
-- Edit markdown files manually
+- Edit markdown files manually (bypass markdown-edit scripts)
+- Create documentation without using appropriate template
+- Edit BACKLOG.md or LOG.md without project-manager skill
 - Skip expert review for code changes
+- Skip task tracking for new implementations
 - Skip documentation audit before commits
 - Commit without running examples
 - Ship code with undocumented unsafe blocks
 - Accept code that would fail stm32-rs review
 - Commit with obsolete or outdated documentation
+- Create markdown files missing required template sections
 
 ## Example Orchestration
 
 **User requests**: "Add USART peripheral support"
 
 **Your workflow**:
-1. Research USART in PAC and reference manual
-2. Implement src/usart/mod.rs (following patterns)
-3. Run: `bash .claude/skills/rust-hal-expert/scripts/review-module.sh src/usart/mod.rs`
-4. Fix any issues found
-5. Run: `bash .claude/skills/rust-hal-expert/scripts/check-unsafe.sh src/usart/`
-6. Document Safety comments if needed
-7. Apply rust-hal-expert persona for comprehensive review
-8. Create module README.md content (following template)
-9. Use markdown-edit to update/create README:
-   ```bash
-   # If creating new, use Write tool first, then markdown-edit for updates
-   # If updating existing, use markdown-edit directly
-   ```
-10. Update docs/STATUS.md via markdown-edit
-11. Build examples: `cargo build --examples --features rt --release`
-12. **Run documentation audit**:
+1. **Add task to BACKLOG.md** (project-manager skill)
+2. **Move task to In Progress** (project-manager skill)
+3. Research USART in PAC and reference manual
+4. Implement src/usart/mod.rs (following patterns)
+5. Run: `bash .claude/skills/rust-hal-expert/scripts/review-module.sh src/usart/mod.rs`
+6. Fix any issues found
+7. Run: `bash .claude/skills/rust-hal-expert/scripts/check-unsafe.sh src/usart/`
+8. Document Safety comments if needed
+9. Apply rust-hal-expert persona for comprehensive review
+10. Create module README.md content (following template)
+11. Use markdown-edit to update/create README:
+    ```bash
+    # If creating new, use Write tool first, then markdown-edit for updates
+    # If updating existing, use markdown-edit scripts
+    bash .claude/skills/markdown-edit/scripts/replace-section.sh ...
+    ```
+12. Update docs/STATUS.md via markdown-edit
+13. Build examples: `cargo build --examples --features rt --release`
+14. **Complete task in BACKLOG.md with metrics** (project-manager skill)
+15. **Run documentation audit**:
     - Search all .md files for obsolete content
     - Archive and remove outdated files
     - Update phase terminology
     - Verify with git diff
-13. Commit with descriptive message
-14. Report completion with expert verdict
+16. Commit with descriptive message
+17. Report completion with expert verdict
 
 ## Remember
 
-You are the gatekeeper of code quality and documentation consistency. Your job is to:
-- Enforce skill usage automatically
+You are the gatekeeper of code quality, documentation consistency, and project tracking. Your job is to:
+- Enforce skill usage automatically (rust-hal-expert, markdown-edit, project-manager)
 - Apply expert-level review standards
-- Maintain documentation safety (backups)
+- Maintain documentation safety (backups via markdown-edit)
+- Track all tasks in BACKLOG.md
+- Log significant milestones to LOG.md
 - Ensure production readiness
 
 **When in doubt**: Run the scripts. Use the skills. Apply the expert persona.
@@ -274,5 +362,6 @@ You are the gatekeeper of code quality and documentation consistency. Your job i
 **Never commit without**:
 1. Expert review (rust-hal-expert)
 2. Documentation updates (markdown-edit)
-3. .archive backups (automatic via markdown-edit)
-4. **Documentation audit** (search, archive, update, merge)
+3. Task tracking updates (project-manager)
+4. .archive backups (automatic via markdown-edit)
+5. **Documentation audit** (search, archive, update, merge)

@@ -1,8 +1,8 @@
 ---
 name: project-manager
-description: Manage project tasks using markdown-based Kanban board (BACKLOG.md) and milestone log (LOG.md). Use when adding tasks, moving tasks between columns, completing tasks, logging milestones, or viewing project status. Works with docs/BACKLOG.md and docs/LOG.md files.
+description: Manage project tasks using markdown-based Kanban board (BACKLOG.md) and milestone log (LOG.md). Use when adding tasks, moving tasks between columns, completing tasks, logging milestones, or viewing project status. Works with docs/BACKLOG.md and docs/LOG.md files. Uses markdown-edit skill scripts for safe file manipulation with automatic .archive backups.
 allowed-tools: Read, Edit, Bash
-version: 1.0.0
+version: 1.1.0
 ---
 
 # Project Manager Skill
@@ -66,6 +66,8 @@ Tasks use GFM (GitHub Flavored Markdown) checkboxes with metadata:
 
 ## Core Operations
 
+**IMPORTANT**: All modifications to docs/BACKLOG.md and docs/LOG.md MUST use markdown-edit skill scripts for automatic .archive backups and safe manipulation.
+
 ### 1. Add Task to BACKLOG.md
 
 **When**: User requests "add task: implement TIMER peripheral"
@@ -74,9 +76,14 @@ Tasks use GFM (GitHub Flavored Markdown) checkboxes with metadata:
 1. Read docs/BACKLOG.md
 2. Determine appropriate column (usually "Ready")
 3. Determine priority based on current sprint goals
-4. Add task with metadata tags
-5. Use Edit tool to insert task in correct section
-6. Preserve existing tasks and formatting
+4. Prepare task content with metadata tags
+5. Use markdown-edit scripts to insert task:
+   ```bash
+   # Use append-section.sh or replace-section.sh from markdown-edit
+   bash .claude/skills/markdown-edit/scripts/append-section.sh \
+     docs/BACKLOG.md "Ready (Prioritized)" "- [ ] **TIMER**: Description @priority(high) @phase(B)"
+   ```
+6. Verify with git diff
 
 **Example**:
 ```markdown
@@ -96,13 +103,19 @@ Tasks use GFM (GitHub Flavored Markdown) checkboxes with metadata:
 **Steps**:
 1. Read docs/BACKLOG.md
 2. Find the task by keyword search
-3. Remove task from source column
-4. Add task to destination column
-5. Update metadata:
+3. Prepare updated task content with new metadata:
    - Add `@started(YYYY-MM-DD)` when moving to "In Progress"
    - Add `@done(YYYY-MM-DD)` when moving to "Done"
    - Change checkbox `- [ ]` to `- [x]` when done
-6. Use Edit tool for atomic move operation
+4. Use markdown-edit smart-replace.sh to move task atomically:
+   ```bash
+   # Use smart-replace.sh for atomic find-and-replace
+   bash .claude/skills/markdown-edit/scripts/smart-replace.sh \
+     docs/BACKLOG.md \
+     "OLD_TASK_LINE_WITH_CONTEXT" \
+     "NEW_TASK_LINE_IN_NEW_SECTION"
+   ```
+5. Verify with git diff
 
 **Common transitions**:
 - Ready → In Progress: Add @started
@@ -139,7 +152,7 @@ Tasks use GFM (GitHub Flavored Markdown) checkboxes with metadata:
 
 **Steps**:
 1. Read docs/LOG.md
-2. Create new milestone entry at the TOP (most recent first)
+2. Create new milestone entry content (most recent first)
 3. Include:
    - Date (YYYY-MM-DD)
    - Milestone title
@@ -147,7 +160,14 @@ Tasks use GFM (GitHub Flavored Markdown) checkboxes with metadata:
    - Impact description
    - Metrics (LOC, time, examples, etc.)
    - Technical highlights (optional)
-4. Use Edit tool to prepend new entry
+4. Use markdown-edit prepend-to-file.sh to add at top:
+   ```bash
+   # Prepend new milestone entry to LOG.md
+   bash .claude/skills/markdown-edit/scripts/prepend-to-file.sh \
+     docs/LOG.md \
+     "NEW_MILESTONE_ENTRY_CONTENT"
+   ```
+5. Verify with git diff
 
 **Milestone entry template**:
 ```markdown
@@ -241,16 +261,18 @@ Metrics:
 
 ## Scripts
 
-The skill includes helper scripts in `scripts/` directory:
+The skill uses markdown-edit scripts for all file modifications:
 
-1. **add-task.sh**: Add task to BACKLOG.md
-2. **move-task.sh**: Move task between columns
-3. **complete-task.sh**: Mark task as done
-4. **log-milestone.sh**: Add entry to LOG.md
-5. **view-status.sh**: Display current project status
-6. **archive-done.sh**: Move old Done tasks to LOG.md
+**From markdown-edit skill** (.claude/skills/markdown-edit/scripts/):
+1. **smart-replace.sh**: Find and replace with .archive backup
+2. **append-section.sh**: Append content to markdown section
+3. **replace-section.sh**: Replace entire markdown section
+4. **prepend-to-file.sh**: Add content at beginning of file
 
-**Note**: Scripts are optional helpers. The Edit tool can accomplish all operations directly.
+**From this skill** (.claude/skills/project-manager/scripts/):
+1. **view-status.sh**: Display current project status (read-only)
+
+**Important**: Never use Edit tool directly on BACKLOG.md or LOG.md. Always use markdown-edit scripts for automatic .archive backups.
 
 ## Common Workflows
 

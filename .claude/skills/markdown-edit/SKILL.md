@@ -1,7 +1,7 @@
 ---
 name: markdown-edit
-description: Expert in searching, extracting, and editing well-formed markdown files. Extends search-markdown with find-and-replace, section updates, and bulk editing capabilities. Use for documentation updates, section rewrites, and markdown maintenance.
-version: 1.0.0
+description: Expert in searching, extracting, and editing well-formed markdown files. Extends search-markdown with find-and-replace, section updates, and bulk editing capabilities. Provides standard markdown templates for consistent documentation structure. Use for documentation updates, section rewrites, and markdown maintenance.
+version: 1.1.0
 allowed-tools: Bash, Read, Write, Edit, Grep
 ---
 
@@ -32,7 +32,30 @@ Reuse all search-markdown scripts:
 
 **Reference**: Use `bash ~/.claude/skills/search-markdown/scripts/<script>.sh`
 
-### 2. Edit Operations (NEW)
+### 2. Markdown Templates
+
+Standard templates for consistent documentation structure:
+- **README**: Workspace/project README.md
+- **CLAUDE**: CLAUDE.md project context files
+- **Module README**: src/module_name/README.md
+- **STATUS**: docs/STATUS.md
+- **PLAN**: docs/PLAN.md
+- **LOG**: docs/LOG.md (milestone tracking)
+- **CHANGELOG**: CHANGELOG.md
+- **BACKLOG**: docs/BACKLOG.md (task tracking)
+
+**Location**: `.claude/skills/markdown-edit/templates/`
+**Documentation**: See `templates/README.md`
+**Total Templates**: 8 standardized templates
+
+**Critical Requirement**: ALL created markdown files MUST include a compact META tag as the last line:
+```markdown
+<!-- META: last_updated=YYYY-MM-DD version=X.Y.Z [other fields...] -->
+```
+
+**Meta Format Documentation**: See `templates/META_FORMAT.md` for complete specification and field definitions.
+
+### 3. Edit Operations
 
 This skill adds editing capabilities:
 - **Replace in section**: Replace text within a specific section
@@ -40,6 +63,7 @@ This skill adds editing capabilities:
 - **Find and replace**: Global or scoped replacements
 - **Bulk update**: Update multiple files with same pattern
 - **Section rewrite**: Replace section content maintaining headings
+- **Template usage**: Create new files from templates
 
 ## Available Edit Scripts
 
@@ -167,6 +191,85 @@ bash .claude/skills/markdown-edit/scripts/prepend-to-section.sh \
   README.md 2 "Installation" "⚠️ **Breaking Changes in v0.2.0** - See migration guide\n"
 ```
 
+### 7. Update Timestamp (META Management)
+
+**Script**: `update-timestamp.sh`
+**Purpose**: Update the last_updated field in META tag with current date
+**Usage**:
+```bash
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh <file>
+```
+
+**Example**:
+```bash
+# Update timestamp in docs/STATUS.md
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh docs/STATUS.md
+```
+
+**Safety**: Creates timestamped backup in `.archive/` before updating
+
+**CRITICAL**: ALWAYS use this script to update META timestamps. NEVER edit META tags manually.
+
+### 8. Extract Metadata
+
+**Script**: `extract-metadata.sh`
+**Purpose**: Parse and extract metadata fields from META tag
+**Usage**:
+```bash
+bash .claude/skills/markdown-edit/scripts/extract-metadata.sh <file> [field]
+```
+
+**Fields**: `last-updated`, `version`, `template-version`, `status`, `maintained-by`, `all`
+
+**Example**:
+```bash
+# Get last updated date
+bash .claude/skills/markdown-edit/scripts/extract-metadata.sh docs/PLAN.md last-updated
+
+# Get all metadata as JSON
+bash .claude/skills/markdown-edit/scripts/extract-metadata.sh docs/PLAN.md all
+```
+
+### 9. List Documentation Metadata
+
+**Script**: `list-doc-metadata.sh`
+**Purpose**: Report metadata for all markdown files in a directory
+**Usage**:
+```bash
+bash .claude/skills/markdown-edit/scripts/list-doc-metadata.sh [directory]
+```
+
+**Example**:
+```bash
+# List all documentation metadata
+bash .claude/skills/markdown-edit/scripts/list-doc-metadata.sh docs/
+
+# Check current directory
+bash .claude/skills/markdown-edit/scripts/list-doc-metadata.sh
+```
+
+**Output**: Table format showing File, Last Updated, Version, Status
+
+### 10. Check Stale Documentation
+
+**Script**: `check-stale-docs.sh`
+**Purpose**: Find files where metadata timestamp is older than git commit date
+**Usage**:
+```bash
+bash .claude/skills/markdown-edit/scripts/check-stale-docs.sh [directory]
+```
+
+**Example**:
+```bash
+# Check for stale documentation
+bash .claude/skills/markdown-edit/scripts/check-stale-docs.sh docs/
+
+# Check entire project
+bash .claude/skills/markdown-edit/scripts/check-stale-docs.sh .
+```
+
+**Output**: Lists files needing metadata updates (git modified but META not updated)
+
 ## Workflow Patterns
 
 ### Pattern 1: Search → Review → Edit
@@ -259,6 +362,39 @@ bash .claude/skills/markdown-edit/scripts/replace-in-section.sh \
 3. **Test after each change**
 
 4. **Commit incrementally**
+
+### Pattern 5: META Management Workflow
+
+For managing markdown file metadata:
+
+1. **After editing a file, update its timestamp**:
+```bash
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh docs/STATUS.md
+```
+
+2. **Check for stale documentation** (periodically):
+```bash
+# Find files modified in git but not updated in META
+bash .claude/skills/markdown-edit/scripts/check-stale-docs.sh docs/
+```
+
+3. **Update all stale files**:
+```bash
+# For each stale file reported
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh <file>
+```
+
+4. **Generate metadata report**:
+```bash
+# View all documentation metadata
+bash .claude/skills/markdown-edit/scripts/list-doc-metadata.sh docs/
+```
+
+**CRITICAL RULES**:
+- ALWAYS use `update-timestamp.sh` after editing markdown files
+- NEVER manually edit META tags
+- Run `check-stale-docs.sh` before commits to catch outdated metadata
+- All new files from templates already have META tags
 
 ## Safety Features
 
@@ -552,6 +688,12 @@ bash .claude/skills/markdown-edit/scripts/smart-replace.sh <file> <find> <replac
 bash .claude/skills/markdown-edit/scripts/bulk-update.sh <pattern> <find> <replace> [--dry-run]
 bash .claude/skills/markdown-edit/scripts/append-to-section.sh <file> <level> <heading> <content>
 bash .claude/skills/markdown-edit/scripts/prepend-to-section.sh <file> <level> <heading> <content>
+
+# META tag management (CRITICAL - ALWAYS use these)
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh <file>
+bash .claude/skills/markdown-edit/scripts/extract-metadata.sh <file> [field]
+bash .claude/skills/markdown-edit/scripts/list-doc-metadata.sh [directory]
+bash .claude/skills/markdown-edit/scripts/check-stale-docs.sh [directory]
 ```
 
 ## Response Format
@@ -587,6 +729,12 @@ When making edits:
 - **Section targeting is precise**: Level + heading name
 - **Smart replace understands markdown**: Can skip code blocks
 - **Incremental is safer**: One file/section at a time when possible
+- **META tags are MANDATORY**:
+  - ALL markdown files MUST have `<!-- META: ... -->` as last line
+  - ALWAYS use `update-timestamp.sh` after editing files
+  - NEVER manually edit META tags
+  - Use templates for new files (they include META tags)
+  - Run `check-stale-docs.sh` before commits
 
 ## Final Note
 
