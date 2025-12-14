@@ -120,7 +120,7 @@ impl Usart0 {
         let clkdiv = (256 * pclk / (oversample * config.baudrate)) - 256;
         usart
             .clkdiv()
-            .write(|w| unsafe { w.div().bits((clkdiv & 0xFFFFF) as u32) });
+            .write(|w| unsafe { w.div().bits(clkdiv & 0xFFFFF) });
 
         // Enable TX and RX
         usart.cmd().write(|w| {

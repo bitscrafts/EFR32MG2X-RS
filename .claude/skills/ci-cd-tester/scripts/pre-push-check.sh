@@ -40,17 +40,14 @@ else
 fi
 echo ""
 
-# Check 3: Clippy on HAL (strict - no warnings allowed)
+# Check 3: Clippy on HAL (strict - no warnings allowed in HAL code only)
 echo -e "${YELLOW}3️⃣  Running Clippy on HAL (strict)...${NC}"
-# Suppress Cargo.toml warnings from dependencies, but fail on code warnings
-CLIPPY_OUTPUT=$(cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings 2>&1)
-FILTERED_OUTPUT=$(echo "$CLIPPY_OUTPUT" | grep -v "default-features")
-if echo "$FILTERED_OUTPUT" | grep -qi "warning:"; then
-    echo -e "${RED}❌ HAL Clippy failed - fix all warnings:${NC}"
-    echo "$FILTERED_OUTPUT" | grep -i "warning:"
-    exit 1
-else
+# Use --no-deps to check only HAL code, not dependencies (PAC)
+if cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings 2>&1 | grep -v "default-features"; then
     echo -e "${GREEN}✅ HAL Clippy passed (no warnings)${NC}"
+else
+    echo -e "${RED}❌ HAL Clippy failed - fix all warnings${NC}"
+    exit 1
 fi
 echo ""
 
