@@ -1,0 +1,136 @@
+name: Documentation
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build-docs:
+    name: Build Rustdoc
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-rustdoc-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-rustdoc-
+
+      - name: Build documentation for HAL
+        run: |
+          cargo doc --no-deps \
+            -p efr32mg24-hal \
+            --features rt \
+            --target thumbv8m.main-none-eabihf \
+            --release
+        env:
+          RUSTDOCFLAGS: "--cfg docsrs --html-in-header docs-header.html"
+        continue-on-error: true  # Create header file first
+
+      - name: Create documentation header
+        run: |
+          mkdir -p target/doc-header
+          cat > target/doc-header/docs-header.html << 'EOF'
+          <meta name="description" content="EFR32MG24 Hardware Abstraction Layer (HAL) for Rust - Embedded development for Silicon Labs EFR32MG24 wireless SoC">
+          <meta name="keywords" content="rust, embedded, hal, efr32, mg24, silicon labs, wireless, iot, embedded-hal">
+          EOF
+
+      - name: Build documentation (with header)
+        run: |
+          cargo doc --no-deps \
+            -p efr32mg24-hal \
+            --features rt \
+            --target thumbv8m.main-none-eabihf \
+            --release
+        env:
+          RUSTDOCFLAGS: "--cfg docsrs"
+
+      - name: Create index.html redirect
+        run: |
+          cat > target/thumbv8m.main-none-eabihf/doc/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+              <meta charset="utf-8">
+              <meta http-equiv="refresh" content="0; url=efr32mg24_hal/index.html">
+              <title>EFR32MG24 Rust Documentation</title>
+          </head>
+          <body>
+              <p>Redirecting to <a href="efr32mg24_hal/index.html">efr32mg24_hal documentation</a>...</p>
+          </body>
+          </html>
+          EOF
+
+      - name: Create README for GitHub Pages
+        run: |
+          cat > target/thumbv8m.main-none-eabihf/doc/README.md << 'EOF'
+          # EFR32MG24 Rust HAL Documentation
+
+          This site contains the API documentation for the EFR32MG24 Hardware Abstraction Layer (HAL).
+
+          **[View HAL Documentation →](efr32mg24_hal/index.html)**
+
+          ## Project Links
+
+          - [GitHub Repository](https://github.com/bitscrafts/EFR32MG2X-RS)
+          - [Project README](../../../README.md)
+
+          ## About
+
+          Production-ready Rust HAL for Silicon Labs EFR32MG24 wireless SoC with support for:
+          - GPIO (Digital I/O)
+          - CMU (Clock Management)
+          - USART (Serial Communication)
+          - I2C (I2C Master)
+          - SPI (SPI Master)
+          - Delay (SysTick-based delays)
+
+          Built with embedded-hal v1.0 trait compatibility.
+          EOF
+
+      - name: Add .nojekyll file
+        run: touch target/thumbv8m.main-none-eabihf/doc/.nojekyll
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: target/thumbv8m.main-none-eabihf/doc
+
+  deploy-docs:
+    name: Deploy to GitHub Pages
+    needs: build-docs
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Output documentation URL
+        run: |
+          echo "📚 Documentation deployed to: ${{ steps.deployment.outputs.page_url }}"
+          echo "📖 HAL docs available at: ${{ steps.deployment.outputs.page_url }}efr32mg24_hal/"

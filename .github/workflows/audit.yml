@@ -1,0 +1,137 @@
+name: Security Audit
+
+on:
+  schedule:
+    # Run weekly on Monday at 00:00 UTC
+    - cron: '0 0 * * 1'
+  push:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+  pull_request:
+    paths:
+      - '**/Cargo.toml'
+      - '**/Cargo.lock'
+  workflow_dispatch:  # Allow manual trigger
+
+jobs:
+  security-audit:
+    name: Dependency Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit
+
+      - name: Install cargo-audit
+        run: |
+          if ! command -v cargo-audit &> /dev/null; then
+            cargo install cargo-audit --locked
+          fi
+
+      - name: Run cargo audit
+        run: cargo audit --deny warnings
+
+      - name: Check for yanked crates
+        run: cargo audit --deny yanked
+
+  dependency-review:
+    name: Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dependency Review
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: moderate
+
+  outdated-check:
+    name: Check Outdated Dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-outdated
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-outdated
+          key: ${{ runner.os }}-cargo-outdated
+
+      - name: Install cargo-outdated
+        run: |
+          if ! command -v cargo-outdated &> /dev/null; then
+            cargo install cargo-outdated --locked
+          fi
+
+      - name: Check for outdated dependencies
+        run: cargo outdated --root-deps-only --exit-code 0
+        continue-on-error: true
+
+      - name: Generate outdated report
+        run: |
+          echo "## Outdated Dependencies Report" > outdated-report.md
+          echo "" >> outdated-report.md
+          cargo outdated --format markdown >> outdated-report.md || true
+
+      - name: Upload outdated report
+        uses: actions/upload-artifact@v4
+        with:
+          name: outdated-dependencies-report
+          path: outdated-report.md
+
+  license-check:
+    name: License Compliance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo-license
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-license
+          key: ${{ runner.os }}-cargo-license
+
+      - name: Install cargo-license
+        run: |
+          if ! command -v cargo-license &> /dev/null; then
+            cargo install cargo-license --locked
+          fi
+
+      - name: Check licenses
+        run: |
+          echo "## License Report" > license-report.md
+          echo "" >> license-report.md
+          cargo license --json | jq -r '.[] | "\(.name) (\(.version)): \(.license)"' >> license-report.md
+
+      - name: Verify allowed licenses
+        run: |
+          # Define allowed licenses (common for embedded Rust)
+          ALLOWED="MIT|Apache-2.0|BSD-2-Clause|BSD-3-Clause|ISC|0BSD|Unlicense|CC0-1.0"
+
+          # Check if any non-allowed licenses exist
+          cargo license --json | jq -r '.[].license' | sort -u | while read license; do
+            if ! echo "$license" | grep -qE "^($ALLOWED)( OR $ALLOWED)*\$"; then
+              echo "⚠️  Non-standard license found: $license"
+            fi
+          done
+
+      - name: Upload license report
+        uses: actions/upload-artifact@v4
+        with:
+          name: license-report
+          path: license-report.md

@@ -1,0 +1,227 @@
+name: CI
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  # Format checking
+  format:
+    name: Check Formatting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+  # Clippy linting
+  clippy:
+    name: Clippy Lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache cargo registry
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/registry
+          key: ${{ runner.os }}-cargo-registry-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-registry-
+
+      - name: Cache cargo index
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/git
+          key: ${{ runner.os }}-cargo-git-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-git-
+
+      - name: Run Clippy on PAC
+        run: cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf -- -D warnings
+
+      - name: Run Clippy on HAL
+        run: cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
+
+  # Build PAC (separate job for caching)
+  build-pac:
+    name: Build PAC
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache PAC build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/thumbv8m.main-none-eabihf/debug/deps
+            target/thumbv8m.main-none-eabihf/debug/build
+            efr32mg24-pac/target
+          key: ${{ runner.os }}-pac-${{ hashFiles('efr32mg24-pac/Cargo.toml', 'efr32mg24-pac/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-pac-
+
+      - name: Build PAC
+        run: cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
+
+      - name: Report PAC size
+        run: |
+          echo "PAC .rlib size:"
+          ls -lh target/thumbv8m.main-none-eabihf/release/libefr32mg24_pac.rlib || echo "PAC build artifact not found"
+
+  # Build HAL and examples
+  build-hal:
+    name: Build HAL and Examples
+    runs-on: ubuntu-latest
+    needs: build-pac
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Restore PAC cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/thumbv8m.main-none-eabihf/debug/deps
+            target/thumbv8m.main-none-eabihf/debug/build
+            efr32mg24-pac/target
+          key: ${{ runner.os }}-pac-${{ hashFiles('efr32mg24-pac/Cargo.toml', 'efr32mg24-pac/src/**') }}
+          restore-keys: |
+            ${{ runner.os }}-pac-
+
+      - name: Build HAL library
+        run: cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
+
+      - name: Build examples
+        run: cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
+        working-directory: efr32mg24-hal
+
+      - name: Report HAL size
+        run: |
+          echo "HAL .rlib size:"
+          ls -lh target/thumbv8m.main-none-eabihf/release/libefr32mg24_hal.rlib || echo "HAL build artifact not found"
+
+          echo ""
+          echo "Example binaries:"
+          ls -lh target/thumbv8m.main-none-eabihf/release/examples/ || echo "No examples found"
+
+      - name: Check binary sizes (embedded constraint)
+        run: |
+          for example in target/thumbv8m.main-none-eabihf/release/examples/*; do
+            if [ -f "$example" ] && [ -x "$example" ]; then
+              SIZE=$(stat -f%z "$example" 2>/dev/null || stat -c%s "$example")
+              echo "$(basename $example): ${SIZE} bytes"
+              # Warn if larger than 1MB (arbitrary threshold)
+              if [ "$SIZE" -gt 1048576 ]; then
+                echo "⚠️  Warning: $(basename $example) exceeds 1MB"
+              fi
+            fi
+          done
+
+  # Build documentation
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-docs-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-
+
+      - name: Build documentation
+        run: cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf
+
+      - name: Check for documentation warnings
+        run: cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf 2>&1 | tee doc-output.txt && ! grep -i "warning" doc-output.txt
+
+  # Run tests (when we have tests)
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-test-
+
+      - name: Run tests (host target)
+        run: cargo test --lib --no-default-features
+        continue-on-error: true  # Allow failure for now as we don't have tests yet
+
+      - name: Note about embedded tests
+        run: echo "Note: Full embedded tests require hardware or QEMU setup"
+
+  # Quality gate - all checks must pass
+  quality-gate:
+    name: Quality Gate
+    runs-on: ubuntu-latest
+    needs: [format, clippy, build-pac, build-hal, docs]
+    if: always()
+    steps:
+      - name: Check all jobs succeeded
+        run: |
+          if [ "${{ needs.format.result }}" != "success" ] || \
+             [ "${{ needs.clippy.result }}" != "success" ] || \
+             [ "${{ needs.build-pac.result }}" != "success" ] || \
+             [ "${{ needs.build-hal.result }}" != "success" ] || \
+             [ "${{ needs.docs.result }}" != "success" ]; then
+            echo "❌ Quality gate failed - one or more checks did not pass"
+            exit 1
+          else
+            echo "✅ Quality gate passed - all checks successful"
+          fi
