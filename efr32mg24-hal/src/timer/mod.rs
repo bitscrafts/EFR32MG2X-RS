@@ -53,8 +53,8 @@
 //! timer.enable_channel(PwmChannel::Channel0);
 //! ```
 
-mod types;
 mod traits;
+mod types;
 
 pub use types::{Config, Error, PwmChannel, PwmMode};
 
@@ -90,36 +90,31 @@ macro_rules! impl_timer {
                 timer.en().write(|w| w.en().set_bit());
 
                 // Calculate prescaler and top value for desired frequency
-                let (prescaler, top) = Self::calculate_prescaler_and_top(
-                    clocks.hfclk().into(),
-                    config.frequency
-                );
+                let (prescaler, top) =
+                    Self::calculate_prescaler_and_top(clocks.hfclk().into(), config.frequency);
 
                 // Configure PWM mode if requested
                 let pwm_enabled = if let Some(pwm_mode) = config.pwm_mode {
                     match pwm_mode {
                         PwmMode::EdgeAligned => {
                             // Edge-aligned PWM: count up
-                            timer.cfg().write(|w| unsafe {
-                                w.presc().bits(prescaler)
-                                    .mode().up()
-                            });
+                            timer
+                                .cfg()
+                                .write(|w| unsafe { w.presc().bits(prescaler).mode().up() });
                         }
                         PwmMode::CenterAligned => {
                             // Center-aligned PWM: count up/down
-                            timer.cfg().write(|w| unsafe {
-                                w.presc().bits(prescaler)
-                                    .mode().updown()
-                            });
+                            timer
+                                .cfg()
+                                .write(|w| unsafe { w.presc().bits(prescaler).mode().updown() });
                         }
                     }
                     true
                 } else {
                     // Basic timer mode: count up
-                    timer.cfg().write(|w| unsafe {
-                        w.presc().bits(prescaler)
-                            .mode().up()
-                    });
+                    timer
+                        .cfg()
+                        .write(|w| unsafe { w.presc().bits(prescaler).mode().up() });
                     false
                 };
 
@@ -146,7 +141,8 @@ macro_rules! impl_timer {
                     // Calculate TOP value
                     if timer_clk > target_freq {
                         let top = (timer_clk / target_freq).saturating_sub(1);
-                        if top <= 0xFFFF {  // 16-bit limit
+                        if top <= 0xFFFF {
+                            // 16-bit limit
                             return (prescaler, top);
                         }
                     }
@@ -189,7 +185,11 @@ macro_rules! impl_timer {
             /// # Returns
             ///
             /// `Ok(())` on success, `Err(Error)` if duty cycle is invalid
-            pub fn set_duty_cycle(&mut self, channel: PwmChannel, duty_percent: u8) -> Result<(), Error> {
+            pub fn set_duty_cycle(
+                &mut self,
+                channel: PwmChannel,
+                duty_percent: u8,
+            ) -> Result<(), Error> {
                 if duty_percent > 100 {
                     return Err(Error::InvalidDutyCycle);
                 }
@@ -204,13 +204,19 @@ macro_rules! impl_timer {
                 // Set compare value for the channel
                 match channel {
                     PwmChannel::Channel0 => {
-                        self.timer.cc0_oc().write(|w| unsafe { w.bits(compare_value) });
+                        self.timer
+                            .cc0_oc()
+                            .write(|w| unsafe { w.bits(compare_value) });
                     }
                     PwmChannel::Channel1 => {
-                        self.timer.cc1_oc().write(|w| unsafe { w.bits(compare_value) });
+                        self.timer
+                            .cc1_oc()
+                            .write(|w| unsafe { w.bits(compare_value) });
                     }
                     PwmChannel::Channel2 => {
-                        self.timer.cc2_oc().write(|w| unsafe { w.bits(compare_value) });
+                        self.timer
+                            .cc2_oc()
+                            .write(|w| unsafe { w.bits(compare_value) });
                     }
                 }
 
@@ -227,37 +233,36 @@ macro_rules! impl_timer {
                     PwmChannel::Channel0 => {
                         // Configure channel mode in CC0_CFG
                         self.timer.cc0_cfg().write(|w| {
-                            w.mode().pwm() // PWM mode
-                                .coist().clear_bit() // Output low when timer disabled
+                            w.mode()
+                                .pwm() // PWM mode
+                                .coist()
+                                .clear_bit() // Output low when timer disabled
                         });
                         // Configure output action in CC0_CTRL
                         self.timer.cc0_ctrl().write(|w| {
-                            w.outinv().clear_bit() // Non-inverted
-                                .cofoa().toggle() // Toggle on counter overflow
-                                .cmoa().set_() // Set on compare match
+                            w.outinv()
+                                .clear_bit() // Non-inverted
+                                .cofoa()
+                                .toggle() // Toggle on counter overflow
+                                .cmoa()
+                                .set_() // Set on compare match
                         });
                     }
                     PwmChannel::Channel1 => {
-                        self.timer.cc1_cfg().write(|w| {
-                            w.mode().pwm()
-                                .coist().clear_bit()
-                        });
-                        self.timer.cc1_ctrl().write(|w| {
-                            w.outinv().clear_bit()
-                                .cofoa().toggle()
-                                .cmoa().set_()
-                        });
+                        self.timer
+                            .cc1_cfg()
+                            .write(|w| w.mode().pwm().coist().clear_bit());
+                        self.timer
+                            .cc1_ctrl()
+                            .write(|w| w.outinv().clear_bit().cofoa().toggle().cmoa().set_());
                     }
                     PwmChannel::Channel2 => {
-                        self.timer.cc2_cfg().write(|w| {
-                            w.mode().pwm()
-                                .coist().clear_bit()
-                        });
-                        self.timer.cc2_ctrl().write(|w| {
-                            w.outinv().clear_bit()
-                                .cofoa().toggle()
-                                .cmoa().set_()
-                        });
+                        self.timer
+                            .cc2_cfg()
+                            .write(|w| w.mode().pwm().coist().clear_bit());
+                        self.timer
+                            .cc2_ctrl()
+                            .write(|w| w.outinv().clear_bit().cofoa().toggle().cmoa().set_());
                     }
                 }
             }

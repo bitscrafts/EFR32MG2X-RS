@@ -39,9 +39,10 @@ fn main() -> ! {
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)), // 39 MHz HFXO
-            lfxo: Some(LfxoConfig::default()),         // 32.768 kHz LFXO
-        }
-    ).expect("Clock configuration failed");
+            lfxo: Some(LfxoConfig::default()),       // 32.768 kHz LFXO
+        },
+    )
+    .expect("Clock configuration failed");
 
     // Access the frozen clock frequencies
     // In a real application, you would use these for peripheral configuration
@@ -84,8 +85,9 @@ fn main() -> ! {
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(LfxoConfig::default()),
-        }
-    ).expect("Clock configuration failed");
+        },
+    )
+    .expect("Clock configuration failed");
 
     // Freeze clocks for use with peripherals
     let frozen_clocks = clocks.freeze(cmu);

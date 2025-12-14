@@ -52,8 +52,8 @@
 //! i2c.read(0x6B, &mut buffer).unwrap();
 //! ```
 
-mod types;
 mod traits;
+mod types;
 
 pub use types::{Config, Error, Speed};
 
@@ -95,9 +95,12 @@ impl I2c0 {
 
         // Configure as master mode
         i2c.ctrl().write(|w| {
-            w.slave().clear_bit() // Master mode
-                .autoack().clear_bit() // Manual ACK/NACK
-                .autosn().set_bit() // Automatic STOP/START
+            w.slave()
+                .clear_bit() // Master mode
+                .autoack()
+                .clear_bit() // Manual ACK/NACK
+                .autosn()
+                .set_bit() // Automatic STOP/START
         });
 
         // Calculate and set clock divider
@@ -271,9 +274,12 @@ impl I2c1 {
 
         // Configure as master mode
         i2c.ctrl().write(|w| {
-            w.slave().clear_bit()
-                .autoack().clear_bit()
-                .autosn().set_bit()
+            w.slave()
+                .clear_bit()
+                .autoack()
+                .clear_bit()
+                .autosn()
+                .set_bit()
         });
 
         // Calculate and set clock divider

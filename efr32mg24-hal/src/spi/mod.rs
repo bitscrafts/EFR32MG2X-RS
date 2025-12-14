@@ -53,8 +53,8 @@
 //! spi.transfer(&mut rx_data, &tx_data).unwrap();
 //! ```
 
-mod types;
 mod traits;
+mod types;
 
 pub use types::{BitOrder, Config, Error, Mode, Phase, Polarity};
 
@@ -101,10 +101,14 @@ impl Spi0 {
 
         // Configure USART for SPI master mode
         usart.ctrl().write(|w| {
-            w.sync().set_bit() // Synchronous mode (SPI)
-                .clkpol().bit(config.mode.polarity() == Polarity::IdleHigh)
-                .clkpha().bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
-                .msbf().bit(config.bit_order == BitOrder::MsbFirst)
+            w.sync()
+                .set_bit() // Synchronous mode (SPI)
+                .clkpol()
+                .bit(config.mode.polarity() == Polarity::IdleHigh)
+                .clkpha()
+                .bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
+                .msbf()
+                .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
         // Configure frame format
@@ -117,10 +121,7 @@ impl Spi0 {
         usart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         // Enable TX and RX
-        usart.cmd().write(|w| {
-            w.txen().set_bit()
-                .rxen().set_bit()
-        });
+        usart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
 
         Self { usart }
     }
@@ -200,7 +201,9 @@ impl Spi0 {
         while self.usart.status().read().txbl().bit_is_clear() {}
 
         // Write byte to TX buffer
-        self.usart.txdata().write(|w| unsafe { w.bits(byte as u32) });
+        self.usart
+            .txdata()
+            .write(|w| unsafe { w.bits(byte as u32) });
 
         // Wait for RX data to be valid
         while self.usart.status().read().rxdatav().bit_is_clear() {}
@@ -237,14 +240,19 @@ impl Spi1 {
 
         // Configure EUSART for SPI master mode
         eusart.cfg0().write(|w| {
-            w.sync().sync() // Synchronous mode (SPI)
-                .msbf().bit(config.bit_order == BitOrder::MsbFirst)
+            w.sync()
+                .sync() // Synchronous mode (SPI)
+                .msbf()
+                .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
         eusart.cfg2().write(|w| {
-            w.clkpol().bit(config.mode.polarity() == Polarity::IdleHigh)
-                .clkpha().bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
-                .master().set_bit() // Master mode
+            w.clkpol()
+                .bit(config.mode.polarity() == Polarity::IdleHigh)
+                .clkpha()
+                .bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
+                .master()
+                .set_bit() // Master mode
         });
 
         // Calculate and set clock divider
@@ -252,10 +260,7 @@ impl Spi1 {
         eusart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         // Enable TX and RX
-        eusart.cmd().write(|w| {
-            w.txen().set_bit()
-                .rxen().set_bit()
-        });
+        eusart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
 
         Self { eusart }
     }
@@ -326,7 +331,9 @@ impl Spi1 {
         while self.eusart.status().read().txfl().bit_is_clear() {}
 
         // Write byte to TX buffer
-        self.eusart.txdata().write(|w| unsafe { w.bits(byte as u32) });
+        self.eusart
+            .txdata()
+            .write(|w| unsafe { w.bits(byte as u32) });
 
         // Wait for RX data to be valid (RXFL > 0 means data available)
         while self.eusart.status().read().rxfl().bit_is_clear() {}
@@ -363,14 +370,19 @@ impl Spi2 {
 
         // Configure EUSART for SPI master mode
         eusart.cfg0().write(|w| {
-            w.sync().sync()
-                .msbf().bit(config.bit_order == BitOrder::MsbFirst)
+            w.sync()
+                .sync()
+                .msbf()
+                .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
         eusart.cfg2().write(|w| {
-            w.clkpol().bit(config.mode.polarity() == Polarity::IdleHigh)
-                .clkpha().bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
-                .master().set_bit()
+            w.clkpol()
+                .bit(config.mode.polarity() == Polarity::IdleHigh)
+                .clkpha()
+                .bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
+                .master()
+                .set_bit()
         });
 
         // Calculate and set clock divider
@@ -378,10 +390,7 @@ impl Spi2 {
         eusart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         // Enable TX and RX
-        eusart.cmd().write(|w| {
-            w.txen().set_bit()
-                .rxen().set_bit()
-        });
+        eusart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
 
         Self { eusart }
     }
@@ -447,7 +456,9 @@ impl Spi2 {
 
     fn transfer_byte(&mut self, byte: u8) -> Result<u8, Error> {
         while self.eusart.status().read().txfl().bit_is_clear() {}
-        self.eusart.txdata().write(|w| unsafe { w.bits(byte as u32) });
+        self.eusart
+            .txdata()
+            .write(|w| unsafe { w.bits(byte as u32) });
         while self.eusart.status().read().rxfl().bit_is_clear() {}
         let received = self.eusart.rxdata().read().bits() as u8;
         Ok(received)

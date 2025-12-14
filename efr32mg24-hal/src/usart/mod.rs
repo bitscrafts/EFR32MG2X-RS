@@ -42,8 +42,8 @@
 //! }
 //! ```
 
-mod types;
 mod traits;
+mod types;
 
 pub use types::{Config, DataBits, Error, Parity, StopBits};
 
@@ -118,9 +118,9 @@ impl Usart0 {
         let pclk: u32 = clocks.pclk().into();
         let oversample = 16;
         let clkdiv = (256 * pclk / (oversample * config.baudrate)) - 256;
-        usart.clkdiv().write(|w| unsafe {
-            w.div().bits((clkdiv & 0xFFFFF) as u32)
-        });
+        usart
+            .clkdiv()
+            .write(|w| unsafe { w.div().bits((clkdiv & 0xFFFFF) as u32) });
 
         // Enable TX and RX
         usart.cmd().write(|w| {
@@ -152,9 +152,9 @@ impl Usart0 {
         }
 
         // Write byte to TXDATA
-        self.usart.txdata().write(|w| unsafe {
-            w.txdata().bits(byte)
-        });
+        self.usart
+            .txdata()
+            .write(|w| unsafe { w.txdata().bits(byte) });
     }
 
     /// Read a single byte (non-blocking)

@@ -2,8 +2,8 @@
 //!
 //! Once frozen, clock frequencies cannot be changed, ensuring peripheral stability.
 
-use super::types::Hertz;
 use super::clocks::Clocks;
+use super::types::Hertz;
 
 /// Frozen clock configuration
 ///

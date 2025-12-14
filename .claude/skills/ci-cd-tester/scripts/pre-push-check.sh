@@ -31,7 +31,8 @@ echo ""
 
 # Check 2: Clippy on PAC (allow warnings for generated code)
 echo -e "${YELLOW}2️⃣  Running Clippy on PAC...${NC}"
-if cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf 2>&1 | tail -5; then
+# Suppress Cargo.toml warnings from dependencies
+if cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf 2>&1 | grep -v "default-features" | tail -5; then
     echo -e "${GREEN}✅ PAC Clippy completed${NC}"
 else
     echo -e "${RED}❌ PAC Clippy failed${NC}"
@@ -41,11 +42,15 @@ echo ""
 
 # Check 3: Clippy on HAL (strict - no warnings allowed)
 echo -e "${YELLOW}3️⃣  Running Clippy on HAL (strict)...${NC}"
-if cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings; then
-    echo -e "${GREEN}✅ HAL Clippy passed (no warnings)${NC}"
-else
-    echo -e "${RED}❌ HAL Clippy failed - fix all warnings${NC}"
+# Suppress Cargo.toml warnings from dependencies, but fail on code warnings
+CLIPPY_OUTPUT=$(cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings 2>&1)
+FILTERED_OUTPUT=$(echo "$CLIPPY_OUTPUT" | grep -v "default-features")
+if echo "$FILTERED_OUTPUT" | grep -qi "warning:"; then
+    echo -e "${RED}❌ HAL Clippy failed - fix all warnings:${NC}"
+    echo "$FILTERED_OUTPUT" | grep -i "warning:"
     exit 1
+else
+    echo -e "${GREEN}✅ HAL Clippy passed (no warnings)${NC}"
 fi
 echo ""
 

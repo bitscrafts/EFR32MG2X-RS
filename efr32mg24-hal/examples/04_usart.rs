@@ -41,9 +41,9 @@
 #![no_main]
 
 use efr32mg24_hal as hal;
+use hal::clock::{ClockConfig, Clocks};
 use hal::pac;
 use hal::usart::{Config, Usart0};
-use hal::clock::{Clocks, ClockConfig};
 use panic_halt as _;
 
 #[cortex_m_rt::entry]
@@ -52,8 +52,8 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
 
     // Initialize clocks with default configuration
-    let (clocks, cmu) = Clocks::new(dp.cmu_s, ClockConfig::default())
-        .expect("Clock configuration failed");
+    let (clocks, cmu) =
+        Clocks::new(dp.cmu_s, ClockConfig::default()).expect("Clock configuration failed");
     let frozen_clocks = clocks.freeze(cmu);
 
     // Configure USART0 for 115200 baud, 8N1 (default)

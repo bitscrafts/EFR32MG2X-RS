@@ -95,24 +95,20 @@ impl<const PORT: char, const PIN: u8, MODE> Pin<PORT, PIN, MODE> {
             // First, set DOUT high to enable pull-up (when mode is INPUTPULL)
             match PORT {
                 'A' => {
-                    gpio.porta_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.porta_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 'B' => {
-                    gpio.portb_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.portb_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 'C' => {
-                    gpio.portc_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.portc_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 'D' => {
-                    gpio.portd_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.portd_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 _ => panic!("Invalid port"),
             }
@@ -167,24 +163,20 @@ impl<const PORT: char, const PIN: u8, MODE> Pin<PORT, PIN, MODE> {
             // First, set DOUT low to enable pull-down (when mode is INPUTPULL)
             match PORT {
                 'A' => {
-                    gpio.porta_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.porta_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 'B' => {
-                    gpio.portb_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.portb_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 'C' => {
-                    gpio.portc_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.portc_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 'D' => {
-                    gpio.portd_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.portd_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 _ => panic!("Invalid port"),
             }

@@ -21,24 +21,20 @@ impl<const PORT: char, const PIN: u8, const DRIVE: u8> OutputPin for Pin<PORT, P
 
             match PORT {
                 'A' => {
-                    gpio.porta_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.porta_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 'B' => {
-                    gpio.portb_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.portb_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 'C' => {
-                    gpio.portc_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.portc_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 'D' => {
-                    gpio.portd_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() & !(1 << PIN))
-                    });
+                    gpio.portd_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << PIN)) });
                 }
                 _ => return Err(GpioError::InvalidMode),
             }
@@ -53,24 +49,20 @@ impl<const PORT: char, const PIN: u8, const DRIVE: u8> OutputPin for Pin<PORT, P
 
             match PORT {
                 'A' => {
-                    gpio.porta_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.porta_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 'B' => {
-                    gpio.portb_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.portb_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 'C' => {
-                    gpio.portc_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.portc_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 'D' => {
-                    gpio.portd_dout().modify(|r, w| unsafe {
-                        w.bits(r.bits() | (1 << PIN))
-                    });
+                    gpio.portd_dout()
+                        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << PIN)) });
                 }
                 _ => return Err(GpioError::InvalidMode),
             }

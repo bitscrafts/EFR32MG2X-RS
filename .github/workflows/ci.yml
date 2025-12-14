@@ -55,10 +55,10 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-cargo-git-
 
-      - name: Run Clippy on PAC
-        run: cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf -- -D warnings
+      - name: Run Clippy on PAC (allow warnings for generated code)
+        run: cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf
 
-      - name: Run Clippy on HAL
+      - name: Run Clippy on HAL (strict - no warnings allowed)
         run: cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
 
   # Build PAC (separate job for caching)

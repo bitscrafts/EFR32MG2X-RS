@@ -45,12 +45,12 @@
 #![no_main]
 
 use efr32mg24_hal as hal;
-use hal::pac;
-use hal::clock::{Clocks, ClockConfig, HfxoConfig};
+use hal::clock::{ClockConfig, Clocks, HfxoConfig};
 use hal::delay::Delay;
 use hal::gpio::GpioExt;
-use hal::usart::{Usart0, Config as UsartConfig};
+use hal::pac;
 use hal::prelude::*;
+use hal::usart::{Config as UsartConfig, Usart0};
 use panic_halt as _;
 
 #[cortex_m_rt::entry]
@@ -68,8 +68,9 @@ fn main() -> ! {
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(Default::default()),
-        }
-    ).expect("Clock configuration failed");
+        },
+    )
+    .expect("Clock configuration failed");
 
     let frozen_clocks = clocks.freeze(cmu);
 

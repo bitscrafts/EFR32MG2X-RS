@@ -58,7 +58,11 @@ fn main() -> ! {
 
     // Create I2C0 instance with 100 kHz (standard mode)
     // For 400 kHz (fast mode), use Speed::Fast400kHz
-    let mut i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), &frozen_clocks);
+    let mut i2c = I2c0::new(
+        dp.i2c0_s,
+        Config::new(Speed::Standard100kHz),
+        &frozen_clocks,
+    );
 
     // NOTE: Pin configuration is not shown here!
     // In a real application, configure SCL/SDA pins using GPIO module

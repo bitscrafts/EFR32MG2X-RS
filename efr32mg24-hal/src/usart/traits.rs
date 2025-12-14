@@ -27,9 +27,9 @@ impl embedded_hal_nb::serial::Write<u8> for Usart0 {
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         // Check if TX buffer is ready
         if self.usart.status().read().txbl().bit_is_set() {
-            self.usart.txdata().write(|w| unsafe {
-                w.txdata().bits(word)
-            });
+            self.usart
+                .txdata()
+                .write(|w| unsafe { w.txdata().bits(word) });
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)

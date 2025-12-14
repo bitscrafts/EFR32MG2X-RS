@@ -43,8 +43,9 @@ fn main() -> ! {
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(LfxoConfig::default()),
-        }
-    ).expect("Clock configuration failed");
+        },
+    )
+    .expect("Clock configuration failed");
 
     let frozen_clocks = clocks.freeze(cmu);
 
@@ -54,20 +55,20 @@ fn main() -> ! {
     // Example 1: Millisecond delays
     // Suitable for LED blinking, debouncing, etc.
     delay.delay_ms(1000); // 1 second delay
-    delay.delay_ms(500);  // 500 milliseconds
+    delay.delay_ms(500); // 500 milliseconds
 
     // Example 2: Microsecond delays
     // Suitable for protocol timing, sensor communication
     delay.delay_us(1000); // 1 millisecond (1000 microseconds)
-    delay.delay_us(100);  // 100 microseconds
-    delay.delay_us(10);   // 10 microseconds
+    delay.delay_us(100); // 100 microseconds
+    delay.delay_us(10); // 10 microseconds
 
     // Example 3: Nanosecond delays
     // Suitable for precise timing, bit-banging protocols
     // Note: Very short delays use approximate NOP loop
     delay.delay_ns(1_000_000); // 1 millisecond (1,000,000 nanoseconds)
-    delay.delay_ns(10_000);    // 10 microseconds
-    delay.delay_ns(500);       // 500 nanoseconds
+    delay.delay_ns(10_000); // 10 microseconds
+    delay.delay_ns(500); // 500 nanoseconds
 
     // Example 4: Using in a loop (LED blink pattern)
     // In a real application with GPIO:

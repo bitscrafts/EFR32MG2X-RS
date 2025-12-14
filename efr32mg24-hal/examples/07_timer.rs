@@ -31,9 +31,9 @@ use cortex_m_rt::entry;
 use panic_halt as _;
 
 use efr32mg24_hal::{
-    clock::{Clocks, ClockConfig, HfxoConfig},
+    clock::{ClockConfig, Clocks, HfxoConfig},
     pac,
-    timer::{Timer0, Config, PwmMode, PwmChannel},
+    timer::{Config, PwmChannel, PwmMode, Timer0},
 };
 
 #[entry]
@@ -48,8 +48,9 @@ fn main() -> ! {
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(Default::default()),
-        }
-    ).expect("Clock configuration failed");
+        },
+    )
+    .expect("Clock configuration failed");
 
     let frozen_clocks = clocks.freeze(cmu);
 
@@ -57,7 +58,7 @@ fn main() -> ! {
     let mut timer = Timer0::new(
         dp.timer0_s,
         Config::new(10_000).with_pwm(PwmMode::EdgeAligned),
-        &frozen_clocks
+        &frozen_clocks,
     );
 
     // Configure PWM channels with different duty cycles

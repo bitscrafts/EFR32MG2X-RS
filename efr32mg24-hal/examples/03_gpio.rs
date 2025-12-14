@@ -53,8 +53,9 @@ fn main() -> ! {
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(LfxoConfig::default()),
-        }
-    ).expect("Clock configuration failed");
+        },
+    )
+    .expect("Clock configuration failed");
 
     let frozen_clocks = clocks.freeze(cmu);
 

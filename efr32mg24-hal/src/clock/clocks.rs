@@ -69,7 +69,10 @@ impl Clocks {
     /// )?;
     /// # Ok::<(), efr32mg24_hal::clock::ClockError>(())
     /// ```
-    pub fn new(cmu: crate::pac::CmuS, config: ClockConfig) -> Result<(Self, crate::pac::CmuS), ClockError> {
+    pub fn new(
+        cmu: crate::pac::CmuS,
+        config: ClockConfig,
+    ) -> Result<(Self, crate::pac::CmuS), ClockError> {
         // Determine the frequencies based on configuration
         let hfclk = if let Some(hfxo_config) = config.hfxo {
             // Configure HFXO
@@ -131,10 +134,7 @@ impl Clocks {
     ///
     /// * `cmu` - CMU peripheral to store in the frozen configuration
     pub fn freeze(self, cmu: crate::pac::CmuS) -> FrozenClocks {
-        FrozenClocks {
-            clocks: self,
-            cmu,
-        }
+        FrozenClocks { clocks: self, cmu }
     }
 
     /// Get the high frequency clock (HFCLK) frequency
