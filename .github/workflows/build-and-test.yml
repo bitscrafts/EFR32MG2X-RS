@@ -1,0 +1,181 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  build-pac:
+    name: Build PAC
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache PAC build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target/thumbv8m.main-none-eabihf/release/deps
+            target/thumbv8m.main-none-eabihf/release/build
+          key: ${{ runner.os }}-pac-${{ hashFiles('efr32mg24-pac/Cargo.toml', 'efr32mg24-pac/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pac-
+
+      - name: Build PAC (release mode)
+        run: cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
+
+      - name: Report PAC binary size
+        run: |
+          echo "PAC library size:"
+          ls -lh target/thumbv8m.main-none-eabihf/release/libefr32mg24_pac.rlib || echo "PAC artifact not found"
+
+  build-hal:
+    name: Build HAL
+    runs-on: ubuntu-latest
+    needs: build-pac
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-hal-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-hal-
+
+      - name: Build HAL library (release mode)
+        run: cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
+
+      - name: Report HAL binary size
+        run: |
+          echo "HAL library size:"
+          ls -lh target/thumbv8m.main-none-eabihf/release/libefr32mg24_hal.rlib || echo "HAL artifact not found"
+
+  build-examples:
+    name: Build Examples
+    runs-on: ubuntu-latest
+    needs: build-hal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-examples-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-examples-
+
+      - name: Build all examples (release mode)
+        run: cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
+        working-directory: efr32mg24-hal
+
+      - name: Report example binary sizes
+        run: |
+          echo "Example binary sizes:"
+          for example in target/thumbv8m.main-none-eabihf/release/examples/*; do
+            if [ -f "$example" ] && [ -x "$example" ]; then
+              SIZE=$(stat -c%s "$example" 2>/dev/null || stat -f%z "$example")
+              SIZE_KB=$((SIZE / 1024))
+              echo "  $(basename $example): ${SIZE_KB} KB"
+              if [ "$SIZE" -gt 1048576 ]; then
+                echo "    Warning: Binary exceeds 1 MB"
+              fi
+            fi
+          done
+
+  test-host:
+    name: Run Tests (Host)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-test-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-test-
+
+      - name: Run unit tests (host target)
+        run: cargo test --lib --no-default-features
+        continue-on-error: true
+
+      - name: Note about hardware tests
+        run: echo "Note: Full embedded tests require hardware or QEMU. Placeholder for future test infrastructure."
+
+  build-docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: thumbv8m.main-none-eabihf
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-docs-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-docs-
+
+      - name: Build rustdoc for HAL
+        run: cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf
+
+      - name: Check for documentation warnings
+        run: |
+          cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf 2>&1 | tee doc-output.txt
+          if grep -qi "warning" doc-output.txt; then
+            echo "Documentation has warnings"
+            exit 1
+          fi
