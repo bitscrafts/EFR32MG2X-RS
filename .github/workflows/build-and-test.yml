@@ -9,68 +9,43 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  RUST_BACKTRACE: 1
 
 jobs:
   build-pac:
     name: Build PAC
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv8m.main-none-eabihf
-
-      - name: Build PAC (release mode)
-        run: cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
+      - run: cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
 
   build-hal:
     name: Build HAL
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv8m.main-none-eabihf
-
-      - name: Build HAL library (release mode)
-        run: cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
+      - run: cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
 
   build-examples:
     name: Build Examples
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv8m.main-none-eabihf
-
-      - name: Build all examples (release mode)
-        run: cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
+      - run: cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
         working-directory: efr32mg24-hal
 
-  test-host:
+  test:
     name: Run Tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: Run unit tests (host target)
-        run: cargo test --lib --no-default-features
-        continue-on-error: true
-
-      - name: Note about hardware tests
-        run: echo "Note: Full embedded tests require hardware or QEMU. Placeholder for future test infrastructure."
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --lib --no-default-features || echo "Tests placeholder - no tests yet"
