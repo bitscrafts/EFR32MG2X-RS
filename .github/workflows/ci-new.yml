@@ -207,22 +207,3 @@ jobs:
       - name: Note about embedded tests
         run: echo "Note: Full embedded tests require hardware or QEMU setup"
 
-  # Quality gate - all checks must pass
-  quality-gate:
-    name: Quality Gate
-    runs-on: ubuntu-latest
-    needs: [format, clippy, build-pac, build-hal, docs]
-    if: always()
-    steps:
-      - name: Check all jobs succeeded
-        run: |
-          if [ "${{ needs.format.result }}" != "success" ] || \
-             [ "${{ needs.clippy.result }}" != "success" ] || \
-             [ "${{ needs.build-pac.result }}" != "success" ] || \
-             [ "${{ needs.build-hal.result }}" != "success" ] || \
-             [ "${{ needs.docs.result }}" != "success" ]; then
-            echo "Quality gate failed - one or more checks did not pass"
-            exit 1
-          else
-            echo "Quality gate passed - all checks successful"
-          fi
