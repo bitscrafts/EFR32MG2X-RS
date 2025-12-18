@@ -5,6 +5,7 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:  # Allow manual trigger
 
 env:
   CARGO_TERM_COLOR: always
