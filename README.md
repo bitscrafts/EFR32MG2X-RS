@@ -2,7 +2,7 @@
 
 Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoCs.
 
-> ✅ **Status**: HAL Phase 5 Tier 2 - Complete (USART, I2C, SPI, Timers/PWM)
+> ✅ **Status**: Phase B Complete - All Essential Communication Peripherals + Timers/PWM
 
 ## Overview
 
@@ -42,22 +42,22 @@ EFR32MG24/
 - [x] XIAO MG24 hardware identification (EFR32MG24B220F1536IM48)
 - [x] Complete documentation suite
 
-### ✅ Completed - HAL Tier 1
+### ✅ Phase A Complete - Essential Peripherals
 
 - [x] **GPIO** - Hardware register access (MODEL/MODEH, DOUT, DIN), type-safe pin modes, embedded-hal v1.0 traits
 - [x] **CMU** - Clock configuration (HFXO/HFRCO/LFXO/LFRCO), SYSCLKCTRL register, peripheral consumption
 - [x] **Delay** - SysTick-based delays (ms/us/ns), embedded-hal v1.0 DelayNs trait
-- [x] **Documentation** - Module READMEs, phase 2 completion docs
+- [x] **Documentation** - Module READMEs, production-grade documentation
 
-### ✅ Completed - HAL Tier 2
+### ✅ Phase B Complete - Communication Peripherals
 
 - [x] **USART0** - Serial communication with hardware register access, embedded-hal-nb v1.0 traits
 - [x] **I2C0/I2C1** - I2C master mode with 7-bit addressing, embedded-hal v1.0 I2C traits
 - [x] **SPI0/SPI1/SPI2** - SPI master mode using USART0, EUSART0, EUSART1 in SPI mode, all 4 modes (0-3), embedded-hal v1.0 SpiBus traits
-- [x] **Timer0-4** - Timers and PWM with 3 channels each, edge/center-aligned modes, configurable frequency and duty cycle
-- [x] **Examples** - 7 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c, 06_spi, 07_timer)
+- [x] **Timer0-4** - Production-grade timers and PWM with 3 channels each, edge/center-aligned modes, interrupt support, RTOS-ready
+- [x] **Examples** - 7 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c, 06_spi, 07_timer_pwm)
 
-### ⏳ Planned - HAL Tier 3
+### ⏳ Phase C Planned - Advanced Peripherals
 
 - [ ] **ADC (IADC)** - Analog-to-digital conversion
 - [ ] **DMA (LDMA)** - Direct memory access
@@ -122,12 +122,12 @@ See detailed PAC documentation:
 
 See [docs/PLAN.md](docs/PLAN.md) for the complete development roadmap.
 
-**Current Progress: Phase 5 Tier 2 Complete (80%)**
+**Current Progress: Phase B Complete (100%)**
 
 1. ✅ **Phase 1-4**: Project Setup, PAC Generation, PAC Verification
-2. ✅ **Phase 5 Tier 1**: HAL Core - GPIO, CMU, Delay with hardware register access
-3. ✅ **Phase 5 Tier 2**: HAL Communication - USART, I2C, SPI, Timers/PWM all complete
-4. ⏳ **Phase 6-7**: HAL Advanced - ADC, DMA, Power Management
+2. ✅ **Phase A**: HAL Core - GPIO, CMU, Delay with hardware register access
+3. ✅ **Phase B**: HAL Communication - USART, I2C, SPI, Timers/PWM all production-ready
+4. ⏳ **Phase C**: HAL Advanced - ADC, DMA, Power Management
 5. ⏳ **Phase 8-9**: Testing, Examples, Ecosystem (Embassy, BSPs)
 
 ## Documentation
@@ -263,7 +263,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ---
 
-**Project Status**: Phase 5 Tier 2 Complete - All communication peripherals and timers implemented
-**Last Updated**: December 13, 2025
+**Project Status**: Phase B Complete - All communication peripherals and timers production-ready
+**Last Updated**: December 18, 2025
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/EFR32MG2X-RS

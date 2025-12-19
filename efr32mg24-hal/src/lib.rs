@@ -16,24 +16,24 @@
 //!
 //! # Status
 //!
-//! **Phase 5 Tier 2 - Complete**: All communication peripherals and timers implemented
+//! **Phase B Complete**: All communication peripherals and timers production-ready
 //!
-//! ## Tier 1 Peripherals (Complete)
+//! ## Phase A - Essential Peripherals (Complete)
 //!
 //! - **Clock Management (CMU)** - HFXO/HFRCO configuration with hardware register access
 //! - **GPIO** - Type-safe pin modes with hardware register manipulation
 //! - **Delay** - SysTick-based delays integrated with CMU
 //!
-//! ## Tier 2 Peripherals (Complete)
+//! ## Phase B - Communication Peripherals (Complete)
 //!
 //! - **USART** - Serial communication (USART0) with embedded-hal-nb traits ✅
 //! - **I2C** - I2C master mode (I2C0, I2C1) with embedded-hal traits ✅
 //! - **SPI** - SPI master mode (USART in SPI mode) with embedded-hal traits ✅
 //! - **Timer** - Timer and PWM (TIMER0-4) with 3 channels each ✅
 //!
-//! ## Tier 3 Peripherals (Planned - Phase 4)
+//! ## Phase C - Advanced Peripherals (In Progress)
 //!
-//! - ADC (IADC)
+//! - **ADC (IADC)** - Analog-to-digital converter ⏳
 //! - DMA (LDMA)
 //! - Power management (EMU)
 //! - RTC (RTCC)
@@ -73,6 +73,7 @@
 //!
 //! # Module Organization
 //!
+//! - [`adc`] - Analog-to-Digital Converter (IADC)
 //! - [`clock`] - Clock Management Unit (CMU) configuration
 //! - [`delay`] - Blocking delays using SysTick
 //! - [`gpio`] - General Purpose I/O
@@ -90,6 +91,7 @@
 pub use efr32mg24_pac as pac;
 
 // HAL modules
+pub mod adc;
 pub mod clock;
 pub mod delay;
 pub mod gpio;

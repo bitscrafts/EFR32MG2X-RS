@@ -227,7 +227,7 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
 
 ---
 
-### ⏳ Phase 7: Advanced Features (PENDING)
+### ⏳ Phase C: Advanced Features (PENDING)
 
 **Tier 3 Peripherals** (Advanced):
 
@@ -436,7 +436,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
    - **Impact**: Limited wireless functionality
    - **Likelihood**: High (very complex)
    - **Mitigation**: Start with FFI to Silicon Labs libraries, pure Rust long-term
-   - **Status**: Deferred to Phase 7
+   - **Status**: Deferred to Phase C
 
 ### Medium-Priority Risks
 
@@ -477,7 +477,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 - [ ] ADC: Voltage reading works
 - [ ] All embedded-hal v1.0 traits implemented
 
-### Phase 7 Success (Advanced HAL)
+### Phase C Success (Advanced HAL)
 - [ ] DMA transfers working
 - [ ] Low-power modes functional
 - [ ] Security peripherals accessible
@@ -510,7 +510,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 ### Time Estimate
 - **Phase 3-4** (PAC): 1-2 weeks (currently blocked)
 - **Phase 5-6** (Basic HAL): 2-3 months
-- **Phase 7** (Advanced): 2-3 months
+- **Phase C** (Advanced): 2-3 months
 - **Phase 8-9** (Ecosystem): 6+ months, ongoing
 
 **Total to Production-Ready HAL**: 6-9 months of focused development

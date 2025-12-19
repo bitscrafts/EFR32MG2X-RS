@@ -98,12 +98,16 @@ macro_rules! impl_timer {
                     match pwm_mode {
                         PwmMode::EdgeAligned => {
                             // Edge-aligned PWM: count up
+                            // SAFETY: Prescaler value (0-10) is validated by calculate_prescaler_and_top().
+                            // Mode enum variant is type-safe and always valid.
                             timer
                                 .cfg()
                                 .write(|w| unsafe { w.presc().bits(prescaler).mode().up() });
                         }
                         PwmMode::CenterAligned => {
                             // Center-aligned PWM: count up/down
+                            // SAFETY: Prescaler value (0-10) is validated by calculate_prescaler_and_top().
+                            // Mode enum variant is type-safe and always valid.
                             timer
                                 .cfg()
                                 .write(|w| unsafe { w.presc().bits(prescaler).mode().updown() });
@@ -112,6 +116,8 @@ macro_rules! impl_timer {
                     true
                 } else {
                     // Basic timer mode: count up
+                    // SAFETY: Prescaler value (0-10) is validated by calculate_prescaler_and_top().
+                    // Mode enum variant is type-safe and always valid.
                     timer
                         .cfg()
                         .write(|w| unsafe { w.presc().bits(prescaler).mode().up() });
@@ -119,6 +125,8 @@ macro_rules! impl_timer {
                 };
 
                 // Set top value (PWM period)
+                // SAFETY: TOP value is calculated by calculate_prescaler_and_top() to fit within
+                // the timer's 16-bit range (0x0000 to 0xFFFF). The calculation ensures TOP <= 0xFFFF.
                 timer.top().write(|w| unsafe { w.bits(top) });
 
                 Self {
@@ -172,6 +180,7 @@ macro_rules! impl_timer {
 
             /// Reset counter to zero
             pub fn reset_counter(&mut self) {
+                // SAFETY: Writing 0 to CNT register is always safe and resets the counter.
                 self.timer.cnt().write(|w| unsafe { w.bits(0) });
             }
 
@@ -185,6 +194,11 @@ macro_rules! impl_timer {
             /// # Returns
             ///
             /// `Ok(())` on success, `Err(Error)` if duty cycle is invalid
+            ///
+            /// # Thread Safety
+            ///
+            /// This function uses critical sections for atomic register access,
+            /// making it safe to call from interrupt contexts or RTOS tasks.
             pub fn set_duty_cycle(
                 &mut self,
                 channel: PwmChannel,
@@ -201,24 +215,29 @@ macro_rules! impl_timer {
                 // Calculate compare value
                 let compare_value = (self.top_value as u64 * duty_percent as u64 / 100) as u32;
 
-                // Set compare value for the channel
-                match channel {
-                    PwmChannel::Channel0 => {
-                        self.timer
-                            .cc0_oc()
-                            .write(|w| unsafe { w.bits(compare_value) });
+                // Set compare value for the channel atomically
+                // Use critical section to prevent race conditions in RTOS environments
+                critical_section::with(|_cs| {
+                    // SAFETY: Compare value is calculated from validated duty_percent (0-100) and
+                    // top_value (<=0xFFFF), ensuring it fits within the CC register width.
+                    match channel {
+                        PwmChannel::Channel0 => {
+                            self.timer
+                                .cc0_oc()
+                                .write(|w| unsafe { w.bits(compare_value) });
+                        }
+                        PwmChannel::Channel1 => {
+                            self.timer
+                                .cc1_oc()
+                                .write(|w| unsafe { w.bits(compare_value) });
+                        }
+                        PwmChannel::Channel2 => {
+                            self.timer
+                                .cc2_oc()
+                                .write(|w| unsafe { w.bits(compare_value) });
+                        }
                     }
-                    PwmChannel::Channel1 => {
-                        self.timer
-                            .cc1_oc()
-                            .write(|w| unsafe { w.bits(compare_value) });
-                    }
-                    PwmChannel::Channel2 => {
-                        self.timer
-                            .cc2_oc()
-                            .write(|w| unsafe { w.bits(compare_value) });
-                    }
-                }
+                });
 
                 Ok(())
             }
@@ -228,43 +247,65 @@ macro_rules! impl_timer {
             /// # Arguments
             ///
             /// * `channel` - PWM channel to enable
+            ///
+            /// # PWM Output Configuration
+            ///
+            /// This configures the CC channel for PWM mode with:
+            /// - **CMOA (Compare Match Output Action)**: SET - Output goes high on compare match
+            /// - **COFOA (Counter Overflow Output Action)**: TOGGLE - Output toggles on overflow/underflow
+            ///
+            /// For edge-aligned PWM (up-counting):
+            /// - Counter counts from 0 to TOP
+            /// - Output goes HIGH when CNT == CCx_OC (compare match)
+            /// - Output goes LOW when CNT reaches TOP (counter overflow)
+            /// - Duty cycle = (CCx_OC / TOP) × 100%
+            ///
+            /// For center-aligned PWM (up-down counting):
+            /// - Counter counts 0→TOP→0
+            /// - Output toggles on compare matches in both directions
+            /// - Creates symmetric waveform
+            ///
+            /// **Note**: This configuration has been validated against EFR32MG24 reference manual
+            /// section on Timer PWM generation. Hardware testing pending.
             pub fn enable_channel(&mut self, channel: PwmChannel) {
-                match channel {
-                    PwmChannel::Channel0 => {
-                        // Configure channel mode in CC0_CFG
-                        self.timer.cc0_cfg().write(|w| {
-                            w.mode()
-                                .pwm() // PWM mode
-                                .coist()
-                                .clear_bit() // Output low when timer disabled
-                        });
-                        // Configure output action in CC0_CTRL
-                        self.timer.cc0_ctrl().write(|w| {
-                            w.outinv()
-                                .clear_bit() // Non-inverted
-                                .cofoa()
-                                .toggle() // Toggle on counter overflow
-                                .cmoa()
-                                .set_() // Set on compare match
-                        });
+                critical_section::with(|_cs| {
+                    match channel {
+                        PwmChannel::Channel0 => {
+                            // Configure channel mode in CC0_CFG
+                            self.timer.cc0_cfg().write(|w| {
+                                w.mode()
+                                    .pwm() // PWM mode
+                                    .coist()
+                                    .clear_bit() // Output low when timer disabled
+                            });
+                            // Configure output action in CC0_CTRL
+                            self.timer.cc0_ctrl().write(|w| {
+                                w.outinv()
+                                    .clear_bit() // Non-inverted
+                                    .cofoa()
+                                    .toggle() // Toggle on counter overflow
+                                    .cmoa()
+                                    .set_() // Set on compare match
+                            });
+                        }
+                        PwmChannel::Channel1 => {
+                            self.timer
+                                .cc1_cfg()
+                                .write(|w| w.mode().pwm().coist().clear_bit());
+                            self.timer
+                                .cc1_ctrl()
+                                .write(|w| w.outinv().clear_bit().cofoa().toggle().cmoa().set_());
+                        }
+                        PwmChannel::Channel2 => {
+                            self.timer
+                                .cc2_cfg()
+                                .write(|w| w.mode().pwm().coist().clear_bit());
+                            self.timer
+                                .cc2_ctrl()
+                                .write(|w| w.outinv().clear_bit().cofoa().toggle().cmoa().set_());
+                        }
                     }
-                    PwmChannel::Channel1 => {
-                        self.timer
-                            .cc1_cfg()
-                            .write(|w| w.mode().pwm().coist().clear_bit());
-                        self.timer
-                            .cc1_ctrl()
-                            .write(|w| w.outinv().clear_bit().cofoa().toggle().cmoa().set_());
-                    }
-                    PwmChannel::Channel2 => {
-                        self.timer
-                            .cc2_cfg()
-                            .write(|w| w.mode().pwm().coist().clear_bit());
-                        self.timer
-                            .cc2_ctrl()
-                            .write(|w| w.outinv().clear_bit().cofoa().toggle().cmoa().set_());
-                    }
-                }
+                });
             }
 
             /// Disable PWM output on a channel
@@ -273,7 +314,7 @@ macro_rules! impl_timer {
             ///
             /// * `channel` - PWM channel to disable
             pub fn disable_channel(&mut self, channel: PwmChannel) {
-                match channel {
+                critical_section::with(|_cs| match channel {
                     PwmChannel::Channel0 => {
                         self.timer.cc0_cfg().write(|w| w.mode().off());
                     }
@@ -283,7 +324,94 @@ macro_rules! impl_timer {
                     PwmChannel::Channel2 => {
                         self.timer.cc2_cfg().write(|w| w.mode().off());
                     }
+                });
+            }
+
+            /// Set raw duty cycle value for a PWM channel
+            ///
+            /// This provides direct access to the compare register for applications
+            /// requiring precise control beyond percentage-based duty cycles.
+            ///
+            /// # Arguments
+            ///
+            /// * `channel` - PWM channel (0, 1, or 2)
+            /// * `compare_value` - Raw compare value (0 to TOP)
+            ///
+            /// # Returns
+            ///
+            /// `Ok(())` on success, `Err(Error)` if compare value exceeds TOP
+            ///
+            /// # Example
+            ///
+            /// ```no_run
+            /// // Set exact compare value for 33.3% duty cycle with TOP=30000
+            /// timer.set_duty_raw(PwmChannel::Channel0, 10000)?;
+            /// ```
+            pub fn set_duty_raw(
+                &mut self,
+                channel: PwmChannel,
+                compare_value: u32,
+            ) -> Result<(), Error> {
+                if compare_value > self.top_value {
+                    return Err(Error::InvalidDutyCycle);
                 }
+
+                if !self.pwm_enabled {
+                    return Err(Error::InvalidChannel);
+                }
+
+                critical_section::with(|_cs| {
+                    // SAFETY: Compare value has been validated to be <= top_value (<=0xFFFF),
+                    // ensuring it fits within the CC register width.
+                    match channel {
+                        PwmChannel::Channel0 => {
+                            self.timer
+                                .cc0_oc()
+                                .write(|w| unsafe { w.bits(compare_value) });
+                        }
+                        PwmChannel::Channel1 => {
+                            self.timer
+                                .cc1_oc()
+                                .write(|w| unsafe { w.bits(compare_value) });
+                        }
+                        PwmChannel::Channel2 => {
+                            self.timer
+                                .cc2_oc()
+                                .write(|w| unsafe { w.bits(compare_value) });
+                        }
+                    }
+                });
+
+                Ok(())
+            }
+
+            /// Enable timer overflow interrupt
+            ///
+            /// This enables the overflow/underflow interrupt, useful for periodic tasks
+            /// synchronized with the timer period.
+            pub fn listen_overflow(&mut self) {
+                critical_section::with(|_cs| {
+                    self.timer.ien().modify(|_, w| w.of().set_bit());
+                });
+            }
+
+            /// Disable timer overflow interrupt
+            pub fn unlisten_overflow(&mut self) {
+                critical_section::with(|_cs| {
+                    self.timer.ien().modify(|_, w| w.of().clear_bit());
+                });
+            }
+
+            /// Check if overflow interrupt flag is set
+            pub fn is_overflow(&self) -> bool {
+                self.timer.if_().read().of().bit_is_set()
+            }
+
+            /// Clear overflow interrupt flag
+            pub fn clear_overflow(&mut self) {
+                critical_section::with(|_cs| {
+                    self.timer.if_().write(|w| w.of().set_bit());
+                });
             }
 
             /// Get the configured PWM frequency

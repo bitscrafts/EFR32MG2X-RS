@@ -1,56 +1,49 @@
 # EFR32MG24 HAL Development Backlog
 
-**Last Updated**: December 13, 2025
-**Current Sprint**: Phase B - Communication Peripherals (70% complete)
-**Next Sprint**: Phase B - Timers/PWM
+**Last Updated**: December 19, 2025
+**Current Sprint**: Phase C - Advanced Peripherals (In Progress)
+**Next Sprint**: Phase C Continuation
 
 ---
 
-## Ready (Prioritized for Phase B)
+## Ready (Prioritized for Phase C)
 
 ### High Priority
-- [ ] **TIMER**: Implement TIMER0 basic functionality @priority(high) @phase(B)
-  - Register access (CTRL, CMD, CNT, TOP, IEN, IF)
-  - Counter modes (up, down, up-down)
-  - Clock prescaler configuration
-  - Interrupt support
-
-- [ ] **TIMER**: Implement TIMER1-4 basic functionality @priority(high) @phase(B)
-  - Replicate TIMER0 implementation for TIMER1-4
-  - Peripheral consumption pattern
+- [ ] **LDMA**: Implement DMA controller support @priority(high) @phase(C)
+  - Single-channel DMA transfers
+  - Peripheral-to-memory transfers
+  - Memory-to-memory transfers
+  - Linked descriptor support
   - Critical section protection
 
-- [ ] **PWM**: Add PWM generation support @priority(high) @phase(B)
-  - CC (Capture/Compare) channel configuration
-  - Duty cycle control
-  - Frequency configuration
-  - embedded-hal PWM traits
+- [ ] **EMU**: Energy Management Unit @priority(high) @phase(C)
+  - Energy mode transitions (EM0-EM4)
+  - Voltage scaling
+  - Low-power mode support
+  - Peripheral clock gating
 
 ### Medium Priority
-- [ ] **Examples**: Create 06_timer.rs example @priority(medium) @phase(B)
-  - Basic timer counting
-  - Interrupt handling
-  - Overflow detection
+- [ ] **RTC**: Real-Time Clock (RTCC) @priority(medium) @phase(C)
+  - Time keeping functionality
+  - Calendar support
+  - Alarm interrupts
+  - Low-power operation
 
-- [ ] **Examples**: Create 07_pwm.rs example @priority(medium) @phase(B)
-  - LED brightness control via PWM
-  - Multiple PWM channels
-  - Frequency/duty cycle adjustment
-
-- [ ] **Documentation**: Write TIMER module README.md @priority(medium) @phase(B)
-  - Hardware register documentation
-  - Usage examples
-  - Timer modes explanation
+- [ ] **WDOG**: Watchdog Timer @priority(medium) @phase(C)
+  - System watchdog configuration
+  - Feed/refresh API
+  - Timeout configuration
+  - Lock mechanism
 
 ### Low Priority
-- [ ] **Testing**: Verify all examples build without warnings @priority(low) @phase(B)
-- [ ] **Documentation**: Update STATUS.md after Phase B completion @priority(low) @phase(B)
+- [ ] **Testing**: Hardware validation on XIAO MG24 Sense @priority(low) @phase(C)
+- [ ] **Documentation**: Update STATUS.md after Phase C milestones @priority(low) @phase(C)
 
 ---
 
 ## In Progress
 
-Currently no active tasks (documentation cleanup just completed).
+Currently no active tasks (TIMER implementation completed).
 
 ---
 
@@ -77,6 +70,37 @@ Currently no active tasks (documentation cleanup just completed).
 ---
 
 ## Done (Recent - Last 30 Days)
+
+### Week of December 16-20, 2025
+
+- [x] **IADC (ADC)**: Production-ready analog-to-digital converter @done(2025-12-19) @phase(C)
+  - Hardware register access (EN, CTRL, CFG0, SINGLE, CMD, STATUS, SINGLEFIFODATA)
+  - Single-shot ADC conversion (12-bit resolution)
+  - Configurable reference voltage (VBGR 1.21V, VDD)
+  - 6 input channels (Ch0-Ch5) + Ground reference
+  - Timeout-protected conversion (~1ms at 78 MHz)
+  - Thread-safe with critical sections (RTOS-ready)
+  - 5 unsafe blocks with comprehensive SAFETY documentation
+  - Production-grade module README (308 lines)
+  - Comprehensive example (08_adc.rs, 232 lines)
+  - Voltage calculation utilities
+  - Zero clippy warnings
+  - Build time: 6.69s
+
+- [x] **TIMER**: Production-ready TIMER0-4 implementation @done(2025-12-18) @phase(B)
+  - Hardware register access (CTRL, CMD, CNT, TOP, IEN, IF)
+  - All counter modes (up, down, up-down)
+  - Automatic prescaler calculation
+  - PWM generation (3 channels per timer, edge/center-aligned)
+  - Interrupt support (overflow with listen/unlisten API)
+  - Raw duty cycle API for precision control
+  - Critical sections for RTOS safety
+  - SAFETY comments on all unsafe blocks
+  - Production-grade documentation
+  - Comprehensive example (07_timer_pwm.rs)
+  - Rust HAL expert review: Grade A (SHIP IT)
+  - 440 lines of production code
+  - Zero clippy warnings
 
 ### Week of December 9-13, 2025
 
@@ -132,7 +156,14 @@ Currently no active tasks (documentation cleanup just completed).
 
 ## Ideas (Unprioritized Future Work)
 
-### Phase C Candidates
+### Phase C - In Progress
+- [x] **IADC**: Analog-to-Digital Converter @done(2025-12-19)
+  - Single-shot conversion ✅
+  - 12-bit resolution ✅
+  - VBGR/VDD reference selection ✅
+  - Continuous conversion (future)
+  - Multi-channel scan mode (future)
+
 - [ ] **EMU**: Energy Management Unit
   - Energy mode transitions (EM0-EM4)
   - Voltage scaling
@@ -142,11 +173,6 @@ Currently no active tasks (documentation cleanup just completed).
   - Peripheral-to-memory transfers
   - Memory-to-memory transfers
   - Linked descriptor support
-
-- [ ] **IADC**: Analog-to-Digital Converter
-  - Single-shot conversion
-  - Continuous conversion
-  - Multi-channel support
 
 - [ ] **LETIMER**: Low-Energy Timer
   - Real-time clock functionality
@@ -198,12 +224,18 @@ Currently no active tasks (documentation cleanup just completed).
 
 ## Metrics
 
-**Phase B Progress**: 70% complete (3 of 5 peripherals done)
-- ✅ USART (Complete)
-- ✅ I2C (Complete)
-- ✅ SPI (Complete)
-- ⏳ TIMER (In Ready)
-- ⏳ PWM (In Ready)
+**Phase C Progress**: 1 peripheral complete (IADC)
+- ✅ IADC (Complete - 12-bit ADC with VBGR/VDD reference)
+- ⏳ LDMA (Pending - DMA controller)
+- ⏳ EMU (Pending - Energy management)
+- ⏳ RTC (Pending - Real-time clock)
+- ⏳ WDOG (Pending - Watchdog timer)
+
+**Phase B Progress**: 100% complete ✅
+- ✅ USART (Complete - serial communication)
+- ✅ I2C (Complete - I2C master mode)
+- ✅ SPI (Complete - SPI master mode, 3 instances)
+- ✅ TIMER (Complete - TIMER0-4 with PWM)
 
 **Lines of Code (HAL)**:
 - GPIO: 617 lines
@@ -211,19 +243,25 @@ Currently no active tasks (documentation cleanup just completed).
 - Delay: ~100 lines
 - USART: 373 lines
 - I2C: 524 lines
-- **Total**: ~1,931 lines (excluding examples)
+- TIMER: 440 lines
+- ADC: ~300 lines
+- **Total**: ~2,671 lines (excluding examples)
 
-**Examples**: 5 working examples
+**Examples**: 8 working examples
 - 01_clock.rs
 - 02_delay.rs
 - 03_gpio.rs
 - 04_usart.rs
 - 05_i2c.rs
+- 06_spi.rs
+- 07_timer_pwm.rs
+- 08_adc.rs (NEW - 232 lines)
 
-**Time Investment**: ~18 hours total
+**Time Investment**: ~20 hours total
 - Phase 1-4: ~8 hours
 - Phase A: ~4 hours
 - Phase B: ~6 hours
+- Phase C: ~2 hours (IADC only)
 
 ---
 
@@ -254,6 +292,6 @@ Currently no active tasks (documentation cleanup just completed).
 
 ---
 
-**Last Review**: December 13, 2025
-**Next Review**: December 14, 2025
+**Last Review**: December 19, 2025
+**Next Review**: December 20, 2025
 **Maintained By**: Rust Embedded Orchestrator

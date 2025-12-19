@@ -57,7 +57,7 @@ EFR32MG24/
 
 ## Current Status
 
-### Completed (Phase 5 Tier 1)
+### Completed (Phase A - Essential Peripherals)
 
 **PAC (Peripheral Access Crate)**:
 - Successfully generated from B220 SVD file
@@ -413,7 +413,7 @@ cargo doc --no-deps --features rt --open
 
 ## Success Metrics
 
-**Phase 5 Tier 1** (Complete):
+**Phase A - Essential Peripherals** (Complete):
 - [x] GPIO hardware register access working
 - [x] CMU clock configuration working
 - [x] Delay implementation integrated
