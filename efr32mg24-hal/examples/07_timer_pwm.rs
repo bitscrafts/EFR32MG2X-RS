@@ -78,7 +78,7 @@ fn main() -> ! {
 
     // Main loop: cycle LED brightness using PWM duty cycle
     loop {
-        // Fade in: 0% ’ 100% brightness
+        // Fade in: 0% -> 100% brightness
         for duty in 0..=100u8 {
             timer
                 .set_duty_cycle(PwmChannel::Channel0, duty)
@@ -86,7 +86,7 @@ fn main() -> ! {
             delay.delay_ms(25); // 25ms per step = 2.5s total fade-in
         }
 
-        // Fade out: 100% ’ 0% brightness
+        // Fade out: 100% -> 0% brightness
         for duty in (0..=100u8).rev() {
             timer
                 .set_duty_cycle(PwmChannel::Channel0, duty)
