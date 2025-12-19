@@ -1,25 +1,39 @@
-//! Timer PWM LED Brightness Control Example
+//! Timer PWM Comprehensive Example
 //!
 //! This example demonstrates PWM generation using TIMER0 on the EFR32MG24.
-//! It uses PWM to control LED brightness, cycling through different duty cycles.
+//! It showcases multiple PWM features including multi-channel output, dynamic duty
+//! cycle control, and LED brightness animation.
 //!
 //! # Hardware Setup
 //!
 //! - Target: Seeed Studio XIAO MG24 Sense
-//! - LED: PB2 (onboard LED) connected to TIMER0 CC0 output
 //! - Crystal: 39 MHz HFXO
+//! - PWM Outputs (configure GPIO routing):
+//!   - CH0: PB2 (onboard LED) - animated brightness fade
+//!   - CH1: Optional external LED - 50% static duty cycle
+//!   - CH2: Optional external LED - 75% static duty cycle
 //!
 //! # Pin Routing
 //!
-//! To use PWM output, you must configure GPIO pin routing:
-//! - Configure PB2 as TIMER0_CC0 output via GPIO alternate function
+//! To use PWM outputs, configure GPIO pin routing:
+//! - PB2 as TIMER0_CC0 output via GPIO alternate function
 //! - See GPIO module documentation for pin routing configuration
+//!
+//! # Features Demonstrated
+//!
+//! 1. Timer initialization with PWM mode (edge-aligned)
+//! 2. Multiple PWM channels on a single timer
+//! 3. Dynamic duty cycle updates (Channel 0 fade animation)
+//! 4. Static duty cycles (Channels 1-2)
+//! 5. Helper functions for advanced usage patterns
 //!
 //! # Expected Behavior
 //!
-//! - LED brightness smoothly cycles from 0% to 100% and back
-//! - PWM frequency: 10 kHz (imperceptible flicker to human eye)
-//! - Cycle period: ~5 seconds per full brightness sweep
+//! - Channel 0: LED brightness smoothly cycles 0% -> 100% -> 0%
+//!   - PWM frequency: 10 kHz (imperceptible flicker)
+//!   - Cycle period: ~5 seconds per full sweep
+//! - Channel 1: Static 50% duty cycle (5 µs high, 5 µs low)
+//! - Channel 2: Static 75% duty cycle (7.5 µs high, 2.5 µs low)
 //!
 //! # Build & Run
 //!
@@ -37,6 +51,7 @@ use efr32mg24_hal::{
     clock::{ClockConfig, Clocks, HfxoConfig},
     delay::Delay,
     pac,
+    prelude::*,
     timer::{Config, PwmChannel, PwmMode, Timer0},
 };
 use panic_halt as _;
@@ -48,55 +63,62 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
 
     // Configure clocks with XIAO MG24's 39 MHz crystal
-    let clocks = Clocks::new(
+    let (clocks, cmu) = Clocks::new(
         dp.cmu_s,
         ClockConfig {
             hfxo: Some(HfxoConfig::new(39_000_000)),
             lfxo: Some(Default::default()),
         },
     )
-    .freeze();
+    .expect("Clock configuration failed");
+
+    let frozen_clocks = clocks.freeze(cmu);
 
     // Create delay provider for timing control
-    let mut delay = Delay::new(cp.SYST, &clocks);
+    let mut delay = Delay::new(cp.SYST, &frozen_clocks);
 
     // Configure TIMER0 for PWM at 10 kHz
     // PWM frequency = 10 kHz provides smooth LED dimming without visible flicker
     let mut timer = Timer0::new(
         dp.timer0_s,
         Config::new(10_000).with_pwm(PwmMode::EdgeAligned),
-        &clocks,
+        &frozen_clocks,
     );
 
-    // Enable PWM output on channel 0
-    // Note: GPIO pin routing must be configured separately to connect
-    // TIMER0_CC0 output to PB2 (LED pin)
+    // Configure Channel 0: Dynamic duty cycle (animated)
     timer.enable_channel(PwmChannel::Channel0);
+
+    // Configure Channel 1: Static 50% duty cycle
+    timer.set_duty_cycle(PwmChannel::Channel1, 50).unwrap();
+    timer.enable_channel(PwmChannel::Channel1);
+
+    // Configure Channel 2: Static 75% duty cycle
+    timer.set_duty_cycle(PwmChannel::Channel2, 75).unwrap();
+    timer.enable_channel(PwmChannel::Channel2);
 
     // Start the timer
     timer.start();
 
-    // Main loop: cycle LED brightness using PWM duty cycle
+    // Main loop: animate Channel 0 brightness while Channels 1-2 stay static
     loop {
-        // Fade in: 0% -> 100% brightness
+        // Fade in: 0% -> 100% brightness on Channel 0
         for duty in 0..=100u8 {
-            timer
-                .set_duty_cycle(PwmChannel::Channel0, duty)
-                .unwrap();
+            timer.set_duty_cycle(PwmChannel::Channel0, duty).unwrap();
             delay.delay_ms(25); // 25ms per step = 2.5s total fade-in
         }
 
-        // Fade out: 100% -> 0% brightness
+        // Fade out: 100% -> 0% brightness on Channel 0
         for duty in (0..=100u8).rev() {
-            timer
-                .set_duty_cycle(PwmChannel::Channel0, duty)
-                .unwrap();
+            timer.set_duty_cycle(PwmChannel::Channel0, duty).unwrap();
             delay.delay_ms(25); // 25ms per step = 2.5s total fade-out
         }
+
+        // Channels 1 and 2 continue at their static duty cycles
     }
 }
 
 // Example of raw duty cycle control for precise values
+// Useful when you need exact timing beyond 1% resolution
 #[allow(dead_code)]
 fn demonstrate_raw_duty_control(timer: &mut Timer0) {
     let top = timer.get_top_value();
@@ -115,6 +137,7 @@ fn demonstrate_raw_duty_control(timer: &mut Timer0) {
 }
 
 // Example of interrupt-driven PWM updates
+// Useful for updating PWM in background without blocking
 #[allow(dead_code)]
 fn demonstrate_interrupt_usage(timer: &mut Timer0) {
     // Enable overflow interrupt
@@ -127,9 +150,10 @@ fn demonstrate_interrupt_usage(timer: &mut Timer0) {
     // }
 }
 
-// Example of multiple PWM channels
+// Example of RGB LED control with three PWM channels
+// Each channel can independently control red, green, or blue intensity
 #[allow(dead_code)]
-fn demonstrate_multi_channel_pwm(timer: &mut Timer0) {
+fn demonstrate_rgb_led_control(timer: &mut Timer0) {
     // Enable all 3 PWM channels
     timer.enable_channel(PwmChannel::Channel0);
     timer.enable_channel(PwmChannel::Channel1);
@@ -139,4 +163,40 @@ fn demonstrate_multi_channel_pwm(timer: &mut Timer0) {
     timer.set_duty_cycle(PwmChannel::Channel0, 50).unwrap(); // Red: 50%
     timer.set_duty_cycle(PwmChannel::Channel1, 75).unwrap(); // Green: 75%
     timer.set_duty_cycle(PwmChannel::Channel2, 25).unwrap(); // Blue: 25%
+                                                             // Result: Cyan-ish color (more green, some red, less blue)
+}
+
+// Example of smooth color transitions for RGB LED
+// Demonstrates coordinated multi-channel duty cycle updates
+#[allow(dead_code)]
+fn demonstrate_rgb_fade(timer: &mut Timer0, delay: &mut Delay) {
+    // Fade from red to green
+    for step in 0..=100u8 {
+        timer
+            .set_duty_cycle(PwmChannel::Channel0, 100 - step)
+            .unwrap(); // Red decreases
+        timer.set_duty_cycle(PwmChannel::Channel1, step).unwrap(); // Green increases
+        timer.set_duty_cycle(PwmChannel::Channel2, 0).unwrap(); // Blue stays off
+        delay.delay_ms(20); // 2 second transition
+    }
+}
+
+// Example of motor speed control with PWM
+// Shows how to map RPM to duty cycle
+#[allow(dead_code)]
+fn demonstrate_motor_control(timer: &mut Timer0) {
+    // Motor specifications: 1000 RPM at 50% duty, 2000 RPM at 100%
+    let target_rpm: u16 = 1500; // Target: 1500 RPM
+
+    // Map RPM to duty cycle: 1000 RPM = 50%, 2000 RPM = 100%
+    // Linear interpolation: duty = 50 + (rpm - 1000) / 20
+    let duty = if target_rpm <= 1000 {
+        50 // Minimum speed
+    } else if target_rpm >= 2000 {
+        100 // Maximum speed
+    } else {
+        50 + ((target_rpm - 1000) / 20) as u8
+    };
+
+    timer.set_duty_cycle(PwmChannel::Channel0, duty).unwrap();
 }

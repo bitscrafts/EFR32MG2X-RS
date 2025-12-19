@@ -151,10 +151,14 @@ impl Adc {
             // portneg/pinneg fields are validated by the Channel enum which only contains
             // hardware-valid values. For single-ended mode, positive = channel, negative = GND.
             self.adc.single().write(|w| unsafe {
-                w.portpos().bits(8) // Port A (value 8)
-                    .pinpos().bits(channel as u8) // Positive pin = channel
-                    .portneg().bits(0) // Ground (single-ended)
-                    .pinneg().bits(0) // Pin 0 (ignored for GND)
+                w.portpos()
+                    .bits(8) // Port A (value 8)
+                    .pinpos()
+                    .bits(channel as u8) // Positive pin = channel
+                    .portneg()
+                    .bits(0) // Ground (single-ended)
+                    .pinneg()
+                    .bits(0) // Pin 0 (ignored for GND)
             });
         });
 
