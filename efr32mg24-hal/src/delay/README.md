@@ -1,4 +1,9 @@
-# Delay Module
+# Delay Module (A3-Delay)
+
+**Identifier**: A3-Delay
+**Phase**: A (Essential Peripherals)
+**Stage**: 3
+**Status**: Production-Ready
 
 **Module**: `efr32mg24_hal::delay`
 **Status**: Fully Implemented

@@ -1,4 +1,9 @@
-# USART Module
+# USART Module (B1-USART)
+
+**Identifier**: B1-USART
+**Phase**: B (Communication Peripherals)
+**Stage**: 1
+**Status**: Production-Ready
 
 Universal Synchronous/Asynchronous Receiver/Transmitter (USART) driver for EFR32MG24.
 

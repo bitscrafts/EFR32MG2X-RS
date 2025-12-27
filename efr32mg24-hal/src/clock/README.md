@@ -1,4 +1,9 @@
-# Clock Management Module
+# Clock Management Unit (A2-CMU)
+
+**Identifier**: A2-CMU
+**Phase**: A (Essential Peripherals)
+**Stage**: 2
+**Status**: Production-Ready
 
 **Module**: `efr32mg24_hal::clock`
 **Status**: Phase A - Critical Fixes Complete

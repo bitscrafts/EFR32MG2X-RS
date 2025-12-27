@@ -1,4 +1,9 @@
-# I2C Master Mode Driver
+# I2C Module (B2-I2C)
+
+**Identifier**: B2-I2C
+**Phase**: B (Communication Peripherals)
+**Stage**: 2
+**Status**: Production-Ready
 
 This module provides I2C (Inter-Integrated Circuit) master mode functionality for the EFR32MG24 microcontroller.
 

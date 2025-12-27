@@ -1,4 +1,9 @@
-# Analog-to-Digital Converter (IADC) Module
+# Analog-to-Digital Converter (IADC) Module (C1-ADC)
+
+**Identifier**: C1-ADC
+**Phase**: C (Advanced Peripherals)
+**Stage**: 1
+**Status**: Production-Ready
 
 Hardware Abstraction Layer for EFR32MG24 IADC peripheral with production-grade implementation.
 

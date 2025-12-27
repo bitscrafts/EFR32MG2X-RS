@@ -1,4 +1,9 @@
-# GPIO Module
+# GPIO Module (A1-GPIO)
+
+**Identifier**: A1-GPIO
+**Phase**: A (Essential Peripherals)
+**Stage**: 1
+**Status**: Production-Ready
 
 **Module**: `efr32mg24_hal::gpio`
 **Status**: Phase A - Critical Fixes Complete

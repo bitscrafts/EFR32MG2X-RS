@@ -1,4 +1,9 @@
-# SPI Master Mode Driver
+# SPI Module (B3-SPI)
+
+**Identifier**: B3-SPI
+**Phase**: B (Communication Peripherals)
+**Stage**: 3
+**Status**: Production-Ready
 
 This module provides SPI (Serial Peripheral Interface) master mode functionality using USART and EUSART peripherals for the EFR32MG24 microcontroller.
 

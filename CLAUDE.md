@@ -11,7 +11,48 @@ This project provides Rust support (PAC + HAL) for the Silicon Labs EFR32MG24 wi
 **Key Documentation**:
 - [docs/PLAN.md](docs/PLAN.md) - Development roadmap (9 phases)
 - [docs/STATUS.md](docs/STATUS.md) - Current implementation status
+- [docs/IDENTIFIER_SCHEME.md](docs/IDENTIFIER_SCHEME.md) - Hierarchical identifier specification
+- [docs/TERMINOLOGY.md](docs/TERMINOLOGY.md) - Phase/Stage terminology reference
 - [README.md](README.md) - Project overview and quick start
+
+## Terminology and Identifiers
+
+**IMPORTANT**: This project uses a two-level development hierarchy with unique identifiers:
+
+### Hierarchy Levels
+
+1. **Project Phases** (A, B, C, D...) - Overall HAL development roadmap milestones
+   - Scope: Multiple peripherals across months
+   - Example: "Phase C - Advanced Peripherals"
+
+2. **Module Stages** (1, 2, 3...) - Incremental rollout within a single peripheral
+   - Scope: Single module features across days/weeks
+   - Example: "DMA Stage 1 - Memory-to-memory transfers"
+
+**Always use**: "Phase C: DMA Stage 1 Complete" (NOT "Phase C: DMA Phase 1")
+
+### Hierarchical Identifiers
+
+Every work item has a unique identifier: **`[PHASE][STAGE]-[MODULE].[SUBSTAGE]`**
+
+**Examples**:
+```
+A1-GPIO      = Phase A, Stage 1: GPIO module
+B4-Timer     = Phase B, Stage 4: Timer/PWM
+C2-DMA.1     = Phase C, Stage 2 (DMA), Substage 1 (memory-to-memory)
+C3-EMU       = Phase C, Stage 3: Energy Management Unit
+```
+
+**Benefits**: Globally unique, self-documenting, sortable, searchable
+
+**Usage**:
+- Commits: `[C2-DMA.1] feat(hal): Add memory-to-memory DMA`
+- Tasks: `@identifier(C3-EMU)`
+- Docs: Module headers include identifier
+
+**References**:
+- [docs/TERMINOLOGY.md](docs/TERMINOLOGY.md) - Phase/Stage terminology
+- [docs/IDENTIFIER_SCHEME.md](docs/IDENTIFIER_SCHEME.md) - Complete identifier specification
 
 ## Project Structure
 

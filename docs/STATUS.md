@@ -1,24 +1,33 @@
 # Project Status Report
 
-**Date**: December 18, 2025
+**Date**: December 27, 2025
 **Project**: EFR32MG24 Rust Support (PAC + HAL)
-**Phase**: Phase B Complete ✅ - All Communication Peripherals + Timers/PWM
+**Phase**: Phase C Partial ✅ - C2-DMA.1 Complete
+**Identifiers**: P1-P4 (✅), A1-A3 (✅), B1-B4 (✅), C1-C2.1 (✅), C2.2-C7 (⏳)
 
 ---
 
 ## Executive Summary
 
-The EFR32MG24 Rust project has **successfully completed Phase B** with production-grade implementations of all essential peripherals. Core peripherals (GPIO, CMU, Delay), communication interfaces (USART, I2C, SPI), and timers/PWM (TIMER0-4) now have full hardware register access with embedded-hal v1.0 trait implementations. All 7 examples compile and build to flashable ARM Cortex-M33 binaries. The TIMER module has undergone comprehensive Rust HAL expert review and achieved production-ready status with zero clippy warnings, SAFETY-documented unsafe code, and RTOS-ready critical sections.
+The EFR32MG24 Rust project has **successfully completed Phase B** (B1-B4) and begun **Phase C** (C1-C7) with the production-grade DMA (C2-DMA.1) controller implementation. The project now uses a **hierarchical identifier system** (P1-P4, A1-A3, B1-B4, C1-C7) for tracking work items based on industry standards (WBS, JIRA, Military operations). Core peripherals (A1-GPIO, A2-CMU, A3-Delay), communication interfaces (B1-USART, B2-I2C, B3-SPI, B4-Timer), ADC (C1-ADC), and DMA (C2-DMA.1) now have full hardware register access with comprehensive SAFETY documentation. All 9 examples compile and build to flashable ARM Cortex-M33 binaries. The DMA module has undergone Rust HAL expert review achieving Grade B+, production-ready for memory-to-memory transfers with RTOS-safe critical sections.
 
-**Time Invested**: ~22 hours (8 hours Phase 1-4 + 4 hours Phase A + 6 hours Phase B + 4 hours production hardening)
-**Completion**: Phase B Complete ✅ (100% - all planned peripherals implemented)
-**Next Phase**: Phase C - Advanced Peripherals (ADC, DMA, Power Management)
+**Time Invested**: ~30 hours
+- Phase P (Preparation): ~8 hours (P1-P4)
+- Phase A (Essential): ~4 hours (A1-A3)
+- Phase B (Communication): ~6 hours (B1-B4)
+- Phase C (Advanced): ~8 hours (C1-ADC, C2-DMA.1)
+- Documentation/tooling: ~4 hours (identifier system, terminology)
+
+**Completion**: Phase C Partial (C1-C2.1 complete, 2/10 items = 20%)
+**Next Phase**: C2-DMA.2 (peripheral transfers), C3-EMU (power management)
 
 ---
 
 ## Completed Tasks
 
-### Phase 1-4: Foundation (December 2-3, 2025)
+### Phase P: Preparation (December 2-3, 2025)
+
+**Identifiers**: P1-Research, P2-PAC, P3-Build, P4-Workspace
 
 - [x] Comprehensive research on existing Rust support for EFR32 family
 - [x] MCU specification analysis (Cortex-M33, memory, peripherals)
@@ -31,9 +40,11 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 - [x] B220 PAC compilation verified (compiles in ~2.6 minutes)
 - [x] Documentation reorganized with SSOT principles
 
-### Phase A: Core HAL with Hardware Register Access (December 4, 2025)
+### Phase A: Essential Peripherals (December 4, 2025)
 
-**GPIO Module** - Complete with hardware register manipulation:
+**Identifiers**: A1-GPIO, A2-CMU, A3-Delay
+
+**A1-GPIO Module** - Complete with hardware register manipulation:
 - [x] PORTx_MODEL/MODEH registers for pin mode configuration (4 bits per pin)
 - [x] PORTx_DOUT, DOUTSET, DOUTCLR, DOUTTGL registers for digital output
 - [x] PORTx_DIN register for digital input reading
@@ -46,7 +57,7 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 - [x] Module split into 4 files (mod.rs, types.rs, pin.rs, traits.rs)
 - [x] Module README.md with hardware register documentation
 
-**CMU (Clock Management)** - Complete with hardware configuration:
+**A2-CMU (Clock Management)** - Complete with hardware configuration:
 - [x] CMU SYSCLKCTRL register access for clock source selection
 - [x] HFXO (39 MHz external crystal) configuration
 - [x] HFRCO (internal RC oscillator) configuration
@@ -57,14 +68,18 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 - [x] Module split into 4 files (mod.rs, types.rs, clocks.rs, frozen.rs)
 - [x] Module README.md with clock tree documentation
 
-**Delay Module** - Complete with SysTick integration:
+**A3-Delay Module** - Complete with SysTick integration:
 - [x] SysTick-based blocking delays
 - [x] Millisecond/microsecond/nanosecond precision
 - [x] embedded-hal v1.0 DelayNs trait implementation
 - [x] Integration with CMU clock frequencies for accurate timing
 - [x] Module README.md with timing accuracy notes
 
-**USART Module** - Complete with hardware register manipulation (Phase B):
+### Phase B: Communication Peripherals (December 4-18, 2025)
+
+**Identifiers**: B1-USART, B2-I2C, B3-SPI, B4-Timer
+
+**B1-USART Module** - Complete with hardware register manipulation:
 - [x] USART0_S register access (EN, FRAME, CLKDIV, CMD, STATUS, TXDATA, RXDATA)
 - [x] Configurable baud rates with automatic clock divider calculation
 - [x] 8/9 data bits, none/even/odd parity, 1/2 stop bits
@@ -76,7 +91,7 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 - [x] Module README.md with hardware register documentation (237 lines)
 - [x] Example 04_usart.rs - UART echo with 115200 baud
 
-**I2C Module** - Complete with hardware register manipulation (Phase B):
+**B2-I2C Module** - Complete with hardware register manipulation:
 - [x] I2C0/I2C1 register access (EN, CTRL, CMD, STATUS, CLKDIV, TXDATA, RXDATA, IF)
 - [x] I2C master mode with 7-bit addressing
 - [x] Configurable SCL frequency (Standard 100 kHz, Fast 400 kHz)
@@ -124,6 +139,36 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 - [x] Rust HAL expert review: Grade A (SHIP IT)
 - [x] Zero clippy warnings with -D warnings flag
 
+### Phase C: Advanced Peripherals (December 19-26, 2025)
+
+**ADC (IADC) Module** - Complete with production-grade implementation:
+- [x] IADC0_S register access (EN, CTRL, CFG0, SINGLE, CMD, STATUS, SINGLEFIFODATA)
+- [x] Single-shot ADC conversion (12-bit resolution)
+- [x] Configurable reference voltage (VBGR 1.21V, VDD)
+- [x] 6 input channels (Ch0-Ch5) + Ground reference
+- [x] Timeout-protected conversion (~1ms at 78 MHz)
+- [x] Thread-safe with critical sections (RTOS-ready)
+- [x] 5 unsafe blocks with comprehensive SAFETY documentation
+- [x] Production-grade module README (308 lines)
+- [x] Comprehensive example (08_adc.rs, 232 lines)
+- [x] Voltage calculation utilities
+- [x] Zero clippy warnings
+
+**C2-DMA (LDMA) Module** - Complete with Stage 1 implementation:
+- [x] LDMA_S register access (EN, CTRL, CHEN, SWREQ, IF, IEN, CHBUSY, CHDONE)
+- [x] Memory-to-memory transfers (blocking)
+- [x] Type-safe channels with const generics (Channel<N>)
+- [x] Multiple transfer sizes (Byte/Halfword/Word)
+- [x] TransferElement trait for compile-time size selection
+- [x] Software-triggered transfers (SWREQ register)
+- [x] Timeout protection (1M cycles ~13ms)
+- [x] Critical sections for RTOS safety
+- [x] 6 unsafe blocks with SAFETY documentation
+- [x] Production-grade module README (300+ lines)
+- [x] Comprehensive example (09_dma.rs, 180 lines)
+- [x] Rust HAL expert review: Grade B+ (SHIP IT for Stage 1)
+- [x] Module split into 2 files (mod.rs: 276 lines, types.rs: 65 lines)
+
 **Examples** - All compiling and building:
 - [x] 01_clock.rs - Clock configuration (HFXO/HFRCO/LFXO)
 - [x] 02_delay.rs - Millisecond/microsecond/nanosecond delays
@@ -131,8 +176,10 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 - [x] 04_usart.rs - UART echo at 115200 baud (8N1)
 - [x] 05_i2c.rs - I2C master read/write operations (100 kHz/400 kHz)
 - [x] 06_spi.rs - SPI master mode (all 3 instances)
-- [x] 07_timer_pwm.rs - PWM LED brightness fading (NEW)
-- [x] All 7 examples build to flashable ARM Cortex-M33 binaries
+- [x] 07_timer_pwm.rs - PWM LED brightness fading
+- [x] 08_adc.rs - ADC single-shot conversion (12-bit)
+- [x] 09_dma.rs - DMA memory-to-memory transfers (NEW)
+- [x] All 9 examples build to flashable ARM Cortex-M33 binaries
 
 **Documentation**:
 - [x] All module READMEs updated with Phase A/B implementation status
@@ -144,44 +191,72 @@ The EFR32MG24 Rust project has **successfully completed Phase B** with productio
 
 ---
 
-## Phase B Status
+## Phase Status Summary
 
-**COMPLETE** ✅ - All planned peripherals implemented and production-ready
+**Phase P (Preparation)**: 4/4 complete (100%) ✅
+- ✅ P1-Research: Ecosystem analysis
+- ✅ P2-PAC: SVD→PAC generation (138K lines)
+- ✅ P3-Build: Linker and build system
+- ✅ P4-Workspace: Project structure
+
+**Phase A (Essential)**: 3/3 complete (100%) ✅
+- ✅ A1-GPIO: Digital I/O
+- ✅ A2-CMU: Clock management
+- ✅ A3-Delay: SysTick delays
+
+**Phase B (Communication)**: 4/4 complete (100%) ✅
+- ✅ B1-USART: Serial communication
+- ✅ B2-I2C: I2C master mode
+- ✅ B3-SPI: SPI master mode
+- ✅ B4-Timer: Timers and PWM
+
+**Phase C (Advanced)**: 2/10 in progress (20%) ⏳
+- ✅ C1-ADC: Single-shot 12-bit conversion with VBGR/VDD reference (December 19, 2025)
+- ✅ C2-DMA.1: Memory-to-memory transfers, blocking mode, type-safe channels (December 27, 2025)
+- ⏳ C2-DMA.2: Peripheral transfers (planned)
+- ⏳ C2-DMA.3: Linked descriptors (planned)
+- ⏳ C2-DMA.4: Interrupt-driven async (planned)
+- ⏳ C3-EMU: Energy management (planned)
+- ⏳ C4-RTC: Real-time clock (planned)
+- ⏳ C5-WDOG: Watchdog timer (planned)
+- ⏳ C6-Test: Hardware validation (blocked - no hardware)
+- ⏳ C7-Docs: Documentation updates (ongoing)
+
+**In Progress**:
+- ⏳ Power Management (EMU)
+- ⏳ RTC (RTCC)
+- ⏳ Watchdog (WDOG)
 
 ---
 
 ## Next Steps
 
-### Phase C: Advanced Peripherals (Future Work)
+### Phase C Continuation: Advanced Peripherals
 
-**Priority 1: ADC (IADC)** - Analog-to-Digital Converter
-1. Single-shot conversion
-2. Continuous conversion
-3. Multi-channel support
-4. embedded-hal ADC traits
+**Priority 1: DMA (LDMA) Stage 2** - Enhanced DMA Features
+1. All 8 channels (CH0-CH7)
+2. Linked descriptor support
+3. Peripheral-to-memory transfers
+4. Interrupt-driven async transfers
+5. Integration with USART/I2C/SPI
 
-**Priority 2: DMA (LDMA)** - Linked DMA Controller
-1. Peripheral-to-memory transfers
-2. Memory-to-memory transfers
-3. Linked descriptor support
-4. Integration with USART/I2C/SPI for async transfers
-
-**Priority 3: Power Management (EMU)** - Energy Management Unit
+**Priority 2: Power Management (EMU)** - Energy Management Unit
 1. Energy mode transitions (EM0-EM4)
 2. Voltage scaling
 3. Low-power mode support
+4. Peripheral clock gating
 
-**Priority 3: SPI** - SPI master mode
-1. USART in SPI mode or dedicated SPI peripheral
-2. Master mode configuration
-3. embedded-hal SPI traits
-4. Example: SPI flash or external peripheral
+**Priority 3: RTC (RTCC)** - Real-Time Clock
+1. Time keeping functionality
+2. Calendar support
+3. Alarm interrupts
+4. Low-power operation
 
-**Priority 4: Timers** - Timer and PWM
-1. TIMER0-4 register access
-2. Basic timer functionality
-3. PWM output
-4. Example: PWM LED brightness control
+**Priority 4: Watchdog (WDOG)** - System Watchdog
+1. Watchdog configuration
+2. Feed/refresh API
+3. Timeout configuration
+4. Lock mechanism
 
 See [PLAN.md](PLAN.md) for complete development roadmap.
 
@@ -189,20 +264,29 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 
 ## Project Metrics
 
-### HAL Implementation (Phase A + Phase B)
+### HAL Implementation (Phase A + Phase B + Phase C Partial)
 - **GPIO Module**: 617 lines across 4 files (mod.rs, types.rs, pin.rs, traits.rs)
 - **CMU Module**: 317 lines across 4 files (mod.rs, types.rs, clocks.rs, frozen.rs)
 - **Delay Module**: ~100 lines in 1 file (mod.rs)
 - **USART Module**: 373 lines across 3 files + README (mod.rs: 212, types.rs: 105, traits.rs: 56)
 - **I2C Module**: 524 lines across 3 files + README (mod.rs: 400, types.rs: 67, traits.rs: 57)
-- **Examples**: 5 examples, all compile to ARM Cortex-M33 binaries
+- **SPI Module**: ~750 lines across 4 files (mod.rs, types.rs, spi.rs, traits.rs)
+- **TIMER Module**: ~440 lines across 3 files (mod.rs, types.rs, traits.rs)
+- **ADC Module**: ~300 lines across 2 files (mod.rs, types.rs)
+- **DMA Module**: 341 lines across 2 files (mod.rs: 276 lines, types.rs: 65 lines)
+- **Total HAL Code**: ~3,762 lines (excluding examples and documentation)
+- **Examples**: 9 examples, all compile to ARM Cortex-M33 binaries
   - 01_clock.rs - Clock configuration
   - 02_delay.rs - SysTick delays
   - 03_gpio.rs - LED blink and button input
   - 04_usart.rs - UART echo at 115200 baud
   - 05_i2c.rs - I2C master communication (100 kHz/400 kHz)
-- **Build Time**: ~3 minutes (release mode with optimizations)
-- **embedded-hal v1.0**: OutputPin, InputPin, DelayNs, I2c, ErrorType traits implemented
+  - 06_spi.rs - SPI master mode (all 3 instances)
+  - 07_timer_pwm.rs - PWM LED brightness control
+  - 08_adc.rs - ADC single-shot 12-bit conversion
+  - 09_dma.rs - DMA memory-to-memory transfers
+- **Build Time**: ~3-6 minutes (release mode with optimizations)
+- **embedded-hal v1.0**: OutputPin, InputPin, DelayNs, I2c, SpiBus, ErrorType traits implemented
 - **embedded-hal-nb v1.0**: Write<u8>, Read<u8>, ErrorType traits implemented
 
 ### PAC Generation Results
@@ -213,10 +297,11 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 - **SVD Files Available**: 41 device variants (27 A-series + 14 B-series)
 
 ### Documentation
-- **Total Documents**: 14+ organized documents
-- **Module READMEs**: GPIO, CMU, Delay, USART, I2C modules all documented
+- **Total Documents**: 16+ organized documents
+- **Module READMEs**: GPIO, CMU, Delay, USART, I2C, SPI, TIMER, ADC, DMA - all documented
 - **HAL Documentation**: PHASE2_PLAN.md, STATUS.md, BUILD_SYSTEM.md, LINKER_SETUP.md
 - **Backup System**: .archive folder with timestamped backups
+- **Recovery Guides**: Comprehensive flashing and recovery documentation (SAMD11 bridge, probe-rs)
 
 ### Time Investment
 - Research & Setup (Phase 1-2): ~4 hours
@@ -224,8 +309,12 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 - HAL Phase A Implementation: ~4 hours
 - HAL Phase B USART Implementation: ~2 hours
 - HAL Phase B I2C Implementation: ~2 hours
+- HAL Phase B SPI Implementation: ~2 hours
+- HAL Phase B TIMER Implementation: ~2 hours (+ 2 hours production hardening)
+- HAL Phase C ADC Implementation: ~2 hours
+- HAL Phase C DMA Implementation: ~4 hours (research, implementation, review)
 
-**Total Time**: ~16 hours
+**Total Time**: ~30 hours
 
 ---
 
@@ -458,6 +547,6 @@ The EFR32MG24 Rust project has successfully completed Phase B with all communica
 **Confidence**: High (proven with production standards, zero warnings, RTOS-ready)
 **Risk Level**: Low (comprehensive testing, expert review passed)
 
-**Last Updated**: December 18, 2025
+**Last Updated**: 2025-12-27
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/efr32-rs (planned)

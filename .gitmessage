@@ -1,0 +1,26 @@
+[IDENTIFIER] type(scope): Brief description
+
+# [IDENTIFIER] format: [PHASE][STAGE]-[MODULE].[SUBSTAGE]
+# Examples:
+#   [C2-DMA.1] feat(hal): Add memory-to-memory DMA transfers
+#   [C3-EMU] feat(hal): Implement energy mode transitions
+#   [A1-GPIO,A2-CMU] docs: Update Phase A documentation
+#
+# Types: feat, fix, docs, style, refactor, test, chore
+# Scopes: hal, pac, build, ci, docs
+#
+# Detailed description (optional):
+# - What changed
+# - Why it changed
+# - Breaking changes (if any)
+#
+# References (optional):
+# - Related issues: #123
+# - Related identifiers: A1-GPIO, B2-I2C
+
+# Phase Identifiers:
+# P1-P4: Preparation (PAC, build system)
+# A1-A3: Phase A - Essential Peripherals (GPIO, CMU, Delay)
+# B1-B4: Phase B - Communication (USART, I2C, SPI, Timer)
+# C1-C7: Phase C - Advanced (ADC, DMA, EMU, RTC, WDOG, Test, Docs)
+# D1-DX: Phase D - Future (Radio, Crypto, Security)
