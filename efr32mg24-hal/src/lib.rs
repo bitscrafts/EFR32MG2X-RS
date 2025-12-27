@@ -33,8 +33,8 @@
 //!
 //! ## Phase C - Advanced Peripherals (In Progress)
 //!
-//! - **ADC (IADC)** - Analog-to-digital converter ⏳
-//! - DMA (LDMA)
+//! - **ADC (IADC)** - Analog-to-digital converter ✅
+//! - **DMA (LDMA)** - Direct Memory Access controller ⏳
 //! - Power management (EMU)
 //! - RTC (RTCC)
 //! - Watchdog (WDOG)
@@ -76,6 +76,7 @@
 //! - [`adc`] - Analog-to-Digital Converter (IADC)
 //! - [`clock`] - Clock Management Unit (CMU) configuration
 //! - [`delay`] - Blocking delays using SysTick
+//! - [`dma`] - Direct Memory Access (LDMA) controller
 //! - [`gpio`] - General Purpose I/O
 //! - [`i2c`] - I2C master mode
 //! - [`spi`] - SPI master mode (USART in SPI mode)
@@ -94,6 +95,7 @@ pub use efr32mg24_pac as pac;
 pub mod adc;
 pub mod clock;
 pub mod delay;
+pub mod dma;
 pub mod gpio;
 pub mod i2c;
 pub mod spi;
