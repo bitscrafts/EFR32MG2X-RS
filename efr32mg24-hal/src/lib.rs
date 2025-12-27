@@ -34,10 +34,10 @@
 //! ## Phase C - Advanced Peripherals (In Progress)
 //!
 //! - **ADC (IADC)** - Analog-to-digital converter ✅
-//! - **DMA (LDMA)** - Direct Memory Access controller ⏳
-//! - Power management (EMU)
-//! - RTC (RTCC)
-//! - Watchdog (WDOG)
+//! - **DMA (LDMA)** - Direct Memory Access controller (Stage 1) ✅
+//! - **EMU** - Energy Management Unit (EM0-EM2 transitions) ✅
+//! - **RTC** - Real-Time Clock (SYSRTC0) ✅
+//! - **WDOG** - Watchdog Timer (WDOG0) ⏳
 //!
 //! # Quick Start
 //!
@@ -77,11 +77,14 @@
 //! - [`clock`] - Clock Management Unit (CMU) configuration
 //! - [`delay`] - Blocking delays using SysTick
 //! - [`dma`] - Direct Memory Access (LDMA) controller
+//! - [`emu`] - Energy Management Unit (power modes)
 //! - [`gpio`] - General Purpose I/O
 //! - [`i2c`] - I2C master mode
+//! - [`rtc`] - Real-Time Clock (SYSRTC0)
 //! - [`spi`] - SPI master mode (USART in SPI mode)
 //! - [`timer`] - Timer and PWM functionality (TIMER0-4)
 //! - [`usart`] - USART/UART serial communication
+//! - [`wdog`] - Watchdog Timer (WDOG0)
 //! - [`prelude`] - Common imports for convenience
 //!
 //! # Feature Flags
@@ -96,11 +99,14 @@ pub mod adc;
 pub mod clock;
 pub mod delay;
 pub mod dma;
+pub mod emu;
 pub mod gpio;
 pub mod i2c;
+pub mod rtc;
 pub mod spi;
 pub mod timer;
 pub mod usart;
+pub mod wdog;
 
 /// Prelude module for convenient imports
 ///

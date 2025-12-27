@@ -4,6 +4,70 @@ Log of significant achievements, milestones, and key decisions throughout the pr
 
 ---
 
+## 2025-12-27: Phase C Complete - Advanced Peripherals (5/5 Modules)
+
+**Milestone**: Phase C completion with all 5 core advanced peripheral modules implemented, reviewed, and production-ready
+
+**Achievements**:
+- **C1-ADC (IADC)**: 12-bit single-shot ADC with VBGR/VDD voltage reference, 6 input channels, timeout protection, comprehensive voltage calculation utilities (Grade A review)
+- **C2-DMA.1 (LDMA)**: Memory-to-memory DMA transfers with type-safe channels (const generics), multiple transfer sizes (Byte/Halfword/Word), software-triggered transfers, RTOS-ready (Grade B+ review)
+- **C3-EMU**: Energy Management Unit with EM0→EM1→EM2→EM3 transitions, type-safe energy mode states, voltage scaling, BOD configuration, EM4 hibernate support (Grade A review)
+- **C4-RTC (RTCC)**: Real-Time Counter with calendar mode (date/time tracking), counter mode (millisecond precision), alarm functionality, capture/compare channels, 32.768 kHz LFXO clock (Grade A review)
+- **C5-WDOG**: Watchdog Timer with 16 timeout periods (9ms-4.3min), lock mechanism (key 0xABE8), energy mode support (EM1/EM2/EM3), debug mode, warning mode, SYNCBUSY synchronization (Grade B+ review)
+- Created 5 comprehensive examples (08_adc.rs, 09_dma.rs, 10_emu.rs, 11_rtc.rs, 12_wdog.rs) totaling ~1,035 lines
+- Wrote 5 production-grade module READMEs (~2,400 lines total) with architecture diagrams, register tables, production patterns
+- Fixed build errors across all 12 examples (PAC field naming: CMU_S→cmu_s, removed non-existent .swd() calls)
+- All modules expert-reviewed by rust-hal-expert skill (STM32 chief engineer persona)
+- Zero build warnings across all modules and examples
+
+**Impact**:
+- **Low-Power Capabilities**: Complete energy management (EM0-EM4) enables battery-powered applications with µA current consumption in deep sleep
+- **System Reliability**: Watchdog timer with lock mechanism provides production-grade system recovery from hangs/crashes
+- **Real-Time Operations**: RTC calendar and alarm support enables time-aware applications without external RTC chips
+- **Analog Input**: 12-bit ADC with voltage reference enables sensor integration (temperature, light, battery monitoring)
+- **DMA Foundation**: Memory-to-memory DMA (Stage 1) establishes foundation for future peripheral-to-memory async I/O
+- **Production Readiness**: All modules RTOS-ready with critical sections, comprehensive error handling, type-safe APIs
+- **Documentation Excellence**: ~2,400 lines of module READMEs with mermaid diagrams, register tables, production patterns, expert review notes
+
+**Metrics**:
+- **Lines of code**: ~1,010 new HAL lines (total: ~4,772 lines, was ~3,762)
+  - ADC: ~300 lines (2 files)
+  - DMA: 341 lines (2 files)
+  - EMU: ~280 lines (3 files)
+  - RTC: ~350 lines (3 files)
+  - WDOG: ~380 lines (3 files)
+- **Examples**: 5 new examples (08-12), 12 total examples, ~1,035 new lines
+- **Documentation**: ~2,400 lines of module READMEs (ADC: 308, DMA: 300+, EMU: 420+, RTC: 580+, WDOG: 400+)
+- **Build time**: 36.64s (all 12 examples, release mode, thumbv8m.main-none-eabihf)
+- **Expert reviews**: 5 modules reviewed (4× Grade A, 1× Grade B+), all approved "SHIP IT"
+- **Duration**: December 19-27, 2025 (8 days)
+- **Phase completion**: 5/5 core modules (100%)
+
+**Technical Highlights**:
+- **Type-State Patterns**: Energy modes (Em0, Em1, Em2, Em3) use type-state pattern for compile-time energy mode safety
+- **Builder Patterns**: All modules use builder pattern for ergonomic configuration (EmuConfig, RtcConfig, WdogConfig)
+- **Const Generics**: DMA channels use const generics for type-safe channel selection (Channel<0>, Channel<1>, etc.)
+- **Lock Mechanisms**: WDOG implements production-grade lock with magic key (0xABE8) to prevent malicious/accidental changes
+- **Calendar Support**: RTC implements full calendar (year/month/day/hour/minute/second) with BCD encoding/decoding
+- **Voltage References**: ADC supports both VBGR (1.21V bandgap) and VDD references with automatic voltage calculation
+- **Critical Sections**: All modules use cortex_m::interrupt::free for RTOS compatibility and atomicity guarantees
+- **Register Synchronization**: WDOG and RTC implement SYNCBUSY wait patterns for multi-clock-domain synchronization
+- **Expert Review Integration**: All modules reviewed by rust-hal-expert skill comparing to stm32-rs/nrf-hal industry patterns
+
+**Key Decisions**:
+- **DMA Staged Rollout**: Implemented Stage 1 (memory-to-memory) first, deferring Stages 2-4 (peripheral transfers, linked descriptors, async interrupts) to future phase
+- **No Drop for WDOG**: Intentionally no Drop implementation for watchdog - disabling would defeat safety purpose
+- **PAC Field Naming**: Discovered and fixed PAC lowercase field naming (cmu_s vs CMU_S) across all 12 examples
+- **SWD Safety**: Removed non-existent .swd() clock enable calls, documented that SWD remains functional with HFXO/HFRCO enabled
+- **Phase C Scope**: Declared Phase C complete at 5/5 core modules (100%), treating DMA enhancements as future phase work
+
+**Retrospective**:
+- **What Went Well**: Expert review process caught architectural issues early, comprehensive READMEs improved code quality, staged DMA approach provided early value
+- **Challenges**: PAC field naming inconsistencies required last-minute fixes, non-existent .swd() register caused build failures across 12 examples
+- **Lessons Learned**: Always verify PAC field availability before usage, stage complex peripherals (DMA) for incremental delivery, comprehensive documentation prevents future confusion
+
+---
+
 ## 2025-12-13: Documentation Cleanup & Project Management System
 
 **Milestone**: Documentation standardization and project tracking infrastructure

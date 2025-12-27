@@ -277,7 +277,155 @@ DMA transfer is 50-100x faster than CPU memcpy and frees the CPU for other tasks
 4. **Memory-to-Memory Only**: Peripheral transfers not yet implemented
 5. **Max Length**: 2047 units per transfer
 
-## Future Enhancements (Stage 2)
+## Future Enhancements (Stage 2+)
+
+**Status**: Deferred to later implementation phase
+
+Stage 2 (peripheral transfers) requires significant additional complexity:
+- Peripheral request signal configuration via REQSEL registers
+- Integration with peripheral modules (IADC, USART, I2C, SPI)
+- Peripheral-specific trigger conditions
+- More complex testing and validation
+
+The decision has been made to complete simpler Phase C modules (C4-RTC, C5-WDOG) first to build momentum, then return to DMA Stage 2 with fresh perspective.
+
+### Stage 2 Research: Peripheral Request Signals
+
+**Research Complete**: December 27, 2025
+
+The LDMA controller supports peripheral-triggered transfers via **peripheral request signals**. Each channel can be configured to respond to specific peripheral events.
+
+#### REQSEL Register Configuration
+
+Each channel has a `LDMA_CHx_REQSEL` register that selects the peripheral request source:
+
+```text
+LDMA_CHx_REQSEL:
+  SOURCESEL = Peripheral type (0x0 = None, 0x1 = PRS, 0x8 = IADC, etc.)
+  SIGSEL    = Signal within peripheral (0x0 = first signal, 0x1 = second, etc.)
+```
+
+#### Peripheral Request Signal Mappings
+
+**IADC (Analog-to-Digital Converter)**:
+- `SOURCESEL = 0x8` (IADC)
+- `SIGSEL = 0x0` → IADC Single FIFO request (when FIFO reaches DVL)
+- `SIGSEL = 0x1` → IADC Scan FIFO request (when FIFO reaches DVL)
+- **Trigger Condition**: FIFO data valid level (DVL) reached
+- **Clear Condition**: FIFO read drops count below DVL
+
+**USART (Serial Communication)**:
+- `SOURCESEL = 0x0C` (USART0), `0x0D` (USART1), etc.
+- `SIGSEL = 0x0` → USART RX Data Valid (RXDATAV)
+- `SIGSEL = 0x1` → USART TX Buffer Level (TXBL)
+- **Trigger Condition**: Data ready (RX) or buffer empty (TX)
+
+**PRS (Peripheral Reflex System)**:
+- `SOURCESEL = 0x1` (PRS)
+- `SIGSEL = 0x0` → PRSREQ0
+- `SIGSEL = 0x1` → PRSREQ1
+- **Use Case**: Custom triggers from GPIO, timers, comparators
+
+#### Implementation Requirements
+
+To implement peripheral transfers, the following is needed:
+
+1. **REQSEL Configuration API**:
+   ```rust
+   pub enum PeripheralRequest {
+       IadcSingle,
+       IadcScan,
+       Usart0Rx,
+       Usart0Tx,
+       PrsReq0,
+       PrsReq1,
+       // ... more peripherals
+   }
+
+   impl PeripheralRequest {
+       fn reqsel_bits(&self) -> (u8, u8) {
+           match self {
+               Self::IadcSingle => (0x8, 0x0),
+               Self::IadcScan => (0x8, 0x1),
+               Self::Usart0Rx => (0x0C, 0x0),
+               Self::Usart0Tx => (0x0C, 0x1),
+               // ...
+           }
+       }
+   }
+   ```
+
+2. **Peripheral Integration**:
+   - IADC module must expose DMA request configuration
+   - USART module must enable RXDATAV/TXBL signals
+   - Proper sequencing: configure peripheral BEFORE enabling DMA
+
+3. **Circular Buffer Support**:
+   - For continuous data streaming (ADC sampling, UART reception)
+   - Requires linked descriptors with LINK field pointing back
+
+4. **Interrupt-Driven Completion**:
+   - Stage 1 uses polling (blocking)
+   - Stage 2 needs interrupt handlers for async operation
+
+#### Example: IADC Continuous Sampling (Future)
+
+```rust
+// Configure IADC for continuous scan with DMA
+let mut iadc = Iadc::new(dp.iadc0);
+iadc.configure_scan(
+    &[IadcChannel::Ch0, IadcChannel::Ch1],
+    IadcReference::Vbgr,
+)?;
+iadc.enable_dma_request(DmaRequest::ScanFifo);
+
+// Configure DMA for peripheral-to-memory
+let mut dma = Dma::new(dp.ldma_s);
+let mut ch0 = dma.channel0();
+
+let mut adc_buffer = [0u16; 128];
+
+ch0.configure_peripheral_to_memory(
+    PeripheralRequest::IadcScan,
+    &mut adc_buffer,
+    TransferMode::Circular,  // Loop back for continuous sampling
+)?;
+
+// Start continuous sampling
+ch0.enable();
+iadc.start_scan();
+
+// Process samples as they arrive (interrupt handler or polling)
+```
+
+#### Complexity Analysis
+
+**Why Stage 2 is Deferred**:
+
+1. **Peripheral Coupling**: Requires modifications to IADC, USART, I2C, SPI modules
+2. **Testing Complexity**: Needs hardware validation with actual peripheral transfers
+3. **Interrupt Infrastructure**: Requires interrupt handler setup for async operation
+4. **Circular Buffer Logic**: LINK field configuration is non-trivial
+5. **Documentation Burden**: Each peripheral integration needs examples and docs
+
+**Estimated Effort**:
+- IADC DMA: ~3-4 hours (single peripheral)
+- USART RX DMA: ~2-3 hours
+- USART TX DMA: ~2-3 hours
+- Circular buffers: ~2-3 hours
+- Interrupt-driven: ~3-4 hours
+- Testing & examples: ~4-5 hours
+- **Total**: ~16-22 hours for complete Stage 2
+
+**Strategic Decision**: Complete simpler modules (RTC, WDOG, ~1-2 hours each) to build momentum and reach Phase C completion faster. Return to DMA Stage 2 with fresh perspective and more complete HAL foundation.
+
+#### References
+
+- [AN1029: Linked Direct Memory Access (LDMA) Controller](https://www.silabs.com/documents/public/application-notes/AN1029-efm32-ldma.pdf)
+- [AN1189: Incremental Analog to Digital Converter (IADC)](https://www.silabs.com/documents/public/application-notes/an1189-efr32-iadc.pdf)
+- [EFR32xG24 Reference Manual - Chapter 16: LDMA](https://www.silabs.com/documents/public/reference-manuals/efr32xg24-rm.pdf)
+
+---
 
 ### All 8 Channels
 
@@ -351,4 +499,4 @@ See `examples/09_dma.rs` for comprehensive test cases:
 **Production Status**: Ready for memory-to-memory transfers
 **Phase**: C.1 (DMA Stage 1)
 
-<!-- META: last_updated=2025-12-26 version=1.0.0 phase=C status=production-ready unsafe_blocks=6 -->
+<!-- META: last_updated=2025-12-27 version=1.0.0 phase=C stage=1 status=production-ready stage2_research_complete=2025-12-27 unsafe_blocks=6 -->

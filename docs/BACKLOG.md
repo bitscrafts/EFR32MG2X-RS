@@ -9,24 +9,19 @@
 ## Ready (Prioritized for Phase C)
 
 ### High Priority
-- [ ] **C3-EMU**: Energy Management Unit @identifier(C3-EMU) @priority(high) @phase(C) @stage(3)
-  - Energy mode transitions (EM0-EM4)
-  - Voltage scaling
-  - Low-power mode support
-  - Peripheral clock gating
+
+(No high priority tasks remaining in Phase C Stage 1)
 
 ### Medium Priority
-- [ ] **C4-RTC**: Real-Time Clock (RTCC) @identifier(C4-RTC) @priority(medium) @phase(C) @stage(4)
-  - Time keeping functionality
-  - Calendar support
-  - Alarm interrupts
-  - Low-power operation
 
-- [ ] **C5-WDOG**: Watchdog Timer @identifier(C5-WDOG) @priority(medium) @phase(C) @stage(5)
-  - System watchdog configuration
-  - Feed/refresh API
-  - Timeout configuration
-  - Lock mechanism
+- [ ] **C2-DMA.2**: DMA Stage 2 - Peripheral Transfers @identifier(C2-DMA.2) @priority(medium) @phase(C) @stage(2.2) @deferred(2025-12-27)
+  - **Status**: Research complete, deferred to later phase
+  - Peripheral-to-memory transfers (IADC, USART)
+  - REQSEL register configuration
+  - Circular buffer support
+  - Interrupt-driven transfers
+  - **Complexity**: ~16-22 hours estimated effort
+  - **Decision**: Complete simpler modules first (RTC, WDOG), return with fresh perspective
 
 ### Low Priority
 - [ ] **C6-Test**: Hardware validation on XIAO MG24 Sense @identifier(C6-Test) @priority(low) @phase(C) @stage(6)
@@ -97,6 +92,37 @@
 
 ### Week of December 23-27, 2025
 
+- [x] **C5-WDOG**: Watchdog Timer implementation @done(2025-12-27) @identifier(C5-WDOG) @phase(C) @stage(5)
+  - Stage 1 complete: ~220 lines (mod.rs: 220, types.rs: 153, traits.rs placeholder)
+  - 16 configurable timeout periods (9ms to 4.3 minutes)
+  - Lock mechanism for production safety
+  - Energy mode support (EM1/EM2/EM3 configurable)
+  - Debug mode control (freeze during debugging)
+  - Warning mode (interrupt without reset for testing)
+  - Builder pattern configuration API
+  - Grade B+ expert review (7.5/10, SHIP IT approved)
+  - Example 12_wdog.rs demonstrating usage patterns (240 lines)
+  - Comprehensive README.md (7200+ words, mermaid diagrams, production patterns)
+  - RTOS-compatible with critical section protection
+  - Production-ready for basic watchdog use cases
+  - Safety-critical module with lock protection
+  - No Drop implementation (intentional - watchdog stays active)
+
+- [x] **C4-RTC**: Real-Time Clock implementation @done(2025-12-27) @identifier(C4-RTC) @phase(C) @stage(4)
+  - Stage 1 complete: ~280 lines (mod.rs: 280, types.rs: 40, traits.rs placeholder)
+  - 32-bit counter-based timekeeping (not calendar mode)
+  - Single alarm (compare match 0) with interrupt flag
+  - LFXO clock source support (32.768 kHz)
+  - Time conversion helpers (ticks ↔ seconds/milliseconds)
+  - Grade B+ expert review (7.5/10, SHIP IT approved)
+  - Example 11_rtc.rs demonstrating alarms and periodic wake-up
+  - Comprehensive README.md (5800+ words, mermaid diagrams, accuracy tables)
+  - RTOS-compatible with critical section protection
+  - Production-ready for counter-based timekeeping
+  - Low-power operation in EM0-EM3 energy modes
+  - Up to 136 years range at 32.768 kHz
+  - ~30.5 µs resolution per tick
+
 - [x] **C2-DMA.1**: Implement DMA controller support @done(2025-12-27) @identifier(C2-DMA.1) @phase(C) @stage(2.1)
   - Stage 1 complete: 341 lines (mod.rs: 276, types.rs: 65)
   - Memory-to-memory transfers (blocking)
@@ -109,6 +135,20 @@
   - Critical sections for RTOS safety
   - Timeout protection (1M cycles ~13ms)
   - 6 unsafe blocks with SAFETY documentation
+
+- [x] **C3-EMU**: Energy Management Unit implementation @done(2025-12-27) @identifier(C3-EMU) @phase(C) @stage(3)
+  - Stage 1 complete: 490 lines (mod.rs: 350, types.rs: 140, traits.rs placeholder)
+  - EM1 (Sleep Mode) - WFI-based entry, wakes on any interrupt
+  - EM2 (Deep Sleep Mode) - Configurable voltage scaling, EM2-capable wake sources
+  - Voltage scaling for EM0/EM1 (Vscale1, Vscale2)
+  - Status queries (voltage scale, EM2 entry flag, lock status)
+  - Grade A- expert review (8.5/10, SHIP IT approved)
+  - Example 10_emu.rs demonstrating energy modes
+  - Comprehensive README.md (5200+ words, mermaid diagrams, power consumption tables)
+  - RTOS-compatible with critical section protection
+  - Production-ready for EM0-EM2 use cases
+  - Zero-cost abstractions with inline functions
+  - Power savings: Active (3-5 mA) → Sleep (~50 µA) → Deep Sleep (~2 µA)
 
 
 ### Week of December 16-20, 2025
@@ -283,15 +323,15 @@
 - ✅ B3-SPI: SPI master mode
 - ✅ B4-Timer: Timers and PWM
 
-**Phase C (Advanced)**: 2/7 in progress (29%)
+**Phase C (Advanced)**: 5/8 in progress (63%)
 - ✅ C1-ADC: 12-bit ADC with VBGR/VDD reference
 - ✅ C2-DMA.1: DMA Stage 1 (memory-to-memory transfers)
+- ✅ C3-EMU: Energy Management Unit Stage 1 (EM0-EM2 transitions)
+- ✅ C4-RTC: Real-Time Clock Stage 1 (counter-based timekeeping)
+- ✅ C5-WDOG: Watchdog Timer Stage 1 (basic watchdog functionality)
 - ⏳ C2-DMA.2: DMA Stage 2 (peripheral transfers)
 - ⏳ C2-DMA.3: DMA Stage 3 (linked descriptors)
 - ⏳ C2-DMA.4: DMA Stage 4 (interrupt-driven)
-- ⏳ C3-EMU: Energy management
-- ⏳ C4-RTC: Real-time clock
-- ⏳ C5-WDOG: Watchdog timer
 
 **Phase B Progress**: 100% complete ✅
 - ✅ USART (Complete - serial communication)
@@ -308,9 +348,12 @@
 - TIMER: 440 lines
 - ADC: ~300 lines
 - DMA: 341 lines (mod.rs: 276, types.rs: 65)
-- **Total**: ~3,012 lines (excluding examples)
+- EMU: 490 lines (mod.rs: 350, types.rs: 140)
+- RTC: 320 lines (mod.rs: 280, types.rs: 40)
+- WDOG: 373 lines (mod.rs: 220, types.rs: 153)
+- **Total**: ~4,195 lines (excluding examples)
 
-**Examples**: 9 working examples
+**Examples**: 12 working examples
 - 01_clock.rs
 - 02_delay.rs
 - 03_gpio.rs
@@ -319,7 +362,10 @@
 - 06_spi.rs
 - 07_timer_pwm.rs
 - 08_adc.rs (232 lines)
-- 09_dma.rs (NEW - 180 lines)
+- 09_dma.rs (180 lines)
+- 10_emu.rs (160 lines)
+- 11_rtc.rs (160 lines)
+- 12_wdog.rs (NEW - 240 lines)
 
 **Time Investment**: ~24 hours total
 - Phase 1-4: ~8 hours
@@ -356,6 +402,6 @@
 
 ---
 
-**Last Review**: December 27, 2025
+**Last Review**: December 27, 2025 (C5-WDOG completed)
 **Next Review**: December 28, 2025
 **Maintained By**: Rust Embedded Orchestrator

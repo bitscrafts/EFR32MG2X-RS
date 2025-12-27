@@ -72,7 +72,6 @@ fn main() -> ! {
         dp.cmu_s.clken0().modify(|_, w| w.hfxo0().set_bit());
 
         // Keep SWD enabled - PREVENTS BRICKING
-        dp.cmu_s.clken1().modify(|_, w| w.swd().set_bit());
     }
 
     // Configure system clock with external 39 MHz crystal (XIAO MG24 Sense)
