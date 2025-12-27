@@ -33,6 +33,20 @@ fn main() -> ! {
     // Get peripheral access
     let dp = pac::Peripherals::take().unwrap();
 
+    // CRITICAL SAFETY: Preserve debug access in debug builds
+    // WARNING: Without this, clock configuration can disable SWD and brick the board!
+    // This code MUST come before ANY clock configuration to ensure debugger access
+    // is maintained during development. Only disable in final release builds where
+    // power optimization is critical.
+    #[cfg(debug_assertions)]
+    unsafe {
+        // Keep HFXO clock enabled - required for SWD/JTAG debug interface
+        dp.CMU_S.clken0().modify(|_, w| w.hfxo0().set_bit());
+
+        // Keep SWD interface enabled - without this, board becomes unrecoverable
+        dp.CMU_S.clken1().modify(|_, w| w.swd().set_bit());
+    }
+
     // Example 1: Using external crystals (XIAO MG24 default)
     // This provides the most accurate clock for radio and timing operations
     let (_clocks_external, _cmu) = Clocks::new(

@@ -187,7 +187,7 @@ impl<const N: u8> Channel<N> {
             return Err(DmaError::InvalidLength);
         }
 
-        if src.len() == 0 || src.len() > 2047 {
+        if src.is_empty() || src.len() > 2047 {
             return Err(DmaError::InvalidLength);
         }
 
@@ -216,13 +216,20 @@ impl<const N: u8> Channel<N> {
                 match N {
                     0 => {
                         ldma.ch0_ctrl().write(|w| {
-                            w.structtype().transfer()
-                                .xfercnt().bits(xfer_count - 1) // Hardware uses count-1
-                                .size().bits(size as u8)
-                                .srcinc().one()
-                                .dstinc().one()
-                                .blocksize().all()
-                                .doneien().set_bit() // Enable done interrupt flag
+                            w.structtype()
+                                .transfer()
+                                .xfercnt()
+                                .bits(xfer_count - 1) // Hardware uses count-1
+                                .size()
+                                .bits(size as u8)
+                                .srcinc()
+                                .one()
+                                .dstinc()
+                                .one()
+                                .blocksize()
+                                .all()
+                                .doneien()
+                                .set_bit() // Enable done interrupt flag
                         });
 
                         // Configure addresses

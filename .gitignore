@@ -2,16 +2,35 @@
 target/
 Cargo.lock
 
-# IDE / Editor
+# IDE
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Documentation archives
-.archive/
-
-# OS specific
+# OS
 .DS_Store
 Thumbs.db
+
+# Debugging and recovery files
+*RECOVERY*.md
+*recovery*.rs
+memory_analysis.md
+efr32-unlock/
+xiao_mg24_flash_erase*/
+*.zip
+
+# Temporary documentation (not for repository)
+docs/COMPREHENSIVE_FLASHING_GUIDE.md
+docs/FLASHING_RESEARCH.md
+docs/HOW_CLOCK_CONFIG_DISABLED_SWD.md
+docs/PROBE_RS_EFR32MG24_ISSUES.md
+docs/SAMD11_BRIDGE_AND_SAFE_FLASHING.md
+
+# Archive backups (local only)
+.archive/
+
+# Cargo config overrides (local development)
+.cargo/
+efr32mg24-hal/examples/02_blink.rs

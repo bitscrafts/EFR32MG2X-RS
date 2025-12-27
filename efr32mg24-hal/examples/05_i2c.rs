@@ -40,6 +40,13 @@ fn main() -> ! {
     let _cp = cortex_m::Peripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
 
+    // CRITICAL SAFETY: Preserve debug access in debug builds
+    #[cfg(debug_assertions)]
+    unsafe {
+        dp.CMU_S.clken0().modify(|_, w| w.hfxo0().set_bit());
+        dp.CMU_S.clken1().modify(|_, w| w.swd().set_bit());
+    }
+
     // Configure clocks
     // IMPORTANT: Adjust HFXO frequency for your board!
     // - XIAO MG24 Sense: 39 MHz

@@ -36,6 +36,13 @@ fn main() -> ! {
     let cp = cortex_m::Peripherals::take().unwrap();
     let dp = pac::Peripherals::take().unwrap();
 
+    // CRITICAL SAFETY: Preserve debug access in debug builds
+    #[cfg(debug_assertions)]
+    unsafe {
+        dp.CMU_S.clken0().modify(|_, w| w.hfxo0().set_bit());
+        dp.CMU_S.clken1().modify(|_, w| w.swd().set_bit());
+    }
+
     // Configure clocks with external crystals (XIAO MG24)
     // Using 39 MHz HFXO provides accurate timing for delays
     let (clocks, cmu) = Clocks::new(

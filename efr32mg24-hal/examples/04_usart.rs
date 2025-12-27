@@ -51,6 +51,13 @@ fn main() -> ! {
     // Take peripheral singletons
     let dp = pac::Peripherals::take().unwrap();
 
+    // CRITICAL SAFETY: Preserve debug access in debug builds
+    #[cfg(debug_assertions)]
+    unsafe {
+        dp.CMU_S.clken0().modify(|_, w| w.hfxo0().set_bit());
+        dp.CMU_S.clken1().modify(|_, w| w.swd().set_bit());
+    }
+
     // Initialize clocks with default configuration
     let (clocks, cmu) =
         Clocks::new(dp.cmu_s, ClockConfig::default()).expect("Clock configuration failed");

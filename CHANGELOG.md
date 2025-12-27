@@ -9,6 +9,101 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Phase C: Advanced Peripherals (2025-12-19 to 2025-12-27)
+
+**C1-ADC: Analog-to-Digital Converter (IADC)**:
+- Production-ready 12-bit ADC with VBGR/VDD reference selection
+- Single-shot conversion with timeout protection
+- 6 input channels (Ch0-Ch5) + Ground reference
+- Thread-safe with critical sections (RTOS-ready)
+- Comprehensive SAFETY documentation (5 unsafe blocks)
+- Example 08_adc.rs with voltage calculation utilities
+- Grade A expert review (SHIP IT)
+
+**C2-DMA.1: DMA Controller (LDMA) - Stage 1**:
+- Memory-to-memory transfers with type-safe channels
+- 8-bit, 16-bit, 32-bit transfer sizes via TransferElement trait
+- Blocking operation with timeout protection (~13ms)
+- Critical sections for RTOS safety
+- Comprehensive SAFETY documentation (6 unsafe blocks)
+- Example 09_dma.rs with 5 test cases
+- Grade B+ expert review (SHIP IT for Stage 1)
+- Stage 2 planned: Peripheral transfers, linked descriptors, interrupts
+
+#### Phase B: Communication Peripherals (2025-12-04 to 2025-12-18)
+
+**B4-Timer: TIMER0-4 with PWM (2025-12-18)**:
+- Hardware register access for all 5 timers
+- PWM generation (3 channels per timer, edge/center-aligned)
+- Interrupt support (overflow with listen/unlisten API)
+- Raw duty cycle API for precision control
+- Critical sections for RTOS safety
+- SAFETY comments on all unsafe blocks
+- Example 07_timer_pwm.rs
+- Grade A expert review (SHIP IT)
+
+**B3-SPI: SPI Master Mode (2025-12-12)**:
+- Three instances: Spi0 (USART0), Spi1 (EUSART0), Spi2 (EUSART1)
+- All 4 SPI modes (Mode 0-3) with CPOL/CPHA
+- Configurable frequency (up to PCLK/2)
+- MSB-first and LSB-first bit order
+- Full-duplex, write-only, read-only operations
+- embedded-hal v1.0 SpiBus trait (all instances)
+- Example 06_spi.rs demonstrating all 3 instances
+
+**B2-I2C: I2C Master Mode (2025-12-12)**:
+- I2C0/I2C1 with 7-bit addressing
+- Standard (100 kHz) and Fast (400 kHz) modes
+- Hardware register access (CTRL, CMD, STATE, CLKDIV)
+- Write, read, and write-read operations
+- embedded-hal v1.0 I2c trait
+- Example 05_i2c.rs
+
+**B1-USART: Serial Communication (2025-12-04)**:
+- USART0 register access with configurable baud rates
+- 8-bit data, configurable parity (none, even, odd)
+- Configurable stop bits (1 or 2)
+- embedded-hal-nb v1.0 Read/Write traits
+- Example 04_usart.rs
+
+#### Phase A: Essential Peripherals (2025-12-04)
+
+**A3-Delay: SysTick Delays**:
+- SysTick timer integrated with CMU-configured clock frequencies
+- Accurate millisecond/microsecond/nanosecond delays
+- embedded-hal v1.0 DelayNs trait implementation verified
+- Example 02_delay.rs
+
+**A2-CMU: Clock Management Unit**:
+- Implemented CMU SYSCLKCTRL register access for clock source selection (HFXO/HFRCO)
+- Peripheral consumption pattern (takes ownership of CMU_S peripheral)
+- Frequency tracking in FrozenClocks struct
+- Critical section protection for clock configuration
+- Split module into 4 files: mod.rs (73 lines), types.rs (66 lines), clocks.rs (138 lines), frozen.rs (40 lines)
+- Example 01_clock.rs
+
+**A1-GPIO: Hardware Register Access**:
+- Implemented direct hardware register manipulation for GPIO operations
+- PORTx_MODEL/MODEH registers for pin mode configuration (4 bits per pin)
+- PORTx_DOUT, DOUTSET, DOUTCLR, DOUTTGL registers for digital output control
+- PORTx_DIN register for digital input reading
+- CMU_S CLKEN0 register GPIO bit for peripheral clock enable
+- Critical sections for atomic read-modify-write operations
+- Split module into 4 files: mod.rs (104 lines), types.rs (155 lines), pin.rs (248 lines), traits.rs (110 lines)
+- Example 03_gpio.rs
+
+#### Documentation System (2025-12-27)
+
+**C7-Docs: Hierarchical Identifier System**:
+- Created research-backed identifier scheme: [PHASE][STAGE]-[MODULE].[SUBSTAGE]
+- Based on industry standards (WBS, JIRA, Military operations, SemVer)
+- Created IDENTIFIER_SCHEME.md (535 lines) with complete specification
+- Updated TERMINOLOGY.md (v2.0.0) with identifier reference
+- Updated CLAUDE.md, BACKLOG.md, STATUS.md with identifiers
+- Updated all 8 module READMEs with identifier headers
+- Created .gitmessage git commit template
+- Mapped all work: P1-P4 (Preparation), A1-A3 (Essential), B1-B4 (Communication), C1-C7 (Advanced)
+
 #### HAL Phase 2: Hardware Register Access (2025-12-04)
 
 **GPIO Module - Hardware Implementation**:
