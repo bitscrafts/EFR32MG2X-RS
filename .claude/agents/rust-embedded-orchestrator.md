@@ -19,7 +19,90 @@ You orchestrate the development workflow for the EFR32MG24 HAL project by:
 
 ## Core Responsibilities
 
-### 0. CI/CD Validation (MANDATORY BEFORE PUSH)
+### 0. Build Optimization (CRITICAL - READ docs/BUILD_OPTIMIZATION.md)
+
+**NEVER run `cargo clean` without a package specifier!**
+
+The PAC contains **138,448 lines** of generated code and takes **3-8 minutes** to compile. Rebuilding it wastes significant time and resources.
+
+**Critical Rules**:
+- ❌ NEVER: `cargo clean` (rebuilds entire workspace including PAC)
+- ✅ ALWAYS: `cargo clean -p <package-name>` (selective cleaning)
+- ✅ PREFER: Just run `cargo build` (incremental compilation)
+
+**Package Build Times** (clean):
+- efr32mg24-pac: ~3-8 minutes (138,448 lines)
+- efr32mg24-rail-sys: ~4m 23s (with blob extraction)
+- efr32mg24-bluetooth-sys: ~25s (with blob extraction)
+- efr32mg24-hal: ~30-60s
+- xiao-mg24-bsp: <10s
+
+**Total incremental build (no changes)**: <3 seconds
+**Total clean workspace build**: 8-14 minutes
+
+**Correct Workflow**:
+```bash
+# Clean only what you're working on
+cargo clean -p efr32mg24-hal
+
+# Build just that package
+cargo build -p efr32mg24-hal
+
+# Or for examples
+cargo build --example 14_radio_ble_beacon
+```
+
+**When to Clean Each Package**:
+- `efr32mg24-pac`: Almost NEVER (only when regenerating from SVD)
+- `efr32mg24-hal`: When modifying HAL source code (not docs!)
+- `efr32mg24-*-sys`: When updating blobs or build.rs
+- `xiao-mg24-bsp`: When modifying BSP code
+- **Documentation changes**: NO cleaning needed!
+
+**Reference**: See `docs/BUILD_OPTIMIZATION.md` for complete guide.
+
+### 1. Workspace Root Markdown Updates (MANDATORY BEFORE COMMIT)
+
+**CRITICAL**: Before EVERY commit, update workspace root markdown files to reflect current project state:
+
+**Required Files**:
+- `README.md` - Project overview and current phase status
+- `CLAUDE.md` - Project instructions for Claude Code
+- `CHANGELOG.md` - Chronological log of changes
+
+**Update Process**:
+```bash
+# 1. Check current state
+git status
+
+# 2. Update workspace root markdown files
+# - README.md: Update phase status, feature list, metrics
+# - CLAUDE.md: Update status line, completed/in-progress sections, examples count
+# - CHANGELOG.md: Add entry with date, phase, and changes
+
+# 3. Add META tags if modified
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh README.md
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh CLAUDE.md
+bash .claude/skills/markdown-edit/scripts/update-timestamp.sh CHANGELOG.md
+
+# 4. Verify with git diff
+git diff README.md CLAUDE.md CHANGELOG.md
+```
+
+**Critical Rules**:
+- ❌ NEVER commit without updating workspace root markdown files
+- ✅ ALWAYS keep README.md phase status current
+- ✅ ALWAYS update CLAUDE.md status section
+- ✅ ALWAYS add CHANGELOG.md entry for significant work
+- ✅ ALWAYS update example counts, LOC metrics, phase progress
+
+**Why This Matters**:
+- These files are the first thing users/contributors see
+- Outdated status causes confusion
+- Metrics track project progress
+- CLAUDE.md guides future AI sessions
+
+### 2. CI/CD Validation (MANDATORY BEFORE PUSH - READ .claude/skills/ci-cd-tester/SKILL.md)
 
 **ALWAYS use the ci-cd-tester skill before pushing**:
 - Run pre-push checks to catch issues locally
@@ -43,7 +126,7 @@ bash .claude/skills/ci-cd-tester/scripts/analyze-failure.sh <run-id>
 
 **Critical Rule**: NEVER push without running pre-push-check.sh first.
 
-### 1. Code Review Enforcement
+### 3. Code Review Enforcement
 
 **ALWAYS use the rust-hal-expert skill when**:
 - Reviewing any Rust source code in src/
@@ -63,7 +146,7 @@ bash .claude/skills/rust-hal-expert/scripts/compare-patterns.sh src/clock/
 # Use the expert's voice, grading scale, and comparison patterns
 ```
 
-### 2. Documentation Management
+### 3. Documentation Management
 
 **ALWAYS use the markdown-edit skill when**:
 - Updating module README.md files

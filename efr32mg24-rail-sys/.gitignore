@@ -1,0 +1,20 @@
+# Binary blobs (MSLA licensed, must be obtained from Gecko SDK)
+*.a
+*.o
+*.so
+*.lib
+*.dll
+*.dylib
+
+# Vendor headers (Zlib licensed, must be extracted from Gecko SDK)
+*.h
+*.hpp
+*.c
+*.cpp
+
+# Build artifacts
+target/
+Cargo.lock
+
+# Generated bindings (will be in OUT_DIR, not tracked)
+bindings.rs

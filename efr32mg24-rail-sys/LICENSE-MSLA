@@ -1,0 +1,135 @@
+MASTER SOFTWARE LICENSE AGREEMENT (MSLA)
+
+This Master Software License Agreement ("Agreement") applies to the
+Silicon Labs binary libraries (collectively "Software") distributed
+with this package.
+
+IMPORTANT: BY DOWNLOADING, INSTALLING, COPYING OR OTHERWISE USING THE
+SOFTWARE, YOU AGREE TO THE TERMS OF THIS AGREEMENT. IF YOU DO NOT AGREE,
+DO NOT DOWNLOAD, INSTALL, COPY OR USE THE SOFTWARE.
+
+================================================================================
+1. LICENSE GRANT
+================================================================================
+
+Subject to the terms of this Agreement, Silicon Labs grants you a limited,
+non-exclusive, non-transferable license to:
+
+(a) Use the Software only in conjunction with Silicon Labs products;
+(b) Distribute the Software only as part of your application software;
+(c) Make copies of the Software for backup and archival purposes.
+
+================================================================================
+2. RESTRICTIONS
+================================================================================
+
+You may NOT:
+
+(a) Use the Software with non-Silicon Labs products;
+(b) Modify, reverse engineer, decompile or disassemble the Software;
+(c) Remove or alter any proprietary notices in the Software;
+(d) Distribute the Software as a standalone product;
+(e) Sublicense, rent, lease or lend the Software;
+(f) Use the Software to develop competing products.
+
+================================================================================
+3. OWNERSHIP
+================================================================================
+
+Silicon Labs retains all right, title and interest in and to the Software,
+including all intellectual property rights. This Agreement does not grant
+you any ownership rights in the Software.
+
+================================================================================
+4. TERMINATION
+================================================================================
+
+This Agreement is effective until terminated. Your rights under this
+Agreement will terminate automatically without notice if you fail to
+comply with any term. Upon termination, you must destroy all copies
+of the Software.
+
+================================================================================
+5. DISCLAIMER OF WARRANTY
+================================================================================
+
+THE SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER
+EXPRESS OR IMPLIED, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES
+OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE.
+
+SILICON LABS DOES NOT WARRANT THAT THE SOFTWARE WILL MEET YOUR REQUIREMENTS
+OR THAT OPERATION OF THE SOFTWARE WILL BE UNINTERRUPTED OR ERROR-FREE.
+
+================================================================================
+6. LIMITATION OF LIABILITY
+================================================================================
+
+IN NO EVENT SHALL SILICON LABS BE LIABLE FOR ANY SPECIAL, INCIDENTAL,
+INDIRECT OR CONSEQUENTIAL DAMAGES WHATSOEVER (INCLUDING, WITHOUT LIMITATION,
+DAMAGES FOR LOSS OF BUSINESS PROFITS, BUSINESS INTERRUPTION, LOSS OF
+BUSINESS INFORMATION OR ANY OTHER PECUNIARY LOSS) ARISING OUT OF THE USE
+OF OR INABILITY TO USE THE SOFTWARE.
+
+================================================================================
+7. EXPORT RESTRICTIONS
+================================================================================
+
+You agree to comply with all applicable export laws and regulations.
+The Software may be subject to export restrictions under U.S. law.
+
+================================================================================
+8. REGULATORY COMPLIANCE
+================================================================================
+
+YOU ARE RESPONSIBLE FOR ENSURING THAT YOUR USE OF THE SOFTWARE COMPLIES
+WITH ALL APPLICABLE RADIO FREQUENCY REGULATIONS IN YOUR JURISDICTION,
+INCLUDING BUT NOT LIMITED TO FCC, ETSI, AND ARIB REGULATIONS.
+
+Silicon Labs provides no warranty regarding regulatory compliance of
+products developed using the Software.
+
+================================================================================
+9. GOVERNING LAW
+================================================================================
+
+This Agreement shall be governed by the laws of the State of Texas,
+U.S.A., without regard to conflicts of law provisions.
+
+================================================================================
+10. ENTIRE AGREEMENT
+================================================================================
+
+This Agreement constitutes the entire agreement between you and Silicon Labs
+regarding the Software and supersedes all prior agreements.
+
+================================================================================
+CONTACT INFORMATION
+================================================================================
+
+Silicon Laboratories Inc.
+400 West Cesar Chavez
+Austin, TX 78701
+USA
+
+https://www.silabs.com/
+https://www.silabs.com/about-us/legal/master-software-license-agreement
+
+================================================================================
+FULL LICENSE TEXT
+================================================================================
+
+The complete MSLA text is available at:
+https://www.silabs.com/about-us/legal/master-software-license-agreement
+
+This is a summary for convenience. In case of conflict, the full license
+text on Silicon Labs website takes precedence.
+
+================================================================================
+REVISION INFORMATION
+================================================================================
+
+MSLA Version: 2023.06.15
+Applies to: RAIL binary libraries (librail_*.a)
+Products: EFR32 Wireless Gecko Series 2 (including EFR32MG24)
+
+================================================================================

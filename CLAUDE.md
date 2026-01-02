@@ -4,7 +4,7 @@
 
 This project provides Rust support (PAC + HAL) for the Silicon Labs EFR32MG24 wireless MCU.
 
-**Status**: Phase B Partial (70%) - Communication Peripherals Complete (USART, I2C, SPI)
+**Status**: Phase D2 In Progress (50%) - Bluetooth 5.3 LE Integration Complete
 
 **Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
 
@@ -486,7 +486,7 @@ cargo doc --no-deps --features rt --open
 
 ---
 
-**Last Updated**: December 12, 2025
-**Current Phase**: Phase B Partial (70% complete)
-**Current Status**: Communication peripherals complete (USART, I2C, SPI)
-**Next Milestone**: Implement Timer/PWM support (TIMER0-4)
+**Last Updated**: December 28, 2025
+**Current Phase**: Phase D2 (Bluetooth 5.3 LE) - 50% complete
+**Current Status**: Bluetooth stack integration complete, 6 BLE examples working
+**Next Milestone**: XiaoBle BSP implementation (D2-BLE.3)

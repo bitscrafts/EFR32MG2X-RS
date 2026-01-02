@@ -16,7 +16,7 @@
 //!
 //! # Status
 //!
-//! **Phase B Complete**: All communication peripherals and timers production-ready
+//! **Phase C Stage 1 Complete**: All essential, communication, and advanced peripherals (Stage 1) production-ready
 //!
 //! ## Phase A - Essential Peripherals (Complete)
 //!
@@ -31,13 +31,13 @@
 //! - **SPI** - SPI master mode (USART in SPI mode) with embedded-hal traits ✅
 //! - **Timer** - Timer and PWM (TIMER0-4) with 3 channels each ✅
 //!
-//! ## Phase C - Advanced Peripherals (In Progress)
+//! ## Phase C - Advanced Peripherals (Stage 1 Complete)
 //!
 //! - **ADC (IADC)** - Analog-to-digital converter ✅
 //! - **DMA (LDMA)** - Direct Memory Access controller (Stage 1) ✅
 //! - **EMU** - Energy Management Unit (EM0-EM2 transitions) ✅
 //! - **RTC** - Real-Time Clock (SYSRTC0) ✅
-//! - **WDOG** - Watchdog Timer (WDOG0) ⏳
+//! - **WDOG** - Watchdog Timer (WDOG0) ✅
 //!
 //! # Quick Start
 //!
@@ -86,6 +86,16 @@
 //! - [`usart`] - USART/UART serial communication
 //! - [`wdog`] - Watchdog Timer (WDOG0)
 //! - [`prelude`] - Common imports for convenience
+//!
+//! # Radio/Wireless Features
+//!
+//! Radio features (BLE, Thread, Zigbee, Matter) are provided by separate protocol
+//! stack crates that sit above the HAL layer:
+//!
+//! - `efr32mg24-bluetooth-sys` - Bluetooth Low Energy 5.3 (BGAPI stack)
+//! - `efr32mg24-rail-sys` - Radio Abstraction Interface Layer
+//!
+//! See those crates for wireless examples and documentation.
 //!
 //! # Feature Flags
 //!

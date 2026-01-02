@@ -2,7 +2,21 @@
 
 Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoCs.
 
-> ✅ **Status**: Phase B Complete - All Essential Communication Peripherals + Timers/PWM
+
+```
+--------> This project is under deep implementation process!! use with caution!
+
+
+- Almost finished the bluetooth support (easier than i thought) now, comparing other vendors implementation.
+- Silabs forum's topic on the bricked device: https://community.silabs.com/s/question/0D7Vm00000DHJRlKAP
+- Actually, I do have a bricked board, Seeed support is useless (you can't post on the forums, email is inexistent!)
+- That’s my first attempt at supporting a mcu in rust (lots of research using llm's for best practices) so please, be patient :)
+
+```
+
+
+
+> ✅ **Status**: Phase D2 In Progress - Bluetooth 5.3 LE Integration (50% complete)
 
 ## Overview
 
@@ -21,50 +35,99 @@ This project aims to provide first-class Rust support for the Silicon Labs EFR32
 
 ```
 EFR32MG24/
-├── efr32mg24-pac/        # Peripheral Access Crate (register-level)
-├── efr32mg24-hal/        # Hardware Abstraction Layer (driver-level)
-├── docs/                 # Documentation, plans, and findings
-├── CLAUDE.md             # Project instructions for Claude Code
-└── README.md             # This file
+├── efr32mg24-pac/              # Peripheral Access Crate (register-level)
+├── efr32mg24-hal/              # Hardware Abstraction Layer (driver-level)
+├── efr32mg24-bluetooth-sys/    # Bluetooth 5.3 LE stack (BGAPI FFI bindings)
+├── efr32mg24-rail-sys/         # RAIL radio abstraction (FFI bindings)
+├── xiao-mg24-bsp/              # Board Support Package (XIAO MG24 Sense)
+├── docs/                       # Documentation, plans, and findings
+├── CLAUDE.md                   # Project instructions for Claude Code
+└── README.md                   # This file
 ```
 
 ## Current Status
 
-### ✅ Completed
+### Project Timeline
 
-- [x] Comprehensive research on EFR32 Rust ecosystem
-- [x] Project structure and workspace configuration
-- [x] SVD file acquisition (41 device variants from official DFP pack)
-- [x] Tool installation (svd2rust v0.37.1 with --locked)
-- [x] B220 PAC generation for XIAO MG24 (138,448 lines, 14 MB source)
-- [x] PAC compilation verified (compiles in ~2.6 minutes)
-- [x] Workspace build verification
-- [x] XIAO MG24 hardware identification (EFR32MG24B220F1536IM48)
-- [x] Complete documentation suite
+```mermaid
+gantt
+    title EFR32MG24 HAL Development Roadmap
+    dateFormat YYYY-MM-DD
+    section Phase P
+    Project Prep         :done, p, 2025-12-02, 2d
+    section Phase A
+    Essential Peripherals :done, a, 2025-12-04, 1d
+    section Phase B
+    Communication Periphs :done, b, 2025-12-04, 15d
+    section Phase C
+    Advanced Peripherals  :done, c, 2025-12-19, 9d
+    section Phase D
+    D0 Radio Prep        :done, d0, 2025-12-27, 1d
+    D1 RAIL Foundation   :done, d1, 2025-12-28, 1d
+    D2 Bluetooth 5.3 LE  :active, d2, 2025-12-28, 3d
+    D3 Zigbee 3.0        :d3, after d2, 7d
+    D4 Thread/Matter     :d4, after d3, 7d
+    section Phase E
+    Security Features    :e, after d4, 14d
+```
 
-### ✅ Phase A Complete - Essential Peripherals
+### Phase Progress
 
-- [x] **GPIO** - Hardware register access (MODEL/MODEH, DOUT, DIN), type-safe pin modes, embedded-hal v1.0 traits
-- [x] **CMU** - Clock configuration (HFXO/HFRCO/LFXO/LFRCO), SYSCLKCTRL register, peripheral consumption
-- [x] **Delay** - SysTick-based delays (ms/us/ns), embedded-hal v1.0 DelayNs trait
-- [x] **Documentation** - Module READMEs, production-grade documentation
+| Phase | Focus | Status | Progress |
+|-------|-------|--------|----------|
+| **P** | Project Preparation | ✅ Complete | 4/4 (100%) |
+| **A** | Essential Peripherals | ✅ Complete | 3/3 (100%) |
+| **B** | Communication | ✅ Complete | 4/4 (100%) |
+| **C** | Advanced Peripherals | ✅ Stage 1 Complete | 5/5 Stage 1 (DMA Stage 2-4 deferred) |
+| **D0** | Radio Preparation | ✅ Complete | 3/3 (100%) |
+| **D1** | RAIL Foundation | ✅ Complete | 1/1 (100%) |
+| **D2** | Bluetooth 5.3 LE | 🔄 In Progress | 2/4 (50%) |
+| **D3** | Zigbee 3.0 | ⏳ Planned | 0/4 (0%) |
+| **D4** | Thread/Matter | ⏳ Planned | 0/4 (0%) |
+| **E** | Security Features | ⏳ Planned | 0/3 (0%) |
 
-### ✅ Phase B Complete - Communication Peripherals
+### Project Metrics
 
-- [x] **USART0** - Serial communication with hardware register access, embedded-hal-nb v1.0 traits
-- [x] **I2C0/I2C1** - I2C master mode with 7-bit addressing, embedded-hal v1.0 I2C traits
-- [x] **SPI0/SPI1/SPI2** - SPI master mode using USART0, EUSART0, EUSART1 in SPI mode, all 4 modes (0-3), embedded-hal v1.0 SpiBus traits
-- [x] **Timer0-4** - Production-grade timers and PWM with 3 channels each, edge/center-aligned modes, interrupt support, RTOS-ready
-- [x] **Examples** - 7 working examples (01_clock, 02_delay, 03_gpio, 04_usart, 05_i2c, 06_spi, 07_timer_pwm)
+**Crates**: 5 total
+- efr32mg24-pac (138,448 lines, 133 peripherals)
+- efr32mg24-hal (12 peripheral modules)
+- efr32mg24-rail-sys (3,974 FFI bindings)
+- efr32mg24-bluetooth-sys (4,307 BGAPI bindings)
+- xiao-mg24-bsp (board support package)
 
-### ⏳ Phase C Planned - Advanced Peripherals
+**HAL Modules**: 12 production-ready drivers
+- Phase A: clock, gpio, delay (3 modules)
+- Phase B: usart, i2c, spi, timer (4 modules)
+- Phase C: adc, dma, emu, rtc, wdog (5 modules)
 
-- [ ] **ADC (IADC)** - Analog-to-digital conversion
-- [ ] **DMA (LDMA)** - Direct memory access
-- [ ] **EMU** - Energy management and low-power modes
-- [ ] **Board Support Package** - XIAO MG24 Sense BSP
-- [ ] **Embassy Support** - Async runtime integration
-- [ ] **Hardware Testing** - Validation on actual hardware
+**Examples**: 21 working examples
+- HAL examples: 14 (covering all 12 modules)
+- BLE examples: 4 (bluetooth-sys/examples/)
+- BSP examples: 3 (xiao-mg24-bsp/examples/)
+
+**Build Status**: All examples compile successfully with zero errors
+
+### ✅ Completed Phases
+
+**Phase P - D1** (December 2-28, 2025):
+- Project Preparation (research, PAC generation, build system)
+- Essential Peripherals (GPIO, CMU, Delay)
+- Communication Peripherals (USART, I2C, SPI, Timer/PWM)
+- Advanced Peripherals (ADC, DMA, EMU, RTC, WDOG)
+- RAIL Foundation (efr32mg24-rail-sys with 3,974 FFI bindings)
+
+**Phase D2 - Bluetooth 5.3 LE** 🔄 (December 28, 2025 - 50% Complete):
+- ✅ efr32mg24-bluetooth-sys crate with BGAPI bindings (4,307 lines)
+- ✅ 6 working BLE examples (beacon, GATT, custom services, BSP integration)
+- ⏳ XiaoBle BSP implementation
+- ⏳ Additional BLE protocol features
+
+### Next Up
+
+- [ ] **D2-BLE.3**: Complete XiaoBle BSP implementation
+- [ ] **D3**: Zigbee 3.0 protocol stack integration
+- [ ] **D4**: Thread/Matter support
+- [ ] **Phase E**: Security features (AES, SHA, Secure Vault)
 
 ## PAC (Peripheral Access Crate)
 
@@ -263,7 +326,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ---
 
-**Project Status**: Phase B Complete - All communication peripherals and timers production-ready
-**Last Updated**: December 18, 2025
+**Project Status**: Phase D2 In Progress - Bluetooth 5.3 LE integration (efr32mg24-bluetooth-sys + examples)
+**Last Updated**: 2025-12-28
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/EFR32MG2X-RS

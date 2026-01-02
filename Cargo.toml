@@ -3,6 +3,9 @@ resolver = "2"
 members = [
     "efr32mg24-pac",
     "efr32mg24-hal",
+    "efr32mg24-rail-sys",
+    "efr32mg24-bluetooth-sys",
+    "xiao-mg24-bsp",
 ]
 
 [workspace.package]
@@ -18,6 +21,11 @@ cortex-m = "0.7.7"
 cortex-m-rt = { version = "0.7.3", default-features = false }
 embedded-hal = "1.0.0"
 critical-section = "1.2.0"
+
+# Radio -sys crates (FFI bindings to Silicon Labs blobs)
+efr32mg24-rail-sys = { version = "0.1.0", path = "efr32mg24-rail-sys" }
+efr32mg24-bluetooth-sys = { version = "0.1.0", path = "efr32mg24-bluetooth-sys" }
+# efr32mg24-zigbee-sys = { version = "0.1.0", path = "efr32mg24-zigbee-sys" }
 
 [profile.dev]
 opt-level = 1

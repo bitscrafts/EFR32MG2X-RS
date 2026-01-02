@@ -9,6 +9,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Phase D2: Bluetooth 5.3 LE Integration (2025-12-28)
+
+**D1-RAIL.1: RAIL Radio Abstraction Layer**:
+- efr32mg24-rail-sys crate with FFI bindings to Silicon Labs RAIL library
+- 3,974 lines of auto-generated Rust FFI bindings from RAIL C headers
+- Platform-independent build system (macOS/Linux/Windows)
+- SHA256 blob integrity verification
+- Graceful degradation pattern (compiles without blobs)
+- Grade A- expert review (production-ready)
+
+**D2-BLE.2: Bluetooth Protocol Stack**:
+- efr32mg24-bluetooth-sys crate with BGAPI FFI bindings
+- Split Bluetooth stack architecture: controller (9MB) + host (1.4MB) + common (264KB) blobs
+- SHA256 blob verification for all 3 components
+- Generated BGAPI bindings: 4,307 lines, 265 Bluetooth API functions
+- Automated setup script (scripts/setup-bluetooth.sh)
+- Build time: 25.95s with full blob verification
+
+**D2-BLE.4: BLE Examples**:
+- 4 bluetooth-sys examples (BGAPI FFI layer):
+  - 01_ble_beacon.rs (270 lines) - Non-connectable iBeacon advertising
+  - 02_ble_advertiser.rs (206 lines) - Connectable peripheral
+  - 03_ble_gatt_heart_rate.rs (235 lines) - Standard Bluetooth SIG Heart Rate Service
+  - 04_ble_custom_service.rs (247 lines) - Custom 128-bit UUID service
+- 2 BSP integration examples:
+  - ble_led_control.rs (183 lines) - BLE + GPIO integration
+  - ble_sensor_template.rs (231 lines) - BLE + I2C sensor data over notifications
+- Total: 6 examples, ~1,372 lines of working BLE code
+- Industry-aligned architecture (BLE in bluetooth-sys, NOT in HAL)
+
+**Documentation**:
+- BUILD_OPTIMIZATION.md - Selective cargo clean workflow (saves 7-13 minutes per build)
+- PHASE_D0_COMPLETE.md - Phase D0 completion milestone
+- ARDUINO_RADIO_ANALYSIS.md - Arduino BLE implementation research
+- RADIO_IMPLEMENTATION_PLAN.md - Complete Phase D roadmap
+- Updated orchestrator agent with workspace root markdown update requirement
+
+**Repository Cleanup**:
+- Removed HAL radio module (industry pattern: BLE belongs in protocol stack crates)
+- Archived obsolete documentation (FLASHING_RESEARCH.md, RADIO_ARCHITECTURE_SYS_CRATES.md)
+- Added META tags to all new documentation files
+- Updated BACKLOG.md with Phase D2 progress (2/4 tasks complete - 50%)
+
 #### Phase C: Advanced Peripherals (2025-12-19 to 2025-12-27)
 
 **C1-ADC: Analog-to-Digital Converter (IADC)**:
@@ -374,3 +417,5 @@ at your option.
 - [Rust Embedded Book](https://docs.rust-embedded.org/book/)
 - [Embedded Rust on Matrix](https://matrix.to/#/#rust-embedded:matrix.org)
 - [Silicon Labs Community](https://community.silabs.com/)
+
+<\!-- META: last_updated=2025-12-28 version=unreleased status=active maintained_by=orchestrator -->

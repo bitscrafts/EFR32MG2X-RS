@@ -1,0 +1,39 @@
+[package]
+name = "efr32mg24-bluetooth-sys"
+version = "0.1.0"
+authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Low-level FFI bindings to Silicon Labs Bluetooth stack (BGAPI) for EFR32MG24"
+repository = "https://github.com/bitscrafts/EFR32MG2X-RS"
+readme = "README.md"
+keywords = ["efr32", "bluetooth", "ble", "embedded", "no-std"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+# Core types for FFI
+cty = "0.2"
+
+[dev-dependencies]
+# Required for examples
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+panic-halt = "0.2"
+efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-pac = { path = "../efr32mg24-pac" }
+
+[build-dependencies]
+# For generating Rust bindings from C headers
+bindgen = "0.69"
+# For verifying Bluetooth blob integrity
+sha2 = "0.10"
+
+[features]
+# No default features
+default = []
+
+[package.metadata.docs.rs]
+# Don't attempt to build blobs on docs.rs
+default-target = "thumbv8m.main-none-eabihf"
+targets = []  # Don't build for other targets
+rustdoc-args = ["--cfg", "docsrs"]  # Enable doc features

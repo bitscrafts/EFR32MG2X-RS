@@ -34,3 +34,10 @@ docs/SAMD11_BRIDGE_AND_SAFE_FLASHING.md
 # Cargo config overrides (local development)
 .cargo/
 efr32mg24-hal/examples/02_blink.rs
+
+# Radio -sys crates: blobs and vendor headers (MSLA licensed, not in git)
+**/blobs/*.a
+**/blobs/*.o
+**/blobs/*.lib
+**/vendor/**/*.h
+**/vendor/**/*.c

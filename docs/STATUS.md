@@ -1,25 +1,25 @@
 # Project Status Report
 
-**Date**: December 27, 2025
-**Project**: EFR32MG24 Rust Support (PAC + HAL)
-**Phase**: Phase C Partial ✅ - C2-DMA.1 Complete
-**Identifiers**: P1-P4 (✅), A1-A3 (✅), B1-B4 (✅), C1-C2.1 (✅), C2.2-C7 (⏳)
+**Date**: December 28, 2025
+**Project**: EFR32MG24 Rust Support (PAC + HAL + Radio)
+**Phase**: Phase D1 Complete ✅ - RAIL Foundation
+**Identifiers**: P1-P4 (✅), A1-A3 (✅), B1-B4 (✅), C1-C5 (✅), D0.1-D0.3 (✅), D1-RAIL.1 (✅)
 
 ---
 
 ## Executive Summary
 
-The EFR32MG24 Rust project has **successfully completed Phase B** (B1-B4) and begun **Phase C** (C1-C7) with the production-grade DMA (C2-DMA.1) controller implementation. The project now uses a **hierarchical identifier system** (P1-P4, A1-A3, B1-B4, C1-C7) for tracking work items based on industry standards (WBS, JIRA, Military operations). Core peripherals (A1-GPIO, A2-CMU, A3-Delay), communication interfaces (B1-USART, B2-I2C, B3-SPI, B4-Timer), ADC (C1-ADC), and DMA (C2-DMA.1) now have full hardware register access with comprehensive SAFETY documentation. All 9 examples compile and build to flashable ARM Cortex-M33 binaries. The DMA module has undergone Rust HAL expert review achieving Grade B+, production-ready for memory-to-memory transfers with RTOS-safe critical sections.
+The EFR32MG24 Rust project has **successfully completed Phase D1** (RAIL Foundation) with production-ready FFI bindings to Silicon Labs RAIL library. The project has completed all essential peripherals (Phase A), communication interfaces (Phase B), advanced peripherals (Phase C), and radio foundation (Phase D0-D1). The efr32mg24-rail-sys crate provides 3,974 lines of auto-generated Rust FFI bindings with platform-independent build system, SHA256 blob verification, comprehensive documentation (INTEGRATION_GUIDE.md 500+ lines), and CI/CD automation. Grade A- from rust-hal-expert review. All 12 HAL examples compile and build to flashable ARM Cortex-M33 binaries. Radio foundation enables future Bluetooth 5.3 LE, Zigbee, Thread, and Matter protocol stacks.
 
-**Time Invested**: ~30 hours
+**Time Invested**: ~54 hours total
 - Phase P (Preparation): ~8 hours (P1-P4)
 - Phase A (Essential): ~4 hours (A1-A3)
 - Phase B (Communication): ~6 hours (B1-B4)
-- Phase C (Advanced): ~8 hours (C1-ADC, C2-DMA.1)
-- Documentation/tooling: ~4 hours (identifier system, terminology)
+- Phase C (Advanced): ~12 hours (C1-C5)
+- Phase D0-D1 (Radio Foundation): ~24 hours (research, implementation, polish)
 
-**Completion**: Phase C Partial (C1-C2.1 complete, 2/10 items = 20%)
-**Next Phase**: C2-DMA.2 (peripheral transfers), C3-EMU (power management)
+**Completion**: Phase D1 RAIL Foundation Complete (100%)
+**Next Phase**: D2-BLE (Bluetooth 5.3 LE implementation)
 
 ---
 
@@ -240,6 +240,56 @@ The EFR32MG24 Rust project has **successfully completed Phase B** (B1-B4) and be
 - [x] Documentation backup workflow (.archive folder)
 - [x] Zero build warnings across all modules and examples
 
+### Phase D0-D1: Radio Foundation (December 27-28, 2025)
+
+**D0 Preparation** - Complete workspace setup for radio crates:
+- [x] D0.1-Prep: Created -sys crate template structure
+  - build.rs with blob linking and bindgen integration
+  - MSLA licensing documentation (LICENSE-MSLA)
+  - NOTICE file with third-party attributions
+  - Platform-independent header stubs
+- [x] D0.2-Workspace: Updated workspace Cargo.toml
+  - Added efr32mg24-rail-sys to workspace members
+  - Added xiao-mg24-bsp to workspace members
+  - Updated .gitignore for blobs/ directory
+  - Workspace structure verified
+- [x] D0.3-BSP: Created and updated xiao-mg24-bsp crate
+  - Board struct with initialization
+  - XIAO pin definitions (19 GPIOs)
+  - memory.x linker script
+  - Updated to Phase D1 status
+  - Enabled radio feature flag
+  - Verified successful compilation with radio feature
+  - Removed misplaced duplicate directory from rail-sys
+
+**D1 RAIL Foundation** - Production-ready FFI bindings:
+- [x] D1-RAIL.1: Created efr32mg24-rail-sys crate (Grade A-)
+  - 3,974 lines of auto-generated Rust FFI bindings from RAIL C headers
+  - Platform-independent build system (macOS/Linux/Windows compatibility)
+  - Custom minimal headers (`include/string.h`, `include/em_device.h`)
+  - SHA256 blob integrity verification (hash: `072f0ff...`)
+  - Graceful degradation pattern (compiles without blobs for development)
+  - Automated setup script (`scripts/setup-rail.sh`)
+  - docs.rs integration with proper metadata
+  - GitHub Actions CI/CD workflow (format, clippy, build, docs)
+  - Comprehensive documentation:
+    - README.md: Updated with all polish features (500+ lines total)
+    - INTEGRATION_GUIDE.md: Complete technical reference (500+ lines)
+    - MULTI_DEVICE_SUPPORT.md: Future EFR32 variant planning
+    - LICENSE-MSLA: Silicon Labs licensing
+    - NOTICE: Third-party attributions
+  - Build time: 4m 23s (includes verification, header gen, bindgen)
+  - Expert review: Grade A- (production-ready)
+  - Total effort: ~24 hours (research, implementation, polish)
+
+**Key Achievements**:
+- ✅ Radio foundation complete - enables BLE, Zigbee, Thread, Matter
+- ✅ Production-quality FFI bindings with cryptographic verification
+- ✅ Platform-independent build works on all major OS platforms
+- ✅ Comprehensive 1,000+ lines of documentation for integration
+- ✅ CI/CD automation ensures ongoing quality
+- ✅ BSP integration verified successfully
+
 ---
 
 ## Phase Status Summary
@@ -268,6 +318,25 @@ The EFR32MG24 Rust project has **successfully completed Phase B** (B1-B4) and be
 - ✅ C4-RTC: Real-Time Counter with calendar and alarms (December 27, 2025)
 - ✅ C5-WDOG: Watchdog Timer with lock mechanism (December 27, 2025)
 
+**Phase D0 (Radio Preparation)**: 3/3 complete (100%) ✅
+- ✅ D0.1-Prep: -sys crate template structure (December 28, 2025)
+- ✅ D0.2-Workspace: Workspace configuration for radio crates (December 28, 2025)
+- ✅ D0.3-BSP: xiao-mg24-bsp crate structure and integration (December 28, 2025)
+
+**Phase D1 (RAIL Foundation)**: 1/1 complete (100%) ✅
+- ✅ D1-RAIL.1: efr32mg24-rail-sys crate - Production-ready FFI bindings (December 28, 2025)
+  - 3,974 lines of FFI bindings, Grade A- review
+  - Platform-independent build system
+  - SHA256 blob verification
+  - Comprehensive documentation (1,000+ lines)
+  - CI/CD automation
+
+**Phase D2 (Bluetooth 5.3 LE)**: 0/4 tasks (0%) ⏳
+- ⏳ D2-BLE.1: Create radio/ble/ HAL module (traits + types)
+- ⏳ D2-BLE.2: Create efr32mg24-bluetooth-sys crate
+- ⏳ D2-BLE.3: Implement XiaoBle in BSP
+- ⏳ D2-BLE.4: Create BLE examples
+
 **Future Enhancements** (deferred to future phases):
 - ⏳ C2-DMA.2: Peripheral transfers
 - ⏳ C2-DMA.3: Linked descriptors
@@ -279,44 +348,49 @@ The EFR32MG24 Rust project has **successfully completed Phase B** (B1-B4) and be
 
 ## Next Steps
 
-### Phase C Complete!
+### Phase D1 Complete!
 
-**Status**: All 5 core Phase C modules implemented and production-ready ✅
+**Status**: RAIL Foundation complete - Production-ready FFI bindings ✅
 
 **Achievements**:
-- ✅ 5 new peripheral modules (ADC, DMA Stage 1, EMU, RTC, WDOG)
-- ✅ 5 new comprehensive examples (08-12)
-- ✅ ~2,000 lines of production HAL code
-- ✅ ~2,400 lines of module documentation
-- ✅ All modules expert-reviewed (Grades: A, B+)
-- ✅ Zero build warnings
-- ✅ All examples build in 36.64s (release mode)
+- ✅ Production-ready RAIL FFI bindings (efr32mg24-rail-sys)
+- ✅ 3,974 lines of auto-generated Rust FFI from RAIL C headers
+- ✅ Platform-independent build system (macOS/Linux/Windows)
+- ✅ SHA256 blob integrity verification
+- ✅ 1,000+ lines of comprehensive documentation
+- ✅ CI/CD automation with GitHub Actions
+- ✅ BSP integration verified (radio feature)
+- ✅ Grade A- from rust-hal-expert review
 
-### Phase D: Next Development Cycle
+### Phase D2: Bluetooth 5.3 LE Implementation (Next)
 
-**Priority 1: DMA Enhanced Features** (C2-DMA Stages 2-4)
-- Peripheral-to-memory transfers
-- Linked descriptor support
-- Interrupt-driven async transfers
-- Integration with USART/I2C/SPI/ADC
+**Priority 1: BLE HAL Module** (D2-BLE.1)
+- Define BleAdvertiser trait for advertising
+- Define BleGattServer trait for GATT services
+- Create BLE types (Uuid, GattService, Advertisement)
+- Design safe abstractions over Bluetooth SYS crate
+- Estimated effort: 15-22 hours
 
-**Priority 2: Hardware Testing & Validation**
-- Test on XIAO MG24 Sense hardware
-- Validate all 12 examples
-- Power consumption measurements
-- Real-world application testing
+**Priority 2: Bluetooth SYS Crate** (D2-BLE.2)
+- Create efr32mg24-bluetooth-sys crate
+- Link libbluetooth_*.a blob from Gecko SDK
+- Generate BGAPI FFI bindings with bindgen
+- Follow RAIL-sys patterns (SHA256, platform-independent)
+- Estimated effort: 10-15 hours
 
-**Priority 3: Embassy Async Runtime Integration**
-- Async/await support for peripherals
-- DMA-driven async I/O
-- Low-power async sleep modes
-- RTOS compatibility testing
+**Priority 3: BSP BLE Implementation** (D2-BLE.3)
+- Implement BleAdvertiser trait in XiaoBle
+- Implement BleGattServer trait with GATT profile support
+- Board-specific BLE configuration for XIAO MG24
+- Estimated effort: 15-22 hours
 
-**Priority 4: Additional Peripherals**
-- LETIMER (Low Energy Timer)
-- IADC advanced features (scan mode, interrupts)
-- Additional communication protocols
-- Crypto acceleration
+**Priority 4: BLE Examples** (D2-BLE.4)
+- ble_beacon.rs: iBeacon advertisement
+- ble_peripheral.rs: Simple peripheral with custom service
+- ble_gatt_server.rs: Heart rate profile demonstration
+- Estimated effort: 10-15 hours
+
+**Total Phase D2 Estimate**: 50-74 hours
 
 See [PLAN.md](PLAN.md) for complete development roadmap.
 

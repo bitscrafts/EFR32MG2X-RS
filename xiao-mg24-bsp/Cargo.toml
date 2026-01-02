@@ -1,0 +1,49 @@
+[package]
+name = "xiao-mg24-bsp"
+version = "0.1.0"
+authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Board Support Package for Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)"
+repository = "https://github.com/bitscrafts/EFR32MG2X-RS"
+readme = "README.md"
+keywords = ["xiao", "efr32", "mg24", "embedded", "no-std"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+# HAL dependencies
+efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-pac = { path = "../efr32mg24-pac" }
+
+# Cortex-M dependencies
+cortex-m = { workspace = true }
+cortex-m-rt = { workspace = true }
+
+# embedded-hal traits
+embedded-hal = { workspace = true }
+
+# Critical section support
+critical-section = { workspace = true }
+
+# Optional: Radio protocol implementations (feature-gated)
+efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys", optional = true }
+# efr32mg24-bluetooth-sys = { workspace = true, optional = true }  # Phase D2
+# efr32mg24-zigbee-sys = { workspace = true, optional = true }     # Phase D3
+
+[dev-dependencies]
+panic-halt = "0.2"
+
+[features]
+default = []
+# Radio features
+radio = ["efr32mg24-rail-sys"]           # Phase D1 complete
+# radio-ble = ["radio", "efr32mg24-bluetooth-sys"]      # Phase D2 (future)
+# radio-zigbee = ["radio", "efr32mg24-zigbee-sys"]      # Phase D3 (future)
+
+[[example]]
+name = "blink"
+required-features = []
+
+[package.metadata.docs.rs]
+default-target = "thumbv8m.main-none-eabihf"
+targets = ["thumbv8m.main-none-eabihf"]

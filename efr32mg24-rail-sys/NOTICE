@@ -1,0 +1,99 @@
+NOTICE
+
+This crate (efr32mg24-rail-sys) contains or links to software components
+with different licenses and attributions.
+
+================================================================================
+Rust Source Code (this crate)
+================================================================================
+
+Copyright (c) 2025 Marcelo Correa
+
+Licensed under MIT OR Apache-2.0 (user's choice).
+
+See LICENSE-MIT and LICENSE-APACHE in the repository root.
+
+================================================================================
+RAIL Binary Blob (librail_efr32xg24_gcc_release.a)
+================================================================================
+
+Copyright (c) Silicon Labs (Silicon Laboratories Inc.)
+
+Licensed under the Master Software License Agreement (MSLA).
+
+See LICENSE-MSLA for full license text.
+
+**Key restrictions**:
+- Binary blob may only be used with Silicon Labs hardware
+- No reverse engineering or modification permitted
+- Distribution requires MSLA compliance
+- No warranty provided
+
+**Trademark notice**:
+Silicon Labs, the Silicon Labs logo, and RAIL are trademarks of
+Silicon Laboratories Inc.
+
+================================================================================
+Gecko SDK Headers (vendor/rail/)
+================================================================================
+
+Copyright (c) Silicon Labs (Silicon Laboratories Inc.)
+
+Licensed under the Zlib license.
+
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
+
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
+3. This notice may not be removed or altered from any source distribution.
+
+================================================================================
+bindgen (build-time dependency)
+================================================================================
+
+Copyright (c) The bindgen authors
+
+Licensed under BSD-3-Clause.
+
+Used only at build time to generate FFI bindings. Not distributed with
+compiled artifacts.
+
+================================================================================
+Third-Party Components
+================================================================================
+
+This software may link against or reference additional third-party components
+included in Gecko SDK. See Gecko SDK documentation for complete attribution.
+
+================================================================================
+Disclaimer
+================================================================================
+
+**Regulatory Compliance**: Users are responsible for ensuring that their use
+of RAIL and this software complies with all applicable radio frequency
+regulations (FCC, ETSI, ARIB, etc.) in their jurisdiction.
+
+**No Warranty**: This software is provided "AS IS" without warranty of any
+kind, express or implied. See license files for full warranty disclaimers.
+
+**Hardware Required**: RAIL binary blobs are only functional on Silicon Labs
+EFR32 hardware. They will not work on other platforms.
+
+================================================================================
+Contact
+================================================================================
+
+For issues with this Rust crate:
+  https://github.com/bitscrafts/EFR32MG2X-RS/issues
+
+For issues with RAIL or Gecko SDK:
+  https://community.silabs.com/
+
+For MSLA licensing questions:
+  https://www.silabs.com/about-us/legal/master-software-license-agreement
+
+================================================================================
