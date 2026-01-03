@@ -34,6 +34,23 @@ fn main() {
     // Get the target architecture
     let target = env::var("TARGET").unwrap();
 
+    // Compile CMSIS runtime stubs for ARM Cortex-M targets
+    if target.starts_with("thumbv") {
+        // Compile CMSIS stubs (required by Bluetooth stack)
+        cc::Build::new()
+            .file("src/cmsis_stubs.c")
+            .flag("-mcpu=cortex-m33")
+            .flag("-mthumb")
+            .flag("-mfloat-abi=hard")
+            .flag("-mfpu=fpv5-sp-d16")
+            .flag("-Os") // Optimize for size
+            .flag("-ffunction-sections")
+            .flag("-fdata-sections")
+            .compile("cmsis_stubs");
+
+        println!("cargo:warning=Compiled CMSIS runtime stubs for Bluetooth stack");
+    }
+
     // Only link blobs for ARM Cortex-M targets
     if target.starts_with("thumbv") {
         // Path to the binary blob directory (use absolute path for cross-compilation)

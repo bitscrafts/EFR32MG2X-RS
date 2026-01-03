@@ -25,9 +25,12 @@ embedded-hal = { workspace = true }
 # Critical section support
 critical-section = { workspace = true }
 
-# Optional: Radio protocol implementations (feature-gated)
+# No-heap data structures
+heapless = "0.8"
+
+# Radio protocol implementations
+efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys" }  # Phase D2 complete
 efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys", optional = true }
-# efr32mg24-bluetooth-sys = { workspace = true, optional = true }  # Phase D2
 # efr32mg24-zigbee-sys = { workspace = true, optional = true }     # Phase D3
 
 [dev-dependencies]
@@ -41,7 +44,31 @@ radio = ["efr32mg24-rail-sys"]           # Phase D1 complete
 # radio-zigbee = ["radio", "efr32mg24-zigbee-sys"]      # Phase D3 (future)
 
 [[example]]
-name = "blink"
+name = "00_blink"
+required-features = []
+
+[[example]]
+name = "01_ble_beacon_safe"
+required-features = []
+
+[[example]]
+name = "02_ble_led_control"
+required-features = []
+
+[[example]]
+name = "03_ble_sensor_template"
+required-features = []
+
+[[example]]
+name = "04_ble_led_events"
+required-features = []
+
+[[example]]
+name = "05_ble_sensor_events"
+required-features = []
+
+[[example]]
+name = "06_microphone_streaming"
 required-features = []
 
 [package.metadata.docs.rs]

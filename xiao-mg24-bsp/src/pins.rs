@@ -73,6 +73,16 @@ pub struct Pins {
     ///
     /// Note: Not on XIAO connector, internal sensing
     pub vbat_sense: Pin<'A', 0, Input<Pull>>,
+
+    /// PC8 - Microphone power control
+    ///
+    /// Controls power to MSM381ACT001 analog microphone (active high).
+    pub pc8: Pin<'C', 8, Input<Pull>>,
+
+    /// PC9 - Microphone analog input
+    ///
+    /// Analog input from MSM381ACT001 microphone (IADC channel).
+    pub pc9: Pin<'C', 9, Input<Pull>>,
 }
 
 impl Pins {
@@ -94,6 +104,12 @@ impl Pins {
             d9: parts.portb.pb3,
             d10: parts.portb.pb2, // BUILT-IN LED
             vbat_sense: parts.porta.pa0,
+            pc8: parts.portc.pc8, // Microphone power
+            pc9: parts.portc.pc9, // Microphone input
         }
     }
 }
+
+// Type aliases for microphone pins
+pub type Pc8<MODE> = Pin<'C', 8, MODE>;
+pub type Pc9<MODE> = Pin<'C', 9, MODE>;

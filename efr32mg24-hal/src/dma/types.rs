@@ -29,6 +29,48 @@ pub enum DmaError {
     Timeout,
     /// Operation not supported (e.g., channel number >0 in Phase 1)
     Unsupported,
+    /// Invalid buffer address or alignment
+    InvalidAddress,
+}
+
+/// Peripheral DMA Request Source
+///
+/// Defines which peripheral can trigger DMA transfers.
+/// These values map to LDMAXBAR SOURCESEL/SIGSEL fields.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[repr(u8)]
+pub enum PeripheralRequest {
+    /// No peripheral request (software triggered only)
+    None = 0,
+
+    /// IADC Single conversion complete
+    /// SOURCESEL = 0x30 (IADC0), SIGSEL = 0 (IADC_SINGLE)
+    IadcSingle = 1,
+
+    /// IADC Scan conversion complete
+    /// SOURCESEL = 0x30 (IADC0), SIGSEL = 1 (IADC_SCAN)
+    IadcScan = 2,
+
+    /// USART0 RX Data Valid
+    /// SOURCESEL = 0x0C (USART0), SIGSEL = 0 (RXDATAV)
+    Usart0Rx = 3,
+
+    /// USART0 TX Buffer Level
+    /// SOURCESEL = 0x0C (USART0), SIGSEL = 1 (TXBL)
+    Usart0Tx = 4,
+}
+
+impl PeripheralRequest {
+    /// Returns (SOURCESEL, SIGSEL) for LDMAXBAR configuration
+    pub(crate) fn to_xbar_config(self) -> (u8, u8) {
+        match self {
+            PeripheralRequest::None => (0, 0),
+            PeripheralRequest::IadcSingle => (0x30, 0),
+            PeripheralRequest::IadcScan => (0x30, 1),
+            PeripheralRequest::Usart0Rx => (0x0C, 0),
+            PeripheralRequest::Usart0Tx => (0x0C, 1),
+        }
+    }
 }
 
 /// Trait for types that can be transferred via DMA

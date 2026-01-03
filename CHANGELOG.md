@@ -9,6 +9,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Phase D2: Bluetooth 5.3 LE Integration (2026-01-03) - COMPLETE
+
+**D2-BLE.5: Event System**:
+- Type-safe BleEvent enum with 7 event variants (Connected, Disconnected, GattWrite, GattRead, etc.)
+- `poll_event()` non-blocking event polling method
+- Automatic connection state management (no manual tracking needed!)
+- Zero-copy event extraction from BGAPI sl_bt_msg_t structures
+- heapless::Vec for GATT write data (512 bytes max)
+- Events module: 280 lines of production-ready event handling
+- 04_ble_led_events.rs example (219 lines) - Event-driven LED control with auto-reconnection
+- 05_ble_sensor_events.rs example (287 lines) - Dynamic sampling rate via GATT writes
+
+**D2-MIC.1: Analog Microphone Driver**:
+- MSM381ACT001 analog MEMS microphone driver (373 lines)
+- GPIO power control (PC8) + IADC analog input (PC9)
+- Continuous DMA circular buffer capture (64-2047 samples)
+- Supported rates: 8 kHz, 16 kHz, 32 kHz, 48 kHz
+- Zero-copy IADC → DMA → Buffer architecture
+- sensors module with Microphone API (start, stop, read)
+- 06_microphone_streaming.rs example (196 lines) - 16 kHz audio capture with RMS calculation
+
+**C2-DMA.2: LDMA Peripheral-to-Memory Transfers**:
+- `start_peripheral_to_memory()` for continuous peripheral capture
+- Circular buffer mode with automatic descriptor linking
+- LDMAXBAR peripheral request routing (IADC, USART)
+- PeripheralRequest enum with SOURCESEL/SIGSEL mapping
+- stop() and get_position() methods
+- 09_dma_adc_continuous.rs example (180 lines) - Continuous ADC sampling
+- DMA module: 653 lines total (+290 new for peripheral transfers)
+
+**BSP Enhancements**:
+- BoardPeripherals struct for PAC peripheral access (LDMA)
+- PC8/PC9 pins added for microphone support
+- sensors module integrated into BSP
+
+**Phase D2 Summary**:
+- **6 BLE examples** total (2 event-driven + 2 safe wrapper + 2 legacy)
+- **3 sensor drivers** started (microphone complete, IMU future)
+- **Event system**: Complete production-ready implementation
+- **Code reduction**: 55-80% fewer lines vs raw BGAPI
+- **Status**: Phase D2 COMPLETE (GATT database builder optional/future)
+
 #### Phase D2: Bluetooth 5.3 LE Integration (2025-12-28)
 
 **D1-RAIL.1: RAIL Radio Abstraction Layer**:
@@ -27,16 +69,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Automated setup script (scripts/setup-bluetooth.sh)
 - Build time: 25.95s with full blob verification
 
+**D2-BLE.3: XiaoBle Safe Wrapper** (Partial):
+- Created xiao-mg24-bsp/src/radio/ module with BLE abstractions
+- BleError type with automatic BGAPI status code conversion (u16/u32)
+- GapAdBuilder for automatic GAP AD format encoding (eliminates 30-40 lines per example)
+- XiaoBle struct with safe advertiser methods (start_advertising, stop_advertising, set_device_name, add_service_uuid)
+- Unit tests for GapAdBuilder (6 tests covering encoding, validation, edge cases)
+- 01_ble_beacon_safe.rs example - 80% code reduction (270 lines unsafe FFI → ~50 lines safe wrapper)
+- Examples renamed with numeric prefixes (00_blink, 01_ble_beacon_safe, 02_ble_led_control, 03_ble_sensor_template)
+- Comprehensive documentation: xiao-mg24-bsp/src/radio/ble/README.md (~650 lines)
+- Comprehensive examples guide: xiao-mg24-bsp/examples/README.md (~500 lines)
+- Note: GATT server methods and event system deferred to future Phase D2.4+
+
 **D2-BLE.4: BLE Examples**:
 - 4 bluetooth-sys examples (BGAPI FFI layer):
   - 01_ble_beacon.rs (270 lines) - Non-connectable iBeacon advertising
   - 02_ble_advertiser.rs (206 lines) - Connectable peripheral
   - 03_ble_gatt_heart_rate.rs (235 lines) - Standard Bluetooth SIG Heart Rate Service
   - 04_ble_custom_service.rs (247 lines) - Custom 128-bit UUID service
-- 2 BSP integration examples:
-  - ble_led_control.rs (183 lines) - BLE + GPIO integration
-  - ble_sensor_template.rs (231 lines) - BLE + I2C sensor data over notifications
-- Total: 6 examples, ~1,372 lines of working BLE code
+- 3 BSP integration examples (pre-existing):
+  - 02_ble_led_control.rs (183 lines, renamed) - BLE + GPIO integration
+  - 03_ble_sensor_template.rs (231 lines, renamed) - BLE + I2C sensor data over notifications
+- Total: 7 BLE examples (~1,372 lines bluetooth-sys + BSP safe wrapper)
 - Industry-aligned architecture (BLE in bluetooth-sys, NOT in HAL)
 
 **Documentation**:

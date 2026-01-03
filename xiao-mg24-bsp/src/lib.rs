@@ -10,7 +10,7 @@
 //! - Pin definitions for all 19 XIAO GPIOs
 //! - Board initialization (clocks, peripherals)
 //! - Pre-configured peripheral instances (USART, I2C, SPI)
-//! - Radio protocol implementations (BLE, Zigbee) - future
+//! - Radio protocol implementations (BLE 5.3 available, Zigbee/Thread future)
 //!
 //! # Quick Start
 //!
@@ -46,6 +46,8 @@
 
 pub mod board;
 pub mod pins;
+pub mod radio;
+pub mod sensors;
 
 // Re-export for convenience
 pub use board::Board;

@@ -27,6 +27,8 @@ efr32mg24-pac = { path = "../efr32mg24-pac" }
 bindgen = "0.69"
 # For verifying Bluetooth blob integrity
 sha2 = "0.10"
+# For compiling CMSIS runtime stubs
+cc = "1.0"
 
 [features]
 # No default features

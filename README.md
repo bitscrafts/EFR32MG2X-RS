@@ -6,7 +6,7 @@ Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Sili
 ```
 --------> This project is under deep implementation process!! use with caution!
 
-
+- Managed to unbrick the board, proceed with testing.
 - Almost finished the bluetooth support (easier than i thought) now, comparing other vendors implementation.
 - Silabs forum's topic on the bricked device: https://community.silabs.com/s/question/0D7Vm00000DHJRlKAP
 - Actually, I do have a bricked board, Seeed support is useless (you can't post on the forums, email is inexistent!)
@@ -14,7 +14,7 @@ Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Sili
 
 ```
 
-
+> **Documentation**: https://bitscrafts.github.io/EFR32MG2X-RS/efr32mg24_hal/index.html
 
 > ✅ **Status**: Phase D2 In Progress - Bluetooth 5.3 LE Integration (50% complete)
 
@@ -100,10 +100,10 @@ gantt
 - Phase B: usart, i2c, spi, timer (4 modules)
 - Phase C: adc, dma, emu, rtc, wdog (5 modules)
 
-**Examples**: 21 working examples
+**Examples**: 22 working examples
 - HAL examples: 14 (covering all 12 modules)
 - BLE examples: 4 (bluetooth-sys/examples/)
-- BSP examples: 3 (xiao-mg24-bsp/examples/)
+- BSP examples: 4 (xiao-mg24-bsp/examples/ - includes safe BLE wrapper demo)
 
 **Build Status**: All examples compile successfully with zero errors
 
@@ -118,9 +118,10 @@ gantt
 
 **Phase D2 - Bluetooth 5.3 LE** 🔄 (December 28, 2025 - 50% Complete):
 - ✅ efr32mg24-bluetooth-sys crate with BGAPI bindings (4,307 lines)
-- ✅ 6 working BLE examples (beacon, GATT, custom services, BSP integration)
-- ⏳ XiaoBle BSP implementation
-- ⏳ Additional BLE protocol features
+- ✅ 7 working BLE examples (4 bluetooth-sys FFI + 3 BSP integration)
+- ✅ XiaoBle safe wrapper (01_ble_beacon_safe.rs - 80% code reduction vs unsafe FFI)
+- ⏳ XiaoBle GATT server implementation (notifications, characteristics)
+- ⏳ Additional BLE protocol features (scanning, connections, pairing)
 
 ### Next Up
 

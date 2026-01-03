@@ -1,12 +1,17 @@
 #!/bin/bash
 # Smart find and replace with markdown awareness
 # Usage: bash smart-replace.sh <file> <find> <replace> [--in-code|--skip-code]
+#
+# IMPORTANT: For multi-line replacements, use the Edit tool directly instead.
+# This script handles single-line and simple multi-line patterns.
 
 set -e
 
 if [ "$#" -lt 3 ]; then
     echo "Usage: $0 <file> <find> <replace> [--in-code|--skip-code]"
     echo "Example: $0 README.md \"stm32-rs\" \"efr32-rs\" --skip-code"
+    echo ""
+    echo "Note: For complex multi-line replacements, use the Edit tool directly."
     exit 1
 fi
 
@@ -30,37 +35,38 @@ BACKUP_PATH=".archive/${BACKUP_NAME}_${TIMESTAMP}"
 cp "$FILE" "$BACKUP_PATH"
 echo "Backup created: $BACKUP_PATH"
 
-if [ "$MODE" = "--skip-code" ]; then
-    # Skip code blocks
-    TEMP_FILE=$(mktemp)
-    IN_CODE_BLOCK=0
+# Use Python for robust string replacement (handles all special characters and multi-line)
+python3 - <<EOF
+import sys
+import re
 
-    while IFS= read -r line; do
-        # Detect code block boundaries
-        if echo "$line" | grep -q '^```'; then
-            if [ $IN_CODE_BLOCK -eq 0 ]; then
-                IN_CODE_BLOCK=1
-            else
-                IN_CODE_BLOCK=0
-            fi
-            echo "$line" >> "$TEMP_FILE"
-        elif [ $IN_CODE_BLOCK -eq 1 ]; then
-            # Inside code block, don't replace
-            echo "$line" >> "$TEMP_FILE"
-        else
-            # Outside code block, do replace
-            echo "$line" | sed "s|${FIND}|${REPLACE}|g" >> "$TEMP_FILE"
-        fi
-    done < "$FILE"
+# Read the file
+with open('$FILE', 'r', encoding='utf-8') as f:
+    content = f.read()
 
-    mv "$TEMP_FILE" "$FILE"
-    echo "Replaced '$FIND' with '$REPLACE' in text (skipped code blocks)"
-else
-    # Replace everywhere including code blocks
-    sed -i.tmp "s|${FIND}|${REPLACE}|g" "$FILE"
-    rm -f "$FILE.tmp"
-    echo "Replaced '$FIND' with '$REPLACE' everywhere (including code blocks)"
-fi
+# Get search and replace strings (passed as environment variables for safety)
+find_str = '''$FIND'''
+replace_str = '''$REPLACE'''
+
+# Mode: skip code or replace everywhere
+mode = '$MODE'
+
+if mode == '--skip-code':
+    # Split by code blocks and only replace outside them
+    parts = content.split('```')
+    for i in range(0, len(parts), 2):  # Even indices are outside code blocks
+        parts[i] = parts[i].replace(find_str, replace_str)
+    result = '```'.join(parts)
+    print("Replaced text (skipped code blocks)", file=sys.stderr)
+else:
+    # Replace everywhere (literal string replacement, not regex)
+    result = content.replace(find_str, replace_str)
+    print("Replaced text everywhere (including code blocks)", file=sys.stderr)
+
+# Write result back
+with open('$FILE', 'w', encoding='utf-8') as f:
+    f.write(result)
+EOF
 
 echo "Updated: $FILE"
 echo "To restore: cp $BACKUP_PATH $FILE"

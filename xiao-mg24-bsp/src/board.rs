@@ -20,9 +20,18 @@ pub struct Board {
     pub clocks: FrozenClocks,
 
     /// Core peripherals (SysTick, NVIC, etc.)
-    ///
-    /// SysTick is wrapped in Option to allow taking for delay creation.
     pub core: cortex_m::Peripherals,
+
+    /// PAC peripherals (for advanced use)
+    pub peripherals: BoardPeripherals,
+}
+
+/// Board peripherals
+///
+/// Provides access to PAC peripherals not yet wrapped by HAL.
+pub struct BoardPeripherals {
+    /// LDMA peripheral (for DMA operations)
+    pub ldma_s: pac::LdmaS,
 }
 
 impl Board {
@@ -80,6 +89,9 @@ impl Board {
             pins,
             clocks: frozen_clocks,
             core: cp,
+            peripherals: BoardPeripherals {
+                ldma_s: dp.ldma_s,
+            },
         }
     }
 
@@ -116,6 +128,9 @@ impl Board {
             pins,
             clocks: frozen_clocks,
             core: cp,
+            peripherals: BoardPeripherals {
+                ldma_s: dp.ldma_s,
+            },
         })
     }
 
@@ -156,12 +171,12 @@ impl Board {
     /// use embedded_hal::delay::DelayNs;
     ///
     /// let board = Board::take().unwrap();
-    /// let (pins, clocks, core) = board.split();
+    /// let (pins, clocks, core, peripherals) = board.split();
     ///
     /// let mut led = pins.d10.into_push_pull_output();
     /// let mut delay = hal::delay::Delay::new(core.SYST, &clocks);
     /// ```
-    pub fn split(self) -> (Pins, FrozenClocks, cortex_m::Peripherals) {
-        (self.pins, self.clocks, self.core)
+    pub fn split(self) -> (Pins, FrozenClocks, cortex_m::Peripherals, BoardPeripherals) {
+        (self.pins, self.clocks, self.core, self.peripherals)
     }
 }

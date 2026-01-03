@@ -34,21 +34,33 @@
 
 ### High Priority
 
-- [ ] **D2-BLE.3**: Implement XiaoBle in BSP @priority(high) @phase(D2) @identifier(D2-BLE.3)
-  - Implement BleAdvertiser trait
-  - Implement BleGattServer trait
-  - Estimated effort: 15-22 hours
+(See In Progress section below for active D2-BLE.3 task)
 
 ### Medium Priority
 
-- [ ] **D2-BLE.4**: Create BLE examples @priority(medium) @phase(D2) @identifier(D2-BLE.4)
-  - ble_beacon.rs
-  - ble_peripheral.rs
-  - ble_gatt_server.rs (heart rate)
-  - Estimated effort: 10-15 hours
+(No pending Phase D2 tasks - D2-BLE.4 completed)
+
 ## In Progress
 
-(No tasks currently in progress)
+- [ ] **D2-BLE.3**: Implement XiaoBle in BSP @priority(high) @phase(D2) @identifier(D2-BLE.3) @started(2026-01-02) @partial(advertiser-complete)
+  - **Completed (2026-01-02)**:
+    - ✅ Created xiao-mg24-bsp/src/radio/ module with BleError type
+    - ✅ Implemented XiaoBle struct with advertiser methods (start_advertising, stop_advertising, set_device_name, add_service_uuid)
+    - ✅ Created GapAdBuilder for automatic GAP AD encoding (eliminates 30-40 lines per example)
+    - ✅ Unit tests: 6 tests for GapAdBuilder (encoding, validation, overflow protection)
+    - ✅ 01_ble_beacon_safe.rs example - 80% code reduction (270 lines unsafe FFI → ~50 lines safe wrapper)
+    - ✅ Examples renamed with numeric prefixes (00-03)
+    - ✅ Comprehensive documentation: ble/README.md (~650 lines), examples/README.md (~500 lines)
+    - ✅ Rust-hal-expert review: Grade A- (SHIP IT, production-ready for prototypes/RTOS)
+  - **Deferred to Phase D2.4+**:
+    - ⏳ BleGattServer trait implementation (notify, write_attribute methods)
+    - ⏳ Event system (connection callbacks, disconnect handling)
+    - ⏳ GATT database builder (automatic handle assignment)
+  - **Notes**:
+    - Direct methods on XiaoBle (not separate traits) per nrf-softdevice pattern
+    - BSP-level implementation (matches Nordic/ESP industry standards)
+    - Known issue: CMSIS runtime stubs needed for linker (separate task)
+  - **Effort**: ~8 hours (advertiser portion)
 
 ---
 
@@ -422,11 +434,11 @@
 **Phase D1 (RAIL Foundation)**: 1/1 complete (100%)
 - ✅ D1-RAIL.1: efr32mg24-rail-sys crate (3,974 FFI bindings, Grade A-)
 
-**Phase D2 (Bluetooth 5.3 LE)**: 2/4 tasks (50%)
+**Phase D2 (Bluetooth 5.3 LE)**: 2.5/4 tasks (62.5%)
 - ❌ D2-BLE.1: Create radio/ble/ HAL module (REMOVED - BLE belongs in bluetooth-sys, not HAL per industry standards)
-- ✅ D2-BLE.2: Create efr32mg24-bluetooth-sys crate
-- ⏳ D2-BLE.3: Implement XiaoBle in BSP (BSP examples exist, formal trait impl pending)
-- ✅ D2-BLE.4: Create BLE examples (6 examples: 4 bluetooth-sys + 2 BSP)
+- ✅ D2-BLE.2: Create efr32mg24-bluetooth-sys crate (4,307 BGAPI bindings)
+- ◐ D2-BLE.3: Implement XiaoBle in BSP (advertiser methods complete, GATT server deferred to D2.4+)
+- ✅ D2-BLE.4: Create BLE examples (7 examples: 4 bluetooth-sys + 3 BSP)
 
 **Phase B Progress**: 100% complete ✅
 - ✅ USART (Complete - serial communication)
