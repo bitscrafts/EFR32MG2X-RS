@@ -14,14 +14,7 @@
 
 ### Medium Priority
 
-- [ ] **C2-DMA.2**: DMA Stage 2 - Peripheral Transfers @identifier(C2-DMA.2) @priority(medium) @phase(C) @stage(2.2) @deferred(2025-12-27)
-  - **Status**: Research complete, deferred to later phase
-  - Peripheral-to-memory transfers (IADC, USART)
-  - REQSEL register configuration
-  - Circular buffer support
-  - Interrupt-driven transfers
-  - **Complexity**: ~16-22 hours estimated effort
-  - **Decision**: Complete simpler modules first (RTC, WDOG), return with fresh perspective
+(No pending medium priority tasks)
 
 ### Low Priority
 - [ ] **C6-Test**: Hardware validation on XIAO MG24 Sense @identifier(C6-Test) @priority(low) @phase(C) @stage(6)
@@ -118,6 +111,18 @@
 ---
 
 ## Done (Recent - Last 30 Days)
+
+### Week of January 3, 2026
+
+- [x] **C2-DMA.2**: DMA Stage 2 - Peripheral Transfers @done(2026-01-03) @identifier(C2-DMA.2) @phase(C) @stage(2.2)
+  - Peripheral-to-memory transfers (IADC, USART)
+  - Circular buffer mode with automatic descriptor linking
+  - LDMAXBAR peripheral request routing (SOURCESEL/SIGSEL)
+  - PeripheralRequest enum with signal mapping
+  - stop() and get_position() methods
+  - Example: 09_dma_adc_continuous.rs (195 lines)
+  - DMA module: 653 lines total (+290 for peripheral transfers)
+  - Integrated with Phase D2 microphone driver
 
 ### Week of December 27-28, 2025
 
@@ -416,13 +421,13 @@
 - ✅ B3-SPI: SPI master mode
 - ✅ B4-Timer: Timers and PWM
 
-**Phase C (Advanced)**: 5/5 core modules complete (100%)
+**Phase C (Advanced)**: 6/6 core modules complete (100%) ✅
 - ✅ C1-ADC: 12-bit ADC with VBGR/VDD reference
 - ✅ C2-DMA.1: DMA Stage 1 (memory-to-memory transfers)
+- ✅ C2-DMA.2: DMA Stage 2 (peripheral-to-memory transfers) - COMPLETE (2026-01-03)
 - ✅ C3-EMU: Energy Management Unit Stage 1 (EM0-EM2 transitions)
 - ✅ C4-RTC: Real-Time Clock Stage 1 (counter-based timekeeping)
 - ✅ C5-WDOG: Watchdog Timer Stage 1 (basic watchdog functionality)
-- ⏳ C2-DMA.2: DMA Stage 2 (peripheral transfers) - Deferred to future phase
 - ⏳ C2-DMA.3: DMA Stage 3 (linked descriptors) - Deferred to future phase
 - ⏳ C2-DMA.4: DMA Stage 4 (interrupt-driven) - Deferred to future phase
 
