@@ -2,7 +2,7 @@
 //!
 //! This module provides type-safe wrappers and utilities for BLE operations.
 
-use super::super::BleError;
+use super::error::BleError;
 
 /// GATT characteristic handle
 ///
@@ -14,7 +14,7 @@ use super::super::BleError;
 /// the GATT database. They identify specific characteristics.
 ///
 /// ```no_run
-/// use xiao_mg24_bsp::radio::ble::CharHandle;
+/// use efr32mg24_bluetooth_sys::blocking::CharHandle;
 ///
 /// // From GATT Configurator output
 /// const GATTDB_HEART_RATE_MEASUREMENT: CharHandle = CharHandle(3);
@@ -60,7 +60,7 @@ impl CharHandle {
 /// # Example
 ///
 /// ```no_run
-/// use xiao_mg24_bsp::radio::ble::GapAdBuilder;
+/// use efr32mg24_bluetooth_sys::blocking::GapAdBuilder;
 ///
 /// let mut builder = GapAdBuilder::new();
 /// builder.add_name("XIAO Device")?;

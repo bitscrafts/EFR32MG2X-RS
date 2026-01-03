@@ -5,19 +5,51 @@
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![doc = include_str!("../README.md")]
 
-//! Low-level FFI bindings to Silicon Labs Bluetooth stack (BGAPI).
+//! Silicon Labs Bluetooth Stack (BGAPI) for EFR32MG24
 //!
-//! # Safety
+//! This crate provides both raw FFI bindings and safe Rust wrappers for the
+//! Silicon Labs Bluetooth stack.
 //!
-//! This crate provides raw, unsafe FFI bindings to the Silicon Labs Bluetooth stack.
-//! All functions are `unsafe` and require careful handling of:
+//! # Blocking API (Recommended)
 //!
+//! The blocking API provides a safe, synchronous wrapper around BGAPI:
+//!
+//! ```no_run
+//! use efr32mg24_bluetooth_sys::blocking::{Bluetooth, BleEvent};
+//!
+//! let mut ble = Bluetooth::new(&mut delay)?;
+//! ble.set_device_name("My Device")?;
+//! ble.start_connectable(100, 0)?;
+//!
+//! loop {
+//!     if let Some(event) = ble.poll_event() {
+//!         match event {
+//!             BleEvent::Connected { .. } => { /* handle connection */ }
+//!             BleEvent::GattWrite { attribute, value, .. } => { /* handle write */ }
+//!             _ => {}
+//!         }
+//!     }
+//!     delay.delay_ms(10);
+//! }
+//! ```
+//!
+//! # Raw FFI (Advanced Users)
+//!
+//! The `ffi` module provides raw, unsafe bindings to BGAPI:
+//!
+//! ```no_run
+//! use efr32mg24_bluetooth_sys::ffi;
+//!
+//! unsafe {
+//!     ffi::sl_bt_system_start_bluetooth();
+//!     // ...
+//! }
+//! ```
+//!
+//! **Safety**: All FFI functions are unsafe and require careful handling of:
 //! - Memory safety: Bluetooth stack operates on hardware and memory buffers
 //! - Thread safety: Bluetooth callbacks execute in interrupt/event context
-//! - Lifetime management: Bluetooth handles must outlive their associated resources
 //! - Initialization order: Bluetooth requires specific initialization sequences
-//!
-//! **Do not use this crate directly.** Use the safe wrapper in `efr32mg24-hal::radio::ble` instead.
 //!
 //! # MSLA License
 //!
@@ -28,43 +60,28 @@
 //! - Binary blobs may only be used with Silicon Labs hardware
 //! - No reverse engineering or modification of blobs
 //! - Distribution requires MSLA compliance
-//!
-//! See NOTICE file for third-party attributions.
-//!
-//! # Usage
-//!
-//! To use this crate, you must:
-//!
-//! 1. Download Gecko SDK from Silicon Labs
-//! 2. Extract `libbluetooth_efr32xg24_gcc_release.a` to `blobs/efr32mg24b220/`
-//! 3. Extract `sl_bt_api.h` and dependencies to `vendor/bluetooth/`
-//! 4. Build the crate (bindings will be auto-generated)
-//!
-//! ```toml
-//! [dependencies]
-//! efr32mg24-bluetooth-sys = "0.1"
-//! ```
-//!
-//! # Example (Unsafe!)
-//!
-//! ```no_run
-//! use efr32mg24_bluetooth_sys as bt;
-//!
-//! // SAFETY: This is highly unsafe and provided only as an example.
-//! // Actual Bluetooth initialization requires extensive setup not shown here.
-//! unsafe {
-//!     // Initialize Bluetooth stack (requires proper configuration)
-//!     // sl_bt_init_stack(&config);
-//!
-//!     // Set device name
-//!     // sl_bt_gatt_server_write_attribute_value(...);
-//!
-//!     // Start advertising
-//!     // sl_bt_advertiser_start(...);
-//! }
-//! ```
-//!
-//! **Again: Do not use this API directly. Use `efr32mg24-hal::radio::ble` and the BSP instead.**
 
-// Include the auto-generated bindings from build.rs
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+// Raw FFI bindings (always available)
+pub mod ffi {
+    //! Raw BGAPI FFI bindings
+    //!
+    //! **Safety**: All functions are `unsafe`. Use the safe wrappers in
+    //! `blocking` module instead.
+    //!
+    //! # Example
+    //!
+    //! ```no_run
+    //! use efr32mg24_bluetooth_sys::ffi;
+    //!
+    //! unsafe {
+    //!     ffi::sl_bt_system_start_bluetooth();
+    //! }
+    //! ```
+    include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+}
+
+// Blocking API (always available)
+pub mod blocking;
+
+// Re-export blocking API at root for convenience
+pub use blocking::*;
