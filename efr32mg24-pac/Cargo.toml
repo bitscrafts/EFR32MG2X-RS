@@ -27,4 +27,7 @@ default = ["critical-section"]
 rt = ["cortex-m-rt/device"]
 critical-section = ["dep:critical-section"]
 
+[dev-dependencies]
+panic-halt = "0.2"
+
 [build-dependencies]

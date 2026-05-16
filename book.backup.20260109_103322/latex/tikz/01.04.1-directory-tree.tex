@@ -1,0 +1,41 @@
+% Directory Tree for Section 1.4.1 - Repository Structure
+\begin{figure}[H]
+    \centering
+    \begin{forest}
+        for tree={
+            font=\ttfamily\small,
+            grow'=0,
+            child anchor=west,
+            parent anchor=south,
+            anchor=west,
+            calign=first,
+            edge path={
+                \noexpand{path [draw, rustblue] (\tikzparentnode\tikzparentanchor) |- (\tikzchildnode\tikzchildanchor)}
+            },
+            if n children=0{}{% <- this
+                before typesetting nodes={
+                    if content={}{}{}% <- and this
+                    {
+                        label={\small\color{rustblue}\textit{[directory]}},
+                    }
+                },
+            }
+        }
+        [
+            EFR32MG24/
+                [efr32mg24-pac/, rustblue]
+                [efr32mg24-hal/, rustblue]
+                [efr32mg24-rail-sys/, rustblue]
+                [efr32mg24-bluetooth-sys/, rustblue]
+                [xiao-mg24-bsp/, rustblue]
+                [docs/, rustblue]
+                [book/, rustblue]
+                [examples/, rustblue]
+                [Cargo.toml]
+                [README.md]
+                [CLAUDE.md]
+        ]
+    \end{forest}
+    \caption{Repository top-level structure}
+    \label{fig:repo-structure}
+\end{figure}

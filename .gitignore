@@ -35,6 +35,15 @@ docs/SAMD11_BRIDGE_AND_SAFE_FLASHING.md
 .cargo/
 efr32mg24-hal/examples/02_blink.rs
 
+# Book writing (documentation project, not code)
+book/output/
+book/project/*/target/
+*.pdf
+book/**/*.aux
+book/**/*.log
+book/**/*.out
+book/**/*.toc
+
 # Radio -sys crates: blobs and vendor headers (MSLA licensed, not in git)
 **/blobs/*.a
 **/blobs/*.o

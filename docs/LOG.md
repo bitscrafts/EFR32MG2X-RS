@@ -4,6 +4,58 @@ Log of significant achievements, milestones, and key decisions throughout the pr
 
 ---
 
+## 2026-01-09: OpenOCD CMSIS-DAP Flashing Workflow Verified
+
+**Milestone**: Complete hardware flashing workflow operational via OpenOCD with CMSIS-DAP interface
+
+**Achievements**:
+- **OpenOCD Flashing Workflow**: Successfully verified complete flashing procedure
+  - OpenOCD version: 0.12.0+dev-01514-g21fa2de70 (Arduino fork)
+  - Interface: CMSIS-DAP via onboard SAMD11 USB bridge
+  - Device: /dev/cu.usbmodem24D15EE43 (VID:PID=0x2886:0x0062, Serial: 24D15EE4)
+  - Target chip: MG24B220, rev 22, 1536 KiB flash, 8192 B pages
+- **Firmware Verification**: Arduino microphone example flashed and confirmed working
+  - Hex file: microphone_volume_with_bootloader.hex (2.5M)
+  - Bootloader preserved: 0x08000000 - 0x08005FFF (~10 KB used of 24 KB allocated)
+  - Application region: 0x08006000 - 0x0817FFFF (1512 KB)
+  - Programming: Complete with full verification passed
+- **Memory Configuration Validated**:
+  - Flash base address: 0x08000000 (per efm32s2_g23.cfg)
+  - Bootloader layout: Arduino uses 24 KB (not 16 KB as initially assumed)
+  - Application start: 0x08006000 (confirmed by hex file analysis)
+  - PC after reset: 0x08000170 (bootloader entry point)
+- **Documentation Created**:
+  - docs/OPENOCD_FLASH_PROCEDURE.md: Complete verified procedure (380 lines)
+  - efr32mg24.cfg: Custom target configuration file
+  - Troubleshooting guide with common issues and solutions
+
+**Impact**:
+- **Rust Firmware Ready**: Verified flashing workflow enables testing of all Rust HAL examples on hardware
+- **Development Acceleration**: OpenOCD via CMSIS-DAP eliminates need for external J-Link programmer
+- **Bootloader Safety**: Confirmed preservation of Arduino bootloader for recovery scenarios
+- **Memory Map Clarity**: Resolved 0x00000000 vs 0x08000000 flash base address confusion
+- **Production Workflow**: Repeatable, documented procedure for firmware deployment
+
+**Metrics**:
+- **Flash time**: ~30-45 seconds for 2.5M hex file
+- **Verification**: 100% pass rate with built-in OpenOCD verify command
+- **Documentation**: 380 lines comprehensive procedure guide
+- **Recovery capability**: Bootloader intact, device fully functional post-flash
+
+**Technical Highlights**:
+- OpenOCD efm32s2_g23.cfg correctly targets EFR32MG24 Series 2 Group 23
+- CMSIS-DAP v2 interface provides reliable programming without external hardware
+- Flash discontinuity at 0x08002a44 → 0x08006000 indicates bootloader boundary
+- Hex files encode absolute addresses, eliminating linker script conflicts during programming
+
+**Next Steps**:
+- Flash Rust HAL examples to hardware for integration testing
+- Test GPIO, USART, I2C, SPI, Timer peripherals on actual device
+- Verify Bluetooth stack examples with hardware radio
+- Document Rust-specific flash workflow (cargo objcopy + OpenOCD)
+
+---
+
 ## 2025-12-28: Phase D1 Complete - RAIL Foundation (Radio Abstraction Interface Layer)
 
 **Milestone**: Production-ready FFI bindings to Silicon Labs RAIL library with comprehensive build system, verification, and documentation

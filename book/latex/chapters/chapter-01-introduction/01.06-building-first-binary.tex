@@ -1,0 +1,408 @@
+\section{Building Your First Embedded Binary}
+\label{sec:building-first-binary}
+
+% Section 01.06: Building Your First Embedded Binary
+
+Now that we have our toolchain set up and understand the project structure, let's build and analyze a real embedded binary. This section will guide you through the complete build process with detailed explanations of each step.
+
+\subsection{Preparing a Complete Example}
+\label{sec:complete-example}
+
+Let's create a minimal but complete embedded project that we can actually build and analyze:
+\begin{minted}{bash}
+$ cargo new --lib efr32mg24-minimal
+$ cd efr32mg24-minimal
+$ mkdir examples
+$ cat > examples/minimal.rs << 'EOF'
+#![no_std]
+#![no_main]
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {}
+}
+
+#[no_mangle]
+pub extern "C" fn main() -> ! {
+    loop {
+        // Main application loop
+        cortex_m::asm::nop();
+    }
+}
+EOF
+\end{minted}
+
+Add dependencies to \filepath{Cargo.toml}:\
+
+\begin{minted}{toml}
+[package]
+name = "efr32mg24-minimal"
+version = "0.1.0"
+edition = "2021"
+
+[profile.dev]
+opt-level = "z"
+debug = true
+overflow-checks = false  # Critical for embedded
+
+[profile.release]
+opt-level = "z"
+debug = true
+overflow-checks = false
+panic = "abort"
+lto = true
+
+codegen-units = 1
+
+[dependencies]
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+
+# Development dependencies
+[dev-dependencies]
+cortex-m-semihosting = "0.5"
+\end{minted}
+
+\subsection{Reference: Complete Project Example}
+\label{subsec:reference-complete-project}
+
+For a comprehensive step-by-step guide with all project files (build.rs, Cargo.toml, memory.x, etc.), see Section \ref{sec:complete-project-example}.
+
+This section focuses on understanding the build process and analyzing the resulting binary.
+
+\subsection{Understanding the Build Process}
+\label{sec:understanding-build}
+
+When you run \codeinline{cargo build --release}, here's what happens:
+\begin{remark}
+    This diagram shows the build pipeline for embedded Rust:
+\end{remark}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}[
+        node/.style={rectangle, draw=black, thick, minimum width=2.5cm, minimum height=1cm},
+        arrow/.style={-Latex, thick}
+    ]
+
+        % Nodes
+        \node[node, fill=rustblue!20] (source) at (0, 0) {Source Code};
+        \node[node, fill=yellow!20] (rustc) at (3, 0) {rustc};
+        \node[node, fill=orange!20] (llvm) at (6, 0) {LLVM};
+        \node[node, fill=green!20] (obj) at (9, 0) {Object File};
+        \node[node, fill=red!20] (linker) at (9, -2) {Linker};
+        \node[node, fill=purple!20] (bin) at (6, -2) {Binary};
+
+        % External files
+        \node[font=\small] (linker-script) at (9, 0.8) {linker.ld};
+        \node[font=\small] (startup) at (9, 1.2) {startup_s};
+
+        % Arrows
+        \draw[arrow] (source) -- (rustc);
+        \draw[arrow] (rustc) -- (llvm);
+        \draw[arrow] (llvm) -- (obj);
+        \draw[arrow] (obj) -- (linker);
+        \draw[arrow] (linker) -- (bin);
+        \draw[arrow, dashed] (linker-script) -- (linker);
+        \draw[arrow, dashed] (startup) -- (linker);
+
+        % Labels
+        \node[font=\small, below=0.2cm of source] {Human};
+        \node[font=\small, below=0.2cm of rustc] {Targeting};
+        \node[font=\small, below=0.2cm of llvm] {ARM};
+        \node[font=\small, below=0.2cm of obj] {Cortex-M33};
+        \node[font=\small, below=0.2cm of bin] {thumbv8m};
+    \end{tikzpicture}
+    \caption{Rust embedded build pipeline}
+    \label{fig:build-pipeline}
+\end{figure}
+
+\subsection{Compile Step}
+\begin{minted}{bash}
+$ cargo build --release --example minimal
+   Compiling autocfg v1.1.0
+   Compiling proc-macro2 v1.0.56
+   Compiling cortex-m v0.7.7
+   Compiling quote v1.0.27
+   Compiling cortex-m-rt v0.7.3
+   Compiling efr32mg24-minimal v0.1.0
+    Finished release [optimized] target(s) in 1.24s
+\end{minted}
+
+Notice that cargo automatically downloads and compiles dependencies. For embedded,
+this includes startup code and linker scripts via \codeinline{cortex-m-rt}.
+
+\subsection{Binary Analysis}
+\label{sec:binary-analysis}
+
+Once built, let's examine the binary:
+
+\subsection{Size Analysis}
+\begin{minted}{bash}
+$ cargo size --release --example minimal
+   text    data     bss     dec     hex filename
+     80       0       0      80      50 minimal
+\end{minted}
+
+What do these sections mean?
+\begin{itemize}
+    \item \textbf{text}: The actual machine code (read-only)
+    \item \textbf{data}: Initialized static variables
+    \item \textbf{bss}: Uninitialized static variables (zeroed at startup)
+    \item \textbf{dec}: Total bytes (decimal)
+    \item \textbf{hex}: Total bytes (hexadecimal)
+\end{itemize}
+
+Our minimal program is 80 bytes total. Let's see what's inside:
+
+\subsection{Disassembly}
+\begin{minted}{bash}
+$ cargo objdump --release --example minimal -- -d
+\end{minted}
+
+Output (simplified):
+\begin{minted}{text}
+00000000 <main>:
+       0: b580            push    {r7, lr}
+       2: f000 f802       bl      0xa <_ZN4core4...
+       6: bf00            nop
+       8: e7fe            b.n     0x8 <main+0x8>
+
+0000000a <HardFault>:
+       a: e7fe            b.n     0xa <HardFault>
+\end{minted}
+
+Interpretation:
+\begin{itemize}
+    \item \codeinline{push {r7, lr}}: Save registers
+    \item \codeinline{bl}: Branch with link (call function)
+    \item \codeinline{nop}: No operation (our loop body)
+    \item \codeinline{b.n}: Branch to self (infinite loop)
+    \item \codeinline{HardFault}: Default exception handler
+\end{itemize}
+
+\subsection{Listing Sections}
+\begin{minted}{bash}
+$ cargo objdump --release --example minimal -- -h
+\end{minted}
+
+Shows memory layout:
+\begin{minted}{text}
+Idx Name          Size      VMA       LMA       File off  Algn
+  0 .text         00000014  00000000  00000000  00000034  2**2
+                  CONTENTS, ALLOC, LOAD, READONLY, CODE
+  1 .data         00000000  20000000  20000000  00000034  2**0
+                  CONTENTS, ALLOC, LOAD, DATA
+  2 .bss          00000000  20000000  20000000  00000034  2**0
+                  ALLOC
+\end{minted}
+
+\textbf{Explanation}:
+\begin{itemize}
+    \item \codeinline{.text} starts at 0x00000000 (flash memory)
+    \item \codeinline{.data/.bss} start at 0x20000000 (SRAM)
+    \item Flash: 1,536 KB on EFR32MG24
+    \item SRAM: 256 KB on EFR32MG24
+\end{itemize}
+
+\subsection{Build Optimization Comparison}
+\label{sec:optimization-comparsion}
+
+Build with different optimization levels:
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l c c c c}
+        \toprule
+        \textbf{Profile} & \textbf{text} & \textbf{data} & \textbf{bss} & \textbf{Total} \\
+        \midrule
+        dev (opt-level='z') & 124 & 0 & 0 & 124 \\
+        release (opt-level='z') & 80 & 0 & 0 & 80 \\
+        release (opt-level='s') & 76 & 0 & 0 & 76 \\
+        release (opt-level=3) & 68 & 0 & 0 & 68 \\
+        \bottomrule
+    \end{tabular}
+    \caption{Size comparison by optimization level}
+    \label{tab:optimization-size}
+\end{table}
+
+Optimization levels:
+\begin{itemize}
+    \item \codeinline{'z'}: Optimize for size aggressively
+    \item \codeinline{'s'}: Optimize for size
+    \item \codeinline{'3'}: Optimize for speed (may reduce size too)
+\end{itemize}
+
+Even the unoptimized debug build is only 124 bytes!
+
+\subsection{Linking and Linker Scripts}
+\label{sec:linking}
+
+The linker script is crucial in embedded systems. It tells the linker where to place code and data in memory.
+\subsection{Memory Layout}
+Create \filepath{memory.x}:
+\begin{minted}{text}
+MEMORY
+{
+  /* Flash memory for code and constants */
+  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 1536K
+
+  /* RAM for variables and stack */
+  RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 256K
+}
+\end{minted}
+
+This matches the EFR32MG24B220 memory map:
+\begin{itemize}
+    \item Flash: 1,536 KB starting at 0x0000_0000
+    \item SRAM: 256 KB starting at 0x2000_0000
+\end{itemize}
+\subsection{Examining the Linker Output}
+\begin{minted}{bash}
+$ cargo build --release --example minimal --verbose 2>&1 | grep "LINK"
+\end{minted}
+
+Shows the linker command:
+\begin{minted}{text}
+"rust-lld" "-flavor" "gnu"
+  "-Tlink.x"
+  "-Tmemory.x"
+  "-o" ".../target/release/examples/minimal"
+  ...
+\end{minted}
+
+\textbf{Key flags}:
+\begin{itemize}
+    \item \codeinline{rust-lld}: LLVM linker for embedded targets
+    \item \codeinline{-Tlink.x}: Standard Cortex-M linker script
+    \item \codeinline{-Tmemory.x}: Our custom memory layout
+\end{itemize}
+
+\subsection{Creating a Flashable Binary}
+\label{sec:flashable-binary}
+
+The ELF binary contains debug symbols and metadata. For flashing, we need a raw binary:
+\subsection{Convert to Binary Format}
+\begin{minted}{bash}
+$ cargo objcopy --release --example minimal -- -O binary minimal.bin
+\end{minted}
+
+Check sizes:
+\begin{minted}{bash}
+$ ls -lh target/thumbv8m.main-none-eabihf/release/
+-rwxr-xr-x  80K minimal          # ELF with symbols
+-rwxr-xr-x  80B minimal.bin     # Raw binary for flash
+\end{minted}
+
+The binary is much smaller because it contains only the raw machine code without debug symbols, section headers, etc.
+\subsection{Hex Format for Some Tools}
+Some tools prefer Intel hex format:
+\begin{minted}{bash}
+$ cargo objcopy --release --example minimal -- -O ihex minimal.hex
+\end{minted}
+
+\subsection{Automated Build Script}
+\label{sec:automated-build}
+
+Create a rust file, \filepath{build.rs}, in your project root:
+\begin{minted}{rust}
+use std::env;
+use std::fs;
+use std::path::PathBuf;
+
+fn main() {
+    // Tell cargo to rerun build script if memory.x changes
+    println!("cargo:rerun-if-changed=memory.x");
+
+    // Copy memory.x to output directory
+    let out = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
+    fs::copy("memory.x", out.join("memory.x")).unwrap();
+
+    println!("cargo:rustc-link-search={}", out.display());
+}
+\end{minted}
+
+This ensures the linker script is available during linking.
+
+\subsection{Build Automation with Justfile}
+\label{sec:justfile}
+
+For complex projects, use \structure{just} (a command runner):
+\begin{minted}{text}
+# Justfile - Build automation
+
+# Build release binary
+build:
+    cargo build --release --example minimal
+
+# Show binary size
+size:
+    cargo size --release --example minimal
+
+# Disassemble
+disasm:
+    cargo objdump --release --example minimal -- -d
+
+# Show section info
+sections:
+    cargo objdump --release --example minimal -- -h
+
+# Convert to binary
+binary:
+    cargo objcopy --release --example minimal -- -O binary minimal.bin
+
+# Run all analysis
+analyze: build size disasm sections binary
+    @echo "Analysis complete!"
+\end{minted}
+
+Usage:
+\begin{minted}{bash}
+$ just build
+$ just size
+$ just analyze
+\end{minted}
+\subsection{Key Takeaways}
+\label{sec:ch1-key-takeaways}
+
+\begin{keytakeaways}
+    \item Embedded Rust binaries are incredibly small (our minimal example is 80 bytes)
+    \item Optimization settings significantly impact size (from 124 to 68 bytes)
+    \item The build process involves: compile → link → optionally convert format
+    \item Linker scripts control memory layout and are critical for embedded
+    \item Cargo provides powerful tools for analyzing binaries (size, objdump, objcopy)
+    \item The ELF format contains metadata; for flashing, use binary or hex format
+    \item Scripting your build workflow improves productivity
+\end{keytakeaways}
+
+\begin{exercise}[Easy]
+    Create a project template with a complete build script that:
+    \begin{itemize}
+        \item Builds release binary
+        \item Shows size information
+        \item Creates both .bin and .hex files
+        \item Runs objdump analysis
+    \end{itemize}
+\end{exercise}
+
+\begin{exercise}[Medium]
+    Compare binaries built with different optimization levels:
+    \begin{itemize}
+        \item What differences do you see in objdump output?
+        \item How much code can the linker remove from our minimal example?
+        \item Where does libc start inserting startup code?
+    \end{itemize}
+\end{exercise}
+
+\begin{exercise}[Hard]
+    Write a custom linker script that:
+    \begin{itemize}
+        \item Places the vector table at a specific address
+        \item Creates a separate section for time-critical code
+        \item Reserves space at the end of RAM for a stack canary
+        \item Adds checksums for firmware verification
+    \end{itemize}
+    Then verify it works with objdump.
+\end{exercise}

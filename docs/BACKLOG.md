@@ -10,6 +10,16 @@
 
 ### High Priority
 
+- [ ] **Bootloader Investigation**: Analyze Arduino bootloader requirements for Rust firmware @priority(high) @phase(Hardware) @identifier(HW-Boot)
+  - Analyze microphone_volume_with_bootloader.hex structure
+  - Identify application signature/metadata requirements
+  - Compare vector tables between Arduino and Rust
+  - Document Gecko Bootloader Application Properties table
+  - Research boot sequence and application validation
+  - Create compatibility checklist for Rust firmware
+  - **Blocker**: Rust blink example flashes successfully but doesn't run (bootloader stays at 0x08000170)
+  - **Safety**: Always flash microphone example between tests to verify device not bricked
+
 (Phase D2 tasks ready to start - see Phase D2 section below)
 
 ### Medium Priority

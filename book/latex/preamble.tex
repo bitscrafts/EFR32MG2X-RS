@@ -1,0 +1,177 @@
+% Minimal Preamble - Version 2.1
+% Technical book template optimized for code and diagrams
+% Last updated: 2026-01-09
+
+% ========== FONTS AND ENCODING ==========
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+
+% ========== PAGE LAYOUT ==========
+\usepackage[margin=1in]{geometry}
+
+% ========== COLORS (before other packages that use colors) ==========
+\usepackage[dvipsnames]{xcolor}
+\definecolor{rustblue}{RGB}{0, 119, 255}
+\definecolor{codebg}{RGB}{248, 248, 248}
+
+% ========== CODE LISTINGS ==========
+% minted provides fancyvrb, so we get it for free
+\usepackage{minted}
+\usemintedstyle{friendly}
+\setminted{
+    fontsize=\footnotesize,
+    baselinestretch=0.9,
+    bgcolor=codebg,
+    linenos,
+    numbersep=5pt,
+    frame=none,
+    framesep=10pt,
+    breaklines=true,
+    breakanywhere=true
+}
+
+% ========== HEADERS AND FOOTERS ==========
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[LE]{\thepage\quad\leftmark}
+\fancyhead[RO]{\rightmark\quad\thepage}
+\fancyfoot[C]{}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{25.5pt}  % Fix fancyhdr warning
+
+% ========== GRAPHICS ==========
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}    % For arrow tips like Latex
+\usetikzlibrary{positioning}    % For positioning syntax (of=)
+\usepackage{forest}      % For directory tree diagrams
+
+% ========== TABLES ==========
+\usepackage{array}
+\usepackage{booktabs}    % Professional tables
+
+% ========== MARGIN NOTES ==========
+\usepackage{marginnote}
+\reversemarginpar
+\setlength{\marginparwidth}{1.2in}
+
+% ========== BIBLIOGRAPHY ==========
+\usepackage[style=ieee, backend=biber]{biblatex}
+
+% ========== GLOSSARY ==========
+\usepackage[toc, nopostdot]{glossaries}
+
+% ========== TABLE OF CONTENTS ==========
+\usepackage{minitoc}
+\dominitoc
+
+% ========== TITLE FORMATTING ==========
+\usepackage{titlesec}
+% Chapter titles - slightly smaller
+\titleformat{\chapter}[block]
+  {\Large\bfseries}
+  {\thechapter.\quad}
+  {0pt}
+  {\LARGE}
+
+% Section titles - smaller
+\titleformat{\section}
+  {\large\bfseries}
+  {\thesection\quad}
+  {0pt}
+  {}
+
+% Subsection titles - smaller
+\titleformat{\subsection}
+  {\normalsize\bfseries}
+  {\thesubsection\quad}
+  {0pt}
+  {}
+
+% ========== HYPERLINKS (load late to avoid conflicts) ==========
+\usepackage[pdfborder={0 0 0}, breaklinks=true]{hyperref}
+\hypersetup{
+    colorlinks=true,
+    linkcolor=rustblue,
+    filecolor=magenta,
+    urlcolor=rustblue,
+    pdftitle={Implementing Rust Support for Embedded Hardware},
+    pdfauthor={Marcelo Correa},
+    pdfsubject={Embedded Systems, Rust Programming},
+    pdfkeywords={Rust, Embedded, EFR32MG24, HAL, PAC, Wireless}
+}
+
+% ========== CUSTOM ENVIRONMENTS ==========
+\usepackage{mdframed}
+\usepackage{enumitem}
+
+\newenvironment{example}
+  {\begin{mdframed}[backgroundcolor=gray!10, linewidth=0.5pt]}
+  {\end{mdframed}}
+
+\newenvironment{notebox}
+  {\begin{mdframed}[backgroundcolor=blue!10, linewidth=0.5pt]}
+  {\end{mdframed}}
+
+\newenvironment{warningbox}
+  {\begin{mdframed}[backgroundcolor=red!10, linewidth=0.5pt]}
+  {\end{mdframed}}
+
+\newenvironment{tipbox}
+  {\begin{mdframed}[backgroundcolor=green!10, linewidth=0.5pt]}
+  {\end{mdframed}}
+
+\newenvironment{remark}
+  {\begin{mdframed}[backgroundcolor=yellow!10, linewidth=0.5pt]}
+  {\end{mdframed}}
+
+\newenvironment{keytakeaways}
+  {\begin{itemize}[leftmargin=*]}
+  {\end{itemize}}
+
+\newenvironment{exercises}
+  {\begin{enumerate}[leftmargin=*]}
+  {\end{enumerate}}
+
+\newenvironment{exercise}[1][Easy]
+  {\paragraph{Exercise (#1):}}
+  {}
+
+% ========== CUSTOM COMMANDS ==========
+% Inline code with Rust syntax highlighting
+\newcommand{\rustcode}[1]{\mintinline{rust}{#1}}
+
+% Code inline - uses fancyvrb's \Verb for proper verbatim handling
+% This handles underscores, hashes, and all special characters
+\usepackage{xparse}
+\NewDocumentCommand{\codeinline}{v}{%
+  \texttt{#1}%
+}
+
+% Crate names (same verbatim handling)
+\NewDocumentCommand{\crate}{v}{%
+  \texttt{#1}%
+}
+
+% File paths (same verbatim handling)
+\NewDocumentCommand{\filepath}{v}{%
+  \texttt{#1}%
+}
+
+% Structure/concept names (just italic, no special handling)
+\newcommand{\structure}[1]{\textit{#1}}
+
+% Chapter thumb placeholder
+\newcommand{\chapthumb}[1]{}
+
+% Listings list stub (we use minted, not listings package)
+\newcommand{\lstlistoflistings}{%
+  \chapter*{List of Code Listings}%
+  \markboth{List of Code Listings}{List of Code Listings}%
+}
+
+% ========== NUMBERING DEPTH ==========
+\setcounter{secnumdepth}{2}  % Number sections and subsections
+\setcounter{tocdepth}{2}     % Show sections and subsections in TOC

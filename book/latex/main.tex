@@ -1,0 +1,397 @@
+% ============================================================================
+% Main Document: Implementing Rust Support for Embedded Hardware
+% A Comprehensive Guide Using EFR32MG24
+% ============================================================================
+\documentclass[11pt,a4paper,twoside,openright]{book}
+
+% ========== PREAMBLE (Configuration and Packages) ==========
+\input{preamble}
+
+% ========== GLOSSARY ENTRIES ==========
+\makeglossaries
+
+\newglossaryentry{pac}{
+    name=PAC,
+    description={Peripheral Access Crate - Auto-generated register-level access}
+}
+
+\newglossaryentry{hal}{
+    name=HAL,
+    description={Hardware Abstraction Layer - Safe, ergonomic APIs}
+}
+
+\newglossaryentry{bsp}{
+    name=BSP,
+    description={Board Support Package - Board-specific abstractions}
+}
+
+\newglossaryentry{svd}{
+    name=SVD,
+    description={System View Description - XML register definitions}
+}
+
+\newglossaryentry{rail}{
+    name=RAIL,
+    description={Radio Abstraction Interface Layer - Multi-protocol radio}
+}
+
+\newglossaryentry{embeddedhal}{
+    name={embedded-hal},
+    description={Rust embedded ecosystem traits for portability}
+}
+
+% ========== TITLE PAGE ==========
+\title{\textbf{Implementing Rust Support for Embedded Hardware}\\\Large A Complete Guide Using EFR32MG24}
+\author{Marcelo Correa\thanks{With contributions from the embedded Rust community}}
+\date{2026\\Version 1.0.0}
+
+% ========== DOCUMENT START ==========
+\begin{document}
+
+% Front Matter
+\frontmatter
+
+% Title Page
+\maketitle
+
+% Copyright page
+\thispagestyle{empty}
+\begin{center}
+    \vspace*{\fill}
+    Copyright \copyright\ 2026 Marcelo Correa\\
+    \\
+    Licensed under Apache-2.0 or MIT (at your option)\\
+    \\
+    Source code and examples available at:
+    \\
+    \url{https://github.com/bitscrafts/EFR32MG2X-RS}\\
+    \\
+    ISBN: 978-1-XXXX-XXXX-X\\
+    \\
+    Typeset in \LaTeX\ using the XeLaTeX engine
+    \\
+    Compiler: XeTeX version 3.14159265
+    \\
+    Document version: 1.0.0 (2026-01-05)
+    \\
+    First printing: January 2026
+    \vspace*{\fill}
+\end{center}
+\clearpage
+
+% Table of Contents
+\tableofcontents
+\clearpage
+
+% List of Figures
+\listoffigures
+\clearpage
+
+% List of Listings
+\lstlistoflistings
+\addcontentsline{toc}{chapter}{List of Code Listings}
+\clearpage
+
+% Preface
+\chapter*{Preface}
+\addcontentsline{toc}{chapter}{Preface}
+\markboth{Preface}{Preface}
+
+\section*{What This Book Is}
+
+This book documents the complete process of creating Rust support for a new embedded microcontroller family, using the Silicon Labs EFR32MG24 as a real-world case study. It covers everything from generating a Peripheral Access Crate (PAC) from vendor System View Description (SVD) files, through implementing a Hardware Abstraction Layer (HAL), to integrating complex wireless protocol stacks.
+
+\section*{What This Book Is Not}
+
+This is not an introduction to Rust programming---it assumes basic Rust knowledge. It's also not a replacement for the EFR32MG24 Reference Manual or Rust Embedded Book, which it complements.
+
+\section*{Who This Book Is For}
+
+\begin{itemize}
+    \item Embedded developers wanting to learn Rust
+    \item Rust developers interested in embedded systems
+    \item Engineers bringing Rust support to new hardware
+    \item Technical leads evaluating Rust for embedded projects
+    \item Computer science students studying systems programming
+\end{itemize}
+
+\section*{Structure of the Book}
+
+The book is organized into four parts:
+
+\textbf{Part I} (Chapters 1--3): Foundation and PAC Generation
+\\Foundation concepts, SVD files, and build system setup.
+
+\textbf{Part II} (Chapters 4--9): Hardware Abstraction Layer
+\\Peripheral implementations (GPIO, clocks, communication, advanced features).
+
+\textbf{Part III} (Chapters 11--14): Wireless Protocol Stacks
+\\RAIL foundation, Bluetooth LE, Zigbee, Thread, and Matter integration.
+
+\textbf{Part IV} (Chapters 10, 15--18): Testing, BSP, and Production
+\\Test-driven development, board support packages, documentation, and deployment.
+
+\section*{Prerequisites}
+
+Required knowledge:
+\begin{itemize}
+    \item Basic Rust programming (ownership, traits, modules)
+    \item Familiarity with command-line tools
+    \item Understanding of binary/hexadecimal
+    \item Basic electronics knowledge (helpful but not required)
+\end{itemize}
+
+Required hardware:
+\begin{itemize}
+    \item Seeed Studio XIAO MG24 Sense development board
+    \item USB-C cable (data-capable, not just power)
+    \item Computer running Linux, macOS, or Windows
+\end{itemize}
+
+Optional but recommended:
+\begin{itemize}
+    \item Logic analyzer (for debugging communication protocols)
+    \item Oscilloscope (for signal quality analysis)
+    \item Multiple XIAO MG24 boards (for testing wireless protocols)
+\end{itemize}
+
+\section*{How to Read This Book}
+
+This book can be read in two ways:
+
+\textbf{Linear Approach}: Read cover-to-cover for complete understanding. Each chapter builds on previous ones.
+
+\textbf{Reference Approach}: Jump to specific chapters for:
+\\- SVD generation → Chapter 2
+\\- GPIO implementation → Chapter 4
+\\- I2C protocol details → Chapter 7
+\\- Bluetooth LE → Chapter 12
+\\- Testing strategies → Chapter 10
+
+All code examples are available in the accompanying repository.
+
+\section*{Acknowledgments}
+
+This book and the accompanying EFR32MG24 implementation would not be possible without:
+\\- The Rust Embedded Working Group and their excellent tools
+\\- The stm32-rs, nrf-rs, and esp-rs communities for pioneering work
+\\- Silicon Labs for the excellent EFR32MG24 documentation
+\\- The embedded Rust community contributors
+
+\section*{Feedback and Contributions}
+
+Please report issues, suggest improvements, or contribute at:
+\\\url{https://github.com/bitscrafts/EFR32MG2X-RS}
+
+\vspace*{2em}
+\begin{flushright}
+Marcelo Correa\\
+January 2026
+\end{flushright}
+
+\clearpage
+
+% Main Matter
+\mainmatter
+
+% ========== PART I: PAC GENERATION AND FOUNDATION ==========
+\part{PAC Generation and Foundation}
+\label{part:pac-foundation}
+
+% Chapter 1: Introduction
+\input{chapters/chapter-01-introduction/chapter-01-introduction}
+
+% Chapter 2: SVD Files and PAC Generation
+\chapter{Understanding SVD Files and the PAC Generation Process}
+\label{ch:chapter-02}
+\chapthumb{2}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 3: Build Systems
+\chapter{Build Systems and Cross-Compilation Setup}
+\label{ch:chapter-03}
+\chapthumb{3}
+\section*{This chapter content will be added}
+\clearpage
+
+% ========== PART II: HARDWARE ABSTRACTION LAYER ==========
+\part{Hardware Abstraction Layer (HAL)}
+\label{part:hal}
+
+% Chapter 4: GPIO
+\chapter{Phase A: Essential Peripherals - GPIO Implementation}
+\label{ch:chapter-04}
+\chapthumb{4}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 5: Clocks
+\chapter{Phase A: Clock Management and System Configuration}
+\label{ch:chapter-05}
+\chapthumb{5}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 6: USART
+\chapter{Phase B: Communication Peripherals - USART}
+\label{ch:chapter-06}
+\chapthumb{6}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 7: I2C
+\chapter{Phase B: I2C Master Mode Implementation}
+\label{ch:chapter-07}
+\chapthumb{7}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 8: SPI
+\chapter{Phase B: SPI Master Mode (Three Variants)}
+\label{ch:chapter-08}
+\chapthumb{8}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 9: Advanced Peripherals
+\chapter{Phase C: Advanced Peripherals - DMA, ADC, and Power Management}
+\label{ch:chapter-09}
+\chapthumb{9}
+\section*{This chapter content will be added}
+\clearpage
+
+% ========== PART III: WIRELESS PROTOCOL STACKS ==========
+\part{Wireless Protocol Stacks}
+\label{part:wireless}
+
+% Chapter 11: RAIL
+\chapter{Phase D: Wireless Protocol Stacks - RAIL Foundation}
+\label{ch:chapter-11}
+\chapthumb{11}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 12: Bluetooth
+\chapter{Phase D2: Bluetooth 5.3 Low Energy Stack}
+\label{ch:chapter-12}
+\chapthumb{12}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 13: Zigbee
+\chapter{Phase D3: Zigbee 3.0 Protocol Stack}
+\label{ch:chapter-13}
+\chapthumb{13}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 14: Thread and Matter
+\chapter{Phase D4: Thread Protocol and Matter Integration}
+\label{ch:chapter-14}
+\chapthumb{14}
+\section*{This chapter content will be added}
+\clearpage
+
+% ========== PART IV: TESTING, BSP, AND PRODUCTION ==========
+\part{Testing, BSP, and Production}
+\label{part:testing-bsp-production}
+
+% Chapter 10: Testing (Moved to Part IV)
+\chapter{Test-Driven Development and Quality Assurance}
+\label{ch:chapter-10}
+\chapthumb{10}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 15: BSP
+\chapter{Board Support Packages (BSP) and Hardware Abstraction}
+\label{ch:chapter-15}
+\chapthumb{15}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 16: Documentation
+\chapter{Documentation Strategies and Project Management}
+\label{ch:chapter-16}
+\chapthumb{16}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 17: Production
+\chapter{Production Deployment and Ecosystem Integration}
+\label{ch:chapter-17}
+\chapthumb{17}
+\section*{This chapter content will be added}
+\clearpage
+
+% Chapter 18: Complete Walkthrough
+\chapter{Complete Project Walkthrough: From Zero to Production}
+\label{ch:chapter-18}
+\chapthumb{18}
+\section*{This chapter content will be added}
+\clearpage
+
+% ========== APPENDICES ==========
+\appendix
+
+\chapter{EFR32MG24 Reference Manual Quick Guide}
+\label{ap:appendix-a}
+This appendix will be added.
+\clearpage
+
+\chapter{Rust Embedded Ecosystem Overview}
+\label{ap:appendix-b}
+This appendix will be added.
+\clearpage
+
+\chapter{Troubleshooting Common Issues}
+\label{ap:appendix-c}
+This appendix will be added.
+\clearpage
+
+\chapter{Complete Code Examples Repository}
+\label{ap:appendix-d}
+This appendix will be added.
+\clearpage
+
+\chapter{Wireless Protocol Comparison}
+\label{ap:appendix-e}
+This appendix will be added.
+\clearpage
+
+% Back Matter
+\backmatter
+
+% Print glossary
+\printglossary[title=Glossary,toctitle={Glossary of Terms}]
+\addcontentsline{toc}{chapter}{Glossary}
+\clearpage
+
+% Print bibliography
+\printbibliography[heading=bibintoc]
+\addcontentsline{toc}{chapter}{Bibliography}
+\clearpage
+
+% Print index
+\printindex
+\addcontentsline{toc}{chapter}{Index}
+\clearpage
+
+% Back cover page placeholder
+\thispagestyle{empty}
+\begin{center}
+    \vspace*{\fill}
+    \textbf{\huge End of Book}
+    \\\[2em]
+    \large
+    For more information and updates:
+    \\
+    \url{https://github.com/bitscrafts/EFR32MG2X-RS}
+    \\\[2em]
+    Document built: \today\\
+    Build version: 1.0.0
+    \vspace*{\fill}
+\end{center}
+
+\end{document}

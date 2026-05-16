@@ -5,7 +5,8 @@ target = "thumbv8m.main-none-eabihf"
 [target.thumbv8m.main-none-eabihf]
 # Use ARM's link.x linker script from cortex-m-rt
 # link.x will INCLUDE memory.x automatically - do NOT add -Tmemory.x here
-runner = "probe-rs run --chip EFR32MG24A020F1536GM48"
+runner = "probe-rs run --chip EFR32MG24B220F1536IM48"
+#runner = "probe-rs run --chip EFR32MG24B220F1536"
 rustflags = [
   "-C", "link-arg=-Tlink.x",
 ]

@@ -1,0 +1,57 @@
+% Section 1.10: Complete Project Example
+\section{Complete Project Example: From Zero to Flashable Binary}
+\label{sec:complete-project-example}
+
+Now that we've covered the individual components, let's walk through creating a complete, flashable embedded Rust project from scratch. This section provides a comprehensive example that you can follow step-by-step.
+
+\subsection{Project Overview}
+\label{subsec:project-overview}
+
+We'll create a minimal but complete embedded Rust project with all necessary files:
+
+\begin{itemize}
+    \item Project structure and configuration
+    \item Cargo configuration for cross-compilation
+    \item Build script for linker integration
+    \item Memory layout specification
+    \item Minimal working application
+\end{itemize}
+
+\subsection{Project Structure}
+\label{subsec:project-structure}
+
+A complete embedded Rust project requires several files beyond just \filepath{main.rs}. Here's the full structure:
+
+\begin{minted}{text}
+efr32mg24-minimal/
+├── .cargo/
+│   └── config.toml      # Build configuration
+├── src/
+│   ├── main.rs          # Entry point
+│   └── lib.rs           # Library root (if needed)
+├── build.rs             # Build script for linker
+├── memory.x             # Memory layout for linker
+├── Cargo.toml           # Package metadata
+├── rust-toolchain.toml  # Rust version/toolchain
+└── .gitignore
+\end{minted}
+\subsection{Cargo Configuration (\.cargo/config.toml)}
+\label{subsec:cargo-config}
+This file is critical for embedded builds. It tells Cargo:
+
+\begin{itemize}
+    \item Which target to compile for
+    \item What runner to use (probe-rs for flashing/debugging)
+    \item Environment variables for debugging
+\end{itemize}
+
+\begin{minted}{toml}
+[build]
+target = "thumbv8m.main-none-eabihf"  # ARM Cortex-M33 target
+
+[target.thumbv8m.main-none-eabihf]
+runner = "probe-rs run --chip EFR32MG24B220F1536IM48"
+
+[env]
+DEFMT_LOG = "debug"
+\end{minted}

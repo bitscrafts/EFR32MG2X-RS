@@ -7,6 +7,10 @@ members = [
     "efr32mg24-bluetooth-sys",
     "xiao-mg24-bsp",
 ]
+exclude = [
+    "efr32mg24-bootloader",
+    "bootloader-test-app",
+]
 
 [workspace.package]
 version = "0.1.0"

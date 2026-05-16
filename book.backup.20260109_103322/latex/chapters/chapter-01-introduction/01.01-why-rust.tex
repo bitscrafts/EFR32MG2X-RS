@@ -1,0 +1,236 @@
+% Section 1.1: Why Rust for Embedded Systems
+
+Complex software systems, especially those dealing with direct hardware manipulation, memory management, and concurrent interrupts, are notoriously difficult to write correctly. Traditional embedded development often relies on C or C++, languages that provide raw power and direct hardware access but lack modern safety guarantees. Memory safety bugs---buffer overflows, use-after-free, null pointer dereferences, and data races---account for the majority of security vulnerabilities and system crashes in embedded systems.
+
+\section{Rust's Value Proposition for Embedded}
+\label{sec:why-rust-value-prop}
+
+Rust addresses these challenges through a unique combination of features that make it exceptionally well-suited for embedded systems programming:
+
+\subsection{Memory Safety Without Garbage Collection}
+
+Traditional memory-safe languages rely on garbage collection, which introduces unpredictable pauses and significant runtime overhead---unacceptable constraints for resource-constrained microcontrollers. Rust achieves memory safety through its ownership system, enforced at compile time with zero runtime cost.
+
+\begin{notebox}
+    \textbf{Key Insight}: Rust's borrow checker prevents memory safety bugs at compilation, eliminating entire classes of vulnerabilities before the code ever reaches the hardware.
+\end{notebox}
+
+Consider this common C bug pattern:
+
+\begin{minted}{c}
+void process_data(uint8_t *buffer, size_t len) {
+    uint8_t local_buffer[16];
+    // Buffer overflow if len > 16!
+    memcpy(local_buffer, buffer, len);
+    // ... process data
+}
+\end{minted}
+
+The same logic in Rust:
+
+\begin{minted}{rust}
+fn process_data(buffer: &[u8]) {
+    // Compile error: attempt to copy 32 bytes into 16-byte array
+    let mut local_buffer = [0u8; 16];
+    local_buffer.copy_from_slice(buffer); // Panics if buffer.len() != 16
+    // Or use safe slice copying:
+    let count = buffer.len().min(16);
+    local_buffer[..count].copy_from_slice(&buffer[..count]);
+}
+\end{minted}
+
+The Rust compiler enforces bounds checking at compile time or generates explicit panics for runtime bounds violations, preventing undefined behavior.
+
+\subsection{Zero-Cost Abstractions}
+
+Rust's high-level abstractions compile down to the same efficient machine code as hand-written C. This is critical for embedded systems where every byte and CPU cycle matters.
+
+\begin{example}
+A GPIO pin abstraction in Rust:
+
+\begin{minted}{rust}
+let pin = gpio.pin0.into_output();
+pin.set_high();
+\end{minted}
+
+This compiles to a single register write instruction, identical to:
+
+\begin{minted}{c}
+GPIO->DOUT |= (1 << 0);
+\end{minted}
+\end{example}
+
+The Rust code provides type safety, compile-time mode checking, and clear semantics while maintaining identical performance to the raw C version.
+
+\subsection{Fearless Concurrency}
+
+Embedded systems increasingly require concurrent operation: interrupt handlers, DMA transfers, and multiple sensors polling simultaneously. Rust's ownership model prevents data races at compile time.
+
+\begin{minted}{rust}
+// This compiles safely
+static mut COUNTER: u32 = 0;
+
+#[interrupt]
+fn TIMER0() {
+    // Safe because we use atomic operations
+    cortex_m::interrupt::free(|_| {
+        unsafe { COUNTER += 1; }
+    });
+}
+
+// This fails to compile!
+fn increment_counter() {
+    COUNTER += 1; // Error: cannot access mutable static without unsafe
+}
+\end{minted}
+
+The compiler forces developers to explicitly handle synchronization, making race conditions nearly impossible.
+
+\subsection{Comparison with Traditional Embedded Languages}
+\label{sec:language-comparison}
+
+\subsection{Rust vs C}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l c c}
+        \toprule
+        \textbf{Feature} & \textbf{C} & \textbf{Rust} \\
+        \midrule
+        Memory Safety & Manual (runtime errors) & Compile-time guaranteed \\
+        Concurrency Safety & Manual (locks, careful design) & Compile-time guaranteed \\
+        Type Safety & Weak (void*, casts) & Strong (no implicit casts) \\
+        Null Pointers & Always possible & Option<T> type \\
+        Error Handling & Error codes & Result<T, E> type \\
+        Abstraction Cost & Potentially high & Zero-cost \\
+        Learning Curve & Moderate & Steep (ownership concepts) \\
+        Ecosystem & Mature, established & Growing rapidly \\
+        Real-time Suitability & Excellent (predictable) & Excellent (no GC) \\
+        \bottomrule
+    \end{tabular}
+    \caption{Rust vs C for embedded development}
+    \label{tab:rust-vs-c}
+\end{table}
+
+\subsection{Real-World Impact}
+
+The Linux kernel, which has historically been written entirely in C, began accepting Rust code in version 6.1 (2022). This demonstrates Rust's maturity for systems programming even at the highest levels.
+
+In the embedded space, companies are reporting:
+
+\begin{itemize}
+    \item 40-50% reduction in debugging time
+    \item Near elimination of memory corruption bugs
+    \item Improved team productivity through better compiler diagnostics
+    \item Easier onboarding for new developers
+\end{itemize}
+
+\subsection{Rust's Embedded Ecosystem}
+\label{sec:rust-embedded-ecosystem}
+
+\subsection{Core Crates}
+
+The embedded Rust ecosystem provides standardized interfaces:
+
+\begin{itemize}
+    \item \crate{embedded-hal}: Hardware abstraction layer traits for portability
+    \item \crate{cortex-m}: Low-level Cortex-M register access
+    \item \crate{cortex-m-rt}: Startup code and interrupt handling
+    \item \crate{cortex-m-semihosting}: Debug output via debugger
+    \item \crate{svd2rust}: PAC generation from SVD files
+    \item \crate{panic-halt}: Panic handler for minimal footprint
+\end{itemize}
+
+\subsection{Tooling Integration}
+
+Rust integrates seamlessly with embedded development workflows:
+
+\begin{itemize}
+    \item \textbf{cargo}: Built-in package manager and build system
+    \item \textbf{probe-rs}: Flash programming and debugging
+    \item \textbf{defmt}: Efficient logging for resource-constrained targets
+    \item \textbf{flip-link}: Linker wrapper for stack overflow protection
+\end{itemize}
+
+\subsection{Addressing Embedded Development Challenges}
+\label{sec:embedded-challenges}
+
+\subsection{Resource Constraints}
+
+Rust's ownership system enables compile-time memory management without runtime overhead. The \codeinline{no_std} environment runs without heap allocation, relying entirely on stack allocation and static data.
+
+\begin{minted}{rust}
+\#![no_std]  // No standard library (no heap allocation)
+\#![no_main] // Disabled main wrapping
+
+// All memory is statically allocated
+static BUFFER: [u8; 1024] = [0; 1024];
+
+#[no_mangle]
+pub extern "C" fn main() -> ! {
+    loop {
+        // Application logic
+    }
+}
+\end{minted}
+
+\subsection{Deterministic Behavior}
+
+Embedded systems require predictable timing. Rust provides:
+
+\begin{itemize}
+    \item No hidden allocations or deallocations
+    \item No garbage collection pauses
+    \item Explicit control over memory layout
+    \item \codeinline{const fn} for compile-time computation
+\end{itemize}
+
+\subsection{Hardware Interface Safety}
+
+Direct hardware register manipulation is inherently unsafe. Rust forces developers to mark unsafe operations explicitly:
+
+\begin{minted}{rust}
+pub fn enable_gpio_clock() {
+    unsafe {
+        (*CMU::ptr()).hfbusclken0.modify(|_, w|
+            w.gpio().set_bit()
+        );
+    }
+}
+\end{minted}
+
+The \codeinline{unsafe} block signals to developers and reviewers that manual verification is required.
+
+\subsection{The EFR32MG24: Ideal for Rust}
+\label{sec:efr32mg24-for-rust}
+
+The Silicon Labs EFR32MG24 is particularly well-suited for Rust development:
+
+\begin{itemize}
+    \item \textbf{ARM Cortex-M33}: Modern architecture with TrustZone-M
+    \item \textbf{Memory Protection Unit}: Hardware-enforced memory isolation
+    \item \textbf{Deterministic Architecture}: No unpredictable timing behavior
+    \item \textbf{Rich Peripherals}: 133 peripherals across multiple domains
+    \item \textbf{Unified Radio}: Multi-protocol stack support
+    \item \textbf{Hardware Cryptography}: Secure element integration
+\end{itemize}
+
+\subsection{Summary}
+\label{sec:why-rust-summary}
+
+Rust brings modern software engineering practices to embedded development without sacrificing performance or control. Its compile-time safety guarantees eliminate entire classes of bugs that plague C-based embedded systems, while its zero-cost abstractions enable expressive, maintainable code that compiles to efficient machine instructions.
+
+The journey through this book will demonstrate:
+
+\begin{enumerate}
+    \item How to generate a Peripheral Access Crate (PAC) from vendor SVD files
+    \item Building safe, ergonomic HAL abstractions on top of raw registers
+    \item Implementing standard embedded-hal traits for ecosystem compatibility
+    \item Creating board support packages for specific hardware
+    \item Integrating complex protocol stacks (Bluetooth, Zigbee, Thread)
+    \item Testing strategies for embedded systems
+    \item Production deployment and maintenance
+\end{enumerate}
+
+Along the way, we'll explore the unique challenges and solutions that emerged during the real-world implementation of EFR32MG24 support in Rust.
+\clearpage

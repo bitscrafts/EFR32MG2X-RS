@@ -1,0 +1,267 @@
+\section{1.05 development prerequisites}
+\label{sec:1.05 development prerequisites}
+
+% Section 01.05: Development Prerequisites and Toolchain Setup
+
+Before we can build and flash embedded Rust code to the EFR32MG24, we need to install and configure several tools. This section provides a complete setup guide for Linux, macOS, and Windows.
+
+\subsection{Required Tools}
+\label{sec:required-tools}
+
+\textbf{Rust Toolchain}:
+
+\begin{itemize}
+    \item \textbf{Rust 1.70+} with support for the thumbv8m.main-none-eabihf target
+    \item \textbf{cargo-binutils} for examining compiled binaries
+    \item \textbf{cargo-size} for checking binary size
+    \item \textbf{cargo-objdump} for disassembly
+\end{itemize}
+\subsection{Installation on Linux (Ubuntu/Debian)}
+\label{subsec:install-linux}
+\begin{minted}{bash}
+# Install Rust via rustup
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+source $HOME/.cargo/env
+
+# Add ARM Cortex-M33 target
+rustup target add thumbv8m.main-none-eabihf
+
+# Install cargo tools
+cargo install cargo-binutils
+rustup component add llvm-tools-preview
+
+# Install system dependencies
+sudo apt-get update
+sudo apt-get install -y \
+    build-essential \
+    pkg-config \
+    libssl-dev \
+    git \
+    wget
+\end{minted}
+\subsection{Installation on macOS}
+\label{subsec:install-macos}
+\begin{minted}{bash}
+# Install Rust via rustup
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+source $HOME/.cargo/env
+
+# Add ARM Cortex-M33 target
+rustup target add thumbv8m.main-none-eabihf
+
+# Install cargo tools
+cargo install cargo-binutils
+rustup component add llvm-tools-preview
+
+# Install Homebrew if not already installed
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+# Install system dependencies
+brew install git wget
+\end{minted}
+\subsection{Installation on Windows}
+\label{subsec:install-windows}
+\begin{enumerate}
+    \item Download and install from https://rustup.rs/
+    \item Run the installer with default settings
+    \item After installation, open a new PowerShell/Command Prompt
+    \item Install the ARM target:
+\end{enumerate}
+
+\begin{minted}{bash}
+rustup target add thumbv8m.main-none-eabihf
+cargo install cargo-binutils
+rustup component add llvm-tools-preview
+\end{minted}
+
+\subsection{Hardware Debug Probe Setup}
+\label{sec:debug-probe-setup}
+
+The EFR32MG24 requires a debug probe for flashing and debugging. We'll use probe-rs, a Rust-based tool.
+
+\subsection{Installing probe-rs}
+\label{subsec:install-probe-rs}
+\begin{minted}{bash}
+# Install probe-rs
+cargo install probe-rs --features cli
+
+# Verify installation
+probe-rs list
+\end{minted}
+
+Expected output (when hardware is connected):
+
+\begin{minted}{text}
+Probing OpenUSB... Done
+[0]: J-Link Silicon Labs (<serial-number>) (J-Link)
+\end{minted}
+
+\subsection{Installing Silicon Labs Tools}
+\label{subsec:install-silabs-tools}
+
+You'll need the Simplicity Commander for initial board flashing and debug authentication:
+
+\textbf{Linux}:
+\begin{minted}{bash}
+wget https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.tar.bz2
+tar xjf SimplicityCommander-Linux.tar.bz2
+sudo cp commander /usr/local/bin/
+\end{minted}
+
+\textbf{macOS}:
+\begin{minted}{bash}
+wget https://www.silabs.com/documents/public/software/SimplicityCommander-Mac.tar.bz2
+tar xjf SimplicityCommander-Mac.tar.bz2
+sudo cp commander /usr/local/bin/
+\end{minted}
+
+\textbf{Windows}: Download installer from Silabs.com
+
+\subsection{Updating Debug Probe Firmware}
+\label{subsec:update-firmware}
+
+If using a J-Link probe:
+
+\begin{minted}{bash}
+# On Linux/macOS
+JLinkExe -CommanderScript <(echo "exit")
+
+# Follow prompts to update firmware
+\end{minted}
+
+\subsection{Development Environment Setup}
+\label{sec:dev-env-setup}
+
+\subsection{VS Code Configuration}
+\label{subsec:vscode-setup}
+
+Install these extensions:
+\begin{itemize}
+    \item rust-analyzer (official Rust support)
+    \item Even Better TOML (for Cargo.toml files)
+    \item CodeLLDB (for debugging)
+\end{itemize}
+
+Create \filepath{.vscode/settings.json}:
+\begin{minted}{json}
+{
+    "rust-analyzer.cargo.target": "thumbv8m.main-none-eabihf",
+    "rust-analyzer.checkOnSave.allTargets": false,
+    "rust-analyzer.cargo.features": ["rt"],
+    "rust-analyzer.procMacro.ignored": {
+        "cortex-m-rt": ["interrupt"]
+    }
+}
+\end{minted}
+
+\subsection{Cargo Configuration for Embedded}
+\label{subsec:cargo-config}
+
+Create \filepath{.cargo/config.toml}:
+\begin{minted}{toml}
+[target.thumbv8m.main-none-eabihf]
+rustflags = [
+    "-C", "link-arg=-Tlink.x",
+    "-C", "link-arg=-Tdefmt.x",  # If using defmt
+]
+
+runner = "probe-rs run --chip EFR32MG24B220F1536IM48"
+
+[build]
+target = "thumbv8m.main-none-eabihf"
+
+[env]
+DEFMT_LOG = "debug"
+\end{minted}
+
+\subsection{Git Configuration}
+\label{subsec:git-config}
+
+Set up Git for embedded development:
+\begin{minted}{bash}
+git config --global user.name "Your Name"
+git config --global user.email "your.email@example.com"
+
+# Set up LFS for large files (like SVD files)
+git lfs install
+\end{minted}
+
+Create \filepath{.gitattributes}:
+\begin{minted}{text}
+# Track large files with Git LFS
+*.svd filter=lfs diff=lfs merge=lfs -text
+*.pack filter=lfs diff=lfs merge=lfs -text
+*.a filter=lfs diff=lfs merge=lfs -text
+\end{minted}
+
+\subsection{Verifying Your Setup}
+\label{sec:verify-setup}
+
+Run this verification script to ensure everything is correctly installed:
+\begin{minted}{bash}
+#!/bin/bash
+
+echo "=== Checking Rust Installation ==="
+rustc --version
+cargo --version
+
+echo ""
+echo "=== Checking Targets ==="
+rustup target list | grep "thumbv8m.main-none-eabihf (installed)"
+
+echo ""
+echo "=== Checking Cargo Tools ==="
+cargo size --version 2>/dev/null && echo "✓ cargo-size installed"
+
+echo ""
+echo "=== Checking probe-rs ==="
+probe-rs --version
+
+echo ""
+echo "=== Checking debug probe ==="
+probe-rs list
+\end{minted}
+
+Expected output:
+\begin{minted}{text}
+=== Checking Rust Installation ===
+rustc 1.70.0 (90c541806 2023-05-31)
+cargo 1.70.0 (90c541806 2023-05-31)
+
+=== Checking Targets ===
+thumbv8m.main-none-eabihf (installed)
+
+=== Checking Cargo Tools ===
+✓ cargo-size installed
+
+=== Checking probe-rs ===
+probe-rs 0.18.0
+
+=== Checking debug probe ===
+[0]: J-Link Silicon Labs (xxxx) (J-Link)
+\end{minted}
+
+If all checks pass, you're ready to start development!
+
+\begin{tipbox}
+    \textbf{Common Issues}:
+    \\• probe-rs list shows nothing: Check USB cable, ensure probe has power
+    \\• Target not installed: Run rustup target add thumbv8m.main-none-eabihf
+    \\• cargo-size not found: Run cargo install cargo-binutils
+    \\• Permission denied (Linux): Add your user to dialout or plugdev group
+\end{tipbox}
+
+\begin{exercise}[Easy]
+    Create a shell script that automates the entire setup verification process for your team.
+\end{exercise}
+
+\begin{exercise}[Medium]
+    Write a cargo subcommand that checks for required tools and provides helpful installation instructions if anything is missing.
+\end{exercise}
+
+\begin{exercise}[Hard]
+    Using Docker, create a container with the complete development environment pre-installed so new team members can start immediately.
+\end{exercise}
+\clearpage

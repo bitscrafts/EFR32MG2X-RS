@@ -1,0 +1,177 @@
+% Section 1.9: Board Support Packages (BSP)
+
+\section{Creating Board Support Packages (BSP)}
+\label{sec:bsp-implementation}
+
+A Board Support Package bridges the gap between the Hardware Abstraction Layer (which is chip-specific) and your application (which should be board-agnostic). The BSP provides board-specific configurations, pin mappings, and convenience functions for the exact hardware you're using.
+
+\subsection{BSP vs HAL: The Distinction}
+\label{subsec:bsp-vs-hal}
+
+\begin{table}[H]
+    \centering
+    \begin{tabular}{l l}
+        \toprule
+        \textbf{HAL (Hardware Abstraction)} & \textbf{BSP (Board Support)} \\\\\midrule
+        Chip-specific (EFR32MG24 series) & Board-specific (XIAO MG24 Sense) \\\\
+        133 peripherals available & Only exposed board features \\\\
+        Generic pin API & Specific pin functions (LED, button, etc.) \\\\
+        No board assumptions & Assumes specific PCB layout \\\\
+        Reusable across boards & Board revision specific \\\\
+bottomrule
+    \end{tabular}
+    \caption{HAL vs BSP responsibilities}
+    \label{tab:hal-vs-bsp}
+\end{table}
+
+\subsection{XIAO MG24 Sense Board Layout}
+\label{subsec:xiao-layout}
+
+The Seeed Studio XIAO MG24 Sense includes:
+
+\begin{itemize}
+    \item EFR32MG24B220F1536IM48 microcontroller
+    \item Two user LEDs (red and blue)
+    \item One user button
+    \item I2C connector (QWIIC/Stemma QT compatible)
+    \item 2.4 GHz antenna
+    \item USB-C connector (power + debug)
+    \item SWD debug pins exposed
+\end{itemize}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{xiao-mg24-pinout}
+    \caption{XIAO MG24 Sense pinout diagram}
+    \label{fig:xiao-pinout}
+\end{figure}
+
+\subsection{BSP Structure}
+\label{subsec:bsp-structure}
+
+A typical BSP crates:
+
+\begin{minted}{text}
+xiao-mg24-bsp/
+├── Cargo.toml
+├── README.md
+└── src/
+    ├── lib.rs              # Board initialization
+    ├── led.rs              # LED abstraction
+    ├── button.rs           # Button abstraction
+    ├── sensors.rs          # Onboard sensors
+    ├── debug.rs            # Debug utilities
+    └── pins.rs             # Pin mappings
+\end{minted}
+
+\subsection{Implementing LED Abstraction}
+\label{subsec:led-abstraction}
+
+\begin{minted}{rust}
+//! src/led.rs
+use efr32mg24_hal::gpio::{Output, Pin, PushPull};
+
+pub struct UserLeds {
+    pub red: Pin<PA, PIN5, Output<PushPull>>,
+    pub blue: Pin<PA, PIN6, Output<PushPull>>,
+}
+
+impl UserLeds {
+    pub fn new(gpio: GPIO) -> Self {
+        let red = gpio.pa5.into_output();
+        let blue = gpio.pa6.into_output();
+        
+        Self { red, blue }
+    }
+    
+    pub fn both_off(&mut self) {
+        self.red.set_low().unwrap();
+        self.blue.set_low().unwrap();
+    }
+}
+\end{minted}
+
+\subsection{Pin Mappings as Type Aliases}
+\label{subsec:pin-mappings}
+
+\begin{minted}{rust}
+//! src/pins.rs
+use efr32mg24_hal::gpio::{Input, Pin, PullUp};
+
+type ButtonPin = Pin<PA, PIN7, Input<PullUp>>;
+
+pub struct Buttons {
+    pub user: ButtonPin,
+}
+
+impl Buttons {
+    pub fn new(gpio: GPIO) -> Self {
+        let user = gpio.pa7.into_input().pull_up();
+        Self { user }
+    }
+    
+    pub fn is_pressed(&self) -> bool {
+        self.user.is_low().unwrap()
+    }
+}
+\end{minted}
+
+\subsection{Board Initialization}
+\label{subsec:board-init}
+
+\begin{minted}{rust}
+//! src/lib.rs
+pub struct Board {
+    pub leds: UserLeds,
+    pub buttons: Buttons,
+    pub i2c: I2c0,
+}
+
+impl Board {
+    pub fn init() -> Self {
+        // Critical: Enable GPIO clock
+        cmu.enable_gpio_clock();
+        
+        let gpio = GPIO::new();
+        let leds = UserLeds::new(gpio);
+        let buttons = Buttons::new(gpio);
+        let i2c = i2c::I2c0::init();
+        
+        Board { leds, buttons, i2c }
+    }
+}
+\end{minted}
+
+\begin{example}
+Usage in application code:
+\end{example}
+
+\begin{minted}{rust}
+use xiao_mg24_bsp::Board;
+
+#[embassy_executor::task]
+async fn blinky() {
+    let mut board = Board::init();
+    
+    loop {
+        board.leds.red.toggle().unwrap();
+        Timer::after(Duration::from_millis(500)).await;
+    }
+}
+\end{minted}
+
+\begin{keytakeaways}
+    \item BSP provides board-specific abstractions over HAL
+    \item BSP is board revision specific, HAL is chip family specific
+    \item Pin mappings should be types, not raw numbers
+    \item Board initialization is critical and should be explicit
+    \item BSP enables portable application code
+\end{keytakeaways}
+
+\begin{exercises}
+    \item\textbf{Easy}: Create a BSP for a different board (e.g., SparkFun Thing Plus).
+    
+    \item\textbf{Medium}: Add driver support for an I2C sensor on the XIAO MG24.
+    
+    \item\textbf{Hard}: Design a BSP that supports multiple board revisions through feature flags.
+\end{exercises}

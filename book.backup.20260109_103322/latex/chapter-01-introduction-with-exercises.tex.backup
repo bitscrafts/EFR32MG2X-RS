@@ -1,0 +1,85 @@
+% Chapter 1: Introduction to Embedded Rust and Project Architecture
+% File: chapters/chapter-01-introduction.tex
+
+\chapter{Introduction to Embedded Rust and Project Architecture}
+\label{ch:chapter-01}
+\chapthumb{1}
+
+\begin{quote}
+    \textit{"The biggest memory safety vulnerability is the assumption that memory safety isn't important for embedded systems."}
+    \\
+    -- Embedded Systems Security Research, 2023
+\end{quote}
+
+This chapter introduces embedded Rust development and establishes the foundation for understanding the PAC/HAL/BSP architecture pattern. We'll explore why Rust is compelling for embedded systems, create a bare-metal program, and set up the complete development environment.
+
+\minitoc
+
+\clearpage
+
+% ============================================================================
+% SECTION 01.01: Why Rust for Embedded Systems
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.01-why-rust}
+
+% ============================================================================
+% SECTION 01.02: Your First Bare-Metal Rust Program
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.02-bare-metal-program}
+
+% ============================================================================
+% SECTION 01.03: The PAC/HAL/BSP Architecture Pattern
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.03-pac-hal-bsp-architecture}
+
+% ============================================================================
+% SECTION 01.04: Project Organization and Repository Structure
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.04-project-organization}
+
+% ============================================================================
+% SECTION 01.05: Development Prerequisites and Toolchain Setup
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.05-development-prerequisites}
+
+% ============================================================================
+% SECTION 01.06: Building Your First Embedded Binary
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.06-building-first-binary}
+
+\clearpage
+
+% ============================================================================
+% Chapter Summary and Key Takeaways
+% ============================================================================
+
+\begin{keytakeaways}
+    \item Rust provides memory safety without sacrificing performance through its ownership system
+    \item Embedded Rust programs use \codeinline{no_std} and \codeinline{no_main} for bare-metal operation
+    \item The PAC/HAL/BSP architecture provides clean separation of concerns and promotes code reuse
+    \item Cross-compilation requires the correct target specification (thumbv8m.main-none-eabihf for EFR32MG24)
+    \item Building embedded binaries involves multiple steps: compile, link, and optionally convert to binary/hex format
+    \item All necessary tools (rustup, probe-rs, cargo-binutils) are available cross-platform
+    \item Our minimal program compiles to just 80 bytes in release mode
+\end{keytakeaways}
+
+\begin{exercises}
+    \item\textbf{Easy}: Create a shell script that automates the development environment setup on your operating system. Include version checks and helpful error messages.
+
+    \item\textbf{Medium}: Modify the bare-metal example to:
+    \begin{itemize}
+        \item Blink an LED (even if you don't have hardware yet, write the code)
+        \item Add a counter variable that increments each iteration
+        \item Include debug information in the panic handler
+    \end{itemize}
+
+    \item\textbf{Hard}: Design a type-safe API for GPIO that:
+    \begin{itemize}
+        \item Prevents reading from output pins
+        \item Prevents writing to input pins
+        \item Tracks pin configuration at compile time
+        \item Provides zero-cost abstractions
+    \end{itemize}
+\end{exercises}
+
+\clearpage
