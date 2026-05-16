@@ -147,9 +147,10 @@ efr32mg24-pac = { path = "../efr32mg24-pac" }
 - Active-low LED control
 
 ### 3. Flash Scripts
-- `flash-bootloader-test.sh` - Flash bootloader + test app
-- `flash-arduino-only.sh` - Flash Arduino standalone (works)
-- `flash-bootloader-arduino.sh` - Flash bootloader + Arduino (fails)
+Located in `scripts/` folder:
+- `scripts/flash-bootloader-test.sh` - Flash bootloader + test app
+- `scripts/flash-arduino-only.sh` - Flash Arduino standalone (works)
+- `scripts/flash-bootloader-arduino.sh` - Flash bootloader + Arduino (fails)
 
 ## Next Session Action Items
 
@@ -202,7 +203,7 @@ efr32mg24-pac = { path = "../efr32mg24-pac" }
 2. `/bootloader-test-app/src/main.rs` - Test application
 3. `/efr32mg24-bootloader/bootloader.hex` - Bootloader binary
 4. `/bootloader-test-app/test-app.hex` - Application binary
-5. Flash scripts in project root
+5. Flash scripts in `/scripts/` folder (see [Scripts Documentation](../../scripts/README.md))
 
 ## Key Observations
 

@@ -347,7 +347,7 @@ When adding new examples:
 
 ## References
 
-- [XIAO MG24 Sense Hardware Guide](../docs/hardware/XIAO_MG24_HARDWARE.md)
+- [XIAO MG24 Sense Hardware Guide](../docs/04-reference/hardware/XIAO_MG24_HARDWARE.md)
 - [EFR32MG24 Reference Manual](https://www.silabs.com/documents/public/reference-manuals/efr32xg24-rm.pdf)
 - [Bluetooth Low Energy Specification](https://www.bluetooth.com/specifications/specs/)
 - [nRF Connect App](https://www.nordicsemi.com/Products/Development-tools/nRF-Connect-for-mobile) (for BLE testing)

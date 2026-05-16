@@ -306,7 +306,7 @@ let clocks = Clocks::new(dp.cmu_s, config);
 ## References
 
 - [EFR32MG24 Reference Manual](https://www.silabs.com/documents/public/reference-manuals/efr32xg24-rm.pdf) - Chapter 11: CMU
-- [XIAO MG24 Hardware Details](../../docs/hardware/XIAO_MG24_HARDWARE.md)
+- [XIAO MG24 Hardware Details](../../docs/04-reference/hardware/XIAO_MG24_HARDWARE.md)
 - [Silicon Labs AN0016](https://www.silabs.com/documents/public/application-notes/an0016-efm32-series-0-oscillators.pdf) - Oscillator Configuration
 
 ---

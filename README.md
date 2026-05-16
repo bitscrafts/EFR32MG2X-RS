@@ -178,9 +178,9 @@ cargo build --target thumbv8m.main-none-eabihf
 ### Documentation
 
 See detailed PAC documentation:
-- [docs/pac/SVD_PACK_EXTRACTION.md](docs/pac/SVD_PACK_EXTRACTION.md) - How we obtained all 41 SVD files from official DFP pack
-- [docs/pac/B220_VS_A020_COMPARISON.md](docs/pac/B220_VS_A020_COMPARISON.md) - B220 vs A020 peripheral comparison
-- [docs/hardware/XIAO_MG24_HARDWARE.md](docs/hardware/XIAO_MG24_HARDWARE.md) - Target hardware specifications
+- [docs/04-reference/pac/SVD_PACK_EXTRACTION.md](docs/04-reference/pac/SVD_PACK_EXTRACTION.md) - How we obtained all 41 SVD files from official DFP pack
+- [docs/04-reference/pac/B220_VS_A020_COMPARISON.md](docs/04-reference/pac/B220_VS_A020_COMPARISON.md) - B220 vs A020 peripheral comparison
+- [docs/04-reference/hardware/XIAO_MG24_HARDWARE.md](docs/04-reference/hardware/XIAO_MG24_HARDWARE.md) - Target hardware specifications
 
 ## Development Plan
 
@@ -200,11 +200,13 @@ See [docs/PLAN.md](docs/PLAN.md) for the complete development roadmap.
 
 ### Quick Links
 
-- **[docs/STATUS.md](docs/STATUS.md)** - Current project status (what's done, what's next)
-- **[docs/PLAN.md](docs/PLAN.md)** - Development roadmap (9-phase plan)
-- **[docs/hardware/XIAO_MG24_HARDWARE.md](docs/hardware/XIAO_MG24_HARDWARE.md)** - Target hardware details
-- **[docs/pac/B220_VS_A020_COMPARISON.md](docs/pac/B220_VS_A020_COMPARISON.md)** - Current PAC analysis
-- **[docs/hal/HAL_STRUCTURE_PLAN.md](docs/hal/HAL_STRUCTURE_PLAN.md)** - HAL architecture plan
+- **[docs/INDEX.md](docs/INDEX.md)** - Complete documentation index
+- **[docs/03-development/STATUS.md](docs/03-development/STATUS.md)** - Current project status (what's done, what's next)
+- **[docs/03-development/PLAN.md](docs/03-development/PLAN.md)** - Development roadmap (9-phase plan)
+- **[docs/04-reference/hardware/XIAO_MG24_HARDWARE.md](docs/04-reference/hardware/XIAO_MG24_HARDWARE.md)** - Target hardware details
+- **[docs/04-reference/pac/B220_VS_A020_COMPARISON.md](docs/04-reference/pac/B220_VS_A020_COMPARISON.md)** - Current PAC analysis
+- **[docs/02-architecture/hal/HAL_STRUCTURE_PLAN.md](docs/02-architecture/hal/HAL_STRUCTURE_PLAN.md)** - HAL architecture plan
+- **[scripts/README.md](scripts/README.md)** - Build and flashing scripts documentation
 - **[CLAUDE.md](CLAUDE.md)** - Project instructions for Claude Code
 
 ## Why EFR32MG24?

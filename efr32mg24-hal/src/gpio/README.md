@@ -477,7 +477,7 @@ The GPIO module is split into manageable files:
 ## References
 
 - [EFR32MG24 Reference Manual](https://www.silabs.com/documents/public/reference-manuals/efr32xg24-rm.pdf) - Chapter 18: GPIO
-- [XIAO MG24 Hardware Details](../../docs/hardware/XIAO_MG24_HARDWARE.md)
+- [XIAO MG24 Hardware Details](../../docs/04-reference/hardware/XIAO_MG24_HARDWARE.md)
 - [embedded-hal documentation](https://docs.rs/embedded-hal/latest/embedded_hal/)
 - [Silicon Labs AN0065](https://www.silabs.com/documents/public/application-notes/an0065-efm32-gpio.pdf) - GPIO Application Note
 
