@@ -1,155 +1,103 @@
-//! Minimal Blink Example using PAC (Register-level access)
+//! Minimal LED solid-on test using PAC typed register accessors.
 //!
-//! This is the SIMPLEST possible example:
-//! - Uses only PAC (no HAL, no BSP)
-//! - Direct register manipulation
-//! - No external dependencies except cortex-m
+//! This is the SIMPLEST possible PAC example: turns the LED on and holds.
+//! Uses only the PAC (no HAL, no BSP) with SVD-correct register addresses.
 //!
 //! # Hardware
 //!
-//! - XIAO MG24 Sense
-//! - LED on PA7 (pin 20, active LOW)
+//! - XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
+//! - LED on PA7 (Arduino pin 20, `LED_BUILTIN`, active low)
 //!
-//! # Safety
+//! # Register addresses (SVD-verified)
 //!
-//! - 5-second debug trap with LED blink
-//! - No SWD pin reconfiguration
-//! - No low-power modes
+//! - `CmuS` (secure CMU): `0x4000_8000`, `CLKEN0` at offset `0x064`, `gpio` = bit 26
+//! - `GpioS` (secure GPIO): `0x4003_C000`, port registers are packed (stride ~0x30)
+//! - `PORTA_MODEL` at block offset `0x034`, `PORTA_DOUT` at `0x040`
+//! - EFR32MG24 has NO `DOUTTGL` register (toggle via read-modify-write on `DOUT`)
 //!
 //! # Flashing
 //!
 //! ```bash
-//! # Build
-//! cargo build --release --example blink
-//!
-//! # Flash
-//! probe-rs run --chip EFR32MG24B220F1536 --release --example blink
+//! cd efr32mg24-pac
+//! cargo build --release --example blink --features rt
+//! probe-rs run --chip EFR32MG24B220F1536IM48 \
+//!   target/thumbv8m.main-none-eabihf/release/examples/blink
 //! ```
+//!
+//! See `blink_xiao.rs` for the full verified blink example with detailed docs.
 
 #![no_std]
 #![no_main]
 
-use core::ptr;
 use cortex_m_rt::entry;
+use efr32mg24_pac as pac;
 use panic_halt as _;
 
-// Import PAC to link interrupt vectors (required by cortex-m-rt)
-use efr32mg24_pac as _;
-
-// EFR32MG24 Register addresses
-const CMU_BASE: usize = 0x4000_8000;
-const GPIO_BASE: usize = 0x5000_0000;
-
-// CMU registers (Clock Management Unit)
-const CMU_CLKEN0: *mut u32 = (CMU_BASE + 0x308) as *mut u32;
-const CMU_CLKEN0_GPIO: u32 = 1 << 2; // Bit 2: GPIO clock enable
-
-// GPIO Port A registers
-const GPIO_PORTA_BASE: usize = GPIO_BASE + 0x000; // Port A offset
-const GPIO_PORTA_MODEL: *mut u32 = (GPIO_PORTA_BASE + 0x004) as *mut u32; // MODEL for pins 0-7
-const GPIO_PORTA_DOUT: *mut u32 = (GPIO_PORTA_BASE + 0x00C) as *mut u32;
-
-// Pin 7 configuration (LED on PA7, active LOW)
-const PIN7_SHIFT: u32 = 7 * 4; // Pin 7 in MODEL register (bits 28-31)
-const PIN7_MODE_PUSHPULL: u32 = 0x4; // Push-pull output mode
-const PIN7_BIT: u32 = 1 << 7; // Bit 7 for PA7
-
-/// Simple delay loop (blocking)
-///
-/// Approximate delay at default clock speed (19 MHz FSRCO).
-/// Each iteration takes ~10-20 cycles.
-#[inline(never)]
-fn delay_cycles(cycles: u32) {
-    for _ in 0..cycles {
-        cortex_m::asm::nop();
-    }
+// Gecko Bootloader Application Properties (required for bootloader boot).
+// See blink_xiao.rs for full documentation.
+#[repr(C)]
+pub struct ApplicationProperties {
+    header: [u8; 8],
+    magic: [u8; 16],
+    struct_version: u32,
+    signature_type: u32,
+    signature_location: u32,
+    app_info: ApplicationData,
+    cert: u32,
+    long_token_section_address: u32,
+    decrypt_key: [u8; 16],
 }
 
-/// Delay in milliseconds (approximate)
-fn delay_ms(ms: u32) {
-    // At 19 MHz, roughly 19000 cycles per ms
-    // With loop overhead, use ~15000 cycles per ms
-    delay_cycles(ms * 15_000);
+#[repr(C)]
+pub struct ApplicationData {
+    app_type: u32,
+    version: u32,
+    capabilities: u32,
+    product_id: [u8; 16],
 }
 
-/// Initialize GPIO for LED control
-unsafe fn gpio_init() {
-    // 1. Enable GPIO clock
-    ptr::write_volatile(CMU_CLKEN0, ptr::read_volatile(CMU_CLKEN0) | CMU_CLKEN0_GPIO);
+const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
+    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+];
 
-    // 2. Configure PA7 as push-pull output
-    let model_val = ptr::read_volatile(GPIO_PORTA_MODEL);
-    let model_new = (model_val & !(0xF << PIN7_SHIFT)) | (PIN7_MODE_PUSHPULL << PIN7_SHIFT);
-    ptr::write_volatile(GPIO_PORTA_MODEL, model_new);
-
-    // 3. Set initial output HIGH (LED off - active LOW)
-    let dout = ptr::read_volatile(GPIO_PORTA_DOUT);
-    ptr::write_volatile(GPIO_PORTA_DOUT, dout | PIN7_BIT);
-}
-
-/// Set LED on (active LOW - clear bit)
-unsafe fn led_on() {
-    let dout = ptr::read_volatile(GPIO_PORTA_DOUT);
-    ptr::write_volatile(GPIO_PORTA_DOUT, dout & !PIN7_BIT);
-}
-
-/// Set LED off (active LOW - set bit)
-unsafe fn led_off() {
-    let dout = ptr::read_volatile(GPIO_PORTA_DOUT);
-    ptr::write_volatile(GPIO_PORTA_DOUT, dout | PIN7_BIT);
-}
-
-/// Debug trap with LED feedback
-///
-/// Blinks LED rapidly 10 times (5 seconds total).
-/// This provides a safe window for debugger attachment.
-unsafe fn debug_trap() {
-    #[cfg(debug_assertions)]
-    {
-        for _ in 0..10 {
-            led_on();
-            delay_ms(250);
-            led_off();
-            delay_ms(250);
-        }
-    }
-}
+#[used]
+#[link_section = ".app_properties"]
+static APP_PROPERTIES: ApplicationProperties = ApplicationProperties {
+    header: [0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x02, 0x04],
+    magic: APPLICATION_PROPERTIES_MAGIC,
+    struct_version: 0x0201,
+    signature_type: 0,
+    signature_location: 0xFFFFFFFF,
+    app_info: ApplicationData {
+        app_type: 0x22,
+        version: 0x00000001,
+        capabilities: 0,
+        product_id: [0u8; 16],
+    },
+    cert: 0,
+    long_token_section_address: 0,
+    decrypt_key: [0u8; 16],
+};
 
 #[entry]
 fn main() -> ! {
-    // SAFETY: We have exclusive access to peripherals
-    unsafe {
-        // Initialize GPIO for LED
-        gpio_init();
+    let dp = pac::Peripherals::take().unwrap();
 
-        // Turn LED ON solid (for testing)
-        led_on();
+    // 1. Enable the GPIO clock in the secure CMU (CmuS at 0x4000_8000).
+    //    CLKEN0 is at offset 0x064; the `gpio` field is bit 26.
+    dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 
-        // Infinite loop
-        loop {
-            cortex_m::asm::nop();
-        }
+    // 2. Configure PA7 as push-pull output (LED pin, active low).
+    dp.gpio_s.porta_model().modify(|_r, w| w.mode7().pushpull());
+
+    // 3. Turn LED ON: clear bit 7 (active low: clear bit = LED on).
+    dp.gpio_s
+        .porta_dout()
+        .modify(|r, w| unsafe { w.bits(r.bits() & !(1 << 7)) });
+
+    // Infinite loop
+    loop {
+        cortex_m::asm::nop();
     }
 }
-
-// ========== NOTES ==========
-//
-// This example demonstrates raw PAC usage:
-//
-// 1. Direct register manipulation via pointers
-// 2. No HAL abstractions
-// 3. Minimal dependencies (just cortex-m-rt + panic-halt)
-// 4. Perfect for testing hardware connection
-//
-// Register Reference:
-// - EFR32MG24 Reference Manual Section 7 (CMU)
-// - EFR32MG24 Reference Manual Section 11 (GPIO)
-//
-// Memory Map:
-// - CMU:  0x4000_8000
-// - GPIO: 0x5000_0000
-// - PORTA offset: 0x000
-//
-// LED on XIAO MG24:
-// - Connected to PA7 (Port A, Pin 7, Arduino pin 20)
-// - Active LOW (turn on = clear bit, turn off = set bit)

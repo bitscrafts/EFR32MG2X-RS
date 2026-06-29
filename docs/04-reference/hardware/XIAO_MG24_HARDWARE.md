@@ -1,9 +1,74 @@
 # XIAO MG24 Sense Hardware Details
 
-**Date**: December 3, 2025
-**Status**: Hardware on order, awaiting delivery
+**Date**: December 3, 2025 (hardware verification: June 29, 2026)
+**Status**: Hardware verified - PAC-level LED blink confirmed on silicon
 
 ---
+
+## Hardware Verification Results (2026-06-29)
+
+A PAC-level LED blink was confirmed working end-to-end on the XIAO MG24 Sense.
+This proves the PAC register access, CMU clock gate, GPIO config, cortex-m-rt
+entry, linker memory map, Gecko bootloader app-properties validation, and the
+probe-rs flashing recipe all work on real silicon.
+
+### User LED pin (CONFIRMED): PA7, active low
+
+The built-in user LED is on **PA7** (Arduino pin 20, `LED_BUILTIN`, active low).
+
+This is confirmed by three independent sources:
+
+1. **Official Silicon Labs Arduino core** variant mapping
+   `variants/xiao_mg24/arduino_variant.cpp:75`: `PA7, // LED - 20`
+2. **Arduino pin definitions** `variants/xiao_mg24/pins_arduino.h:38-39`:
+   `#define LED_BUILTIN (20u)` with `#define LED_BUILTIN_ACTIVE LOW`
+3. **Hardware test**: the `microphone_volume_with_bootloader.hex` example dims
+   this LED (via PWM on `LED_BUILTIN`) and was confirmed working on hardware.
+
+### IMPORTANT: BSP pins.rs is WRONG
+
+`xiao-mg24-bsp/src/pins.rs:70` claims the LED is **PB2 (D10)**. That is
+**incorrect**. Per the Arduino variant, PB2 is Arduino D13 (SDA1 / DAC2), not
+the LED. The BSP `pins.rs` must be corrected (follow-on task):
+`d10: Pin<'B', 2, ...>` should not be labeled the built-in LED; the LED is
+`PA7`, which is Arduino pin 20 (not on the XIAO connector - it is the onboard
+LED only).
+
+### Flash memory map (CONFIRMED)
+
+| Region | Address range | Contents |
+|--------|---------------|----------|
+| Gecko bootloader | `0x08000000 - 0x08005FFF` (24 KB) | Bootloader (must not be overwritten by apps) |
+| Application flash | `0x08006000 - 0x0817FFFF` (1512 KB) | Application (PAC/HAL/BSP examples) |
+| SRAM | `0x20000000 - 0x2003FFFF` (256 KB) | RAM |
+
+The application MUST be linked at `ORIGIN = 0x08006000` (the PAC `memory.x`
+already has this correct). Linking at `0x08000000` overwrites the bootloader
+(see `CRITICAL_SAFETY_PROTOCOL.md`).
+
+### Gecko bootloader recovery
+
+If the bootloader stops jumping to the app (symptom: a known-good app hex does
+not boot after a power cycle), restore it with the recovery image:
+
+```bash
+# Flash the bootloader + microphone app recovery image (writes 0x08000000+):
+openocd -s <openocd_scripts> -f interface/cmsis-dap.cfg -f target/efm32s2_g23.cfg \
+  -c "init; reset halt; program efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
+```
+
+Then flash the app at `0x08006000` (does not touch the bootloader) and
+power-cycle to boot it.
+
+### Key EFR32MG24 GPIO facts (verified against SVD)
+
+- `CmuS` (secure CMU) base: `0x4000_8000`; `CmuNs` (non-secure): `0x5000_8000`.
+- `GpioS` (secure GPIO) base: `0x4003_C000`; `GpioNs`: `0x5003_C000`.
+- `CMU_S.CLKEN0` offset `0x064`; the `gpio` clock-gate field is bit 26.
+- GPIO port registers are **packed** (port stride ~0x30), NOT at `0x100`:
+  `PORTA_MODEL` at `0x034`, `PORTA_DOUT` at `0x040`, `PORTB_MODEL` at `0x064`.
+- EFR32MG24 has **no `DOUTTGL` register**. Toggle via read-modify-write on
+  `DOUT` (XOR the target bit in software).
 
 ## Overview
 
@@ -150,7 +215,7 @@ pub mod pins {
     pub const RX: Pin = D7;
 
     // Special
-    pub const LED_USER: Pin = PA04;  // Example
+    pub const LED_USER: Pin = PA07;  // PA7 = Arduino pin 20, active low (CONFIRMED)
 }
 ```
 

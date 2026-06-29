@@ -2,9 +2,10 @@
 
 MEMORY
 {
-  /* Main Flash: 1536 KB (0x180000 bytes) */
-  /* Address: 0x0800_0000 - 0x0817_FFFF */
-  FLASH : ORIGIN = 0x08000000, LENGTH = 1536K
+  /* Application flash: 0x08006000 - 0x0817FFFF (1512 KB)
+     The first 24 KB (0x08000000-0x08005FFF) is reserved for the Gecko
+     bootloader and MUST NOT be overwritten by applications. */
+  FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
 
   /* RAM: 256 KB (0x40000 bytes) */
   /* Address: 0x2000_0000 - 0x2003_FFFF */

@@ -29,5 +29,8 @@ critical-section = ["dep:critical-section"]
 
 [dev-dependencies]
 panic-halt = "0.2"
+# Provide the critical-section implementation for examples so the PAC's
+# svd2rust-generated `modify` (which uses critical_section) can link.
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 
 [build-dependencies]

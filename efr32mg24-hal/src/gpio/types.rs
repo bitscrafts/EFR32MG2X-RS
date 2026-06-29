@@ -143,6 +143,8 @@ gpio_port! {
     pc1: 1,
     pc2: 2,
     pc3: 3,
+    pc8: 8,
+    pc9: 9,
 }
 
 gpio_port! {

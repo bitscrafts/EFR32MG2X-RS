@@ -46,7 +46,9 @@
 
 pub mod board;
 pub mod pins;
+#[cfg(feature = "ble")]
 pub mod radio;
+#[cfg(feature = "microphone")]
 pub mod sensors;
 
 // Re-export for convenience

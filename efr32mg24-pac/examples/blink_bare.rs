@@ -1,34 +1,57 @@
-//! Absolute bare minimum blink - NO clock init, just raw GPIO toggle
-//! Test if ANY Rust code executes
+//! Bare-minimum LED blink using PAC typed register accessors.
+//!
+//! Toggles PA7 (the XIAO MG24 onboard LED, active low) via read-modify-write
+//! on `PORTA_DOUT`. Uses SVD-correct addresses through the PAC's typed
+//! accessors (no raw pointers).
+//!
+//! # Hardware
+//!
+//! - XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
+//! - LED on PA7 (Arduino pin 20, `LED_BUILTIN`, active low)
+//!
+//! # Register addresses (SVD-verified)
+//!
+//! - `CmuS` (secure CMU): `0x4000_8000`, `CLKEN0` at offset `0x064`, `gpio` = bit 26
+//! - `GpioS` (secure GPIO): `0x4003_C000`, port registers are packed (stride ~0x30)
+//! - `PORTA_MODEL` at block offset `0x034`, `PORTA_DOUT` at `0x040`
+//! - EFR32MG24 has NO `DOUTTGL` register (toggle via read-modify-write on `DOUT`)
+//!
+//! # Flashing
+//!
+//! ```bash
+//! cd efr32mg24-pac
+//! cargo build --release --example blink_bare --features rt
+//! probe-rs run --chip EFR32MG24B220F1536IM48 \
+//!   target/thumbv8m.main-none-eabihf/release/examples/blink_bare
+//! ```
+//!
+//! See `blink_xiao.rs` for the full verified blink example with detailed docs.
 
 #![no_std]
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_pac as _;
+use efr32mg24_pac as pac;
 use panic_halt as _;
-use cortex_m as _;
 
-// Gecko Bootloader Application Properties
-// CRITICAL: Must match Arduino format AND official Silicon Labs struct EXACTLY!
-// Reference: https://docs.silabs.com/mcu-bootloader/latest/gecko-bootloader-api/application-properties-t
-// Arduino has 8-byte header BEFORE magic, Word 13 points to magic (not header)
+// Gecko Bootloader Application Properties (required for bootloader boot).
+// See blink_xiao.rs for full documentation.
 #[repr(C)]
 pub struct ApplicationProperties {
-    header: [u8; 8],                // 8-byte header (02 01 02 02 02 03 02 04 from Arduino)
-    magic: [u8; 16],                // Magic signature (Word 13 points HERE, not to header)
-    struct_version: u32,             // Version of this struct
-    signature_type: u32,             // Type of signature (0 = none)
-    signature_location: u32,         // Pointer to signature (0xFFFFFFFF = none)
-    app_info: ApplicationData,       // Application metadata
-    cert: u32,                       // Pointer to certificate (NULL = 0)
-    long_token_section_address: u32, // Pointer to long token section (NULL = 0)
-    decrypt_key: [u8; 16],          // Decryption key (zeros if not encrypted)
+    header: [u8; 8],
+    magic: [u8; 16],
+    struct_version: u32,
+    signature_type: u32,
+    signature_location: u32,
+    app_info: ApplicationData,
+    cert: u32,
+    long_token_section_address: u32,
+    decrypt_key: [u8; 16],
 }
 
 #[repr(C)]
 pub struct ApplicationData {
-    app_type: u32,           // Arduino uses 0x22 (34)
+    app_type: u32,
     version: u32,
     capabilities: u32,
     product_id: [u8; 16],
@@ -42,50 +65,49 @@ const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
 #[used]
 #[link_section = ".app_properties"]
 static APP_PROPERTIES: ApplicationProperties = ApplicationProperties {
-    header: [0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x02, 0x04],  // Match Arduino exactly
+    header: [0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x02, 0x04],
     magic: APPLICATION_PROPERTIES_MAGIC,
-    struct_version: 0x0201,        // Version 2.1
-    signature_type: 0,              // No signature
-    signature_location: 0xFFFFFFFF, // No signature
+    struct_version: 0x0201,
+    signature_type: 0,
+    signature_location: 0xFFFFFFFF,
     app_info: ApplicationData {
-        app_type: 0x22,             // Match Arduino (34 decimal) - CRITICAL!
-        version: 0x00000001,        // Match Arduino byte order (v0.0.1)
+        app_type: 0x22,
+        version: 0x00000001,
         capabilities: 0,
         product_id: [0u8; 16],
     },
-    cert: 0,                        // NULL pointer - no certificate
-    long_token_section_address: 0,  // NULL pointer - no long token section
-    decrypt_key: [0u8; 16],         // All zeros - no encryption
+    cert: 0,
+    long_token_section_address: 0,
+    decrypt_key: [0u8; 16],
 };
+
+/// Delay loop: roughly ~1 Hz toggle at the default FSRCO (~19 MHz) or the
+/// bootloader-configured SYSCLK.
+#[inline(never)]
+fn delay() {
+    for _ in 0..1_000_000 {
+        cortex_m::asm::nop();
+    }
+}
 
 #[entry]
 fn main() -> ! {
-    unsafe {
-        // Use CMU_S (secure peripheral) and enable multiple clocks
-        const CMU_S_CLKEN0: *mut u32 = 0x50008308 as *mut u32;
-        const CMU_S_CLKEN1: *mut u32 = 0x5000830C as *mut u32;
+    let dp = pac::Peripherals::take().unwrap();
 
-        // Enable HFXO, GPIO, and other necessary clocks
-        core::ptr::write_volatile(CMU_S_CLKEN0, 0xFFFFFFFF);  // Enable all CLKEN0 clocks
-        core::ptr::write_volatile(CMU_S_CLKEN1, 0xFFFFFFFF);  // Enable all CLKEN1 clocks
+    // 1. Enable the GPIO clock in the secure CMU (CmuS at 0x4000_8000).
+    //    CLKEN0 is at offset 0x064; the `gpio` field is bit 26.
+    dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 
-        const GPIO_PORTA_MODEL: *mut u32 = 0x50000004 as *mut u32;
-        const GPIO_PORTA_DOUT: *mut u32 = 0x5000000C as *mut u32;
-        const GPIO_PORTA_DOUTTGL: *mut u32 = 0x50000010 as *mut u32;
+    // 2. Configure PA7 as push-pull output (LED pin, active low).
+    dp.gpio_s.porta_model().modify(|_r, w| w.mode7().pushpull());
 
-        // Configure PA7 as push-pull output (mode 4)
-        let model = core::ptr::read_volatile(GPIO_PORTA_MODEL);
-        core::ptr::write_volatile(GPIO_PORTA_MODEL, (model & !0xF0000000) | 0x40000000);
+    // 3. Blink: toggle PA7 by read-modify-write on PORTA_DOUT.
+    //    EFR32MG24 has no DOUTTGL, so XOR the bit in software.
+    loop {
+        dp.gpio_s
+            .porta_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() ^ (1 << 7)) });
 
-        // Blink LED
-        loop {
-            // Toggle LED (bit 7)
-            core::ptr::write_volatile(GPIO_PORTA_DOUTTGL, 1 << 7);
-
-            // Delay
-            for _ in 0..1_000_000 {
-                cortex_m::asm::nop();
-            }
-        }
+        delay();
     }
 }

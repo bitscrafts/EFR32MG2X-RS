@@ -19,9 +19,13 @@
 //!     └─────────┘
 //!
 //! Pin Aliases:
-//! - D10/LED: PB02 (built-in LED, active low)
+//! - LED: PA07 (built-in user LED, active low, NOT on XIAO connector)
 //! - D7/BUTTON: PB01 (user button, active low)
 //! - VBAT_SENSE: PA00 (battery voltage monitoring)
+//!
+//! NOTE: D10 (PB02) is NOT the built-in LED. The built-in LED is on PA7
+//! (Arduino pin 20), confirmed by the official Silicon Labs Arduino core
+//! (`variants/xiao_mg24/arduino_variant.cpp:75`: `PA7, // LED - 20`).
 //! ```
 
 use crate::hal::gpio::*;
@@ -64,10 +68,17 @@ pub struct Pins {
     /// D9 - PB03 (GPIO, ADC0 CH1)
     pub d9: Pin<'B', 3, Input<Pull>>,
 
-    /// D10 - PB02 (GPIO, PWM, BUILT-IN LED)
+    /// D10 - PB02 (GPIO, PWM)
     ///
-    /// This pin has the built-in LED connected (active low).
+    /// NOTE: This is NOT the built-in LED. The built-in LED is on PA7
+    /// (see `led` field below). PB2 is Arduino D13 (SDA1/DAC2).
     pub d10: Pin<'B', 2, Input<Pull>>,
+
+    /// Built-in user LED (PA07, active low, NOT on XIAO connector)
+    ///
+    /// This is the onboard LED confirmed by the official Silicon Labs
+    /// Arduino core. It is active low (clear bit = LED on, set bit = LED off).
+    pub led: Pin<'A', 7, Input<Pull>>,
 
     /// Battery voltage sense (PA00, ADC)
     ///
@@ -102,7 +113,8 @@ impl Pins {
             d7: parts.portb.pb1, // USER BUTTON
             d8: parts.portb.pb4,
             d9: parts.portb.pb3,
-            d10: parts.portb.pb2, // BUILT-IN LED
+            d10: parts.portb.pb2,
+            led: parts.porta.pa7, // BUILT-IN LED (PA7, active low)
             vbat_sense: parts.porta.pa0,
             pc8: parts.portc.pc8, // Microphone power
             pc9: parts.portc.pc9, // Microphone input
