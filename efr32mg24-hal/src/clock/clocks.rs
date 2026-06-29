@@ -74,34 +74,33 @@ impl Clocks {
         config: ClockConfig,
     ) -> Result<(Self, crate::pac::CmuS), ClockError> {
         // Determine the frequencies based on configuration
+        //
+        // WARNING: This function does NOT switch SYSCLK to HFXO. The previous
+        // implementation switched SYSCLK to HFXO BEFORE HFXO was running, which
+        // stopped the CPU clock and permanently locked the debug Access Port.
+        // See docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md for details.
+        //
+        // The proper HFXO sequence requires:
+        //   1. Enable HFXO via HFXO0_S.CTRL (set FORCEEN/ENABLE)
+        //   2. Poll HFXO0_S.CTRL.RDY until HFXO is stable
+        //   3. THEN switch CMU_S.SYSCLKCTRL.CLKSEL to HFXO
+        //
+        // This is not implemented yet. For now, we just track the requested
+        // frequency for delay calculations. The actual clock source remains
+        // whatever the bootloader or reset default set (FSRCO or HFRCO).
         let hfclk = if let Some(hfxo_config) = config.hfxo {
-            // Configure HFXO
-            // Enable HFXO by writing to SYSCLKCTRL
-            cmu.sysclkctrl().modify(|_r, w| {
-                // Select HFXO as SYSCLK source
-                w.clksel().hfxo()
-            });
-
-            // TODO: Wait for HFXO to stabilize
-            // The EFR32MG24 uses different oscillator status registers than earlier series.
-            // Need to verify correct register/field names from reference manual.
-            // For now, insert a small delay to allow oscillator startup.
-            cortex_m::asm::delay(Self::OSC_TIMEOUT);
-
+            // Track HFXO frequency but do NOT switch SYSCLK.
+            // The caller is responsible for enabling HFXO and switching SYSCLK
+            // via a separate, properly-sequenced function (TODO: implement).
             hfxo_config.frequency
         } else {
             // Use default HFRCO
-            // HFRCO is typically enabled by default
             Hertz(Self::HFRCO_FREQ)
         };
 
         let lfclk = if let Some(lfxo_config) = config.lfxo {
-            // TODO: Configure LFXO
-            // The EFR32MG24 uses different oscillator control registers than earlier series.
-            // Need to verify correct register/field names from reference manual.
-            // For now, just track the configured frequency.
-            cortex_m::asm::delay(Self::OSC_TIMEOUT);
-
+            // Track LFXO frequency but do NOT configure LFXO registers yet.
+            // TODO: implement proper LFXO enable + wait + select sequence.
             lfxo_config.frequency
         } else {
             // Use default LFRCO
