@@ -2,17 +2,19 @@
 
 ## Project Context
 
-This project provides Rust support (PAC + HAL) for the Silicon Labs EFR32MG24 wireless MCU.
+This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silicon Labs EFR32MG24 wireless MCU.
 
-**Status**: Phase D2 In Progress (50%) - Bluetooth 5.3 LE Integration Complete
+**Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. Next: Phase E (Application Development) / Phase D3 (Zigbee).
 
 **Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
 
-**Key Documentation**:
-- [docs/PLAN.md](docs/PLAN.md) - Development roadmap (9 phases)
-- [docs/STATUS.md](docs/STATUS.md) - Current implementation status
-- [docs/IDENTIFIER_SCHEME.md](docs/IDENTIFIER_SCHEME.md) - Hierarchical identifier specification
-- [docs/TERMINOLOGY.md](docs/TERMINOLOGY.md) - Phase/Stage terminology reference
+**Key Documentation** (SSOT-organized under `docs/`):
+- [docs/03-development/PLAN.md](docs/03-development/PLAN.md) - Development roadmap (9 phases)
+- [docs/03-development/STATUS.md](docs/03-development/STATUS.md) - Current implementation status
+- [docs/03-development/BACKLOG.md](docs/03-development/BACKLOG.md) - Feature backlog and TODOs
+- [docs/02-architecture/IDENTIFIER_SCHEME.md](docs/02-architecture/IDENTIFIER_SCHEME.md) - Hierarchical identifier specification
+- [docs/02-architecture/TERMINOLOGY.md](docs/02-architecture/TERMINOLOGY.md) - Phase/Stage terminology reference
+- [docs/INDEX.md](docs/INDEX.md) - Complete documentation index
 - [README.md](README.md) - Project overview and quick start
 
 ## Terminology and Identifiers
@@ -58,128 +60,162 @@ C3-EMU       = Phase C, Stage 3: Energy Management Unit
 
 ```
 EFR32MG24/
-├── Cargo.toml                      # Workspace root
+├── Cargo.toml                      # Workspace root (5 member crates)
 ├── efr32mg24-pac/                  # Peripheral Access Crate (register-level)
 │   ├── Cargo.toml
-│   └── src/lib.rs                  # 138,448 lines, 133 peripherals
+│   └── src/lib.rs                  # 138,448 lines, 133 peripherals (B220 variant)
 ├── efr32mg24-hal/                  # Hardware Abstraction Layer (driver-level)
 │   ├── Cargo.toml
 │   ├── src/
-│   │   ├── lib.rs
-│   │   ├── clock/                  # CMU - 4 files, hardware register access
-│   │   ├── delay/                  # SysTick delays - 1 file
-│   │   ├── gpio/                   # GPIO - 4 files, hardware register access
-│   │   ├── usart/                  # USART - 4 files, serial communication
-│   │   ├── i2c/                    # I2C - 4 files, I2C master mode
-│   │   ├── spi/                    # SPI - 4 files, SPI master mode (3 instances)
+│   │   ├── lib.rs                  # 12 public peripheral modules
+│   │   ├── adc/                    # IADC - 12-bit single-shot conversion
+│   │   ├── clock/                  # CMU - HFXO/HFRCO/LFXO/LFRCO configuration
+│   │   ├── delay/                  # SysTick delays (ms/us/ns)
+│   │   ├── dma/                    # LDMA - memory-to-memory + peripheral-to-memory
+│   │   ├── emu/                    # Energy Management Unit (EM0-EM4)
+│   │   ├── gpio/                   # GPIO - type-safe pin modes
+│   │   ├── i2c/                    # I2C master mode (I2C0/I2C1)
+│   │   ├── rtc/                    # SYSRTC0 real-time counter/calendar
+│   │   ├── spi/                    # SPI master mode (Spi0/Spi1/Spi2)
+│   │   ├── timer/                  # TIMER0-4 with PWM
+│   │   ├── usart/                  # USART0 serial communication
+│   │   ├── wdog/                   # WDOG0 watchdog with lock mechanism
 │   │   └── prelude.rs
-│   ├── examples/
-│   │   ├── 01_clock.rs            # Clock configuration example
-│   │   ├── 02_delay.rs            # Delay usage example
-│   │   ├── 03_gpio.rs             # GPIO usage example (280+ lines)
-│   │   ├── 04_usart.rs            # USART serial communication example
-│   │   ├── 05_i2c.rs              # I2C master mode example
-│   │   └── 06_spi.rs              # SPI master mode example (all 3 instances)
+│   ├── examples/                   # 14 HAL examples (00_recovery through 12_wdog)
 │   ├── docs/                       # HAL-specific documentation
-│   │   ├── README.md
-│   │   ├── STATUS.md
-│   │   ├── PHASE2_PLAN.md
-│   │   ├── BUILD_SYSTEM.md
-│   │   └── LINKER_SETUP.md
 │   ├── memory.x                    # Linker memory layout
 │   ├── device.x                    # Interrupt vector table
 │   └── build.rs                    # Build script
-├── docs/                           # Workspace documentation
-│   ├── README.md
-│   ├── PLAN.md                     # Overall project plan
-│   └── STATUS.md                   # Workspace status
+├── efr32mg24-rail-sys/             # RAIL radio FFI bindings (3,974 lines)
+├── efr32mg24-bluetooth-sys/        # Bluetooth 5.3 LE stack (BGAPI FFI + safe blocking API)
+│   └── examples/                   # 4 BLE FFI examples
+├── xiao-mg24-bsp/                  # Board Support Package (XIAO MG24 Sense)
+│   └── examples/                   # 9 BSP examples (blink + BLE + microphone streaming)
+├── efr32mg24-bootloader/           # Gecko bootloader integration (workspace-excluded)
+├── bootloader-test-app/            # Bootloader test application (workspace-excluded)
+├── book/                           # mdBook-generated documentation
+├── docs/                           # Workspace documentation (SSOT-organized)
+│   ├── INDEX.md                    # Complete documentation index
+│   ├── 01-getting-started/         # Flashing, recovery, safety procedures
+│   ├── 02-architecture/            # Radio, HAL, identifier scheme, terminology
+│   ├── 03-development/             # STATUS, PLAN, BACKLOG, LOG, CI/CD
+│   ├── 04-reference/               # Bootloader/radio/hardware research
+│   └── 99-archive/                 # Historical/resolved documents
+├── scripts/                        # Build and flashing scripts
+├── .archive/                       # Timestamped documentation backups
+├── HANDOFF.md                      # Comprehensive project handoff
+├── CHANGELOG.md                    # Version history
 └── CLAUDE.md                       # This file
 ```
 
 ## Current Status
 
-### Completed (Phase A - Essential Peripherals)
+### Phase P - Preparation (Complete)
+- Research on existing Rust support for EFR32 family (no Series 2 support found)
+- EFR32MG24 MCU specification analysis (Cortex-M33, memory, peripherals)
+- Cargo workspace created (PAC + HAL + radio + Bluetooth + BSP)
+- XIAO MG24 hardware identified (EFR32MG24B220F1536IM48-B)
+- Silicon Labs Gecko Platform DFP pack obtained (2025.6.2), 41 SVD files extracted
+- B220 PAC generated with svd2rust v0.37.1 (`--locked`): 138,448 lines, 133 peripherals
+
+### Phase A - Essential Peripherals (Complete)
 
 **PAC (Peripheral Access Crate)**:
-- Successfully generated from B220 SVD file
+- Generated from B220 SVD file
 - 138,448 lines of Rust code (14 MB source)
 - 133 peripherals accessible
 - Compiles in ~2.6 minutes
 - Output: 112 MB .rlib
 
-**HAL Tier 1 Peripherals** (Hardware Register Access):
-1. **GPIO** - Complete
+**HAL Phase A Peripherals** (hardware register access):
+1. **GPIO (A1)** - Complete
    - Hardware register manipulation (MODEL/MODEH, DOUT, DIN)
    - Type-safe pin modes (compile-time enforcement)
-   - Drive strength configuration
-   - Pull resistor configuration
+   - Drive strength / pull resistor configuration
    - embedded-hal v1.0 OutputPin/InputPin traits
    - GPIO clock enable via CMU
 
-2. **CMU (Clock Management)** - Complete
-   - HFXO/HFRCO configuration
-   - LFXO/LFRCO configuration
+2. **CMU (A2)** - Complete
+   - HFXO/HFRCO/LFXO/LFRCO configuration
    - SYSCLKCTRL register access
    - Peripheral consumption pattern
    - FrozenClocks for frequency tracking
    - Critical section protection
 
-3. **Delay** - Complete
-   - SysTick-based blocking delays
-   - Millisecond/microsecond/nanosecond precision
+3. **Delay (A3)** - Complete
+   - SysTick-based blocking delays (ms/us/ns)
    - embedded-hal v1.0 DelayNs trait
    - Integration with CMU clock frequencies
 
-**Examples**: 3 working examples (all compile and build successfully)
+### Phase B - Communication Peripherals (Complete)
 
-**Build Results**:
-- PAC: 112 MB .rlib
-- HAL: ~25 KB .rlib
-- Build time: ~3 minutes (release mode)
-- All examples compile without errors
-
-### Completed (Phase B - Communication Peripherals)
-
-4. **USART0** - Complete
+4. **USART0 (B1)** - Complete
    - Hardware register access (CTRL, FRAME, CLKDIV, STATUS)
-   - Configurable baud rate (up to 6 Mbps)
-   - 8-bit data, configurable parity (none, even, odd)
-   - Configurable stop bits (1 or 2)
+   - Configurable baud rate, parity, stop bits
    - embedded-hal-nb v1.0 Read/Write traits
    - Automatic clock enable via CMU
 
-5. **I2C (I2C0/I2C1)** - Complete
-   - I2C master mode with 7-bit addressing
-   - Standard (100 kHz) and Fast (400 kHz) modes
-   - Hardware register access (CTRL, CMD, STATE, CLKDIV)
-   - Write, read, and write-read operations
+5. **I2C (B2)** - Complete (I2C0/I2C1)
+   - 7-bit addressing, Standard (100 kHz) / Fast (400 kHz) modes
+   - Write, read, write-read operations
    - embedded-hal v1.0 I2c trait
-   - Automatic peripheral clock enable
 
-6. **SPI (Spi0/Spi1/Spi2)** - Complete
-   - **Spi0**: USART0 in SPI master mode
-   - **Spi1**: EUSART0 in SPI master mode
-   - **Spi2**: EUSART1 in SPI master mode
-   - All 4 SPI modes (Mode 0-3) with CPOL/CPHA
-   - Configurable frequency (up to PCLK/2)
-   - MSB-first and LSB-first bit order
-   - Full-duplex, write-only, read-only operations
+6. **SPI (B3)** - Complete (Spi0/Spi1/Spi2)
+   - Spi0 = USART0, Spi1 = EUSART0, Spi2 = EUSART1 (all in SPI master mode)
+   - All 4 SPI modes (Mode 0-3), MSB-first / LSB-first
    - embedded-hal v1.0 SpiBus trait (all instances)
-   - Hardware register access (USART: CTRL/FRAME, EUSART: CFG0/CFG2)
 
-**Examples**: 6 working examples (all compile and build successfully)
+7. **Timer/PWM (B4)** - Complete (TIMER0-4)
+   - 5 timer instances, 3 PWM channels each
+   - Edge-aligned and center-aligned PWM
+   - Counter modes (up/down/up-down) with automatic prescaler
+   - Interrupt support (overflow/compare)
+   - embedded-hal PWM trait
 
-**Build Statistics**:
-- Total HAL Code: ~4,500 lines (across all modules)
-- Module READMEs: ~1,800 lines of documentation
-- Examples: ~800 lines of working code
-- Build time: ~3-8 minutes (release mode)
+### Phase C - Advanced Peripherals (Complete - Stage 1)
+
+8. **ADC (C1)** - Complete (IADC)
+   - 12-bit single-shot conversion, configurable reference (VBGR 1.21V, VDD)
+   - 6 input channels + ground, timeout-protected, thread-safe
+
+9. **DMA (C2)** - Complete (LDMA)
+   - C2-DMA.1: Memory-to-memory transfers (blocking, type-safe channels)
+   - C2-DMA.2: Peripheral-to-memory transfers with circular buffer mode
+   - Deferred: C2-DMA.3 (linked descriptors), C2-DMA.4 (interrupt-driven async)
+
+10. **EMU (C3)** - Complete
+    - EM0-EM4 energy mode transitions, type-safe states, builder config
+    - Voltage scaling, BOD, EM4 hibernate
+
+11. **RTC (C4)** - Complete (SYSRTC0)
+    - Calendar + counter modes, alarms, 3 capture/compare channels
+    - 32.768 kHz LFXO clock source
+
+12. **WDOG (C5)** - Complete (WDOG0)
+    - 16 timeout periods, lock mechanism (key 0xABE8)
+    - EM1-EM3 support, debug freeze, warning mode
+
+### Phase D0-D1 - Radio Foundation (Complete)
+
+- **D0**: -sys crate template, workspace configuration, xiao-mg24-bsp skeleton
+- **D1-RAIL.1**: efr32mg24-rail-sys crate - 3,974 lines of FFI bindings, SHA256 blob
+  verification, platform-independent build, Grade A- review
+
+### Phase D2 - Bluetooth 5.3 LE (Complete)
+
+- **efr32mg24-bluetooth-sys**: BGAPI FFI bindings (4,307 lines) + safe blocking API
+  (Bluetooth, BleEvent, GATT server, event polling)
+- **XiaoBle BSP**: advertiser + GATT server + event system with automatic connection
+  management (80% code reduction vs raw FFI)
+- **D2-MIC.1**: MSM381ACT001 analog microphone driver (16 kHz audio streaming via LDMA)
+- **Examples**: 4 BLE FFI examples + 6 BSP BLE/sensor examples + microphone streaming
+
+### Build Statistics
+- Total HAL code: ~4,772 lines (12 modules, all with READMEs)
+- HAL examples: 14 (00_recovery through 12_wdog), all build to flashable binaries
+- BLE examples: 4 (bluetooth-sys) + 6 (BSP integration)
+- BSP examples: 9 (blink variants + BLE + microphone streaming)
 - Zero compilation warnings or errors
-
-### In Progress (Phase B)
-
-Next implementation target:
-- Timer - Timers and PWM generation (TIMER0-4)
 
 ## Development Guidelines
 
@@ -345,12 +381,12 @@ cargo build --examples --features rt --release
 
 # Build specific examples
 cargo build --example 03_gpio --features rt --release
-cargo build --example 04_usart --features rt --release
-cargo build --example 05_i2c --features rt --release
-cargo build --example 06_spi --features rt --release
+cargo build --example 07_timer_pwm --features rt --release
+cargo build --example 08_adc --features rt --release
+cargo build --example 09_dma --features rt --release
 
 # Flash to device (requires probe-rs)
-cargo run --example 06_spi --features rt --release
+cargo run --example 08_adc --features rt --release
 ```
 
 ### Development
@@ -379,42 +415,44 @@ cargo doc --no-deps --features rt --open
 
 **Rust Target**: `thumbv8m.main-none-eabihf`
 
-## Phase B Completion Summary
+## Phase D2 Completion Summary
 
-**Communication Peripherals Completed**:
+**Bluetooth 5.3 LE Integration Completed**:
 
-1. **USART0 (Serial Communication)**:
-   - Module: src/usart/ (4 files, ~350 lines)
-   - Hardware register access (CTRL, FRAME, CLKDIV, STATUS)
-   - Configurable baud rate, parity, stop bits
-   - embedded-hal-nb v1.0 traits
-   - Example: 04_usart.rs (189 lines)
-   - Commit: 7f8c1e9
+1. **efr32mg24-rail-sys (D1-RAIL.1)**:
+   - 3,974 lines of auto-generated Rust FFI bindings from RAIL C headers
+   - Platform-independent build (macOS/Linux/Windows)
+   - SHA256 blob integrity verification
+   - Graceful degradation (compiles without blobs for development)
+   - Grade A- review
 
-2. **I2C0/I2C1 (I2C Master Mode)**:
-   - Module: src/i2c/ (4 files, ~450 lines)
-   - 7-bit addressing, Standard/Fast modes
-   - Hardware register access (CTRL, CMD, STATE, CLKDIV)
-   - embedded-hal v1.0 I2c trait
-   - Example: 05_i2c.rs (220 lines)
-   - Commit: 78b9c4a
+2. **efr32mg24-bluetooth-sys (D2-BLE.2)**:
+   - 4,307 lines of BGAPI FFI bindings + safe blocking API
+   - `blocking` module: Bluetooth, BleEvent, GATT server, event polling
+   - `ffi` module: raw unsafe BGAPI bindings for advanced users
+   - 4 BLE FFI examples (beacon, advertiser, GATT heart rate, custom service)
 
-3. **SPI0/SPI1/SPI2 (SPI Master Mode)**:
-   - Module: src/spi/ (4 files, ~750 lines)
-   - Three instances: USART0, EUSART0, EUSART1
-   - All 4 SPI modes, configurable frequency
-   - USART vs EUSART register handling
-   - embedded-hal v1.0 SpiBus trait (all instances)
-   - Example: 06_spi.rs (190 lines)
-   - Commit: 205c02a
+3. **XiaoBle BSP (D2-BLE.3)**:
+   - Advertiser + GATT server + event system
+   - Automatic connection management
+   - Safe BLE wrapper: 80% code reduction vs raw FFI
+   - 6 BSP BLE/sensor examples + microphone streaming
+
+4. **DMA Stage 2 (C2-DMA.2)**:
+   - LDMA peripheral-to-memory transfers with circular buffer mode
+   - Enables continuous ADC/IADC capture
+
+5. **Microphone Driver (D2-MIC.1)**:
+   - MSM381ACT001 analog microphone driver (373 lines)
+   - 16 kHz audio streaming via LDMA
 
 **Key Achievements**:
-- All communication peripherals have comprehensive READMEs
-- All modules follow 4-file pattern (mod.rs, types.rs, traits.rs, README.md)
+- All 12 HAL modules have comprehensive READMEs and embedded-hal v1.0 traits
+- All modules follow the multi-file pattern (mod.rs, types.rs, traits.rs, README.md)
 - Zero compilation warnings or errors
-- All examples compile and demonstrate real-world usage
-- Complete embedded-hal v1.0 trait coverage
-- Hardware register access with proper error handling
+- 14 HAL examples + 4 BLE FFI examples + 9 BSP examples
+- Production-grade: SAFETY comments, critical sections, timeout protection
+- Radio foundation enables BLE, Zigbee, Thread, Matter
 
 ## Known Issues & Limitations
 
@@ -423,18 +461,18 @@ cargo doc --no-deps --features rt --open
 2. **USART**: Only USART0 supported (EUSART0/1 for async in future)
 3. **I2C**: Only master mode (slave mode not implemented)
 4. **SPI**: Only master mode, blocking operations only
-5. **General**: No DMA support yet (all polling-based)
+5. **DMA**: Stages 1-2 complete; linked descriptors (Stage 3) and interrupt-driven async (Stage 4) deferred
 6. **General**: No async/await support (Embassy planned)
 7. **Testing**: No hardware testing yet (requires XIAO MG24 Sense board)
+8. **Radio**: RAIL/Bluetooth bindings require Silicon Labs binary blobs (MSLA licensing)
 
-### Future Work (Phase B Completion)
-1. ✅ ~~Implement USART0 for serial communication~~ (Complete)
-2. ✅ ~~Add I2C master mode support~~ (Complete)
-3. ✅ ~~Implement SPI master mode~~ (Complete - all 3 instances)
-4. Timer/PWM support (TIMER0-4) - Next target
-5. Hardware testing and validation
-6. DMA support (LDMA)
-7. Embassy async runtime integration
+### Future Work
+1. **Phase D3**: Zigbee 3.0 protocol stack integration
+2. **Phase D4**: Thread/Matter support
+3. **Phase E**: Security features (AES, SHA, Secure Vault)
+4. **C2-DMA.3/4**: Linked descriptors and interrupt-driven async DMA
+5. **C6-Test**: Hardware validation on XIAO MG24 Sense
+6. Embassy async runtime integration
 
 ## Resources
 
@@ -458,23 +496,31 @@ cargo doc --no-deps --features rt --open
 - [x] GPIO hardware register access working
 - [x] CMU clock configuration working
 - [x] Delay implementation integrated
-- [x] All examples compile and build
 - [x] embedded-hal v1.0 traits implemented for GPIO/Delay
-- [x] Documentation updated
 
-**Phase B** (70% Complete):
-- [x] USART0 serial communication working
-- [x] I2C0/I2C1 master mode working
-- [x] SPI0/SPI1/SPI2 master mode working (all 3 instances)
+**Phase B - Communication Peripherals** (Complete):
+- [x] USART0, I2C0/I2C1, SPI0/SPI1/SPI2, TIMER0-4 all production-ready
 - [x] All communication peripherals have embedded-hal v1.0 traits
 - [x] All modules have comprehensive README documentation
-- [x] 6 working examples (all build successfully)
-- [ ] Timer/PWM working (next target)
+
+**Phase C - Advanced Peripherals** (Complete - Stage 1):
+- [x] ADC, DMA (Stages 1-2), EMU, RTC, WDOG all production-ready
+- [x] 14 HAL examples (all build successfully)
+- [ ] DMA Stages 3-4 (linked descriptors, interrupt-driven async) deferred
+
+**Phase D0-D2 - Radio + Bluetooth** (Complete):
+- [x] RAIL FFI bindings (efr32mg24-rail-sys)
+- [x] Bluetooth 5.3 LE stack (efr32mg24-bluetooth-sys)
+- [x] XiaoBle BSP with safe BLE wrapper
+- [x] Microphone driver with LDMA streaming
+- [x] 10+ BLE/BSP examples
 
 **Long Term Goals**:
 - [ ] Published to crates.io
 - [ ] Hardware tested on XIAO MG24 Sense
-- [ ] 10+ working examples
+- [ ] Phase D3: Zigbee 3.0 integration
+- [ ] Phase D4: Thread/Matter support
+- [ ] Phase E: Security features (AES, SHA, Secure Vault)
 - [ ] Embassy async support
 - [ ] Community contributors
 
@@ -486,7 +532,7 @@ cargo doc --no-deps --features rt --open
 
 ---
 
-**Last Updated**: December 28, 2025
-**Current Phase**: Phase D2 (Bluetooth 5.3 LE) - 50% complete
-**Current Status**: Bluetooth stack integration complete, 6 BLE examples working
-**Next Milestone**: XiaoBle BSP implementation (D2-BLE.3)
+**Last Updated**: June 28, 2026
+**Current Phase**: Phase D2 Complete - Bluetooth 5.3 LE Integration done
+**Current Status**: 12 HAL modules + RAIL FFI + Bluetooth stack + XiaoBle BSP + microphone driver
+**Next Milestone**: Phase D3 (Zigbee 3.0) or Phase E (Application Development)

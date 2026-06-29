@@ -351,49 +351,44 @@ The EFR32MG24 Rust project has **successfully completed Phase D2** (Bluetooth 5.
 
 ## Next Steps
 
-### Phase D1 Complete!
+### Phase D2 Complete!
 
-**Status**: RAIL Foundation complete - Production-ready FFI bindings ✅
+**Status**: Bluetooth 5.3 LE Integration complete - HAL core + radio + BLE stack production-ready
 
 **Achievements**:
-- ✅ Production-ready RAIL FFI bindings (efr32mg24-rail-sys)
-- ✅ 3,974 lines of auto-generated Rust FFI from RAIL C headers
-- ✅ Platform-independent build system (macOS/Linux/Windows)
-- ✅ SHA256 blob integrity verification
-- ✅ 1,000+ lines of comprehensive documentation
-- ✅ CI/CD automation with GitHub Actions
-- ✅ BSP integration verified (radio feature)
-- ✅ Grade A- from rust-hal-expert review
+- Production-ready RAIL FFI bindings (efr32mg24-rail-sys, 3,974 lines)
+- Bluetooth 5.3 LE stack (efr32mg24-bluetooth-sys, 4,307 BGAPI bindings + safe blocking API)
+- XiaoBle BSP: advertiser + GATT server + event system with automatic connection management
+- 10 BLE/sensor examples (4 bluetooth-sys FFI + 6 BSP integration)
+- C2-DMA.2: LDMA peripheral-to-memory transfers with circular buffers
+- D2-MIC.1: MSM381ACT001 analog microphone driver (16 kHz audio streaming)
+- Grade A- from rust-hal-expert review (RAIL), 80% code reduction via safe BLE wrapper
 
-### Phase D2: Bluetooth 5.3 LE Implementation (Next)
+### Phase D3: Zigbee 3.0 (Planned)
 
-**Priority 1: BLE HAL Module** (D2-BLE.1)
-- Define BleAdvertiser trait for advertising
-- Define BleGattServer trait for GATT services
-- Create BLE types (Uuid, GattService, Advertisement)
-- Design safe abstractions over Bluetooth SYS crate
-- Estimated effort: 15-22 hours
+- Create efr32mg24-zigbee-sys crate following RAIL/bluetooth -sys patterns
+- Link Silicon Labs Zigbee stack blob from Gecko SDK
+- Generate FFI bindings with bindgen
+- Define safe Zigbee abstractions over the -sys crate
+- Board-specific Zigbee configuration for XIAO MG24
 
-**Priority 2: Bluetooth SYS Crate** (D2-BLE.2)
-- Create efr32mg24-bluetooth-sys crate
-- Link libbluetooth_*.a blob from Gecko SDK
-- Generate BGAPI FFI bindings with bindgen
-- Follow RAIL-sys patterns (SHA256, platform-independent)
-- Estimated effort: 10-15 hours
+### Phase D4: Thread/Matter (Planned)
 
-**Priority 3: BSP BLE Implementation** (D2-BLE.3)
-- Implement BleAdvertiser trait in XiaoBle
-- Implement BleGattServer trait with GATT profile support
-- Board-specific BLE configuration for XIAO MG24
-- Estimated effort: 15-22 hours
+- Thread protocol stack integration
+- Matter commissioning and cluster support
 
-**Priority 4: BLE Examples** (D2-BLE.4)
-- ble_beacon.rs: iBeacon advertisement
-- ble_peripheral.rs: Simple peripheral with custom service
-- ble_gatt_server.rs: Heart rate profile demonstration
-- Estimated effort: 10-15 hours
+### Phase E: Security Features (Planned)
 
-**Total Phase D2 Estimate**: 50-74 hours
+- AES/SHA hardware acceleration
+- Secure Vault integration
+- TrustZone-M partitioning
+
+### Deferred Enhancements
+
+- C2-DMA.3: Linked descriptors
+- C2-DMA.4: Interrupt-driven async DMA
+- C6-Test: Hardware validation on XIAO MG24 Sense
+- Embassy async runtime integration
 
 See [PLAN.md](PLAN.md) for complete development roadmap.
 
@@ -470,85 +465,57 @@ See [PLAN.md](PLAN.md) for complete development roadmap.
 
 ```
 EFR32MG24/
-├── Cargo.toml                      # Workspace root
+├── Cargo.toml                      # Workspace root (5 member crates)
 ├── README.md                       # Main project overview
 ├── CLAUDE.md                       # Project instructions (with backup workflow)
+├── HANDOFF.md                      # Comprehensive project handoff
 ├── CHANGELOG.md                    # Project changelog
 ├── .gitignore                      # Git ignore (includes .archive/)
-├── .archive/                       # Documentation backups (timestamped)
-│   ├── README.md                   # Archive documentation
-│   ├── CLAUDE_20251204_124631.md  # CLAUDE.md backup
-│   └── ...                         # Other doc backups
+├── .archive/                       # Timestamped documentation backups
 │
 ├── efr32mg24-pac/                  # PAC Crate (B220 variant)
 │   ├── Cargo.toml
-│   ├── src/lib.rs                  # Generated PAC (138,448 lines)
+│   ├── src/lib.rs                  # Generated PAC (138,448 lines, 133 peripherals)
 │   └── svd/                        # All 41 device SVD files
 │
-├── efr32mg24-hal/                  # HAL Crate (Tier 1 complete)
+├── efr32mg24-hal/                  # HAL Crate (12 production-ready modules)
 │   ├── Cargo.toml
-│   ├── memory.x                    # Linker memory layout
-│   ├── device.x                    # Interrupt vector table
-│   ├── build.rs                    # Build script (linker setup)
-│   ├── .cargo/config.toml          # Cortex-M33 linker config
+│   ├── memory.x / device.x / build.rs
 │   ├── src/
-│   │   ├── lib.rs                  # HAL entry point
-│   │   ├── prelude.rs              # Common imports
-│   │   ├── gpio/                   # GPIO module (4 files, 617 lines)
-│   │   │   ├── mod.rs              # Module coordinator (104 lines)
-│   │   │   ├── types.rs            # Type definitions (155 lines)
-│   │   │   ├── pin.rs              # Pin implementation (248 lines)
-│   │   │   ├── traits.rs           # embedded-hal traits (110 lines)
-│   │   │   └── README.md           # GPIO documentation
-│   │   ├── clock/                  # CMU module (4 files, 317 lines)
-│   │   │   ├── mod.rs              # Module coordinator (73 lines)
-│   │   │   ├── types.rs            # Type definitions (66 lines)
-│   │   │   ├── clocks.rs           # Clock configuration (138 lines)
-│   │   │   ├── frozen.rs           # FrozenClocks (40 lines)
-│   │   │   └── README.md           # CMU documentation
-│   │   ├── delay/                  # Delay module (1 file, ~100 lines)
-│   │   │   ├── mod.rs              # SysTick delays
-│   │   │   └── README.md           # Delay documentation
-│   │   ├── usart/                  # USART module (3 files, 373 lines)
-│   │   │   ├── mod.rs              # USART implementation (212 lines)
-│   │   │   ├── types.rs            # Type definitions (105 lines)
-│   │   │   ├── traits.rs           # embedded-hal-nb traits (56 lines)
-│   │   │   └── README.md           # USART documentation (237 lines)
-│   │   └── i2c/                    # I2C module (3 files, 524 lines)
-│   │       ├── mod.rs              # I2C implementation (400 lines)
-│   │       ├── types.rs            # Type definitions (67 lines)
-│   │       ├── traits.rs           # embedded-hal traits (57 lines)
-│   │       └── README.md           # I2C documentation (237 lines)
-│   ├── examples/
-│   │   ├── 01_clock.rs             # Clock configuration example
-│   │   ├── 02_delay.rs             # Delay usage example
-│   │   ├── 03_gpio.rs              # GPIO usage example
-│   │   ├── 04_usart.rs             # UART echo example (115200 baud)
-│   │   └── 05_i2c.rs               # I2C master communication example
+│   │   ├── lib.rs / prelude.rs
+│   │   ├── adc/                    # IADC (C1)
+│   │   ├── clock/                  # CMU (A2)
+│   │   ├── delay/                  # SysTick (A3)
+│   │   ├── dma/                    # LDMA Stages 1-2 (C2)
+│   │   ├── emu/                    # Energy Management Unit (C3)
+│   │   ├── gpio/                   # GPIO (A1)
+│   │   ├── i2c/                    # I2C master (B2)
+│   │   ├── rtc/                    # SYSRTC0 (C4)
+│   │   ├── spi/                    # SPI master (B3)
+│   │   ├── timer/                  # TIMER0-4 + PWM (B4)
+│   │   ├── usart/                  # USART0 (B1)
+│   │   └── wdog/                   # WDOG0 (C5)
+│   ├── examples/                   # 14 HAL examples (00_recovery - 12_wdog)
 │   └── docs/                       # HAL-specific documentation
-│       ├── README.md
-│       ├── STATUS.md               # HAL status
-│       ├── PHASE2_PLAN.md          # Phase 2 completion docs
-│       ├── BUILD_SYSTEM.md         # Build pipeline docs
-│       └── LINKER_SETUP.md         # Linker configuration guide
 │
-└── docs/                          # Workspace documentation
-    ├── README.md                  # Documentation index
-    ├── STATUS.md                  # This file
-    ├── PLAN.md                    # Development roadmap
-    ├── DOCUMENTATION_AUDIT.md     # Reorganization rationale
-    ├── hardware/
-    │   └── XIAO_MG24_HARDWARE.md # Hardware specs (SSOT)
-    ├── pac/
-    │   ├── SVD_PACK_EXTRACTION.md # SVD acquisition (SSOT)
-    │   ├── B220_VS_A020_COMPARISON.md # PAC analysis (SSOT)
-    │   └── SVD_PROCESSING_HISTORY.md  # Historical reference
-    ├── hal/
-    │   └── HAL_STRUCTURE_PLAN.md # HAL architecture (SSOT)
-    └── archive/
-        ├── FINDINGS.md            # Historical findings
-        ├── PROJECT_SUMMARY.md     # Historical summary
-        └── EFR32MG24_RESEARCH_SUMMARY.md
+├── efr32mg24-rail-sys/             # RAIL radio FFI bindings (3,974 lines, D1)
+├── efr32mg24-bluetooth-sys/        # Bluetooth 5.3 LE (BGAPI FFI + safe blocking API, D2)
+│   └── examples/                   # 4 BLE FFI examples
+├── xiao-mg24-bsp/                  # Board Support Package (XIAO MG24 Sense)
+│   └── examples/                   # 9 BSP examples (blink + BLE + microphone)
+├── efr32mg24-bootloader/           # Gecko bootloader (workspace-excluded)
+├── bootloader-test-app/            # Bootloader test app (workspace-excluded)
+├── book/                           # mdBook documentation
+│
+├── scripts/                        # Build and flashing scripts
+└── docs/                           # Workspace documentation (SSOT-organized)
+    ├── INDEX.md                    # Documentation index
+    ├── ORGANIZATION_CHANGES.md     # Reorganization rationale
+    ├── 01-getting-started/         # Flashing, recovery, safety
+    ├── 02-architecture/            # Radio, HAL, identifier scheme, terminology
+    ├── 03-development/             # STATUS, PLAN, BACKLOG, LOG, CI/CD
+    ├── 04-reference/               # Bootloader/radio/hardware research
+    └── 99-archive/                 # Historical/resolved documents
 ```
 
 ---
@@ -623,19 +590,20 @@ critical_section::with(|_cs| {
 
 For next developer/session:
 
-- [x] All Phase 1-4 tasks complete
-- [x] Phase A tasks complete
-- [x] Phase B USART complete
-- [x] Phase B I2C complete
-- [x] Phase B SPI complete
-- [x] Phase B TIMER complete (production-ready)
-- [x] Documentation updated and current (December 18, 2025)
-- [x] Documentation backup workflow implemented
-- [x] All 7 examples compiling and building
-- [x] Module READMEs created for all implemented modules
-- [x] All documentation standardized to Phase A/B/C terminology
+- [x] All Phase P tasks complete (research, PAC generation, build system)
+- [x] Phase A tasks complete (GPIO, CMU, Delay)
+- [x] Phase B complete (USART, I2C, SPI, TIMER/PWM - all production-ready)
+- [x] Phase C Stage 1 complete (ADC, DMA Stages 1-2, EMU, RTC, WDOG)
+- [x] Phase D0-D1 complete (RAIL FFI bindings, BSP skeleton)
+- [x] Phase D2 complete (Bluetooth stack, XiaoBle BSP, microphone driver)
+- [x] Documentation reorganized with SSOT principles (docs/ subdirectories)
+- [x] Documentation backup workflow implemented (.archive/)
+- [x] 27 examples compile to flashable ARM Cortex-M33 binaries (14 HAL + 4 BLE FFI + 9 BSP)
+- [x] Module READMEs created for all 12 HAL modules
 - [x] Build system fully configured
-- [x] Phase B Complete ✅ (100%)
+- [ ] Phase D3 (Zigbee 3.0) - planned
+- [ ] Phase E (Security features) - planned
+- [ ] Hardware validation on XIAO MG24 Sense - blocked, awaiting hardware
 
 ---
 
@@ -663,12 +631,13 @@ cargo run --example 03_gpio --features rt --release
 
 ### Key Documentation Files
 
-1. **docs/STATUS.md** - Current status (this file)
-2. **docs/PLAN.md** - Development roadmap
-3. **docs/README.md** - Documentation index
-4. **efr32mg24-hal/docs/PHASE_A_POST_IMPLEMENTATION_REVIEW.md** - Phase A completion details
+1. **docs/03-development/STATUS.md** - Current status (this file)
+2. **docs/03-development/PLAN.md** - Development roadmap
+3. **docs/INDEX.md** - Documentation index
+4. **docs/03-development/BACKLOG.md** - Feature backlog and TODOs
 5. **efr32mg24-hal/docs/STATUS.md** - HAL-specific status
 6. **CLAUDE.md** - Project instructions (includes backup workflow)
+7. **HANDOFF.md** - Comprehensive project handoff
 
 ### Target Hardware
 
@@ -684,17 +653,17 @@ cargo run --example 03_gpio --features rt --release
 
 ## Conclusion
 
-The EFR32MG24 Rust project has successfully completed Phase B with all communication peripherals and timers production-ready. Core peripherals (GPIO, CMU, Delay), serial communication (USART0), I2C master mode (I2C0/I2C1), SPI master mode (SPI0/SPI1/SPI2), and production-grade timers/PWM (TIMER0-4) now have full hardware register access with embedded-hal v1.0 trait implementations. All 7 examples compile and build to flashable ARM Cortex-M33 binaries. The HAL provides type-safe pin modes, RTOS-ready peripherals with critical sections, comprehensive SAFETY documentation, and zero clippy warnings.
+The EFR32MG24 Rust project has successfully completed Phase D2 (Bluetooth 5.3 LE Integration). All 12 HAL peripheral modules (GPIO, CMU, Delay, USART, I2C, SPI, Timer, ADC, DMA, EMU, RTC, WDOG) are production-ready with embedded-hal v1.0 trait implementations, critical-section protection, SAFETY documentation, and zero clippy warnings. The radio foundation is in place: efr32mg24-rail-sys provides 3,974 lines of RAIL FFI bindings, and efr32mg24-bluetooth-sys provides 4,307 lines of BGAPI bindings plus a safe blocking API. The XiaoBle BSP delivers advertiser + GATT server + event system with automatic connection management (80% code reduction vs raw FFI). 27 examples (14 HAL + 4 BLE FFI + 9 BSP) compile to flashable ARM Cortex-M33 binaries.
 
-**Recommended Next Action**: Begin Phase C implementation starting with IADC (ADC) peripheral.
+**Recommended Next Action**: Phase D3 (Zigbee 3.0) or Phase E (Application Development / Security features).
 
 ---
 
-**Status**: Phase B Complete ✅ - All Communication Peripherals + Timers/PWM Production-Ready
-**Phase Progress**: Phase B 100% complete (all peripherals production-grade)
-**Confidence**: High (proven with production standards, zero warnings, RTOS-ready)
-**Risk Level**: Low (comprehensive testing, expert review passed)
+**Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done
+**Phase Progress**: Phases P, A, B, C (Stage 1), D0, D1, D2 complete
+**Confidence**: High (production standards, zero warnings, expert review passed)
+**Risk Level**: Low (comprehensive SAFETY docs, RTOS-ready)
 
-**Last Updated**: 2026-01-03
+**Last Updated**: 2026-06-28
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/EFR32MG2X-RS

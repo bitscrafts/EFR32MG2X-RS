@@ -16,7 +16,7 @@ Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Sili
 
 > **Documentation**: https://bitscrafts.github.io/EFR32MG2X-RS/efr32mg24_hal/index.html
 
-> ✅ **Status**: Phase D2 In Progress - Bluetooth 5.3 LE Integration (50% complete)
+> ✅ **Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. Next: Phase D3 (Zigbee) / Phase E (Application Development)
 
 ## Overview
 
@@ -24,12 +24,12 @@ This project aims to provide first-class Rust support for the Silicon Labs EFR32
 
 ### Target Device
 
-**EFR32MG24A020F1536GM48**:
+**EFR32MG24B220F1536IM48-B** (Seeed Studio XIAO MG24 Sense):
 - **Core**: ARM Cortex-M33 @ 78 MHz with FPU, DSP, and TrustZone
 - **Memory**: 1536 KB Flash, 256 KB RAM
 - **Radio**: 2.4 GHz multiprotocol (Matter, Zigbee 3.0, Thread, BLE 5.3)
 - **Security**: Secure Vault with hardware crypto acceleration
-- **Package**: 48-pin QFN
+- **Package**: 48-pin QFN (B-series, high-power radio variant)
 
 ## Project Structure
 
@@ -64,7 +64,7 @@ gantt
     section Phase D
     D0 Radio Prep        :done, d0, 2025-12-27, 1d
     D1 RAIL Foundation   :done, d1, 2025-12-28, 1d
-    D2 Bluetooth 5.3 LE  :active, d2, 2025-12-28, 3d
+    D2 Bluetooth 5.3 LE  :done, d2, 2025-12-28, 6d
     D3 Zigbee 3.0        :d3, after d2, 7d
     D4 Thread/Matter     :d4, after d3, 7d
     section Phase E
@@ -81,7 +81,7 @@ gantt
 | **C** | Advanced Peripherals | ✅ Stage 1 Complete | 5/5 Stage 1 (DMA Stage 2-4 deferred) |
 | **D0** | Radio Preparation | ✅ Complete | 3/3 (100%) |
 | **D1** | RAIL Foundation | ✅ Complete | 1/1 (100%) |
-| **D2** | Bluetooth 5.3 LE | 🔄 In Progress | 2/4 (50%) |
+| **D2** | Bluetooth 5.3 LE | ✅ Complete | 5/5 (100%) |
 | **D3** | Zigbee 3.0 | ⏳ Planned | 0/4 (0%) |
 | **D4** | Thread/Matter | ⏳ Planned | 0/4 (0%) |
 | **E** | Security Features | ⏳ Planned | 0/3 (0%) |
@@ -100,10 +100,10 @@ gantt
 - Phase B: usart, i2c, spi, timer (4 modules)
 - Phase C: adc, dma, emu, rtc, wdog (5 modules)
 
-**Examples**: 22 working examples
-- HAL examples: 14 (covering all 12 modules)
-- BLE examples: 4 (bluetooth-sys/examples/)
-- BSP examples: 4 (xiao-mg24-bsp/examples/ - includes safe BLE wrapper demo)
+**Examples**: 27 working examples
+- HAL examples: 14 (covering all 12 modules, 00_recovery through 12_wdog)
+- BLE FFI examples: 4 (efr32mg24-bluetooth-sys/examples/)
+- BSP examples: 9 (xiao-mg24-bsp/examples/ - blink, safe BLE wrapper, LED control, sensor notifications, microphone streaming)
 
 **Build Status**: All examples compile successfully with zero errors
 
@@ -116,19 +116,22 @@ gantt
 - Advanced Peripherals (ADC, DMA, EMU, RTC, WDOG)
 - RAIL Foundation (efr32mg24-rail-sys with 3,974 FFI bindings)
 
-**Phase D2 - Bluetooth 5.3 LE** 🔄 (December 28, 2025 - 50% Complete):
-- ✅ efr32mg24-bluetooth-sys crate with BGAPI bindings (4,307 lines)
-- ✅ 7 working BLE examples (4 bluetooth-sys FFI + 3 BSP integration)
-- ✅ XiaoBle safe wrapper (01_ble_beacon_safe.rs - 80% code reduction vs unsafe FFI)
-- ⏳ XiaoBle GATT server implementation (notifications, characteristics)
-- ⏳ Additional BLE protocol features (scanning, connections, pairing)
+**Phase D2 - Bluetooth 5.3 LE** ✅ (December 28, 2025 - January 3, 2026 - Complete):
+- ✅ efr32mg24-bluetooth-sys crate with BGAPI bindings (4,307 lines) + safe blocking API
+- ✅ XiaoBle BSP: advertiser + GATT server + event system with automatic connection management
+- ✅ XiaoBle safe wrapper (80% code reduction vs raw FFI)
+- ✅ 10 BLE/sensor examples (4 bluetooth-sys FFI + 6 BSP integration)
+- ✅ BLE Event System (poll_event, automatic connection management)
+- ✅ C2-DMA.2: LDMA peripheral-to-memory transfers with circular buffers
+- ✅ D2-MIC.1: MSM381ACT001 analog microphone driver (16 kHz audio streaming)
 
 ### Next Up
 
-- [ ] **D2-BLE.3**: Complete XiaoBle BSP implementation
 - [ ] **D3**: Zigbee 3.0 protocol stack integration
 - [ ] **D4**: Thread/Matter support
 - [ ] **Phase E**: Security features (AES, SHA, Secure Vault)
+- [ ] **C2-DMA.3/4**: Linked descriptors and interrupt-driven async DMA
+- [ ] **C6-Test**: Hardware validation on XIAO MG24 Sense
 
 ## PAC (Peripheral Access Crate)
 
@@ -184,19 +187,23 @@ See detailed PAC documentation:
 
 ## Development Plan
 
-See [docs/PLAN.md](docs/PLAN.md) for the complete development roadmap.
+See [docs/03-development/PLAN.md](docs/03-development/PLAN.md) for the complete development roadmap.
 
-**Current Progress: Phase B Complete (100%)**
+**Current Progress: Phase D2 Complete (Bluetooth 5.3 LE)**
 
-1. ✅ **Phase 1-4**: Project Setup, PAC Generation, PAC Verification
-2. ✅ **Phase A**: HAL Core - GPIO, CMU, Delay with hardware register access
-3. ✅ **Phase B**: HAL Communication - USART, I2C, SPI, Timers/PWM all production-ready
-4. ⏳ **Phase C**: HAL Advanced - ADC, DMA, Power Management
-5. ⏳ **Phase 8-9**: Testing, Examples, Ecosystem (Embassy, BSPs)
+1. **Phase P**: Project Setup, PAC Generation, build system (complete)
+2. **Phase A**: HAL Core - GPIO, CMU, Delay with hardware register access (complete)
+3. **Phase B**: HAL Communication - USART, I2C, SPI, Timers/PWM (complete)
+4. **Phase C**: HAL Advanced - ADC, DMA (Stages 1-2), EMU, RTC, WDOG (complete)
+5. **Phase D0-D1**: Radio Foundation - RAIL FFI bindings (complete)
+6. **Phase D2**: Bluetooth 5.3 LE - BGAPI stack, XiaoBle BSP, microphone driver (complete)
+7. **Phase D3-D4**: Zigbee 3.0, Thread/Matter (planned)
+8. **Phase E**: Security features (AES, SHA, Secure Vault) (planned)
+9. **Future**: Hardware testing, Embassy async, ecosystem
 
 ## Documentation
 
-**Complete documentation index**: [docs/README.md](docs/README.md)
+**Complete documentation index**: [docs/INDEX.md](docs/INDEX.md)
 
 ### Quick Links
 
@@ -266,7 +273,7 @@ cargo build --release --target thumbv8m.main-none-eabihf
 
 **Build Results**:
 - PAC: 112 MB .rlib with 133 peripherals
-- HAL: ~25 KB .rlib with GPIO, CMU, Delay implementations
+- HAL: 12 production-ready peripheral modules (GPIO, CMU, Delay, USART, I2C, SPI, Timer, ADC, DMA, EMU, RTC, WDOG)
 - Build Time: ~3 minutes (release mode)
 - Clean Compilation: ✅ No errors or warnings
 
@@ -329,7 +336,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ---
 
-**Project Status**: Phase D2 In Progress - Bluetooth 5.3 LE integration (efr32mg24-bluetooth-sys + examples)
-**Last Updated**: 2025-12-28
+**Project Status**: Phase D2 Complete - Bluetooth 5.3 LE integration done (HAL + RAIL FFI + Bluetooth stack + XiaoBle BSP + microphone driver)
+**Last Updated**: 2026-06-28
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/EFR32MG2X-RS

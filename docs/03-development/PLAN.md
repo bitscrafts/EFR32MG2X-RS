@@ -2,20 +2,23 @@
 
 ## Project Overview
 
-**Goal**: Create production-ready Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoC in Rust.
+**Goal**: Create production-ready Peripheral Access Crate (PAC), Hardware Abstraction Layer (HAL), and radio/Bluetooth stack for Silicon Labs EFR32MG24 wireless SoC in Rust.
 
-**Status**: Phase B Partial - GPIO, CMU, Delay, USART, I2C, SPI Implemented
+**Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. HAL core (12 modules), RAIL FFI bindings, Bluetooth stack, and XiaoBle BSP all production-ready. Next: Phase D3 (Zigbee 3.0) / Phase E (Security).
 
 **Repository Structure**:
 ```
 EFR32MG24/
-├── Cargo.toml                     # Workspace configuration
-├── efr32mg24-pac/                 # Peripheral Access Crate
-├── efr32mg24-hal/                 # Hardware Abstraction Layer
-├── docs/                          # Documentation
+├── Cargo.toml                     # Workspace configuration (5 member crates)
+├── efr32mg24-pac/                 # Peripheral Access Crate (B220, 138K lines)
+├── efr32mg24-hal/                 # Hardware Abstraction Layer (12 modules)
+├── efr32mg24-rail-sys/            # RAIL radio FFI bindings
+├── efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
+├── xiao-mg24-bsp/                 # Board Support Package (XIAO MG24 Sense)
+├── docs/                          # Documentation (SSOT-organized)
 ├── PLAN.md                        # This file
-├── FINDINGS.md                    # Detailed findings
-└── CLAUDE.md                      # Project-specific instructions (TBD)
+├── HANDOFF.md                     # Project handoff
+└── CLAUDE.md                      # Project-specific instructions
 ```
 
 ---
@@ -576,7 +579,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 
 ---
 
-**Last Updated**: December 13, 2025
-**Current Phase**: Phase B Partial - USART, I2C, and SPI Complete, Timers Next
-**Progress**: Phase B 70% complete (communication peripherals done)
-**Next Milestone**: Implement Timers/PWM
+**Last Updated**: June 28, 2026
+**Current Phase**: Phase D2 Complete - Bluetooth 5.3 LE Integration done
+**Progress**: Phases P, A, B, C (Stage 1), D0, D1, D2 complete (12 HAL modules + RAIL + BLE + BSP)
+**Next Milestone**: Phase D3 (Zigbee 3.0) or Phase E (Security features)
