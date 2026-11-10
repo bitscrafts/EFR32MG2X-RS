@@ -234,3 +234,6 @@ See [LICENSE](../LICENSE) file for details.
 ---
 
 *Documentation organized using SSOT methodology - Last updated: 2026-05-16*
+
+- [Expansion Base example status](03-development/EXPANSION-BOARD-STATUS-2026-11-11.md) — what is verified, what is not, and the ten hardware lessons
+- [I2C0 read defect](04-reference/I2C0-READ-DEFECT.md) — fourteen measurements and the open thread
