@@ -26,6 +26,9 @@ default = []
 rt = ["efr32mg24-pac/rt", "cortex-m-rt"]
 
 [dev-dependencies]
+# Examples are applications: they may compose the HAL with an algorithm crate.
+# The dependency never goes the other way — the HAL does not know what a fall is.
+motion-detection = { path = "../motion-detection" }
 cortex-m-rt = { workspace = true, default-features = false }
 panic-halt = "0.2"
 

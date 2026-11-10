@@ -180,3 +180,46 @@ hal_imu   id=6a a=970,79,142 g=1408,-2318,-402
 Detail, including the two traps that followed (`format_fixed` takes value×100;
 one 12-byte burst covers both sensors), in
 `docs/04-reference/IMU-INVESTIGATION.md`.
+
+## Fall detection: a classifier, and where it belongs
+
+`crates/motion-detection` — hardware free, no dependencies, host tested (5 tests).
+It takes `[ax, ay, az]` in mg plus the elapsed milliseconds and returns events:
+`Fall { peak_mg, freefall_ms }` or `Impact { peak_mg }`.
+
+The state machine needs **all three phases** — free fall below 400 mg for at least
+120 ms, then an impact above 2500 mg, then at least 800 ms of stillness — because
+each one alone is a different event:
+
+- shaking produces 1.8 g peaks and must not alarm: measured on this board, so the
+  `shake_reports_impact_but_not_fall` test uses those very samples;
+- setting the board down is not a fall, hence the free-fall requirement;
+- a slam on the table has no free-fall phase, so it is reported as `Impact`.
+
+Deliberately **not** in the HAL. A driver answers "what did the accelerometer
+say"; deciding that 2.5 g is an impact is product policy, and putting it in the
+HAL would make every user of the driver inherit one product's thresholds. The
+example (`hal_fall_detector`) is the application: it composes the HAL with the
+algorithm crate, and the dependency runs application → algorithm, never back.
+
+Verified on hardware, with two data-driven self tests run at boot:
+
+```
+fall selftest real=clean synth=detected
+```
+
+- *real*: 320 samples recorded from this board while it was shaken and set down
+  (peak 1601 mg, dips to 630 mg) — no false fall;
+- *synthetic*: 250 ms of free fall, a 6 g impact, then stillness — detected.
+
+The IMU had to be reconfigured for this: ±8 g at 416 Hz, sampled at 200 Hz. At the
+original ±2 g/104 Hz an impact either clips or falls between samples, which is
+exactly why the first two captures contained no event at all.
+
+## Linker fix: the RAM was limited to 4.5 KB
+
+`memory.x` carried `_stack_start = 0x20001208`, the stack pointer the Arduino core
+happens to use, which left the linker 4.5 KB of RAM in total: the 6 KB capture
+buffer failed to link with "stack end address is not below stack start". The stack
+now starts just under the SWD mailbox page (`0x2003F000`) and the linker gets
+252 KB. All twelve PAC examples and every HAL example still build.

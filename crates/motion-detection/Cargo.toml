@@ -1,0 +1,9 @@
+[package]
+name = "motion-detection"
+version = "0.1.0"
+edition = "2021"
+description = "Hardware-free motion classification for accelerometer data (fall detection)"
+license = "MIT"
+publish = false
+
+[dependencies]

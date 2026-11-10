@@ -36,8 +36,6 @@ const REG_OUT_XL: u8 = 0x28;
 /// What WHO_AM_I must read on an LSM6DS3 / LSM6DS3TR-C.
 pub const WHO_AM_I_LSM6DS3: u8 = 0x6A;
 
-/// Accelerometer range in thousandths of a g.
-const ACCEL_MG_PER_LSB: f32 = 0.061;
 /// Gyroscope range in thousandths of a degree per second.
 const GYRO_MDPS_PER_LSB: f32 = 8.75;
 
@@ -66,10 +64,87 @@ impl From<BusError> for ImuError {
     }
 }
 
+/// Accelerometer range. Falls need headroom: at ±2 g an impact clips, and a
+/// clipped impact looks like a gentle bump.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AccelRange {
+    /// ±2 g, 0.061 mg/LSB — fine for tilt, useless for impacts.
+    G2,
+    /// ±4 g, 0.122 mg/LSB.
+    G4,
+    /// ±8 g, 0.244 mg/LSB.
+    G8,
+    /// ±16 g, 0.488 mg/LSB.
+    G16,
+}
+
+impl AccelRange {
+    /// CTRL1_XL bits 3:2.
+    const fn field(self) -> u8 {
+        match self {
+            AccelRange::G2 => 0b00,
+            AccelRange::G16 => 0b01,
+            AccelRange::G4 => 0b10,
+            AccelRange::G8 => 0b11,
+        }
+    }
+
+    /// Sensitivity in thousandths of a g per LSB.
+    const fn mg_per_lsb(self) -> i32 {
+        match self {
+            AccelRange::G2 => 61,
+            AccelRange::G4 => 122,
+            AccelRange::G8 => 244,
+            AccelRange::G16 => 488,
+        }
+    }
+}
+
+/// Accelerometer output data rate. The sampler can never be faster than this.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub enum AccelOdr {
+    /// 104 Hz.
+    Hz104,
+    /// 208 Hz.
+    Hz208,
+    /// 416 Hz — fast enough not to miss an impact.
+    Hz416,
+}
+
+impl AccelOdr {
+    /// CTRL1_XL bits 7:4.
+    const fn field(self) -> u8 {
+        match self {
+            AccelOdr::Hz104 => 0b0100,
+            AccelOdr::Hz208 => 0b0101,
+            AccelOdr::Hz416 => 0b0110,
+        }
+    }
+}
+
+/// How the accelerometer is set up. The gyroscope stays at 104 Hz / ±250 dps.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Config {
+    /// Full scale.
+    pub range: AccelRange,
+    /// Output data rate.
+    pub odr: AccelOdr,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            range: AccelRange::G2,
+            odr: AccelOdr::Hz104,
+        }
+    }
+}
+
 /// A configured LSM6DS3TR-C.
 pub struct Lsm6ds3trc<B: I2cBus> {
     bus: B,
     addr: u8,
+    mg_per_lsb: i32,
 }
 
 impl<B: I2cBus> Lsm6ds3trc<B> {
@@ -78,8 +153,17 @@ impl<B: I2cBus> Lsm6ds3trc<B> {
         Self::with_address(bus, ADDR_DEFAULT)
     }
 
+    /// Verify the identity and configure the given accelerometer range and rate.
+    pub fn with_config(bus: B, config: Config) -> Result<Self, ImuError> {
+        Self::configured(bus, ADDR_DEFAULT, config)
+    }
+
     /// Same, for a part strapped to the alternate address.
-    pub fn with_address(mut bus: B, addr: u8) -> Result<Self, ImuError> {
+    pub fn with_address(bus: B, addr: u8) -> Result<Self, ImuError> {
+        Self::configured(bus, addr, Config::default())
+    }
+
+    fn configured(mut bus: B, addr: u8, config: Config) -> Result<Self, ImuError> {
         let id = bus.read_reg(addr, REG_WHO_AM_I)?;
         if id != WHO_AM_I_LSM6DS3 {
             return Err(ImuError::NotAnLsm6ds3(id));
@@ -87,11 +171,19 @@ impl<B: I2cBus> Lsm6ds3trc<B> {
         // Block data update on (so a read cannot straddle two samples) and
         // register auto-increment on (so one 12-byte read gets all six axes).
         bus.write_reg(addr, REG_CTRL3_C, 0b0100_0100)?;
-        // ODR 104 Hz (0100), ±2 g (00).
-        bus.write_reg(addr, REG_CTRL1_XL, 0b0100_0000)?;
+        // Accelerometer: the requested output data rate and full scale.
+        bus.write_reg(
+            addr,
+            REG_CTRL1_XL,
+            (config.odr.field() << 4) | (config.range.field() << 2),
+        )?;
         // ODR 104 Hz (0100), ±250 dps (00).
         bus.write_reg(addr, REG_CTRL2_G, 0b0100_0000)?;
-        Ok(Self { bus, addr })
+        Ok(Self {
+            bus,
+            addr,
+            mg_per_lsb: config.range.mg_per_lsb(),
+        })
     }
 
     /// Read one sample. Twelve bytes in one transaction: gyro X/Y/Z then accel
@@ -112,10 +204,13 @@ impl<B: I2cBus> Lsm6ds3trc<B> {
             (word(raw[2], raw[3]) * GYRO_MDPS_PER_LSB) as i32,
             (word(raw[4], raw[5]) * GYRO_MDPS_PER_LSB) as i32,
         ];
+        // Integer scaling: `mg_per_lsb` is in thousandths of a g, so this divides
+        // by 1000 once and keeps the result exact at every range.
+        let s = self.mg_per_lsb;
         let accel_mg = [
-            (word(raw[6], raw[7]) * ACCEL_MG_PER_LSB) as i32,
-            (word(raw[8], raw[9]) * ACCEL_MG_PER_LSB) as i32,
-            (word(raw[10], raw[11]) * ACCEL_MG_PER_LSB) as i32,
+            (word(raw[6], raw[7]) as i32 * s) / 1000,
+            (word(raw[8], raw[9]) as i32 * s) / 1000,
+            (word(raw[10], raw[11]) as i32 * s) / 1000,
         ];
         Ok(Motion {
             accel_mg,

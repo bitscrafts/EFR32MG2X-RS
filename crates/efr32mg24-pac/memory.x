@@ -22,11 +22,21 @@ MEMORY
   /* MUST match Arduino's bootloader layout for compatibility */
   FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
 
-  /* SRAM - 256 KB total */
-  /* Match Arduino RAM configuration */
-  RAM : ORIGIN = 0x20000000, LENGTH = 256K
+  /* SRAM - 256 KB total, but the last 4 KB page is reserved as the SWD mailbox
+   * (0x2003_F000), so the linker gets 252 KB. */
+  RAM : ORIGIN = 0x20000000, LENGTH = 252K
 }
 
-/* Required by cortex-m-rt */
-/* Match Arduino's exact stack pointer location */
-_stack_start = 0x20001208;
+/* Required by cortex-m-rt.
+ *
+ * This used to be 0x20001208 — the stack pointer the Arduino core happens to
+ * start with — which left the linker only 4.5 KB of RAM in total. Any example
+ * with a buffer bigger than a few kilobytes failed to link with
+ * "stack end address is not below stack start", which reads like a bug in the
+ * example and is really an accident of that constant.
+ *
+ * The value below puts the stack top just under the mailbox page. The
+ * bootloader does not care where the application's stack is: the vector table
+ * carries SP and the core loads it on reset.
+ */
+_stack_start = 0x2003F000;

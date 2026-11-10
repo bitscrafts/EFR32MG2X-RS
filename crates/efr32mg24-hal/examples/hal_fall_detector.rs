@@ -1,0 +1,595 @@
+//! Fall detector on the panel: state, counts and a boot-time self test.
+//!
+//! The classifier lives in the `motion-detection` crate — hardware free and host
+//! tested. This example only wires it to the board: it is an application, and the
+//! dependency runs application → algorithm, never algorithm → hardware. It contains no I2C address, no pin and no PAC register — the IMU, the
+//! panel and the power gate all come from `Board`.
+//!
+//! ## Two self tests, run before the live loop
+//!
+//! Both use data, not opinions:
+//!
+//! 1. **real** — 320 samples recorded from this board while it was shaken and set
+//!    down (peaks of 1601 mg, brief dips to 630 mg). The detector must **not**
+//!    report a fall: a shake is not a fall, and a detector that cannot tell them
+//!    apart is an alarm that goes off when someone moves the device.
+//! 2. **synthetic** — 250 ms near zero g, an impact at 6 g, then stillness. This is
+//!    the physical signature of a drop that no amount of shaking reproduces on a
+//!    desk, and the detector must report it.
+//!
+//! The verdict of both goes to the mailbox at boot, so the claim is checkable
+//! without watching the panel.
+
+#![no_std]
+#![no_main]
+
+use core::cell::RefCell;
+
+use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::SharedBus;
+use efr32mg24_hal::display::{append, Ssd1306};
+use efr32mg24_hal::entry;
+use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config};
+use efr32mg24_hal::sensors::Lsm6ds3trc;
+use motion_detection::{Event, FallDetector};
+use panic_halt as _;
+
+#[path = "common/mailbox.rs"]
+mod mailbox;
+
+/// 200 Hz at ~19 MHz SYSCLK.
+const SAMPLE_PERIOD_CYCLES: u32 = 95_000;
+/// Milliseconds between samples, handed to the detector.
+const DT_MS: u32 = 5;
+
+/// Real samples from this board: shaken, then set down. `[ax, ay, az]` in mg.
+const RECORDED: [[i16; 3]; 320] = [
+    [987, 38, 93],
+    [969, 38, 101],
+    [970, 51, 86],
+    [973, 52, 87],
+    [984, 49, 96],
+    [1016, 56, 91],
+    [1007, 52, 83],
+    [983, 40, 95],
+    [968, 45, 100],
+    [968, 56, 84],
+    [989, 53, 94],
+    [1002, 51, 91],
+    [1008, 51, 84],
+    [994, 45, 93],
+    [969, 46, 98],
+    [974, 55, 89],
+    [979, 54, 84],
+    [991, 51, 93],
+    [1006, 52, 97],
+    [1006, 49, 87],
+    [968, 42, 96],
+    [960, 51, 99],
+    [975, 64, 84],
+    [999, 54, 84],
+    [1007, 44, 97],
+    [1007, 45, 94],
+    [991, 46, 91],
+    [969, 39, 97],
+    [965, 48, 98],
+    [978, 61, 82],
+    [1006, 37, 97],
+    [995, 43, 99],
+    [977, 51, 85],
+    [965, 48, 90],
+    [969, 50, 97],
+    [993, 60, 87],
+    [1005, 58, 81],
+    [1006, 41, 92],
+    [1000, 40, 96],
+    [983, 46, 87],
+    [973, 50, 97],
+    [1003, 57, 91],
+    [1011, 56, 85],
+    [997, 43, 89],
+    [985, 38, 102],
+    [979, 49, 91],
+    [966, 50, 89],
+    [966, 46, 101],
+    [992, 54, 88],
+    [1008, 52, 81],
+    [975, 34, 106],
+    [969, 51, 94],
+    [969, 56, 86],
+    [978, 52, 91],
+    [1001, 56, 94],
+    [1015, 61, 82],
+    [1003, 49, 93],
+    [982, 40, 104],
+    [971, 53, 89],
+    [968, 50, 88],
+    [998, 52, 95],
+    [1010, 54, 85],
+    [1003, 47, 87],
+    [983, 38, 103],
+    [974, 46, 97],
+    [970, 54, 84],
+    [977, 53, 94],
+    [993, 55, 91],
+    [1008, 52, 87],
+    [994, 38, 91],
+    [966, 41, 101],
+    [972, 53, 93],
+    [984, 56, 86],
+    [999, 50, 92],
+    [1011, 49, 90],
+    [1004, 50, 89],
+    [986, 41, 94],
+    [968, 50, 97],
+    [971, 57, 85],
+    [987, 52, 86],
+    [1010, 43, 97],
+    [1001, 49, 94],
+    [976, 45, 90],
+    [961, 43, 100],
+    [966, 56, 89],
+    [991, 61, 77],
+    [999, 49, 92],
+    [1012, 42, 97],
+    [998, 47, 92],
+    [974, 40, 96],
+    [976, 55, 96],
+    [1003, 66, 79],
+    [1011, 49, 91],
+    [1003, 36, 106],
+    [993, 49, 90],
+    [976, 47, 90],
+    [959, 45, 100],
+    [979, 59, 92],
+    [999, 61, 78],
+    [1007, 45, 89],
+    [991, 40, 101],
+    [974, 51, 88],
+    [960, 47, 96],
+    [973, 58, 92],
+    [1000, 64, 79],
+    [1007, 49, 87],
+    [996, 41, 100],
+    [991, 48, 94],
+    [971, 49, 85],
+    [963, 42, 96],
+    [967, 70, 45],
+    [970, 72, 34],
+    [957, 76, 33],
+    [959, 81, 36],
+    [948, 87, 27],
+    [949, 92, 31],
+    [973, 99, 58],
+    [998, 104, 69],
+    [1007, 105, 67],
+    [1008, 99, 84],
+    [1141, 51, 155],
+    [1196, 40, 206],
+    [1219, -35, 266],
+    [1221, -6, 187],
+    [1218, -35, 192],
+    [1262, -117, 257],
+    [1362, -235, 352],
+    [1447, -293, 387],
+    [1499, -334, 453],
+    [1463, -277, 490],
+    [376, 124, 846],
+    [324, 122, 802],
+    [402, 83, 793],
+    [368, 64, 774],
+    [367, 47, 736],
+    [346, 21, 731],
+    [353, 0, 701],
+    [315, -5, 673],
+    [268, -2, 630],
+    [214, 9, 592],
+    [-41, 613, 795],
+    [-42, 686, 781],
+    [-39, 756, 769],
+    [-42, 823, 746],
+    [-88, 880, 691],
+    [-98, 926, 642],
+    [-73, 956, 608],
+    [-40, 957, 598],
+    [-43, 981, 576],
+    [-57, 931, 526],
+    [104, 912, 654],
+    [170, 897, 697],
+    [233, 899, 734],
+    [253, 867, 772],
+    [223, 781, 777],
+    [174, 660, 839],
+    [137, 546, 866],
+    [64, 431, 854],
+    [-10, 416, 824],
+    [41, 414, 831],
+    [-273, -784, -537],
+    [-128, -805, -603],
+    [-183, -788, -523],
+    [-219, -771, -524],
+    [-282, -755, -457],
+    [-291, -750, -413],
+    [-297, -747, -375],
+    [-321, -737, -347],
+    [-324, -727, -332],
+    [-327, -723, -333],
+    [-470, 290, 998],
+    [-773, 284, 969],
+    [-810, 294, 844],
+    [-647, 247, 853],
+    [-501, 276, 793],
+    [-357, 313, 742],
+    [-343, 365, 675],
+    [-415, 379, 626],
+    [-449, 392, 588],
+    [-513, 424, 572],
+    [-1393, 339, 376],
+    [-1292, 366, 537],
+    [-1136, 262, 657],
+    [-1028, 326, 679],
+    [-841, 361, 770],
+    [-667, 495, 763],
+    [-611, 628, 739],
+    [-591, 708, 702],
+    [-606, 762, 656],
+    [-611, 775, 604],
+    [-598, 396, -622],
+    [-600, 382, -625],
+    [-622, 366, -623],
+    [-653, 341, -623],
+    [-678, 334, -618],
+    [-686, 325, -602],
+    [-659, 318, -565],
+    [-627, 320, -530],
+    [-623, 345, -510],
+    [-633, 369, -492],
+    [-434, 928, 770],
+    [-449, 885, 848],
+    [-462, 788, 955],
+    [-414, 740, 1016],
+    [-317, 700, 1048],
+    [-274, 656, 1051],
+    [-230, 602, 1041],
+    [-177, 564, 1002],
+    [-147, 535, 935],
+    [-144, 511, 846],
+    [709, 895, 276],
+    [703, 822, 257],
+    [684, 771, 241],
+    [678, 702, 231],
+    [715, 623, 213],
+    [740, 542, 191],
+    [739, 464, 153],
+    [715, 422, 107],
+    [667, 419, 2],
+    [654, 430, -33],
+    [907, 71, 569],
+    [913, 65, 552],
+    [950, 72, 525],
+    [995, 76, 498],
+    [1027, 85, 470],
+    [1048, 95, 436],
+    [1057, 87, 407],
+    [1055, 93, 391],
+    [1050, 111, 392],
+    [1032, 132, 398],
+    [366, -723, -34],
+    [341, -719, -9],
+    [295, -730, 22],
+    [262, -744, -18],
+    [241, -768, -15],
+    [240, -792, 31],
+    [233, -818, 99],
+    [233, -815, 172],
+    [185, -865, 279],
+    [182, -939, 263],
+    [-158, -872, -286],
+    [-157, -876, -323],
+    [-155, -884, -336],
+    [-137, -895, -340],
+    [-111, -896, -340],
+    [-94, -895, -344],
+    [-85, -892, -359],
+    [-71, -879, -363],
+    [-42, -859, -376],
+    [-24, -851, -365],
+    [70, -675, 1063],
+    [64, -649, 1063],
+    [56, -614, 1057],
+    [48, -562, 1055],
+    [63, -520, 1050],
+    [59, -444, 1058],
+    [58, -425, 1032],
+    [61, -384, 1006],
+    [78, -357, 999],
+    [103, -326, 1002],
+    [-323, 919, 431],
+    [-264, 872, 435],
+    [-248, 835, 428],
+    [-272, 810, 388],
+    [-305, 812, 329],
+    [-331, 832, 233],
+    [-349, 849, 129],
+    [-382, 843, 110],
+    [-441, 853, 60],
+    [-483, 873, -9],
+    [-840, 501, 331],
+    [-879, 515, 324],
+    [-753, 532, 336],
+    [-797, 540, 302],
+    [-792, 574, 335],
+    [-774, 570, 343],
+    [-759, 549, 351],
+    [-755, 529, 372],
+    [-740, 550, 353],
+    [-700, 570, 347],
+    [-711, 419, 449],
+    [-747, 431, 487],
+    [-723, 432, 532],
+    [-706, 457, 548],
+    [-715, 488, 554],
+    [-695, 513, 547],
+    [-695, 528, 589],
+    [-679, 548, 610],
+    [-649, 546, 626],
+    [-618, 521, 663],
+    [-627, 363, 677],
+    [-624, 375, 676],
+    [-623, 403, 676],
+    [-617, 415, 682],
+    [-619, 420, 686],
+    [-617, 417, 701],
+    [-615, 406, 716],
+    [-610, 397, 732],
+    [-613, 396, 735],
+    [-624, 400, 736],
+    [-565, 342, 722],
+    [-564, 344, 721],
+    [-560, 342, 727],
+    [-555, 336, 725],
+    [-553, 319, 731],
+    [-551, 305, 750],
+    [-554, 299, 757],
+    [-561, 300, 768],
+    [-564, 314, 783],
+    [-570, 323, 807],
+    [-57, 127, 1126],
+    [-64, 120, 1112],
+    [-98, 109, 1103],
+    [-98, 122, 1077],
+    [-76, 137, 1035],
+    [-31, 124, 997],
+    [-7, 139, 950],
+    [-5, 137, 913],
+    [4, 142, 810],
+    [21, 157, 832],
+];
+
+fn cycle_count() -> u32 {
+    unsafe { (*cortex_m::peripheral::DWT::PTR).cyccnt.read() }
+}
+
+fn dwt_start() {
+    let mut core = unsafe { cortex_m::Peripherals::steal() };
+    core.DCB.enable_trace();
+    core.DWT.enable_cycle_counter();
+}
+
+fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
+    for b in s {
+        if pos < buf.len() {
+            buf[pos] = *b;
+            pos += 1;
+        }
+    }
+    pos
+}
+
+fn push_dec(buf: &mut [u8], mut pos: usize, mut value: u32) -> usize {
+    let mut digits = [0u8; 10];
+    let mut n = 0;
+    if value == 0 {
+        digits[0] = b'0';
+        n = 1;
+    }
+    while value > 0 {
+        digits[n] = b'0' + (value % 10) as u8;
+        value /= 10;
+        n += 1;
+    }
+    while n > 0 {
+        n -= 1;
+        if pos < buf.len() {
+            buf[pos] = digits[n];
+            pos += 1;
+        }
+    }
+    pos
+}
+
+/// Replay the recorded handling data; a fall must not be reported.
+fn self_test_real() -> bool {
+    let mut det = FallDetector::new();
+    for sample in RECORDED.iter() {
+        if let Some(Event::Fall { .. }) = det.update(
+            [sample[0] as i32, sample[1] as i32, sample[2] as i32],
+            DT_MS,
+        ) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Replay a drop: free fall, impact, then stillness; a fall must be reported.
+fn self_test_synthetic() -> bool {
+    let mut det = FallDetector::new();
+    let mut fall = None;
+
+    // 2 s of a board at rest.
+    for _ in 0..400 {
+        let _ = det.update([990, 40, 60], DT_MS);
+    }
+    // 250 ms in the air.
+    for _ in 0..50 {
+        let _ = det.update([15, 12, 8], DT_MS);
+    }
+    // Impact.
+    for _ in 0..4 {
+        let _ = det.update([6000, 200, 300], DT_MS);
+    }
+    // Lying still on the floor, in a different orientation.
+    for _ in 0..400 {
+        if let Some(e) = det.update([60, 985, 80], DT_MS) {
+            fall = Some(e);
+        }
+    }
+    matches!(fall, Some(Event::Fall { .. }))
+}
+
+#[entry]
+fn main() -> ! {
+    let board = match Board::take() {
+        Some(b) => b,
+        None => loop {
+            cortex_m::asm::nop();
+        },
+    };
+    let led = board.led();
+
+    board.sensors_power().enable();
+    cortex_m::asm::delay(4_000_000);
+
+    let imu_bus = RefCell::new(board.imu_i2c());
+    let config = Config {
+        range: AccelRange::G8,
+        odr: AccelOdr::Hz416,
+    };
+    let mut imu = match Lsm6ds3trc::with_config(SharedBus::new(&imu_bus), config) {
+        Ok(i) => i,
+        Err(_) => {
+            mailbox::fail(b"imu init failed on the fall detector");
+            loop {
+                led.toggle();
+                cortex_m::asm::delay(2_000_000);
+            }
+        }
+    };
+
+    let base_bus = RefCell::new(board.i2c());
+    let mut oled = Ssd1306::new(SharedBus::new(&base_bus));
+
+    // ---- self tests, before anything is displayed -------------------------
+    let real_ok = self_test_real();
+    let synth_ok = self_test_synthetic();
+    let mut msg = [0u8; 64];
+    let mut pos = push_bytes(&mut msg, 0, b"fall selftest real=");
+    pos = push_bytes(&mut msg, pos, if real_ok { b"clean" } else { b"FALSEPOS" });
+    pos = push_bytes(&mut msg, pos, b" synth=");
+    pos = push_bytes(
+        &mut msg,
+        pos,
+        if synth_ok { b"detected" } else { b"MISSED" },
+    );
+    if real_ok && synth_ok {
+        mailbox::pass(&msg[..pos]);
+    } else {
+        mailbox::fail(&msg[..pos]);
+    }
+
+    dwt_start();
+
+    let mut det = FallDetector::new();
+    let mut falls = 0u32;
+    let mut impacts = 0u32;
+    let mut peak_fall = 0i32;
+    let mut last_cycles = 0u32;
+    let mut frames = 0u32;
+    let mut in_air = false;
+
+    loop {
+        let now = cycle_count();
+        if now.wrapping_sub(last_cycles) < SAMPLE_PERIOD_CYCLES {
+            continue;
+        }
+        last_cycles = now;
+
+        let Ok(motion) = imu.read() else {
+            continue;
+        };
+        match det.update(motion.accel_mg, DT_MS) {
+            Some(Event::Fall { peak_mg, .. }) => {
+                falls += 1;
+                if peak_mg > peak_fall {
+                    peak_fall = peak_mg;
+                }
+            }
+            Some(Event::Impact { .. }) => impacts += 1,
+            None => {}
+        }
+
+        frames += 1;
+        if frames % 20 == 0 {
+            // The panel is slow; ten times a second is already generous.
+            if let Some(ref mut d) = oled {
+                d.clear();
+                let mut l = [0u8; 24];
+                let mut p = append(&mut l, 0, b"FALLS ");
+                p = push_dec(&mut l, p, falls);
+                d.text(0, 0, &l[..p]);
+
+                let mut l2 = [0u8; 24];
+                let mut p2 = append(&mut l2, 0, b"IMPACTS ");
+                p2 = push_dec(&mut l2, p2, impacts);
+                d.text(0, 1, &l2[..p2]);
+
+                let state: &[u8] = if det.in_free_fall() {
+                    b"STATE FREE FALL"
+                } else {
+                    b"STATE WATCHING"
+                };
+                d.text(0, 2, state);
+
+                let mut l4 = [0u8; 24];
+                let mut p4 = append(&mut l4, 0, b"PEAK ");
+                p4 = push_dec(&mut l4, p4, peak_fall as u32);
+                d.text(0, 4, &l4[..p4]);
+
+                let mut l5 = [0u8; 24];
+                let mut p5 = append(&mut l5, 0, b"A ");
+                p5 = push_dec(&mut l5, p5, lsm6ds3trc_magnitude(motion.accel_mg) as u32);
+                d.text(0, 5, &l5[..p5]);
+                d.flush();
+            }
+        }
+
+        // A visible flag while the device is in the air.
+        let air = det.in_free_fall();
+        if air != in_air {
+            in_air = air;
+            if air {
+                led.on();
+            } else {
+                led.off();
+            }
+        }
+    }
+}
+
+/// Magnitude in mg, for display only.
+fn lsm6ds3trc_magnitude(accel_mg: [i32; 3]) -> i32 {
+    let sq = accel_mg[0] as i64 * accel_mg[0] as i64
+        + accel_mg[1] as i64 * accel_mg[1] as i64
+        + accel_mg[2] as i64 * accel_mg[2] as i64;
+    let mut x = sq as u64;
+    if x == 0 {
+        return 0;
+    }
+    let mut y = (x + 1) / 2;
+    while y < x {
+        x = y;
+        y = (x + sq as u64 / x) / 2;
+    }
+    x as i32
+}
