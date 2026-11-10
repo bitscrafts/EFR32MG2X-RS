@@ -87,7 +87,7 @@ board in one flash.
 | `hal_oled_hello` | PASS — panel bytes ACKed, text composed through the driver |
 | `hal_button` | PASS — "button released at boot, LED follows" |
 | `hal_env_display` | PASS — `T=31.68C P=1015hPa H=68.2%`, matches the PAC twin within sensor noise |
-| `hal_imu` | written, blocked: **no device at 0x6A/0x6B** on this module (see below) |
+| `hal_imu` | written, blocked: the sensor is fitted but answers on **no bus we can drive** (see `04-reference/IMU-INVESTIGATION.md`) |
 
 HAL pieces: `board::Board` (peripherals + clock gates), `board::SensorPower`
 (PD5), `board::Button`, `board::Led`, `bus::I2cBus` + `BitBangI2c` + `SharedBus`,
@@ -156,3 +156,21 @@ duty, never colour.
 Worth recording: **the factory program on the Sense is this very demo** — Seeed
 ships it with "The louder you shout, the brighter the light will be". `pac_mic_vu`
 and `hal_mic_vu` reproduce the factory behaviour on hardware.
+
+## IMU: five measurements, no device
+
+The Sense module fits an LSM6DS3TR-C and Seeed's driver names `Wire1` (PB3/PB2)
+and `PD5` as its power enable. On this board:
+
+- base bus (PC4/PC5), PD5 high: `3c 51 76` — panel, RTC and BME68x answer, the
+  IMU does not (nor at 0x6B);
+- I2C1 per the variant file (PB3/PB2): nothing answers at all;
+- every GPIO set to input/no-pull: `PORTB_DIN = 0x0C`, so PB2/PB3 really do carry
+  external pull-ups — it is an I2C bus;
+- 22 candidate enable pins driven high, probing 0x6A and 0x6B after each:
+  `tried=22 en=p255.255`, nothing.
+
+So it is not our master, not the address, and not an obvious enable pin. The open
+candidates are: the part is on **SPI**, it sits behind another device, it is not
+populated, or its enable is active-low. Full log:
+`docs/04-reference/IMU-INVESTIGATION.md`.

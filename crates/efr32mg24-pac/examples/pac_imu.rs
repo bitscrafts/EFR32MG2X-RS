@@ -1,27 +1,24 @@
-//! PAC-level IMU probe: is the LSM6DS3TR-C really on this board, and does PD5
-//! power it?
+//! Find the IMU's power enable by search, then read the sensor.
 //!
-//! The question this example answers, and why it is written at the PAC level:
-//! the HAL scan with PD5 driven high found only 0x3C, 0x51 and 0x76 — no 0x6A.
-//! Either the module is the standard XIAO MG24 (the IMU is a Sense-only part),
-//! or the power gate is not what the wiki's Arduino sketch implies, or the part
-//! answers somewhere else. Those three hypotheses are separable with two bus
-//! scans and one register read, so that is exactly what this does:
+//! ## What is already measured
 //!
-//! 1. scan the bus with PD5 **low** (sensors unpowered),
-//! 2. drive PD5 high, wait for the rail, scan again,
-//! 3. probe 0x6A and 0x6B, read WHO_AM_I, and if a part answers, configure it
-//!    (±2 g, ±250 dps, 104 Hz) and read one 6-axis sample.
+//! - The IMU bus pins are **PB3 (SDA) / PB2 (SCL)**: with every GPIO set to
+//!   "input, no pull", `PORTB_DIN` reads `0x0C` — those two pins are pulled up
+//!   from outside the chip, which is what an I2C bus looks like.
+//! - The sensor does not answer there even with PD5 high (Seeed's driver names
+//!   PD5 as `PIN_LSM6DS3TR_C_POWER`) or with PC8 high (the microphone's rail).
+//! - The module is a **Sense**: the microphone works, and the microphone is
+//!   Sense-only, so the IMU is fitted.
 //!
-//! Reporting both scans is the point: an address that appears only after PD5
-//! rises is the IMU; the same set twice means PD5 is not its power gate.
+//! ## What this does
 //!
-//! Register facts used here:
-//! - `0x0F` WHO_AM_I, expected `0x6A` on an LSM6DS3 / LSM6DS3TR-C,
-//! - `0x12` CTRL3_C: block-data-update (bit 6) and auto-increment (bit 2),
-//! - `0x10` CTRL1_XL and `0x11` CTRL2_G: 104 Hz, ±2 g and ±250 dps,
-//! - `0x22..0x2D` the twelve output bytes (gyro X/Y/Z, then accel X/Y/Z),
-//! - sensitivity 0.061 mg/LSB and 8.75 mdps/LSB at those ranges.
+//! Drives each plausible GPIO high in turn and probes 0x6A on PB3/PB2 after
+//! every one. Whichever pin makes the sensor answer is its power enable. Nothing
+//! is written to the sensor until it answers, so this is read-only from the
+//! device's point of view.
+//!
+//! A pin that is already an output (the LED, the mic enable) is left alone, and
+//! the two bus pins are never driven as outputs.
 
 #![no_std]
 #![no_main]
@@ -34,9 +31,9 @@ use panic_halt as _;
 mod mailbox;
 
 const HALF_BIT: u32 = 60;
-const PIN_SDA: u32 = 1 << 4; // PC04
-const PIN_SCL: u32 = 1 << 5; // PC05
-const PIN_SENSOR_POWER: u32 = 1 << 5; // PD5
+const PIN_SCL: u32 = 1 << 2; // PB2
+const PIN_SDA: u32 = 1 << 3; // PB3
+const IMU_ADDR: u8 = 0x6A;
 
 const HEX: &[u8; 16] = b"0123456789abcdef";
 
@@ -50,19 +47,7 @@ fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
     pos
 }
 
-fn push_hex8(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
-    for shift in (0..8).rev() {
-        if pos < buf.len() {
-            buf[pos] = HEX[((value >> (shift * 4)) & 0xF) as usize];
-            pos += 1;
-        }
-    }
-    pos
-}
-
 fn push_hex2(buf: &mut [u8], mut pos: usize, value: u8) -> usize {
-    // `(1..=0).rev()` looks like "high nibble then low" but is an empty range,
-    // which silently printed nothing for every address.
     for shift in [1u8, 0] {
         if pos < buf.len() {
             buf[pos] = HEX[((value >> (shift * 4)) & 0xF) as usize];
@@ -94,6 +79,13 @@ fn push_dec(buf: &mut [u8], mut pos: usize, mut value: u32) -> usize {
     pos
 }
 
+fn push_signed(buf: &mut [u8], mut pos: usize, value: i32) -> usize {
+    if value < 0 {
+        pos = push_bytes(buf, pos, b"-");
+    }
+    push_dec(buf, pos, value.unsigned_abs())
+}
+
 struct Bus<'a> {
     gpio: &'a pac::gpio_s::RegisterBlock,
 }
@@ -104,7 +96,7 @@ impl Bus<'_> {
     }
 
     fn set(&self, sda_low: bool, scl_low: bool) {
-        let mut bits = self.gpio.portc_dout().read().bits();
+        let mut bits = self.gpio.portb_dout().read().bits();
         bits = if sda_low {
             bits & !PIN_SDA
         } else {
@@ -115,12 +107,12 @@ impl Bus<'_> {
         } else {
             bits | PIN_SCL
         };
-        self.gpio.portc_dout().write(|w| unsafe { w.bits(bits) });
+        self.gpio.portb_dout().write(|w| unsafe { w.bits(bits) });
         self.delay();
     }
 
     fn sda_high(&self) -> bool {
-        self.gpio.portc_din().read().bits() & PIN_SDA != 0
+        self.gpio.portb_din().read().bits() & PIN_SDA != 0
     }
 
     fn start(&self) {
@@ -212,21 +204,42 @@ impl Bus<'_> {
         self.stop();
         true
     }
+}
 
-    /// Collect every address that acknowledged into `out`, returning the count.
-    ///
-    /// A bitmap was tried first and printed nonsense: 0x3C is bit 52, so casting
-    /// the u64 to u32 for the report dropped every device above 0x27. An address
-    /// list cannot be silently truncated like that.
-    fn scan_into(&self, out: &mut [u8]) -> usize {
-        let mut n = 0;
-        for addr in 0x08u8..=0x77 {
-            if self.probe(addr) && n < out.len() {
-                out[n] = addr;
-                n += 1;
-            }
+/// Drive one pin high, leaving everything else alone.
+///
+/// The `modify` closure hands back a writer whose `bits()` needs the new value;
+/// the current value comes from the reader, not from the writer.
+fn drive_high(gpio: &pac::gpio_s::RegisterBlock, port: u8, pin: u32) {
+    let mask = 1u32 << pin;
+    let shift = pin * 4;
+    let set_mode = |cur: u32| (cur & !(0xF << shift)) | (4 << shift); // mode 4 = push-pull
+    match port {
+        0 => {
+            gpio.porta_model()
+                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
+            gpio.porta_dout()
+                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
         }
-        n
+        1 => {
+            gpio.portb_model()
+                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
+            gpio.portb_dout()
+                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
+        }
+        2 => {
+            // Pins 8..15 live in MODEH; the candidates below are all below 8.
+            gpio.portc_model()
+                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
+            gpio.portc_dout()
+                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
+        }
+        _ => {
+            gpio.portd_model()
+                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
+            gpio.portd_dout()
+                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
+        }
     }
 }
 
@@ -235,93 +248,120 @@ fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 
-    // I2C pins: open drain, released.
+    // The IMU bus: PB3/PB2 open drain, released.
     dp.gpio_s
-        .portc_model()
-        .modify(|_r, w| w.mode4().wiredand().mode5().wiredand());
+        .portb_model()
+        .modify(|_r, w| w.mode2().wiredand().mode3().wiredand());
     dp.gpio_s
-        .portc_dout()
-        .modify(|r, w| unsafe { w.bits(r.bits() | PIN_SDA | PIN_SCL) });
-
-    // PD5 high from the start, and never toggled afterwards.
-    //
-    // Measured 2026-11-11: scanning with PD5 low and then raising it leaves the
-    // bus dead for the rest of the run — both scans come back empty even though
-    // the lines read 0x30 (both high) afterwards. Power-cycling the rail while
-    // the bus is being clocked is a bad idea on this board; power first, then
-    // talk. Whether PD5 gates the IMU, the base, or both is still open, and this
-    // example no longer needs to answer that to be useful.
-    dp.gpio_s.portd_model().modify(|_r, w| w.mode5().pushpull());
-    dp.gpio_s
-        .portd_dout()
-        .modify(|r, w| unsafe { w.bits(r.bits() | PIN_SENSOR_POWER) });
-    cortex_m::asm::delay(4_000_000);
+        .portb_dout()
+        .modify(|r, w| unsafe { w.bits(r.bits() | PIN_SCL | PIN_SDA) });
 
     let bus = Bus { gpio: &dp.gpio_s };
-    let mut on_list = [0u8; 12];
-    let on_n = bus.scan_into(&mut on_list);
 
-    // Which candidate addresses answer?
-    let mut found_addr = 0u8;
-    let mut who = 0u8;
-    let mut imu_addr = 0u8;
-    for addr in [0x6Au8, 0x6Bu8] {
-        if bus.probe(addr) {
-            found_addr = addr;
-            who = bus.read_reg(addr, 0x0F).unwrap_or(0);
-            if who == 0x6A || who == 0x69 {
-                imu_addr = addr;
-            }
+    // Candidate enables: every pin that is not one of ours (PA7 = LED,
+    // PC8 = mic power, PC4/PC5 = base bus, PB2/PB3 = this bus) and not obviously
+    // a header pin in use. The list is ordered by plausibility.
+    let candidates: [(u8, u32); 22] = [
+        (3, 5), // PD5 - Seeed's named pin, first because it is documented
+        (0, 1),
+        (0, 2),
+        (0, 3),
+        (0, 4),
+        (0, 5),
+        (0, 6),
+        (1, 0),
+        (1, 1),
+        (1, 4),
+        (1, 5),
+        (2, 0),
+        (2, 1),
+        (2, 2),
+        (2, 3),
+        (2, 6),
+        (2, 7),
+        (3, 0),
+        (3, 1),
+        (3, 2),
+        (3, 3),
+        (3, 4),
+    ];
+
+    let mut found_port = 0xFFu8;
+    let mut found_pin = 0xFFu32;
+    let mut tried = 0u32;
+    let mut found_addr = IMU_ADDR;
+
+    for (port, pin) in candidates.iter().copied() {
+        drive_high(&dp.gpio_s, port, pin);
+        cortex_m::asm::delay(60_000);
+        tried += 1;
+        // Both strapping options: SA0 low gives 0x6A, SA0 high gives 0x6B. The
+        // first search only tried 0x6A, which is one way to miss a fitted part.
+        if bus.probe(0x6A) {
+            found_port = port;
+            found_pin = pin;
+            found_addr = 0x6A;
+            break;
+        }
+        if bus.probe(0x6B) {
+            found_port = port;
+            found_pin = pin;
+            found_addr = 0x6B;
             break;
         }
     }
 
     let mut msg = [0u8; 64];
-    let mut pos = push_bytes(&mut msg, 0, b"on");
-    for a in on_list[..on_n].iter() {
-        pos = push_bytes(&mut msg, pos, b" ");
-        pos = push_hex2(&mut msg, pos, *a);
-    }
-    pos = push_bytes(&mut msg, pos, b" 6a=");
-    pos = push_hex2(&mut msg, pos, found_addr);
-    pos = push_bytes(&mut msg, pos, b"/");
-    pos = push_hex2(&mut msg, pos, who);
+    let mut pos = push_bytes(&mut msg, 0, b"tried=");
+    pos = push_dec(&mut msg, pos, tried);
+    pos = push_bytes(&mut msg, pos, b" en=p");
+    pos = push_dec(&mut msg, pos, found_port as u32);
+    pos = push_bytes(&mut msg, pos, b".");
+    pos = push_dec(&mut msg, pos, found_pin);
 
-    if imu_addr == 0 {
-        // Not an error of the bus: this module may simply not carry the part.
+    if found_port == 0xFF {
         mailbox::fail(&msg[..pos]);
         idle(&dp);
     }
 
-    // Configure and read one sample: ±2 g, ±250 dps, 104 Hz.
-    bus.write_reg(imu_addr, 0x12, 0b0100_0100); // BDU | IF_INC
-    bus.write_reg(imu_addr, 0x10, 0b0100_0000); // CTRL1_XL
-    bus.write_reg(imu_addr, 0x11, 0b0100_0000); // CTRL2_G
-    cortex_m::asm::delay(2_000_000);
+    // The sensor answered: read its identity and one sample.
+    let id = bus.read_reg(found_addr, 0x0F).unwrap_or(0);
+    pos = push_bytes(&mut msg, pos, b" a=");
+    pos = push_hex2(&mut msg, pos, found_addr);
+    pos = push_bytes(&mut msg, pos, b" id=");
+    pos = push_hex2(&mut msg, pos, id);
+
+    bus.write_reg(found_addr, 0x12, 0b0100_0100);
+    bus.write_reg(found_addr, 0x10, 0b0100_0000);
+    bus.write_reg(found_addr, 0x11, 0b0100_0000);
+    cortex_m::asm::delay(200_000);
 
     let mut raw = [0u8; 12];
-    let ok = bus.read_regs(imu_addr, 0x22, &mut raw);
+    let ok = bus.read_regs(found_addr, 0x22, &mut raw);
     let word = |lo: u8, hi: u8| i16::from_le_bytes([lo, hi]) as i32;
     let ax = (word(raw[6], raw[7]) as f32 * 0.061) as i32;
     let ay = (word(raw[8], raw[9]) as f32 * 0.061) as i32;
     let az = (word(raw[10], raw[11]) as f32 * 0.061) as i32;
-    let gx = (word(raw[0], raw[1]) as f32 * 8.75) as i32;
 
-    let mut msg2 = [0u8; 64];
-    let mut p2 = push_bytes(&mut msg2, 0, b"imu a=");
-    p2 = push_dec(&mut msg2, p2, ax.unsigned_abs());
-    p2 = push_bytes(&mut msg2, p2, b",");
-    p2 = push_dec(&mut msg2, p2, ay.unsigned_abs());
-    p2 = push_bytes(&mut msg2, p2, b",");
-    p2 = push_dec(&mut msg2, p2, az.unsigned_abs());
-    p2 = push_bytes(&mut msg2, p2, b" g=");
-    p2 = push_dec(&mut msg2, p2, gx.unsigned_abs());
+    let mut m2 = [0u8; 64];
+    let mut p2 = push_bytes(&mut m2, 0, b"imu p");
+    p2 = push_dec(&mut m2, p2, found_port as u32);
+    p2 = push_bytes(&mut m2, p2, b".");
+    p2 = push_dec(&mut m2, p2, found_pin);
+    p2 = push_bytes(&mut m2, p2, b" id=");
+    p2 = push_hex2(&mut m2, p2, id);
+    p2 = push_bytes(&mut m2, p2, b" a=");
+    p2 = push_signed(&mut m2, p2, ax);
+    p2 = push_bytes(&mut m2, p2, b",");
+    p2 = push_signed(&mut m2, p2, ay);
+    p2 = push_bytes(&mut m2, p2, b",");
+    p2 = push_signed(&mut m2, p2, az);
 
     let peak = ax.abs().max(ay.abs()).max(az.abs());
     if ok && (700..=1300).contains(&peak) {
-        mailbox::pass(&msg2[..p2]);
+        mailbox::pass(&m2[..p2]);
     } else {
-        mailbox::fail(&msg2[..p2]);
+        mailbox::fail(&m2[..p2]);
     }
 
     idle(&dp);
