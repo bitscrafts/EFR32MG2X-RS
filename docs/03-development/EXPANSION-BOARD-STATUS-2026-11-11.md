@@ -133,9 +133,13 @@ core reset. Full detail in `docs/04-reference/IADC-MIC-NOTES.md`.
 
 Three independent lines of evidence:
 
-1. **Seeed's own specification table** for both XIAO MG24 variants lists
-   `LEDs: 1x User LED, 1x Power LED`. Boards with an addressable RGB (XIAO
-   ESP32C3/S3, RP2040) say `1x RGB LED` there instead.
+1. **Two indicators, one of them controllable.** The getting-started page lists
+   `LEDs: 1x User LED, 1x Power LED`; the Sense product page's feature table
+   lists `Indicators: User LED / Charging LED`. So there are two LED packages but
+   only **one user LED** — the other belongs to the charger: it is on while USB
+   power is present and, per the same page, "will not have any LED on when it is
+   battery powered". Neither is RGB; boards with an addressable LED (XIAO
+   ESP32C3/S3, RP2040) say `1x RGB LED` in that table instead.
 2. **The wiki text calls it "the orange user indicator"** and "the orange LED on
    the right side", and the pin map names PA07 `User Light_Yellow`. One part,
    one colour.
