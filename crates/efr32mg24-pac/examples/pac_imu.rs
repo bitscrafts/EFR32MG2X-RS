@@ -1,24 +1,25 @@
-//! Find the IMU's power enable by search, then read the sensor.
+//! PAC-level IMU: the on-board LSM6DS3TR-C at I2C address 0x6A.
 //!
-//! ## What is already measured
+//! ## The three facts this example needed
 //!
-//! - The IMU bus pins are **PB3 (SDA) / PB2 (SCL)**: with every GPIO set to
-//!   "input, no pull", `PORTB_DIN` reads `0x0C` — those two pins are pulled up
-//!   from outside the chip, which is what an I2C bus looks like.
-//! - The sensor does not answer there even with PD5 high (Seeed's driver names
-//!   PD5 as `PIN_LSM6DS3TR_C_POWER`) or with PC8 high (the microphone's rail).
-//! - The module is a **Sense**: the microphone works, and the microphone is
-//!   Sense-only, so the IMU is fitted.
+//! 1. **Bus:** the IMU is not on the Expansion Base bus (PC4/PC5, where the panel,
+//!    the RTC and the BME68x live). It is on its own pair, **PB2 = SDA, PB3 = SCL**.
+//! 2. **Line order:** that order is the measured one. The Arduino variant declares
+//!    `PIN_WIRE_SDA1 = PB3` / `PIN_WIRE_SCL1 = PB2`, i.e. the opposite, and with
+//!    the lines swapped the sensor never answers — which is why every earlier scan
+//!    of "the right pins" came back empty. `pac_imu_probe` found this by trying
+//!    both assignments.
+//! 3. **Power:** PD5 must be driven high (Seeed: "turn on the gyro enable pin"),
+//!    then the part needs a few milliseconds before it answers.
 //!
-//! ## What this does
+//! With those three right, `WHO_AM_I` (0x0F) returns **0x6A**, the identity the
+//! documentation states for the LSM6DS3TR-C.
 //!
-//! Drives each plausible GPIO high in turn and probes 0x6A on PB3/PB2 after
-//! every one. Whichever pin makes the sensor answer is its power enable. Nothing
-//! is written to the sensor until it answers, so this is read-only from the
-//! device's point of view.
+//! ## What it reports
 //!
-//! A pin that is already an output (the LED, the mic enable) is left alone, and
-//! the two bus pins are never driven as outputs.
+//! Acceleration on three axes in milli-g and angular rate in milli-degrees per
+//! second, through the mailbox, then keeps the LED blinking so the board is
+//! visibly alive while the values are read over SWD.
 
 #![no_std]
 #![no_main]
@@ -31,9 +32,20 @@ use panic_halt as _;
 mod mailbox;
 
 const HALF_BIT: u32 = 60;
-const PIN_SCL: u32 = 1 << 2; // PB2
-const PIN_SDA: u32 = 1 << 3; // PB3
+
+// Measured wiring, not the one in the Arduino variant.
+const PIN_SDA: u32 = 1 << 2; // PB2
+const PIN_SCL: u32 = 1 << 3; // PB3
+const PIN_IMU_POWER: u32 = 1 << 5; // PD5
+const PIN_LED: u32 = 1 << 7; // PA7, active low
+
 const IMU_ADDR: u8 = 0x6A;
+
+const REG_WHO_AM_I: u8 = 0x0F;
+const REG_CTRL1_XL: u8 = 0x10;
+const REG_CTRL2_G: u8 = 0x11;
+const REG_CTRL3_C: u8 = 0x12;
+const REG_OUTX_L_G: u8 = 0x22;
 
 const HEX: &[u8; 16] = b"0123456789abcdef";
 
@@ -91,6 +103,15 @@ struct Bus<'a> {
 }
 
 impl Bus<'_> {
+    fn new(gpio: &pac::gpio_s::RegisterBlock) {
+        // Open drain: mode 8 is `wire[d]and` on this die, which is what an I2C
+        // master needs so the pull-ups can win.
+        gpio.portb_model()
+            .modify(|_r, w| w.mode2().wiredand().mode3().wiredand());
+        gpio.portb_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() | PIN_SDA | PIN_SCL) });
+    }
+
     fn delay(&self) {
         cortex_m::asm::delay(HALF_BIT);
     }
@@ -206,175 +227,106 @@ impl Bus<'_> {
     }
 }
 
-/// Drive one pin high, leaving everything else alone.
-///
-/// The `modify` closure hands back a writer whose `bits()` needs the new value;
-/// the current value comes from the reader, not from the writer.
-fn drive_high(gpio: &pac::gpio_s::RegisterBlock, port: u8, pin: u32) {
-    let mask = 1u32 << pin;
-    let shift = pin * 4;
-    let set_mode = |cur: u32| (cur & !(0xF << shift)) | (4 << shift); // mode 4 = push-pull
-    match port {
-        0 => {
-            gpio.porta_model()
-                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
-            gpio.porta_dout()
-                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
-        }
-        1 => {
-            gpio.portb_model()
-                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
-            gpio.portb_dout()
-                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
-        }
-        2 => {
-            // Pins 8..15 live in MODEH; the candidates below are all below 8.
-            gpio.portc_model()
-                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
-            gpio.portc_dout()
-                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
-        }
-        _ => {
-            gpio.portd_model()
-                .modify(|r, w| unsafe { w.bits(set_mode(r.bits())) });
-            gpio.portd_dout()
-                .modify(|r, w| unsafe { w.bits(r.bits() | mask) });
-        }
-    }
-}
-
 #[entry]
 fn main() -> ! {
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 
-    // The IMU bus: PB3/PB2 open drain, released.
+    // LED first so the board is visibly alive even if the sensor is not.
+    dp.gpio_s.porta_model().modify(|_r, w| w.mode7().pushpull());
     dp.gpio_s
-        .portb_model()
-        .modify(|_r, w| w.mode2().wiredand().mode3().wiredand());
-    dp.gpio_s
-        .portb_dout()
-        .modify(|r, w| unsafe { w.bits(r.bits() | PIN_SCL | PIN_SDA) });
+        .porta_dout()
+        .modify(|r, w| unsafe { w.bits(r.bits() | PIN_LED) });
 
+    // Power the IMU: Seeed's own sketch drives PD5 high before talking to it.
+    dp.gpio_s.portd_model().modify(|_r, w| w.mode5().pushpull());
+    dp.gpio_s
+        .portd_dout()
+        .modify(|r, w| unsafe { w.bits(r.bits() | PIN_IMU_POWER) });
+    cortex_m::asm::delay(400_000);
+
+    Bus::new(&dp.gpio_s);
     let bus = Bus { gpio: &dp.gpio_s };
+    cortex_m::asm::delay(40_000);
 
-    // Candidate enables: every pin that is not one of ours (PA7 = LED,
-    // PC8 = mic power, PC4/PC5 = base bus, PB2/PB3 = this bus) and not obviously
-    // a header pin in use. The list is ordered by plausibility.
-    let candidates: [(u8, u32); 22] = [
-        (3, 5), // PD5 - Seeed's named pin, first because it is documented
-        (0, 1),
-        (0, 2),
-        (0, 3),
-        (0, 4),
-        (0, 5),
-        (0, 6),
-        (1, 0),
-        (1, 1),
-        (1, 4),
-        (1, 5),
-        (2, 0),
-        (2, 1),
-        (2, 2),
-        (2, 3),
-        (2, 6),
-        (2, 7),
-        (3, 0),
-        (3, 1),
-        (3, 2),
-        (3, 3),
-        (3, 4),
-    ];
-
-    let mut found_port = 0xFFu8;
-    let mut found_pin = 0xFFu32;
-    let mut tried = 0u32;
-    let mut found_addr = IMU_ADDR;
-
-    for (port, pin) in candidates.iter().copied() {
-        drive_high(&dp.gpio_s, port, pin);
-        cortex_m::asm::delay(60_000);
-        tried += 1;
-        // Both strapping options: SA0 low gives 0x6A, SA0 high gives 0x6B. The
-        // first search only tried 0x6A, which is one way to miss a fitted part.
-        if bus.probe(0x6A) {
-            found_port = port;
-            found_pin = pin;
-            found_addr = 0x6A;
-            break;
-        }
-        if bus.probe(0x6B) {
-            found_port = port;
-            found_pin = pin;
-            found_addr = 0x6B;
-            break;
-        }
-    }
-
-    let mut msg = [0u8; 64];
-    let mut pos = push_bytes(&mut msg, 0, b"tried=");
-    pos = push_dec(&mut msg, pos, tried);
-    pos = push_bytes(&mut msg, pos, b" en=p");
-    pos = push_dec(&mut msg, pos, found_port as u32);
-    pos = push_bytes(&mut msg, pos, b".");
-    pos = push_dec(&mut msg, pos, found_pin);
-
-    if found_port == 0xFF {
-        mailbox::fail(&msg[..pos]);
+    let Some(id) = bus.read_reg(IMU_ADDR, REG_WHO_AM_I) else {
         idle(&dp);
-    }
+    };
 
-    // The sensor answered: read its identity and one sample.
-    let id = bus.read_reg(found_addr, 0x0F).unwrap_or(0);
-    pos = push_bytes(&mut msg, pos, b" a=");
-    pos = push_hex2(&mut msg, pos, found_addr);
-    pos = push_bytes(&mut msg, pos, b" id=");
-    pos = push_hex2(&mut msg, pos, id);
-
-    bus.write_reg(found_addr, 0x12, 0b0100_0100);
-    bus.write_reg(found_addr, 0x10, 0b0100_0000);
-    bus.write_reg(found_addr, 0x11, 0b0100_0000);
-    cortex_m::asm::delay(200_000);
+    // BDU + IF_INC, 104 Hz on both sensors, +/-2 g and +/-250 dps.
+    bus.write_reg(IMU_ADDR, REG_CTRL3_C, 0b0100_0100);
+    bus.write_reg(IMU_ADDR, REG_CTRL1_XL, 0b0100_0000);
+    bus.write_reg(IMU_ADDR, REG_CTRL2_G, 0b0100_0000);
+    cortex_m::asm::delay(400_000);
 
     let mut raw = [0u8; 12];
-    let ok = bus.read_regs(found_addr, 0x22, &mut raw);
-    let word = |lo: u8, hi: u8| i16::from_le_bytes([lo, hi]) as i32;
-    let ax = (word(raw[6], raw[7]) as f32 * 0.061) as i32;
-    let ay = (word(raw[8], raw[9]) as f32 * 0.061) as i32;
-    let az = (word(raw[10], raw[11]) as f32 * 0.061) as i32;
+    let mut reported = false;
 
-    let mut m2 = [0u8; 64];
-    let mut p2 = push_bytes(&mut m2, 0, b"imu p");
-    p2 = push_dec(&mut m2, p2, found_port as u32);
-    p2 = push_bytes(&mut m2, p2, b".");
-    p2 = push_dec(&mut m2, p2, found_pin);
-    p2 = push_bytes(&mut m2, p2, b" id=");
-    p2 = push_hex2(&mut m2, p2, id);
-    p2 = push_bytes(&mut m2, p2, b" a=");
-    p2 = push_signed(&mut m2, p2, ax);
-    p2 = push_bytes(&mut m2, p2, b",");
-    p2 = push_signed(&mut m2, p2, ay);
-    p2 = push_bytes(&mut m2, p2, b",");
-    p2 = push_signed(&mut m2, p2, az);
+    loop {
+        if !reported {
+            reported = true;
+            if bus.read_regs(IMU_ADDR, REG_OUTX_L_G, &mut raw) {
+                let word = |lo: u8, hi: u8| i16::from_le_bytes([lo, hi]) as i32;
+                // 0.061 mg/LSB at +/-2 g; 8.75 mdps/LSB at +/-250 dps.
+                let ax = word(raw[6], raw[7]) * 61 / 1000;
+                let ay = word(raw[8], raw[9]) * 61 / 1000;
+                let az = word(raw[10], raw[11]) * 61 / 1000;
+                let gx = word(raw[0], raw[1]) * 875 / 100;
+                let gy = word(raw[2], raw[3]) * 875 / 100;
+                let gz = word(raw[4], raw[5]) * 875 / 100;
 
-    let peak = ax.abs().max(ay.abs()).max(az.abs());
-    if ok && (700..=1300).contains(&peak) {
-        mailbox::pass(&m2[..p2]);
-    } else {
-        mailbox::fail(&m2[..p2]);
+                let mut msg = [0u8; 64];
+                let mut pos = push_bytes(&mut msg, 0, b"id=");
+                pos = push_hex2(&mut msg, pos, id);
+                pos = push_bytes(&mut msg, pos, b" a=");
+                pos = push_signed(&mut msg, pos, ax);
+                pos = push_bytes(&mut msg, pos, b",");
+                pos = push_signed(&mut msg, pos, ay);
+                pos = push_bytes(&mut msg, pos, b",");
+                pos = push_signed(&mut msg, pos, az);
+                pos = push_bytes(&mut msg, pos, b"mg g=");
+                pos = push_signed(&mut msg, pos, gx);
+                pos = push_bytes(&mut msg, pos, b",");
+                pos = push_signed(&mut msg, pos, gy);
+                pos = push_bytes(&mut msg, pos, b",");
+                pos = push_signed(&mut msg, pos, gz);
+
+                // A part lying still on a desk must report ~1000 mg on one axis.
+                // Squared magnitude, compared in mg^2: 800..1200 mg becomes
+                // 640_000..1_440_000, and no floating point (or libm) is needed.
+                let squared = ax * ax + ay * ay + az * az;
+                if id == 0x6A && (640_000..=1_440_000).contains(&squared) {
+                    mailbox::pass(&msg[..pos]);
+                } else {
+                    mailbox::fail(&msg[..pos]);
+                }
+            } else {
+                let mut msg = [0u8; 64];
+                let mut pos = push_bytes(&mut msg, 0, b"id=");
+                pos = push_hex2(&mut msg, pos, id);
+                pos = push_bytes(&mut msg, pos, b" but output read failed");
+                mailbox::fail(&msg[..pos]);
+            }
+        }
+
+        // Slow blink, so the board can be seen running while values are read.
+        for _ in 0..3_000_000 {
+            cortex_m::asm::nop();
+        }
+        dp.gpio_s
+            .porta_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() ^ PIN_LED) });
     }
-
-    idle(&dp);
 }
 
 fn idle(dp: &pac::Peripherals) -> ! {
-    dp.gpio_s.porta_model().modify(|_r, w| w.mode7().pushpull());
+    mailbox::fail(b"imu no ack at 0x6a on PB2/PB3");
     loop {
         for _ in 0..2_000_000 {
             cortex_m::asm::nop();
         }
         dp.gpio_s
             .porta_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() ^ (1 << 7)) });
+            .modify(|r, w| unsafe { w.bits(r.bits() ^ PIN_LED) });
     }
 }

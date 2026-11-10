@@ -97,6 +97,13 @@ impl<B: I2cBus> Lsm6ds3trc<B> {
     /// Read one sample. Twelve bytes in one transaction: gyro X/Y/Z then accel
     /// X/Y/Z, little-endian, as the auto-incrementing pointer delivers them.
     pub fn read(&mut self) -> Result<Motion, ImuError> {
+        // One 12-byte burst from the gyro block: 0x22..0x27 is the gyroscope and
+        // 0x28..0x2D the accelerometer, so a single auto-incrementing read gets
+        // both. Measured, this matters: with the accelerometer read as a
+        // *separate* transaction the driver reported 9/0/1 mg on a board that the
+        // PAC example — one burst — measured at 985/81/139 mg (i.e. one g). The
+        // two-transaction version was wrong; a single burst reproduces the
+        // working path exactly.
         let mut raw = [0u8; 12];
         self.bus.read_regs(self.addr, REG_OUT_G, &mut raw)?;
         let word = |lo: u8, hi: u8| i16::from_le_bytes([lo, hi]) as f32;
@@ -105,15 +112,10 @@ impl<B: I2cBus> Lsm6ds3trc<B> {
             (word(raw[2], raw[3]) * GYRO_MDPS_PER_LSB) as i32,
             (word(raw[4], raw[5]) * GYRO_MDPS_PER_LSB) as i32,
         ];
-        // The accelerometer block follows at 0x28, i.e. six bytes after the gyro
-        // block; the pointer has already advanced there, so a second read is not
-        // needed if the caller asked for 18 bytes. Keep it explicit instead:
-        let mut araw = [0u8; 6];
-        self.bus.read_regs(self.addr, REG_OUT_XL, &mut araw)?;
         let accel_mg = [
-            (word(araw[0], araw[1]) * ACCEL_MG_PER_LSB) as i32,
-            (word(araw[2], araw[3]) * ACCEL_MG_PER_LSB) as i32,
-            (word(araw[4], araw[5]) * ACCEL_MG_PER_LSB) as i32,
+            (word(raw[6], raw[7]) * ACCEL_MG_PER_LSB) as i32,
+            (word(raw[8], raw[9]) * ACCEL_MG_PER_LSB) as i32,
+            (word(raw[10], raw[11]) * ACCEL_MG_PER_LSB) as i32,
         ];
         Ok(Motion {
             accel_mg,

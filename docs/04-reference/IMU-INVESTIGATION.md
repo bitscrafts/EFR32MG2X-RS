@@ -1,70 +1,69 @@
-# IMU (LSM6DS3TR-C) — investigation log, 2026-11-11
+# IMU (LSM6DS3TR-C) — resolved, 2026-11-11
 
-**Status: not reachable.** Every measurement below is from the board, with the
-firmware described, not from a datasheet reading. The sensor is fitted (the
-module is a Sense, and the microphone — a Sense-only part — works), but nothing
-we tried makes it answer on any bus we can drive.
+**Status: working at both layers.** `WHO_AM_I` reads 0x6A and the accelerometer
+measures one g, which is the physical check that the part is really sensing.
 
-## What the sources say
+```
+pac_imu     id=6a a=985,81,139mg g=2126,-2528,-288
+hal_imu     id=6a a=970,79,142 g=1408,-2318,-402
+```
 
-| source | claim |
+The two agree within sensor noise (~1.5 %), which is the point of having built
+them as twins: either can be used to judge the other.
+
+## What the documentation got right, and what it did not say
+
+Seeed's page is accurate about the device: `LSM6DS3 myIMU(I2C_MODE, 0x6A)` and
+`pinMode(PD5, OUTPUT); digitalWrite(PD5, HIGH);` before `begin()`. Their library
+also switches the bus with `#define Wire Wire1` for `ARDUINO_XIAO_MG24`.
+
+What no page states is **which pins Wire1 is on, in which order**. The Arduino
+core's variant answers that — and answers it wrong for this board:
+
+```
+variants/xiao_mg24/pins_arduino.h:  PIN_WIRE_SDA1 = D14 = PB3
+                                    PIN_WIRE_SCL1 = D13 = PB2
+measured on the board:             SDA = PB2,  SCL = PB3
+```
+
+The lines are swapped. With them in the variant's order the sensor never sees a
+valid start condition, so every scan of "the right pins" came back empty while
+the addresses, the enable and the pull-ups were all correct.
+
+## How it was found
+
+Not by reading another datasheet, but by measuring:
+
+1. **`pac_pullup_probe`** — every GPIO set to *input, no pull*; any pin that still
+   reads high is pulled up from outside the chip. `PORTB_DIN = 0x0C` identified
+   PB2/PB3 as a real I2C bus (`PORTC_DIN = 0x34` confirmed the known one).
+   The first version of this probe used MODE 0 and produced all zeros, because
+   mode 0 disables the input buffer — a check that passes while measuring nothing.
+2. **`pac_imu_probe`** — eight candidate pin pairs × both SDA/SCL orders × two
+   addresses, with PD5 and PC8 held high. Result:
+   `imu sda=p1.2 scl=p1.3 a=6a id=6a`.
+
+## Two traps that cost time afterwards
+
+- **`format_fixed` takes a value multiplied by 100.** Passing milligrams raw
+  printed `a=9,0,1` for a reading of 975 mg — indistinguishable from a dead
+  accelerometer. `hal_imu_regs` dumps the raw register bytes, which showed
+  `ac=6e 3e …` = 15982 LSB = 975 mg: the sensor was right, the printout was not.
+- **A single 12-byte burst from 0x22** covers gyro (0x22..0x27) and accel
+  (0x28..0x2D). Reading the accelerometer as a second transaction happened to
+  work here but is needless; the driver now mirrors the PAC path exactly.
+
+## Facts worth keeping
+
+| item | value |
 |---|---|
-| `Seeed_Arduino_LSM6DS3/LSM6DS3.cpp`, `#if defined(ARDUINO_XIAO_MG24)` | `#define Wire Wire1`, `#define PIN_LSM6DS3TR_C_POWER PD5` |
-| Silicon Labs Arduino core `variants/xiao_mg24/pins_arduino.h` | `WIRE_HOWMANY 2`; `PIN_WIRE_SDA/SCL = D4/D5 = PC4/PC5`; `PIN_WIRE_SDA1/SCL1 = D14/D13 = PB3/PB2` |
-| LSM6DS3 datasheet | `WHO_AM_I` = 0x69 (LSM6DS3) or 0x6A (LSM6DS3-C/TR-C); address 0x6A with SA0 low, 0x6B with SA0 high |
-| Sense product page | "IMU heating: dedicated heating resistors around the IMU with GPIO-controlled drive" |
+| bus | PB2 = SDA, PB3 = SCL |
+| power enable | PD5 high, ~10 ms before the first access |
+| address | 0x6A (SA0 low); 0x6B would be the other strap |
+| WHO_AM_I (0x0F) | 0x6A |
+| configuration | CTRL3_C = 0x44 (BDU + IF_INC), CTRL1_XL = 0x40, CTRL2_G = 0x40 |
+| scale | 0.061 mg/LSB at ±2 g, 8.75 mdps/LSB at ±250 dps |
+| at rest | one axis ≈ 1000 mg; the gyro carries a small offset (~2 dps here) |
 
-## Measurements
-
-1. **Base bus (PC4/PC5), PD5 high** — `3c 51 76`, no `6a`, no `6b`. Repeated with
-   PC8 high: identical. So the panel, the RTC and the BME68x answer and the IMU
-   does not.
-2. **I2C1 (PB3/PB2)** per the variant file — the scan returns **nothing at all**,
-   and `WHO_AM_I` reads `0xff` (no device).
-3. **Both sensor rails high** (PD5 = IMU per Seeed, PC8 = microphone) — same as
-   above.
-4. **Do PB2/PB3 carry an I2C bus at all?** With every GPIO set to *input, no
-   pull*: `PORTB_DIN = 0x0C`, so PB2 and PB3 read high with no internal pull —
-   there are external pull-ups on those two pins, which is what an I2C bus looks
-   like. The same measurement shows the base bus (`PORTC_DIN = 0x34`, PC4/PC5)
-   and PA1/PA2, PA4..PA7 pulled up as well.
-5. **Enable search**: 22 candidate enable pins driven high in turn (PD5 first,
-   then PA0..PA6, PB0/PB1/PB4/PB5, PC0..PC3/PC6/PC7, PD0..PD4), probing **0x6A
-   and 0x6B** after each — `tried=22 en=p255.255`, nothing answered on either
-   address.
-
-## What this rules out, and what it does not
-
-Ruled out:
-
-- "the IMU is on the base bus and we were scanning the wrong address" — both
-  addresses were probed on that bus via a full 0x08..0x77 scan;
-- "the IMU needs PD5" — PD5 high was in every configuration;
-- "the IMU is on PB2/PB3 but unpowered, and its enable is one of the obvious
-  pins" — 22 pins tried with both addresses;
-- "our bit-bang master is broken" — the same code, same day, reads the panel, the
-  RTC and the BME68x on the other bus, and reports the correct chip ids.
-
-Not ruled out:
-
-- the IMU is on **SPI** (the LSM6DS3 supports it), in which case no I2C scan will
-  ever find it;
-- the IMU sits behind the SAMD11 or another switch on this board revision;
-- the part is fitted but not bonded/functional on this unit;
-- the enable is an active-low signal we have been holding high.
-
-## Next steps that do not require guessing
-
-1. **Look at the board**: the module's silkscreen and the location of the IMU
-   relative to the visible microphone. If the IMU package is not populated, the
-   question is answered.
-2. **Continuity from the IMU pads** (if reachable) to the MG24 pins — that ends
-   the guessing in one measurement.
-3. **Try SPI** on the pins the LSM6DS3 driver would use in `SPI_MODE`
-   (`LSM6DS3.h` defines the CS pin per board); a SPI probe needs no address and
-   `WHO_AM_I` answers directly.
-4. **Try active-low enable**: repeat the 22-pin search driving each pin low.
-
-Until one of those is done, the HAL driver (`sensors::Lsm6ds3trc`) is written and
-compiles, the board wiring is written (`board::SensorPower`, PD5), and both are
-tested as far as they can be without a device that answers.
+The IMU is **not** on the Expansion Base bus, so an I2C scan there shows
+0x3C/0x51/0x76 and no 0x6A by design, not by fault.

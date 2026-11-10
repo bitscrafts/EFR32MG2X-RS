@@ -1,4 +1,4 @@
-//! Bit-banged I2C master on the XIAO I2C pins (PC04 = SDA, PC05 = SCL).
+//! Bit-banged I2C master on the XIAO's two I2C buses.
 //!
 //! This is the working transport on this die. The on-chip I2C0 master does not
 //! complete a read that follows a write — fourteen attempts are recorded in
@@ -24,8 +24,31 @@ use super::{BusError, I2cBus};
 /// Half-bit delay in CPU cycles (~5 us at 19 MHz): sets the bus clock.
 const HALF_BIT_CYCLES: u32 = 60;
 
-const PIN_SDA: u32 = 1 << 4; // PC04
-const PIN_SCL: u32 = 1 << 5; // PC05
+/// Which pair of pins this master drives.
+///
+/// Both buses are bit-banged from the same code; only the pins differ. The
+/// Expansion Base sits on PC04/PC05, the on-board LSM6DS3TR-C on PB2/PB3.
+///
+/// The order is worth stating because it cost a night: the Arduino variant
+/// declares `PIN_WIRE_SDA1 = PB3` / `PIN_WIRE_SCL1 = PB2`, and with the lines in
+/// that order the sensor never answers. Measured on the board, SDA is **PB2**
+/// and SCL is **PB3**.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum Wiring {
+    /// Expansion Base: PC04 = SDA, PC05 = SCL.
+    BaseBus,
+    /// On-board IMU: PB2 = SDA, PB3 = SCL.
+    ImuBus,
+}
+
+impl Wiring {
+    fn pins(self) -> (u32, u32) {
+        match self {
+            Wiring::BaseBus => (1 << 4, 1 << 5),
+            Wiring::ImuBus => (1 << 2, 1 << 3),
+        }
+    }
+}
 
 /// Software I2C master driving PC04/PC05 through PAC GPIO registers.
 ///
@@ -33,16 +56,33 @@ const PIN_SCL: u32 = 1 << 5; // PC05
 /// complete a read after a write.
 pub struct BitBangI2c<'a> {
     gpio: &'a pac::gpio_s::RegisterBlock,
+    wiring: Wiring,
 }
 
 impl<'a> BitBangI2c<'a> {
-    /// Take the two pins and release both lines.
+    /// Take the Expansion Base pins (PC04/PC05) and release both lines.
     pub fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
-        gpio.portc_model()
-            .modify(|_r, w| w.mode4().wiredand().mode5().wiredand());
-        gpio.portc_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() | PIN_SDA | PIN_SCL) });
-        Self { gpio }
+        Self::on(gpio, Wiring::BaseBus)
+    }
+
+    /// Take the given bus, set both pins open drain and release them.
+    pub fn on(gpio: &'a pac::gpio_s::RegisterBlock, wiring: Wiring) -> Self {
+        let (sda, scl) = wiring.pins();
+        match wiring {
+            Wiring::BaseBus => {
+                gpio.portc_model()
+                    .modify(|_r, w| w.mode4().wiredand().mode5().wiredand());
+                gpio.portc_dout()
+                    .modify(|r, w| unsafe { w.bits(r.bits() | sda | scl) });
+            }
+            Wiring::ImuBus => {
+                gpio.portb_model()
+                    .modify(|_r, w| w.mode2().wiredand().mode3().wiredand());
+                gpio.portb_dout()
+                    .modify(|r, w| unsafe { w.bits(r.bits() | sda | scl) });
+            }
+        }
+        Self { gpio, wiring }
     }
 
     fn delay(&self) {
@@ -50,23 +90,39 @@ impl<'a> BitBangI2c<'a> {
     }
 
     fn set(&self, sda_low: bool, scl_low: bool) {
-        let mut bits = self.gpio.portc_dout().read().bits();
+        let (pin_sda, pin_scl) = self.wiring.pins();
+        let mut bits = match self.wiring {
+            Wiring::BaseBus => self.gpio.portc_dout().read().bits(),
+            Wiring::ImuBus => self.gpio.portb_dout().read().bits(),
+        };
         bits = if sda_low {
-            bits & !PIN_SDA
+            bits & !pin_sda
         } else {
-            bits | PIN_SDA
+            bits | pin_sda
         };
         bits = if scl_low {
-            bits & !PIN_SCL
+            bits & !pin_scl
         } else {
-            bits | PIN_SCL
+            bits | pin_scl
         };
-        self.gpio.portc_dout().write(|w| unsafe { w.bits(bits) });
+        match self.wiring {
+            Wiring::BaseBus => {
+                self.gpio.portc_dout().write(|w| unsafe { w.bits(bits) });
+            }
+            Wiring::ImuBus => {
+                self.gpio.portb_dout().write(|w| unsafe { w.bits(bits) });
+            }
+        }
         self.delay();
     }
 
     fn sda_high(&self) -> bool {
-        self.gpio.portc_din().read().bits() & PIN_SDA != 0
+        let (pin_sda, _) = self.wiring.pins();
+        let din = match self.wiring {
+            Wiring::BaseBus => self.gpio.portc_din().read().bits(),
+            Wiring::ImuBus => self.gpio.portb_din().read().bits(),
+        };
+        din & pin_sda != 0
     }
 
     fn start(&self) {

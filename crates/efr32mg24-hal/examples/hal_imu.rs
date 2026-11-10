@@ -8,8 +8,21 @@
 //! - the **protocol** (WHO_AM_I, control registers, 12-byte burst) is the HAL
 //!   driver's job.
 //!
-//! Until PD5 is high the sensor does not answer at all, which is why an I2C scan
-//! of an idle Sense board shows 0x3C/0x51/0x76 and no 0x6A.
+//! Two pieces of board wiring have to be right before the driver can work, and
+//! both were measured rather than assumed:
+//!
+//! - **the bus**: the IMU is on its own pair, PB2 = SDA / PB3 = SCL, not on the
+//!   Expansion Base bus where the panel, RTC and BME68x live;
+//! - **the power gate**: PD5 high, then a few milliseconds before it answers.
+//!
+//! Hence two buses in this example: `board.imu_i2c()` for the sensor and
+//! `board.i2c()` for the panel.
+//!
+//! Note on units: `display::format_fixed` takes a value multiplied by 100, so an
+//! integer milligram count is passed already scaled. Passing it raw prints the
+//! reading divided by 100 — which looks exactly like a dead accelerometer
+//! (975 mg became "9"), and cost a round of debugging that the raw-byte dump in
+//! `hal_imu_regs` settled.
 //!
 //! Verification: the report carries WHO_AM_I, the acceleration and the angular
 //! rate. A board sitting still must read about 1000 mg on the axis pointing at
@@ -48,7 +61,7 @@ fn main() -> ! {
     board.sensors_power().enable();
     cortex_m::asm::delay(4_000_000);
 
-    let bus = RefCell::new(board.i2c());
+    let bus = RefCell::new(board.imu_i2c());
 
     // Report what the bus actually says, instead of collapsing every failure
     // into one number: "no ACK" and "wrong id" are completely different bugs.
@@ -93,21 +106,28 @@ fn main() -> ! {
         cortex_m::asm::delay(500_000);
     }
 
-    let mut oled = Ssd1306::new(SharedBus::new(&bus));
+    // A second bus for the panel: different pins, same transport code. Sharing
+    // one master between the two would mean reconfiguring pins behind the
+    // driver's back.
+    let base_bus = RefCell::new(board.i2c());
+    let mut oled = Ssd1306::new(SharedBus::new(&base_bus));
 
     loop {
         match imu.read() {
             Ok(m) => {
                 let mut msg = [0u8; 64];
                 let mut pos = append(&mut msg, 0, b"imu id=6a a=");
-                pos += format_fixed(&mut msg[pos..], m.accel_mg[0], 0);
+                pos += format_fixed(&mut msg[pos..], m.accel_mg[0] * 100, 0);
                 pos = append(&mut msg, pos, b",");
-                pos += format_fixed(&mut msg[pos..], m.accel_mg[1], 0);
+                pos += format_fixed(&mut msg[pos..], m.accel_mg[1] * 100, 0);
                 pos = append(&mut msg, pos, b",");
-                pos += format_fixed(&mut msg[pos..], m.accel_mg[2], 0);
+                pos += format_fixed(&mut msg[pos..], m.accel_mg[2] * 100, 0);
                 pos = append(&mut msg, pos, b" g=");
-                pos += format_fixed(&mut msg[pos..], m.gyro_mdps[0], 0);
+                pos += format_fixed(&mut msg[pos..], m.gyro_mdps[0] * 100, 0);
                 pos = append(&mut msg, pos, b",");
+                pos += format_fixed(&mut msg[pos..], m.gyro_mdps[1] * 100, 0);
+                pos = append(&mut msg, pos, b",");
+                pos += format_fixed(&mut msg[pos..], m.gyro_mdps[2] * 100, 0);
 
                 // A board at rest reads ~1000 mg on one axis; anything in that
                 // ballpark on at least one axis is evidence the accelerometer
@@ -126,7 +146,7 @@ fn main() -> ! {
                     d.clear();
                     d.text(0, 0, b"IMU ACC MG");
                     let mut line = [0u8; 20];
-                    let n = format_fixed(&mut line, m.accel_mg[2], 0);
+                    let n = format_fixed(&mut line, m.accel_mg[2] * 100, 0);
                     d.text(0, 2, &line[..n]);
                     d.flush();
                 }

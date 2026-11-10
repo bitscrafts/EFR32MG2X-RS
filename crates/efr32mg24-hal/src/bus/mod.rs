@@ -14,7 +14,7 @@
 
 pub mod bitbang;
 
-pub use bitbang::BitBangI2c;
+pub use bitbang::{BitBangI2c, Wiring};
 
 use core::cell::RefCell;
 

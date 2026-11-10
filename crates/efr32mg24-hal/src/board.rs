@@ -12,7 +12,7 @@
 
 use efr32mg24_pac as pac;
 
-use crate::bus::BitBangI2c;
+use crate::bus::{BitBangI2c, Wiring};
 
 /// Everything an application needs from the XIAO MG24 Sense + Expansion Base.
 pub struct Board {
@@ -39,6 +39,17 @@ impl Board {
     /// returns the hardware backend and nothing above it changes.
     pub fn i2c(&self) -> BitBangI2c<'_> {
         BitBangI2c::new(&self.dp.gpio_s)
+    }
+
+    /// The IMU's own bus (PB2 = SDA, PB3 = SCL).
+    ///
+    /// The on-board LSM6DS3TR-C is **not** on the Expansion Base bus: it has its
+    /// own pair, and the lines are the other way round from what the Arduino
+    /// variant declares. Both facts were measured — see
+    /// `docs/04-reference/IMU-INVESTIGATION.md` — and both are why the sensor
+    /// answered nothing until this wiring was found.
+    pub fn imu_i2c(&self) -> BitBangI2c<'_> {
+        BitBangI2c::on(&self.dp.gpio_s, Wiring::ImuBus)
     }
 
     /// Power gate for the on-board sensors (PD5).

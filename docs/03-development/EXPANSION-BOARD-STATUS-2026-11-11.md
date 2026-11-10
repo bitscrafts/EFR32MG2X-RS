@@ -87,7 +87,7 @@ board in one flash.
 | `hal_oled_hello` | PASS — panel bytes ACKed, text composed through the driver |
 | `hal_button` | PASS — "button released at boot, LED follows" |
 | `hal_env_display` | PASS — `T=31.68C P=1015hPa H=68.2%`, matches the PAC twin within sensor noise |
-| `hal_imu` | written, blocked: the sensor is fitted but answers on **no bus we can drive** (see `04-reference/IMU-INVESTIGATION.md`) |
+| `hal_imu` | PASS `id=6a a=970,79,142 g=1408,-2318,-402` — IMU on PB2/PB3, PD5 high |
 
 HAL pieces: `board::Board` (peripherals + clock gates), `board::SensorPower`
 (PD5), `board::Button`, `board::Led`, `bus::I2cBus` + `BitBangI2c` + `SharedBus`,
@@ -157,20 +157,26 @@ Worth recording: **the factory program on the Sense is this very demo** — Seee
 ships it with "The louder you shout, the brighter the light will be". `pac_mic_vu`
 and `hal_mic_vu` reproduce the factory behaviour on hardware.
 
-## IMU: five measurements, no device
+## IMU: resolved — the bus pins were swapped
 
-The Sense module fits an LSM6DS3TR-C and Seeed's driver names `Wire1` (PB3/PB2)
-and `PD5` as its power enable. On this board:
+Seeed's docs name the part (LSM6DS3TR-C, `0x6A`) and its enable (`PD5`) correctly;
+their library also switches to `Wire1` for the MG24. What no page states is which
+pins Wire1 uses **in which order**. The Arduino variant claims SDA1=PB3/SCL1=PB2;
+measured on this board it is **SDA = PB2, SCL = PB3**. With the lines swapped the
+sensor never answers, which is why scans of "the right pins" came back empty.
 
-- base bus (PC4/PC5), PD5 high: `3c 51 76` — panel, RTC and BME68x answer, the
-  IMU does not (nor at 0x6B);
-- I2C1 per the variant file (PB3/PB2): nothing answers at all;
-- every GPIO set to input/no-pull: `PORTB_DIN = 0x0C`, so PB2/PB3 really do carry
-  external pull-ups — it is an I2C bus;
-- 22 candidate enable pins driven high, probing 0x6A and 0x6B after each:
-  `tried=22 en=p255.255`, nothing.
+Found by measurement, not by another datasheet: `pac_pullup_probe` (input/no-pull
+on every GPIO → `PORTB_DIN=0x0C` proves PB2/PB3 carry external pull-ups) and
+`pac_imu_probe` (8 pin pairs × 2 orders × 2 addresses → `sda=p1.2 scl=p1.3 a=6a
+id=6a`).
 
-So it is not our master, not the address, and not an obvious enable pin. The open
-candidates are: the part is on **SPI**, it sits behind another device, it is not
-populated, or its enable is active-low. Full log:
+Working at both layers:
+
+```
+pac_imu   id=6a a=985,81,139mg
+hal_imu   id=6a a=970,79,142 g=1408,-2318,-402
+```
+
+Detail, including the two traps that followed (`format_fixed` takes value×100;
+one 12-byte burst covers both sensors), in
 `docs/04-reference/IMU-INVESTIGATION.md`.
