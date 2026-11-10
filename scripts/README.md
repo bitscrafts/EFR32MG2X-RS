@@ -23,6 +23,8 @@ Status legend:
 | `read-pin-lnx.sh` | verification: pin state over SWD | current |
 | `read-mailbox.sh` | verification: RAM mailbox over SWD | current |
 | `dump-flash-lnx.sh` | backup: flash dump over SWD | current |
+| `repo-tidy-pac-artifacts.sh` | repo hygiene: move artefacts out | current |
+| `repo-tidy-pac-examples.sh` | repo hygiene: retire untested examples | current |
 | `erase_and_flash.sh` | flash | macOS only (legacy) |
 | `flash-app-only.sh` | flash | macOS only |
 | `flash-arduino-only.sh` | flash | macOS only |
@@ -192,6 +194,18 @@ the same probe. This is the read path that survives that wedge.
 
 Chunked flash dump for the original-image backup, with per-chunk retry: a
 single 1.5 MiB `probe-rs read` wedges this CMSIS-DAP, hence the chunking.
+
+### `repo-tidy-pac-artifacts.sh`, `repo-tidy-pac-examples.sh`
+
+Repository hygiene, both dry-run by default and both *moving* files out to
+`/projects/_tmp/efr32mg24-rs/pac-artifacts/` rather than deleting them:
+
+- the first moved 53 loose artefacts out of the PAC crate (31 hex files, three
+  2.5 MiB images, the 21 MiB vendor pack, a 92 MiB Silabs C project, a 22 MiB
+  source backup, nine ad-hoc scripts) plus 40 unused SVD variants — the
+  repository went from 470 MiB to 59 MiB;
+- the second retired 14 blink variants that are not in the verification
+  ladder, leaving six examples that are flashed and measured (or about to be).
 
 ## Repository maintenance
 

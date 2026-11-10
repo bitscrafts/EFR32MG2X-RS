@@ -1,3 +1,13 @@
+# EFR32MG24 Project Handoff
+
+> **Latest session (2026-11-10)**: migration to `/projects/efr32mg24-rs` with a
+> `crates/` layout, guard-railed flashing (`scripts/flash-lnx.sh`, bootloader
+> verified untouched before/after), SWD-based verification without eyes, and the
+> first hardware-timer example (1 Hz measured at 1.02 Hz). The PAC examples were
+> pruned to the six that are actually exercised. Read
+> [docs/03-development/SESSION-2026-11-10.md](docs/03-development/SESSION-2026-11-10.md)
+> first; it lists what is verified, what is broken, and the next steps.
+
 # EFR32MG24 Rust HAL Project Handoff
 
 **Migration Date**: 2026-05-16
