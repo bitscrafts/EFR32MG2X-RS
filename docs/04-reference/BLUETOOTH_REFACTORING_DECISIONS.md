@@ -16,7 +16,7 @@
 
 **Option A: TWO Crates (sys + bluetooth)**
 ```
-efr32mg24-bluetooth-sys/     ← Raw FFI only
+crates/efr32mg24-bluetooth-sys/     ← Raw FFI only
 efr32mg24-bluetooth/         ← Safe wrappers
 ```
 
@@ -32,7 +32,7 @@ efr32mg24-bluetooth/         ← Safe wrappers
 
 **Option B: ONE Crate (sys with modules) ✅ CHOSEN**
 ```
-efr32mg24-bluetooth-sys/
+crates/efr32mg24-bluetooth-sys/
 ├── ffi.rs           ← Raw FFI
 ├── blocking/        ← Safe blocking API
 └── asynch/          ← Safe async API (future)
@@ -134,7 +134,7 @@ src/
 
 **Option A: Put radio in HAL**
 ```
-efr32mg24-hal/src/
+crates/efr32mg24-hal/src/
 ├── gpio/
 ├── spi/
 └── radio/           ← BLE, Zigbee, Thread
@@ -151,8 +151,8 @@ efr32mg24-hal/src/
 
 **Option B: Keep radio separate ✅ CHOSEN**
 ```
-efr32mg24-hal/        ← Peripherals only (GPIO, SPI, etc.)
-efr32mg24-bluetooth-sys/  ← Bluetooth (proprietary blob)
+crates/efr32mg24-hal/        ← Peripherals only (GPIO, SPI, etc.)
+crates/efr32mg24-bluetooth-sys/  ← Bluetooth (proprietary blob)
 efr32mg24-zigbee-sys/     ← Zigbee (proprietary blob)
 efr32mg24-thread-sys/     ← Thread (proprietary blob)
 ```
@@ -187,7 +187,7 @@ efr32mg24-thread-sys/     ← Thread (proprietary blob)
 
 **Option A: Separate async crate**
 ```
-efr32mg24-bluetooth-sys/      ← FFI + blocking
+crates/efr32mg24-bluetooth-sys/      ← FFI + blocking
 efr32mg24-bluetooth-async/    ← Embassy async
 ```
 
@@ -202,7 +202,7 @@ efr32mg24-bluetooth-async/    ← Embassy async
 
 **Option B: Feature flag in same crate ✅ CHOSEN**
 ```
-efr32mg24-bluetooth-sys/
+crates/efr32mg24-bluetooth-sys/
 ├── blocking/        ← Always available
 └── asynch/          ← #[cfg(feature = "embassy")]
 ```
@@ -504,7 +504,7 @@ impl XiaoBle {
 **Chosen Strategy:**
 
 ```rust
-// efr32mg24-bluetooth-sys/src/lib.rs
+// crates/efr32mg24-bluetooth-sys/src/lib.rs
 
 // Raw FFI (for advanced users)
 pub mod ffi {
@@ -571,16 +571,16 @@ unsafe { ffi::sl_bt_system_start_bluetooth(); }
 
 | File | Source | Destination | Lines | Changes |
 |------|--------|-------------|-------|---------|
-| error.rs | xiao-mg24-bsp/src/radio/ble/mod.rs | bluetooth-sys/src/blocking/error.rs | ~50 | Extract BleError enum |
-| types.rs | xiao-mg24-bsp/src/radio/ble/types.rs | bluetooth-sys/src/blocking/types.rs | ~350 | Move CharHandle, GapAdBuilder |
-| events.rs | xiao-mg24-bsp/src/radio/ble/events.rs | bluetooth-sys/src/blocking/events.rs | ~280 | Move BleEvent enum |
-| stack.rs | xiao-mg24-bsp/src/radio/ble/mod.rs | bluetooth-sys/src/blocking/stack.rs | ~700 | XiaoBle → Bluetooth |
+| error.rs | crates/xiao-mg24-bsp/src/radio/ble/mod.rs | bluetooth-sys/src/blocking/error.rs | ~50 | Extract BleError enum |
+| types.rs | crates/xiao-mg24-bsp/src/radio/ble/types.rs | bluetooth-sys/src/blocking/types.rs | ~350 | Move CharHandle, GapAdBuilder |
+| events.rs | crates/xiao-mg24-bsp/src/radio/ble/events.rs | bluetooth-sys/src/blocking/events.rs | ~280 | Move BleEvent enum |
+| stack.rs | crates/xiao-mg24-bsp/src/radio/ble/mod.rs | bluetooth-sys/src/blocking/stack.rs | ~700 | XiaoBle → Bluetooth |
 
 **Total movement:** 1,380 lines from BSP → bluetooth-sys
 
 ### BSP becomes minimal
 
-**xiao-mg24-bsp/src/radio/ble.rs** (NEW - ~50 lines):
+**crates/xiao-mg24-bsp/src/radio/ble.rs** (NEW - ~50 lines):
 ```rust
 pub use efr32mg24_bluetooth_sys::blocking::*;
 

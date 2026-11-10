@@ -120,7 +120,7 @@
 
 ```
 Workspace root/
-├── efr32mg24-bluetooth-sys/        ← LAYER 1: Raw FFI only
+├── crates/efr32mg24-bluetooth-sys/        ← LAYER 1: Raw FFI only
 │   ├── Cargo.toml                  (deps: cty only)
 │   ├── src/lib.rs                  (include bindings)
 │   ├── build.rs                    (bindgen + blob linking)
@@ -138,7 +138,7 @@ Workspace root/
 │   │   └── README.md
 │   └── examples/                   (generic BLE examples)
 │
-└── xiao-mg24-bsp/                  ← LAYER 3: Board wrapper
+└── crates/xiao-mg24-bsp/                  ← LAYER 3: Board wrapper
     ├── Cargo.toml                  (deps: efr32mg24-bluetooth)
     ├── src/
     │   ├── radio/
@@ -468,14 +468,14 @@ heapless = "0.8"
 
 | File | Source | Destination | Lines |
 |------|--------|-------------|-------|
-| error.rs | xiao-mg24-bsp/src/radio/ble/mod.rs | efr32mg24-bluetooth/src/error.rs | ~50 |
-| types.rs | xiao-mg24-bsp/src/radio/ble/types.rs | efr32mg24-bluetooth/src/types.rs | ~350 |
-| events.rs | xiao-mg24-bsp/src/radio/ble/events.rs | efr32mg24-bluetooth/src/events.rs | ~280 |
-| stack.rs | xiao-mg24-bsp/src/radio/ble/mod.rs (XiaoBle → Bluetooth) | efr32mg24-bluetooth/src/stack.rs | ~700 |
+| error.rs | crates/xiao-mg24-bsp/src/radio/ble/mod.rs | efr32mg24-bluetooth/src/error.rs | ~50 |
+| types.rs | crates/xiao-mg24-bsp/src/radio/ble/types.rs | efr32mg24-bluetooth/src/types.rs | ~350 |
+| events.rs | crates/xiao-mg24-bsp/src/radio/ble/events.rs | efr32mg24-bluetooth/src/events.rs | ~280 |
+| stack.rs | crates/xiao-mg24-bsp/src/radio/ble/mod.rs (XiaoBle → Bluetooth) | efr32mg24-bluetooth/src/stack.rs | ~700 |
 
 ### Phase 3: Refactor BSP
 
-**xiao-mg24-bsp/src/radio/ble.rs (new minimal file):**
+**crates/xiao-mg24-bsp/src/radio/ble.rs (new minimal file):**
 ```rust
 //! XIAO MG24 BLE convenience wrapper
 
@@ -528,7 +528,7 @@ let mut ble = XiaoBle::init(&mut delay)?;  // Still works!
 
 **Wrong:**
 ```
-efr32mg24-bluetooth-sys/
+crates/efr32mg24-bluetooth-sys/
 ├── src/
 │   ├── ffi.rs         ← Raw FFI ✓
 │   ├── bluetooth.rs   ← Safe wrappers ✗ WRONG!
@@ -563,7 +563,7 @@ impl XiaoBle {
 
 **Wrong:**
 ```rust
-// In xiao-mg24-bsp/src/radio/ble/types.rs
+// In crates/xiao-mg24-bsp/src/radio/ble/types.rs
 pub struct CharHandle(pub u16);  // ✗ WRONG!
 ```
 
@@ -577,7 +577,7 @@ pub struct CharHandle(pub u16);  // ✗ WRONG!
 
 **Wrong:**
 ```
-efr32mg24-hal/
+crates/efr32mg24-hal/
 └── src/
     ├── gpio/     ← Peripherals ✓
     ├── spi/      ← Peripherals ✓
@@ -660,7 +660,7 @@ efr32mg24-hal/
 ### Structure with Embassy
 
 ```
-efr32mg24-bluetooth-sys/
+crates/efr32mg24-bluetooth-sys/
 ├── src/
 │   ├── ffi.rs              ← Raw FFI (always)
 │   ├── blocking/           ← Blocking API (always)

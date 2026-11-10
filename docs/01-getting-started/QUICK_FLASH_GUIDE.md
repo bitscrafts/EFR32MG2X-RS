@@ -34,7 +34,7 @@ When connected via J-Link, use **commander**.
 ```bash
 cd efr32mg24-pac
 probe-rs run --chip EFR32MG24B220F1536IM48 \
-  efr32mg24-pac/target/thumbv8m.main-none-eabihf/release/examples/blink_xiao
+  crates/efr32mg24-pac/target/thumbv8m.main-none-eabihf/release/examples/blink_xiao
 ```
 
 `probe-rs run` flashes the ELF at its linked addresses (vector table at
@@ -103,7 +103,7 @@ bootloader + a working app with the recovery image:
 
 ```bash
 openocd -s <openocd_scripts> -f interface/cmsis-dap.cfg -f target/efm32s2_g23.cfg \
-  -c "init; reset halt; program efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
+  -c "init; reset halt; program crates/efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
 ```
 
 This writes the full image (bootloader at `0x08000000` + app at `0x08006000`).

@@ -216,7 +216,7 @@ Both levels together?
 Originally, DMA documentation used "Phase 1" and "Phase 2" for module stages, which caused confusion with Project Phases (A, B, C...). On December 27, 2025, all documentation was updated to use "Stage 1/2" for module implementation levels to eliminate ambiguity.
 
 **Files updated**:
-- `efr32mg24-hal/src/dma/README.md`
+- `crates/efr32mg24-hal/src/dma/README.md`
 - `docs/STATUS.md`
 - `docs/BACKLOG.md`
 - `.claude/skills/orchestrator/SKILL.md`

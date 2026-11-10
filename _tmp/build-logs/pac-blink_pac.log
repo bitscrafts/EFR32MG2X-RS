@@ -1,0 +1,28 @@
+   Compiling efr32mg24-pac v0.1.0 (/projects/efr32mg24-rs/crates/efr32mg24-pac)
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
+   --> crates/efr32mg24-pac/examples/blink_pac.rs:64:57
+    |
+ 64 |         dp.gpio_s.porta_model().modify(|_, w| w.bits((w.bits() & !0xF0000000) | 0x40000000));
+    |                                                         ^^^^-- argument #1 of type `u32` is missing
+    |
+note: method defined here
+   --> crates/efr32mg24-pac/src/generic.rs:290:19
+    |
+290 |     pub unsafe fn bits(&mut self, bits: REG::Ux) -> &mut Self {
+    |                   ^^^^
+help: provide the argument
+    |
+ 64 |         dp.gpio_s.porta_model().modify(|_, w| w.bits((w.bits(/* u32 */) & !0xF0000000) | 0x40000000));
+    |                                                              +++++++++
+
+error[E0369]: no implementation for `&mut efr32mg24_pac::generic::raw::W<efr32mg24_pac::gpio_s::porta_model::PortaModelSpec> & {integer}`
+  --> crates/efr32mg24-pac/examples/blink_pac.rs:64:64
+   |
+64 |         dp.gpio_s.porta_model().modify(|_, w| w.bits((w.bits() & !0xF0000000) | 0x40000000));
+   |                                                       -------- ^ ----------- {integer}
+   |                                                       |
+   |                                                       &mut efr32mg24_pac::generic::raw::W<efr32mg24_pac::gpio_s::porta_model::PortaModelSpec>
+
+Some errors have detailed explanations: E0061, E0369.
+For more information about an error, try `rustc --explain E0061`.
+error: could not compile `efr32mg24-pac` (example "blink_pac") due to 2 previous errors

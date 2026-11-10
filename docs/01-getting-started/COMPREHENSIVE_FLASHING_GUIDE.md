@@ -255,7 +255,7 @@ fn flash_elf_safely(elf_path: &str) -> Result<()> {
 
 ### Configuration (Already Set Up)
 
-**File**: `efr32mg24-hal/.cargo/config.toml`
+**File**: `crates/efr32mg24-hal/.cargo/config.toml`
 
 ```toml
 [build]
@@ -1314,7 +1314,7 @@ fn main() -> ! {
 
 **Recovery Firmware Created**:
 
-`efr32mg24-hal/examples/00_recovery.rs` - The SAFEST possible firmware:
+`crates/efr32mg24-hal/examples/00_recovery.rs` - The SAFEST possible firmware:
 
 - Does nothing except preserve debug access
 - Debug is ALWAYS preserved (not just in `#[cfg(debug_assertions)]`)
@@ -1419,7 +1419,7 @@ jobs:
 
       - name: Check all examples have debug preservation
         run: |
-          for example in efr32mg24-hal/examples/*.rs; do
+          for example in crates/efr32mg24-hal/examples/*.rs; do
             # Skip 00_recovery.rs (always preserves debug)
             if [[ "$example" == *"00_recovery.rs" ]]; then
               continue
@@ -1443,7 +1443,7 @@ jobs:
 
       - name: Check no examples disable debug in release
         run: |
-          if grep -r "clken.*clear\|swd.*clear" efr32mg24-hal/examples/; then
+          if grep -r "clken.*clear\|swd.*clear" crates/efr32mg24-hal/examples/; then
             echo "❌ ERROR: Example may disable debug clocks!"
             exit 1
           fi

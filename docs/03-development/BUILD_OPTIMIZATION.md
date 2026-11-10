@@ -172,7 +172,7 @@ cargo check -p efr32mg24-hal
 
 ```bash
 # 1. Create the example file
-touch efr32mg24-hal/examples/14_radio_ble_beacon.rs
+touch crates/efr32mg24-hal/examples/14_radio_ble_beacon.rs
 
 # 2. Write the code
 # ... edit file ...
@@ -187,7 +187,7 @@ cargo build --example 14_radio_ble_beacon --release
 
 ```bash
 # 1. Edit the example
-# ... edit efr32mg24-hal/examples/06_spi.rs ...
+# ... edit crates/efr32mg24-hal/examples/06_spi.rs ...
 
 # 2. Rebuild just that example
 cargo build --example 06_spi
@@ -203,7 +203,7 @@ cargo build --example 06_spi
 
 ```bash
 # You edited a README.md
-vim efr32mg24-hal/src/gpio/README.md
+vim crates/efr32mg24-hal/src/gpio/README.md
 
 # DON'T DO THIS:
 cargo clean -p efr32mg24-hal  # ❌ Unnecessary

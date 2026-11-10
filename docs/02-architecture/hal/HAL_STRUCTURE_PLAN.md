@@ -42,7 +42,7 @@ This document outlines the structure and implementation strategy for the EFR32MG
 ## Crate Structure (Current Implementation)
 
 ```
-efr32mg24-hal/
+crates/efr32mg24-hal/
 ├── Cargo.toml
 ├── README.md
 ├── memory.x                # Linker memory layout (1536 KB Flash, 256 KB RAM)
@@ -620,7 +620,7 @@ pub struct Pin<Input<PullUp>> { /* ... */ }
 default = []
 
 # Runtime support
-rt = ["efr32mg24-pac/rt", "cortex-m-rt/device"]
+rt = ["crates/efr32mg24-pac/rt", "cortex-m-rt/device"]
 
 # Enable async support (requires executor)
 async = ["embassy-executor", "embassy-time"]

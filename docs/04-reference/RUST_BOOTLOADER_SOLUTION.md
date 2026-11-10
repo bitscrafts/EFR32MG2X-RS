@@ -22,7 +22,7 @@ Three-step solution implemented:
 
 ### Step 1: ApplicationProperties_t Structure in Rust
 
-Added to `efr32mg24-pac/examples/blink_pac.rs`:
+Added to `crates/efr32mg24-pac/examples/blink_pac.rs`:
 
 ```rust
 /// Application Properties structure for Gecko Bootloader
@@ -68,7 +68,7 @@ static APP_PROPERTIES: ApplicationProperties = ApplicationProperties {
 
 ### Step 2: Linker Script Modification
 
-Modified `efr32mg24-pac/device.x`:
+Modified `crates/efr32mg24-pac/device.x`:
 
 ```ld
 SECTIONS
@@ -278,9 +278,9 @@ Find way to overlay word 13 without conflicting with cortex-m-rt:
 
 ## Files Created
 
-1. **efr32mg24-pac/examples/blink_pac.rs** - Updated with ApplicationProperties_t
-2. **efr32mg24-pac/device.x** - Linker script for .app_properties section
-3. **efr32mg24-pac/patch_word13.py** - Python script to patch vector table
+1. **crates/efr32mg24-pac/examples/blink_pac.rs** - Updated with ApplicationProperties_t
+2. **crates/efr32mg24-pac/device.x** - Linker script for .app_properties section
+3. **crates/efr32mg24-pac/patch_word13.py** - Python script to patch vector table
 4. **docs/ARDUINO_BOOTLOADER_ANALYSIS.md** - Root cause analysis
 5. **docs/RUST_BOOTLOADER_SOLUTION.md** - This file
 

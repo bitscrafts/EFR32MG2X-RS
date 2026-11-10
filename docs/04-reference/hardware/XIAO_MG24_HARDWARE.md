@@ -27,7 +27,7 @@ This is confirmed by three independent sources:
 
 ### IMPORTANT: BSP pins.rs is WRONG
 
-`xiao-mg24-bsp/src/pins.rs:70` claims the LED is **PB2 (D10)**. That is
+`crates/xiao-mg24-bsp/src/pins.rs:70` claims the LED is **PB2 (D10)**. That is
 **incorrect**. Per the Arduino variant, PB2 is Arduino D13 (SDA1 / DAC2), not
 the LED. The BSP `pins.rs` must be corrected (follow-on task):
 `d10: Pin<'B', 2, ...>` should not be labeled the built-in LED; the LED is
@@ -54,7 +54,7 @@ not boot after a power cycle), restore it with the recovery image:
 ```bash
 # Flash the bootloader + microphone app recovery image (writes 0x08000000+):
 openocd -s <openocd_scripts> -f interface/cmsis-dap.cfg -f target/efm32s2_g23.cfg \
-  -c "init; reset halt; program efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
+  -c "init; reset halt; program crates/efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
 ```
 
 Then flash the app at `0x08006000` (does not touch the bootloader) and
@@ -160,7 +160,7 @@ The B220 variant SVD file has been successfully extracted from the Silicon Labs 
 - **Pack**: SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2
 - **Pack Date**: October 6, 2025
 - **Download URL**: https://www.keil.arm.com/packs/geckoplatform_efr32mg24_dfp-siliconlabs/devices/
-- **SVD File**: `efr32mg24-pac/svd/EFR32MG24B220F1536IM48.svd`
+- **SVD File**: `crates/efr32mg24-pac/svd/EFR32MG24B220F1536IM48.svd`
 
 ### Complete Device Coverage
 
@@ -168,7 +168,7 @@ The pack includes SVD files for **41 EFR32MG24 variants**:
 - **27 A-series** variants (original silicon)
 - **14 B-series** variants (newer silicon revision)
 
-See `efr32mg24-pac/svd/README.md` for complete device list and details.
+See `crates/efr32mg24-pac/svd/README.md` for complete device list and details.
 
 ## Next Steps
 

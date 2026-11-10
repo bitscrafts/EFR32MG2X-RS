@@ -20,8 +20,8 @@ The HAL should remain **device-generic** for all EFR32MG24 variants, while BSPs 
 
 ```
 EFR32MG2X-RS/
-├── efr32mg24-pac/              # Device PAC (B220, A020, etc.)
-├── efr32mg24-hal/              # Generic HAL for all EFR32MG24
+├── crates/efr32mg24-pac/              # Device PAC (B220, A020, etc.)
+├── crates/efr32mg24-hal/              # Generic HAL for all EFR32MG24
 │   ├── src/
 │   │   ├── clock/              # Generic clock management
 │   │   ├── gpio/               # Generic GPIO
@@ -35,7 +35,7 @@ EFR32MG2X-RS/
 │       ├── 04_usart.rs
 │       └── 05_i2c.rs
 │
-├── xiao-mg24-bsp/              # XIAO MG24 Sense BSP
+├── crates/xiao-mg24-bsp/              # XIAO MG24 Sense BSP
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── lib.rs              # Board init, pin definitions
@@ -72,7 +72,7 @@ EFR32MG2X-RS/
 ### Pin Definitions
 
 ```rust
-// xiao-mg24-bsp/src/pins.rs
+// crates/xiao-mg24-bsp/src/pins.rs
 
 use efr32mg24_hal::gpio::{self, Pin};
 use efr32mg24_hal::pac;
@@ -105,7 +105,7 @@ impl Pins {
 ### Board Initialization
 
 ```rust
-// xiao-mg24-bsp/src/lib.rs
+// crates/xiao-mg24-bsp/src/lib.rs
 
 pub struct Board {
     pub pins: Pins,
@@ -138,7 +138,7 @@ impl Board {
 Board-specific examples that use the BSP:
 
 ```rust
-// xiao-mg24-bsp/examples/blinky.rs
+// crates/xiao-mg24-bsp/examples/blinky.rs
 
 use xiao_mg24_bsp::Board;
 
@@ -158,7 +158,7 @@ fn main() -> ! {
 ```
 
 ```rust
-// xiao-mg24-bsp/examples/imu.rs
+// crates/xiao-mg24-bsp/examples/imu.rs
 
 use xiao_mg24_bsp::Board;
 

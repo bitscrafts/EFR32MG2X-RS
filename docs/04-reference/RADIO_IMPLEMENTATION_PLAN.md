@@ -137,7 +137,7 @@ bulb.set_onoff(true)?;
 
 ### HAL Layer (Generic Traits)
 
-**efr32mg24-hal/src/radio/mod.rs**:
+**crates/efr32mg24-hal/src/radio/mod.rs**:
 ```rust
 /// Generic radio peripheral
 pub struct Radio<STATE> {
@@ -156,7 +156,7 @@ impl Radio<Disabled> {
 }
 ```
 
-**efr32mg24-hal/src/radio/ble.rs** (Generic BLE traits):
+**crates/efr32mg24-hal/src/radio/ble.rs** (Generic BLE traits):
 ```rust
 /// Generic BLE GAP advertiser trait
 pub trait BleAdvertiser {
@@ -177,7 +177,7 @@ pub trait BleGattServer {
 }
 ```
 
-**efr32mg24-hal/src/radio/zigbee.rs** (Generic Zigbee traits):
+**crates/efr32mg24-hal/src/radio/zigbee.rs** (Generic Zigbee traits):
 ```rust
 /// Generic Zigbee coordinator trait
 pub trait ZigbeeCoordinator {
@@ -200,7 +200,7 @@ pub trait ZigbeeEndpoint {
 
 ### BSP Layer (Concrete Implementations)
 
-**xiao-mg24-bsp/src/radio/ble.rs**:
+**crates/xiao-mg24-bsp/src/radio/ble.rs**:
 ```rust
 use efr32mg24_hal::radio::{Radio, EnabledBle, BleAdvertiser, BleGattServer};
 use efr32mg24_bluetooth_sys as ffi;
@@ -248,7 +248,7 @@ impl BleGattServer for XiaoBle {
 }
 ```
 
-**xiao-mg24-bsp/src/radio/zigbee.rs**:
+**crates/xiao-mg24-bsp/src/radio/zigbee.rs**:
 ```rust
 use efr32mg24_hal::radio::{Radio, EnabledZigbee, ZigbeeCoordinator};
 use efr32mg24_zigbee_sys as ffi;
@@ -290,7 +290,7 @@ impl ZigbeeCoordinator for XiaoZigbeeCoordinator {
 
 ### User Application
 
-**xiao-mg24-bsp/examples/zigbee_coordinator.rs**:
+**crates/xiao-mg24-bsp/examples/zigbee_coordinator.rs**:
 ```rust
 #![no_std]
 #![no_main]
@@ -320,7 +320,7 @@ fn main() -> ! {
 }
 ```
 
-**xiao-mg24-bsp/examples/ble_beacon.rs**:
+**crates/xiao-mg24-bsp/examples/ble_beacon.rs**:
 ```rust
 use xiao_mg24_bsp::radio::ble::XiaoBle;
 use efr32mg24_hal::radio::BleAdvertiser; // Import trait
@@ -401,11 +401,11 @@ git checkout v4.4.5
 
 # 2. Extract RAIL blobs for EFR32MG24B220
 cp platform/radio/rail_lib/autogen/librail_release/librail_efr32xg24_gcc_release.a \
-   efr32mg24-rail-sys/blobs/efr32mg24b220/
+   crates/efr32mg24-rail-sys/blobs/efr32mg24b220/
 
 # 3. Extract Bluetooth blobs
 cp protocol/bluetooth/lib/EFR32MG24/GCC/libbluetooth.a \
-   efr32mg24-bluetooth-sys/blobs/
+   crates/efr32mg24-bluetooth-sys/blobs/
 
 # 4. Extract Zigbee blobs
 cp protocol/zigbee/stack/release/gcc/libzigbee-stack-cortexm3-gcc-efr32mg24-rail.a \
@@ -476,7 +476,7 @@ Following **nrf-softdevice** and **esp-idf-hal** patterns:
 **build.rs Pattern** (for all -sys crates):
 
 ```rust
-// efr32mg24-rail-sys/build.rs
+// crates/efr32mg24-rail-sys/build.rs
 
 use std::env;
 use std::path::PathBuf;
@@ -524,7 +524,7 @@ fn main() {
 **memory.x modifications** for radio stack requirements:
 
 ```text
-/* efr32mg24-hal/memory.x - Updated for radio support */
+/* crates/efr32mg24-hal/memory.x - Updated for radio support */
 
 MEMORY
 {
@@ -687,7 +687,7 @@ Radio implementation will follow a **staged rollout** across 5 phases, prioritiz
 
 #### Architecture
 
-**Generic HAL Traits** (efr32mg24-hal/src/radio/ble.rs):
+**Generic HAL Traits** (crates/efr32mg24-hal/src/radio/ble.rs):
 ```rust
 /// Generic BLE advertiser trait
 pub trait BleAdvertiser {
@@ -705,7 +705,7 @@ pub trait BleGattServer {
 }
 ```
 
-**Concrete Implementation** (xiao-mg24-bsp/src/radio/ble.rs):
+**Concrete Implementation** (crates/xiao-mg24-bsp/src/radio/ble.rs):
 ```rust
 pub struct XiaoBle {
     radio: Radio<EnabledBle>,
@@ -778,7 +778,7 @@ impl BleGattServer for XiaoBle { /* ... */ }
 
 #### Architecture
 
-**Generic HAL Traits** (efr32mg24-hal/src/radio/zigbee.rs):
+**Generic HAL Traits** (crates/efr32mg24-hal/src/radio/zigbee.rs):
 ```rust
 /// Generic Zigbee coordinator trait
 pub trait ZigbeeCoordinator {
@@ -797,7 +797,7 @@ pub trait ZigbeeEndpoint {
 }
 ```
 
-**Concrete Implementation** (xiao-mg24-bsp/src/radio/zigbee.rs):
+**Concrete Implementation** (crates/xiao-mg24-bsp/src/radio/zigbee.rs):
 ```rust
 pub struct XiaoZigbeeCoordinator {
     radio: Radio<EnabledZigbee>,
@@ -1612,8 +1612,8 @@ jobs:
         uses: actions/cache@v3
         with:
           path: |
-            efr32mg24-rail-sys/blobs
-            efr32mg24-bluetooth-sys/blobs
+            crates/efr32mg24-rail-sys/blobs
+            crates/efr32mg24-bluetooth-sys/blobs
           key: gecko-sdk-4.4.5-blobs
 
       - name: Build RAIL -sys crate
@@ -1647,7 +1647,7 @@ jobs:
 
 Each radio module needs comprehensive README following existing HAL pattern:
 
-**Template** (e.g., `efr32mg24-hal/src/radio/README.md`):
+**Template** (e.g., `crates/efr32mg24-hal/src/radio/README.md`):
 
 ```markdown
 # Radio Module (D1-RAIL)

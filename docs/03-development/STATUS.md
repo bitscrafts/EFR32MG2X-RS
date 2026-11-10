@@ -233,11 +233,11 @@ The EFR32MG24 Rust project has **successfully completed Phase D2** (Bluetooth 5.
 
 **Documentation**:
 - [x] All Phase C module READMEs with comprehensive documentation
-- [x] efr32mg24-hal/src/adc/README.md (308 lines)
-- [x] efr32mg24-hal/src/dma/README.md (300+ lines)
-- [x] efr32mg24-hal/src/emu/README.md (420+ lines)
-- [x] efr32mg24-hal/src/rtc/README.md (580+ lines)
-- [x] efr32mg24-hal/src/wdog/README.md (400+ lines)
+- [x] crates/efr32mg24-hal/src/adc/README.md (308 lines)
+- [x] crates/efr32mg24-hal/src/dma/README.md (300+ lines)
+- [x] crates/efr32mg24-hal/src/emu/README.md (420+ lines)
+- [x] crates/efr32mg24-hal/src/rtc/README.md (580+ lines)
+- [x] crates/efr32mg24-hal/src/wdog/README.md (400+ lines)
 - [x] Documentation backup workflow (.archive folder)
 - [x] Zero build warnings across all modules and examples
 
@@ -473,12 +473,12 @@ EFR32MG24/
 ├── .gitignore                      # Git ignore (includes .archive/)
 ├── .archive/                       # Timestamped documentation backups
 │
-├── efr32mg24-pac/                  # PAC Crate (B220 variant)
+├── crates/efr32mg24-pac/                  # PAC Crate (B220 variant)
 │   ├── Cargo.toml
 │   ├── src/lib.rs                  # Generated PAC (138,448 lines, 133 peripherals)
 │   └── svd/                        # All 41 device SVD files
 │
-├── efr32mg24-hal/                  # HAL Crate (12 production-ready modules)
+├── crates/efr32mg24-hal/                  # HAL Crate (12 production-ready modules)
 │   ├── Cargo.toml
 │   ├── memory.x / device.x / build.rs
 │   ├── src/
@@ -498,13 +498,13 @@ EFR32MG24/
 │   ├── examples/                   # 14 HAL examples (00_recovery - 12_wdog)
 │   └── docs/                       # HAL-specific documentation
 │
-├── efr32mg24-rail-sys/             # RAIL radio FFI bindings (3,974 lines, D1)
-├── efr32mg24-bluetooth-sys/        # Bluetooth 5.3 LE (BGAPI FFI + safe blocking API, D2)
+├── crates/efr32mg24-rail-sys/             # RAIL radio FFI bindings (3,974 lines, D1)
+├── crates/efr32mg24-bluetooth-sys/        # Bluetooth 5.3 LE (BGAPI FFI + safe blocking API, D2)
 │   └── examples/                   # 4 BLE FFI examples
-├── xiao-mg24-bsp/                  # Board Support Package (XIAO MG24 Sense)
+├── crates/xiao-mg24-bsp/                  # Board Support Package (XIAO MG24 Sense)
 │   └── examples/                   # 9 BSP examples (blink + BLE + microphone)
-├── efr32mg24-bootloader/           # Gecko bootloader (workspace-excluded)
-├── bootloader-test-app/            # Bootloader test app (workspace-excluded)
+├── crates/efr32mg24-bootloader/           # Gecko bootloader (workspace-excluded)
+├── crates/bootloader-test-app/            # Bootloader test app (workspace-excluded)
 ├── book/                           # mdBook documentation
 │
 ├── scripts/                        # Build and flashing scripts
@@ -635,7 +635,7 @@ cargo run --example 03_gpio --features rt --release
 2. **docs/03-development/PLAN.md** - Development roadmap
 3. **docs/INDEX.md** - Documentation index
 4. **docs/03-development/BACKLOG.md** - Feature backlog and TODOs
-5. **efr32mg24-hal/docs/STATUS.md** - HAL-specific status
+5. **crates/efr32mg24-hal/docs/STATUS.md** - HAL-specific status
 6. **CLAUDE.md** - Project instructions (includes backup workflow)
 7. **HANDOFF.md** - Comprehensive project handoff
 

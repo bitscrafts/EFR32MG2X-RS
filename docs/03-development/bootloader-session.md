@@ -22,7 +22,7 @@ The bootloader is **enabling flash protection** that prevents OpenOCD from flash
 ## Session Timeline
 
 ### 1. Test Application Development
-**File**: `bootloader-test-app/src/main.rs`
+**File**: `crates/bootloader-test-app/src/main.rs`
 
 Created minimal Rust test application with:
 - PAC-based watchdog disable: `peripherals.wdog0_ns.en().write(|w| w.en().clear_bit())`
@@ -72,7 +72,7 @@ Error: Failed to enable MSC write
 ## Memory Layout
 
 ### Bootloader Configuration
-**From**: `efr32mg24-bootloader/src/main.rs`
+**From**: `crates/efr32mg24-bootloader/src/main.rs`
 ```rust
 const APP_START_ADDR: u32 = 0x08004000;  // Application after 16 KB
 ```
@@ -131,7 +131,7 @@ peripherals.wdog0_ns.en().write(|w| w.en().clear_bit());
 
 ## Technical Files Created
 
-### 1. bootloader-test-app/Cargo.toml
+### 1. crates/bootloader-test-app/Cargo.toml
 ```toml
 [dependencies]
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
@@ -140,7 +140,7 @@ panic-halt = "0.2"
 efr32mg24-pac = { path = "../efr32mg24-pac" }
 ```
 
-### 2. bootloader-test-app/src/main.rs
+### 2. crates/bootloader-test-app/src/main.rs
 - Watchdog disable (PAC-based)
 - GPIO PA7 blink loop
 - 500ms delays

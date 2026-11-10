@@ -9,7 +9,7 @@ This document tracks common CI/CD failures and their solutions to prevent recurr
 ## Issue #1: UTF-8 Encoding Errors
 
 **Date**: December 19, 2025
-**File**: `efr32mg24-hal/examples/07_timer_pwm.rs`
+**File**: `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
 
 ### Problem
 
@@ -61,8 +61,8 @@ for duty in 0..=100u8 {
 
 **Date**: December 19, 2025
 **Files**:
-- `efr32mg24-hal/examples/07_timer_pwm.rs`
-- `efr32mg24-hal/src/adc/mod.rs`
+- `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
+- `crates/efr32mg24-hal/src/adc/mod.rs`
 
 ### Problem
 
@@ -105,8 +105,8 @@ cargo fmt --all -- --check || {
 
 **Date**: December 19, 2025
 **Files**:
-- `efr32mg24-hal/examples/07_timer_pwm.rs`
-- `efr32mg24-hal/examples/08_adc.rs`
+- `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
+- `crates/efr32mg24-hal/examples/08_adc.rs`
 
 ### Problem
 
@@ -154,7 +154,7 @@ use efr32mg24_hal::prelude::*;  // Brings DelayNs trait into scope
 ## Issue #4: Missing Trait Imports
 
 **Date**: December 19, 2025
-**File**: `efr32mg24-hal/examples/07_timer_pwm.rs`
+**File**: `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
 
 ### Problem
 

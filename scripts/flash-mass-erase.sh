@@ -1,8 +1,8 @@
 #!/bin/bash
 # Mass erase chip and flash bootloader + application
 
-OPENOCD="efr32mg24-bootloader/openocd/bin/openocd"
-SCRIPTS="efr32mg24-bootloader/openocd/scripts"
+OPENOCD="crates/efr32mg24-bootloader/openocd/bin/openocd"
+SCRIPTS="crates/efr32mg24-bootloader/openocd/scripts"
 
 $OPENOCD -s $SCRIPTS \
   -f interface/cmsis-dap.cfg \
@@ -10,7 +10,7 @@ $OPENOCD -s $SCRIPTS \
   -c "init" \
   -c "halt" \
   -c "flash erase_address 0x08000000 0x180000" \
-  -c "program efr32mg24-bootloader/bootloader.hex verify" \
-  -c "program bootloader-test-app/test-app.hex verify" \
+  -c "program crates/efr32mg24-bootloader/bootloader.hex verify" \
+  -c "program crates/bootloader-test-app/test-app.hex verify" \
   -c "reset run" \
   -c "exit"

@@ -91,9 +91,9 @@ This project provides a complete Rust ecosystem for Silicon Labs EFR32MG24 wirel
 ```
 EFR32MG24/
 ├── Cargo.toml                      # Workspace manifest
-├── efr32mg24-pac/                  # Peripheral Access Crate
+├── crates/efr32mg24-pac/                  # Peripheral Access Crate
 │   └── src/lib.rs                  # SVD-generated register access
-├── efr32mg24-hal/                  # Hardware Abstraction Layer
+├── crates/efr32mg24-hal/                  # Hardware Abstraction Layer
 │   ├── src/
 │   │   ├── gpio/                   # GPIO driver
 │   │   ├── usart/                  # USART driver
@@ -115,10 +115,10 @@ EFR32MG24/
 │       ├── 07_timer_pwm.rs         # Timer and PWM
 │       ├── 08_adc.rs               # ADC conversion
 │       └── 09_dma.rs               # DMA transfers
-├── efr32mg24-rail-sys/             # RAIL Radio FFI bindings
+├── crates/efr32mg24-rail-sys/             # RAIL Radio FFI bindings
 │   ├── blobs/                      # Silicon Labs RAIL library
 │   └── src/lib.rs                  # 3,974 lines of FFI
-├── efr32mg24-bluetooth-sys/        # Bluetooth LE FFI bindings
+├── crates/efr32mg24-bluetooth-sys/        # Bluetooth LE FFI bindings
 │   ├── blobs/
 │   │   ├── binapploader.a          # Controller blob (9 MB)
 │   │   ├── libbluetooth.a          # Host blob (1.4 MB)
@@ -129,7 +129,7 @@ EFR32MG24/
 │       ├── 02_ble_advertiser.rs    # Connectable peripheral
 │       ├── 03_ble_gatt_heart_rate.rs  # Heart Rate Service
 │       └── 04_ble_custom_service.rs   # Custom UUID service
-├── xiao-mg24-bsp/                  # Board Support Package
+├── crates/xiao-mg24-bsp/                  # Board Support Package
 │   ├── src/
 │   │   ├── lib.rs                  # Board initialization
 │   │   ├── pins.rs                 # Pin definitions
@@ -146,10 +146,10 @@ EFR32MG24/
 │       ├── 04_ble_led_events.rs    # Event-driven LED control
 │       ├── 05_ble_sensor_events.rs # Dynamic sampling via GATT
 │       └── 06_microphone_streaming.rs # 16 kHz audio capture
-├── efr32mg24-bootloader/           # Bootloader (excluded from workspace)
+├── crates/efr32mg24-bootloader/           # Bootloader (excluded from workspace)
 │   ├── src/main.rs                 # 792 bytes bootloader
 │   └── bootloader.hex              # Flashable image
-├── bootloader-test-app/            # Bootloader test application
+├── crates/bootloader-test-app/            # Bootloader test application
 │   ├── src/main.rs                 # Minimal test app
 │   └── test-app.hex                # Test binary
 └── scripts/
@@ -628,7 +628,7 @@ loop {
 
 ## Examples Guide
 
-### HAL Examples (efr32mg24-hal/examples/)
+### HAL Examples (crates/efr32mg24-hal/examples/)
 
 #### 01_clock.rs
 **Purpose**: Clock configuration demonstration
@@ -693,7 +693,7 @@ loop {
 - 8/16/32-bit transfers
 - Type-safe API
 
-### Bluetooth Examples (efr32mg24-bluetooth-sys/examples/)
+### Bluetooth Examples (crates/efr32mg24-bluetooth-sys/examples/)
 
 #### 01_ble_beacon.rs (270 lines)
 **Purpose**: Non-connectable iBeacon advertising
@@ -723,7 +723,7 @@ loop {
 - Custom characteristic
 - Read/write/notify operations
 
-### BSP Examples (xiao-mg24-bsp/examples/)
+### BSP Examples (crates/xiao-mg24-bsp/examples/)
 
 #### 00_blink.rs
 **Purpose**: Basic LED blink
@@ -784,7 +784,7 @@ loop {
 
 ### Overview
 
-**File**: `efr32mg24-bootloader/src/main.rs`
+**File**: `crates/efr32mg24-bootloader/src/main.rs`
 **Size**: 792 bytes
 **Address**: 0x08000000
 **Application Address**: 0x08004000 (16 KB reserved)
@@ -848,7 +848,7 @@ This avoids the flash protection lock triggered when code runs from 0x08000000.
 
 ### Test Applications
 
-**bootloader-test-app/src/main.rs:**
+**crates/bootloader-test-app/src/main.rs:**
 - Minimal Rust application
 - Watchdog disable (PAC-based)
 - GPIO PA7 LED blink (500ms on/off)
@@ -1034,14 +1034,14 @@ cargo doc --all --no-deps --document-private-items --open
 ### Module Documentation
 
 Each crate has comprehensive READMEs:
-- `efr32mg24-pac/README.md`
-- `efr32mg24-hal/README.md`
-- `efr32mg24-hal/src/*/README.md` (per module)
-- `efr32mg24-rail-sys/README.md`
-- `efr32mg24-bluetooth-sys/README.md`
-- `xiao-mg24-bsp/README.md`
-- `xiao-mg24-bsp/src/radio/ble/README.md` (~650 lines)
-- `xiao-mg24-bsp/examples/README.md` (~500 lines)
+- `crates/efr32mg24-pac/README.md`
+- `crates/efr32mg24-hal/README.md`
+- `crates/efr32mg24-hal/src/*/README.md` (per module)
+- `crates/efr32mg24-rail-sys/README.md`
+- `crates/efr32mg24-bluetooth-sys/README.md`
+- `crates/xiao-mg24-bsp/README.md`
+- `crates/xiao-mg24-bsp/src/radio/ble/README.md` (~650 lines)
+- `crates/xiao-mg24-bsp/examples/README.md` (~500 lines)
 
 ### Technical Documentation
 

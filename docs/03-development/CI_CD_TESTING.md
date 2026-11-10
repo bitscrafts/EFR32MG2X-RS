@@ -397,7 +397,7 @@ pub fn my_function() {
 **Symptoms**: PAC build takes 2.6 minutes every time
 
 **Solution**:
-- Check if `efr32mg24-pac/src/**` files changed
+- Check if `crates/efr32mg24-pac/src/**` files changed
 - Cache key includes hash of PAC files
 - Changes invalidate cache (expected behavior)
 - PAC changes are rare after initial setup

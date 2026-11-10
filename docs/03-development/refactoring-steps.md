@@ -8,15 +8,15 @@
 
 ## Summary
 
-Move 1,380 lines of generic BLE code from `xiao-mg24-bsp` to `efr32mg24-bluetooth-sys/src/blocking/`
+Move 1,380 lines of generic BLE code from `xiao-mg24-bsp` to `crates/efr32mg24-bluetooth-sys/src/blocking/`
 
 ---
 
 ## Step 1: Move BleError (142 lines)
 
-**Source:** `xiao-mg24-bsp/src/radio/mod.rs` lines 30-142
+**Source:** `crates/xiao-mg24-bsp/src/radio/mod.rs` lines 30-142
 
-**Create:** `efr32mg24-bluetooth-sys/src/blocking/error.rs`
+**Create:** `crates/efr32mg24-bluetooth-sys/src/blocking/error.rs`
 
 ```bash
 # Extract lines 30-142 from radio/mod.rs and create error.rs
@@ -32,9 +32,9 @@ Move 1,380 lines of generic BLE code from `xiao-mg24-bsp` to `efr32mg24-bluetoot
 
 ## Step 2: Move Types (350 lines)
 
-**Source:** `xiao-mg24-bsp/src/radio/ble/types.rs` (entire file)
+**Source:** `crates/xiao-mg24-bsp/src/radio/ble/types.rs` (entire file)
 
-**Create:** `efr32mg24-bluetooth-sys/src/blocking/types.rs`
+**Create:** `crates/efr32mg24-bluetooth-sys/src/blocking/types.rs`
 
 **Content:**
 - CharHandle struct
@@ -54,9 +54,9 @@ use super::error::BleError;
 
 ## Step 3: Move BleEvent (280 lines)
 
-**Source:** `xiao-mg24-bsp/src/radio/ble/events.rs` (entire file)
+**Source:** `crates/xiao-mg24-bsp/src/radio/ble/events.rs` (entire file)
 
-**Create:** `efr32mg24-bluetooth-sys/src/blocking/events.rs`
+**Create:** `crates/efr32mg24-bluetooth-sys/src/blocking/events.rs`
 
 **Content:**
 - BleEvent enum (7 variants)
@@ -77,9 +77,9 @@ use crate::ffi as bt;
 
 ## Step 4: Move Bluetooth Stack (700 lines)
 
-**Source:** `xiao-mg24-bsp/src/radio/ble/mod.rs` (XiaoBle struct + impl)
+**Source:** `crates/xiao-mg24-bsp/src/radio/ble/mod.rs` (XiaoBle struct + impl)
 
-**Create:** `efr32mg24-bluetooth-sys/src/blocking/stack.rs`
+**Create:** `crates/efr32mg24-bluetooth-sys/src/blocking/stack.rs`
 
 **Changes:**
 1. Rename `XiaoBle` → `Bluetooth`
@@ -118,7 +118,7 @@ impl XiaoBle → impl Bluetooth
 
 ## Step 5: Create blocking/mod.rs
 
-**Create:** `efr32mg24-bluetooth-sys/src/blocking/mod.rs`
+**Create:** `crates/efr32mg24-bluetooth-sys/src/blocking/mod.rs`
 
 ```rust
 //! Blocking Bluetooth API
@@ -140,7 +140,7 @@ pub use types::{CharHandle, GapAdBuilder};
 
 ## Step 6: Update bluetooth-sys/src/lib.rs
 
-**Source:** `efr32mg24-bluetooth-sys/src/lib.rs`
+**Source:** `crates/efr32mg24-bluetooth-sys/src/lib.rs`
 
 **Change from:**
 ```rust
@@ -210,7 +210,7 @@ pub use blocking::*;
 
 ## Step 7: Update bluetooth-sys/Cargo.toml
 
-**Source:** `efr32mg24-bluetooth-sys/Cargo.toml`
+**Source:** `crates/efr32mg24-bluetooth-sys/Cargo.toml`
 
 **Add to [dependencies]:**
 ```toml
@@ -233,7 +233,7 @@ embedded-hal = "1.0"
 
 ## Step 8: Refactor BSP to Minimal Wrapper
 
-**Replace:** `xiao-mg24-bsp/src/radio/ble/mod.rs`
+**Replace:** `crates/xiao-mg24-bsp/src/radio/ble/mod.rs`
 
 **With minimal wrapper (~50 lines):**
 
@@ -302,10 +302,10 @@ impl XiaoBle {
 ```
 
 **Delete these files:**
-- `xiao-mg24-bsp/src/radio/ble/types.rs` (moved to bluetooth-sys)
-- `xiao-mg24-bsp/src/radio/ble/events.rs` (moved to bluetooth-sys)
+- `crates/xiao-mg24-bsp/src/radio/ble/types.rs` (moved to bluetooth-sys)
+- `crates/xiao-mg24-bsp/src/radio/ble/events.rs` (moved to bluetooth-sys)
 
-**Update:** `xiao-mg24-bsp/src/radio/mod.rs`
+**Update:** `crates/xiao-mg24-bsp/src/radio/mod.rs`
 
 Remove BleError definition (lines 30-142), replace with:
 ```rust
@@ -315,7 +315,7 @@ pub use efr32mg24_bluetooth_sys::blocking::BleError;
 
 ---
 
-## Step 9: Update xiao-mg24-bsp/Cargo.toml
+## Step 9: Update crates/xiao-mg24-bsp/Cargo.toml
 
 **Update dependencies:**
 ```toml
@@ -333,13 +333,13 @@ efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys" }
 **Update all 6 BLE examples:**
 
 Files to update:
-- `xiao-mg24-bsp/examples/00_blink.rs` (no changes needed)
-- `xiao-mg24-bsp/examples/01_ble_beacon_safe.rs`
-- `xiao-mg24-bsp/examples/02_ble_led_control.rs`
-- `xiao-mg24-bsp/examples/03_ble_sensor_template.rs`
-- `xiao-mg24-bsp/examples/04_ble_led_events.rs`
-- `xiao-mg24-bsp/examples/05_ble_sensor_events.rs`
-- `xiao-mg24-bsp/examples/06_microphone_streaming.rs` (no changes needed)
+- `crates/xiao-mg24-bsp/examples/00_blink.rs` (no changes needed)
+- `crates/xiao-mg24-bsp/examples/01_ble_beacon_safe.rs`
+- `crates/xiao-mg24-bsp/examples/02_ble_led_control.rs`
+- `crates/xiao-mg24-bsp/examples/03_ble_sensor_template.rs`
+- `crates/xiao-mg24-bsp/examples/04_ble_led_events.rs`
+- `crates/xiao-mg24-bsp/examples/05_ble_sensor_events.rs`
+- `crates/xiao-mg24-bsp/examples/06_microphone_streaming.rs` (no changes needed)
 
 **Change imports from:**
 ```rust
@@ -420,7 +420,7 @@ BSP Changes:
 - Adds XIAO-specific defaults only
 
 Structure:
-efr32mg24-bluetooth-sys/
+crates/efr32mg24-bluetooth-sys/
 ├── src/
 │   ├── ffi.rs              ← Raw FFI (unchanged)
 │   ├── blocking/           ← Safe wrappers (NEW)

@@ -40,7 +40,7 @@ jobs:
         with:
           targets: thumbv8m.main-none-eabihf
       - run: cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
-        working-directory: efr32mg24-hal
+        working-directory: crates/efr32mg24-hal
 
   test:
     name: Run Tests

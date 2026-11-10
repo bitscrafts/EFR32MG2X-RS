@@ -30,7 +30,7 @@ The B220 PAC was generated using svd2rust v0.37.1 with modular output:
 
 Each peripheral has its own module folder:
 ```
-efr32mg24-pac/src/
+crates/efr32mg24-pac/src/
 ├── lib.rs                 # Main crate (1,529 lines)
 ├── build.rs               # Build script
 ├── acmp0_ns/              # ACMP0 non-secure
@@ -255,7 +255,7 @@ If someone has A-series hardware but we only support B220:
 
 ### A020 PAC Preserved
 
-Location: `efr32mg24-pac/src_backup_a020/`
+Location: `crates/efr32mg24-pac/src_backup_a020/`
 
 Contents:
 - `lib.rs` (22 MB, 221,082 lines)

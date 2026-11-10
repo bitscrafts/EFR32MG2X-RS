@@ -1,15 +1,15 @@
 [workspace]
 resolver = "2"
 members = [
-    "efr32mg24-pac",
-    "efr32mg24-hal",
-    "efr32mg24-rail-sys",
-    "efr32mg24-bluetooth-sys",
-    "xiao-mg24-bsp",
+    "crates/efr32mg24-pac",
+    "crates/efr32mg24-hal",
+    "crates/efr32mg24-rail-sys",
+    "crates/efr32mg24-bluetooth-sys",
+    "crates/xiao-mg24-bsp",
 ]
 exclude = [
-    "efr32mg24-bootloader",
-    "bootloader-test-app",
+    "crates/efr32mg24-bootloader",
+    "crates/bootloader-test-app",
 ]
 
 [workspace.package]

@@ -61,10 +61,10 @@ C3-EMU       = Phase C, Stage 3: Energy Management Unit
 ```
 EFR32MG24/
 ├── Cargo.toml                      # Workspace root (5 member crates)
-├── efr32mg24-pac/                  # Peripheral Access Crate (register-level)
+├── crates/efr32mg24-pac/                  # Peripheral Access Crate (register-level)
 │   ├── Cargo.toml
 │   └── src/lib.rs                  # 138,448 lines, 133 peripherals (B220 variant)
-├── efr32mg24-hal/                  # Hardware Abstraction Layer (driver-level)
+├── crates/efr32mg24-hal/                  # Hardware Abstraction Layer (driver-level)
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── lib.rs                  # 12 public peripheral modules
@@ -86,13 +86,13 @@ EFR32MG24/
 │   ├── memory.x                    # Linker memory layout
 │   ├── device.x                    # Interrupt vector table
 │   └── build.rs                    # Build script
-├── efr32mg24-rail-sys/             # RAIL radio FFI bindings (3,974 lines)
-├── efr32mg24-bluetooth-sys/        # Bluetooth 5.3 LE stack (BGAPI FFI + safe blocking API)
+├── crates/efr32mg24-rail-sys/             # RAIL radio FFI bindings (3,974 lines)
+├── crates/efr32mg24-bluetooth-sys/        # Bluetooth 5.3 LE stack (BGAPI FFI + safe blocking API)
 │   └── examples/                   # 4 BLE FFI examples
-├── xiao-mg24-bsp/                  # Board Support Package (XIAO MG24 Sense)
+├── crates/xiao-mg24-bsp/                  # Board Support Package (XIAO MG24 Sense)
 │   └── examples/                   # 9 BSP examples (blink + BLE + microphone streaming)
-├── efr32mg24-bootloader/           # Gecko bootloader integration (workspace-excluded)
-├── bootloader-test-app/            # Bootloader test application (workspace-excluded)
+├── crates/efr32mg24-bootloader/           # Gecko bootloader integration (workspace-excluded)
+├── crates/bootloader-test-app/            # Bootloader test application (workspace-excluded)
 ├── book/                           # mdBook-generated documentation
 ├── docs/                           # Workspace documentation (SSOT-organized)
 │   ├── INDEX.md                    # Complete documentation index

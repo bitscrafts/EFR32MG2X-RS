@@ -47,7 +47,7 @@
 
 - [ ] **D2-BLE.3**: Implement XiaoBle in BSP @priority(high) @phase(D2) @identifier(D2-BLE.3) @started(2026-01-02) @partial(advertiser-complete)
   - **Completed (2026-01-02)**:
-    - ✅ Created xiao-mg24-bsp/src/radio/ module with BleError type
+    - ✅ Created crates/xiao-mg24-bsp/src/radio/ module with BleError type
     - ✅ Implemented XiaoBle struct with advertiser methods (start_advertising, stop_advertising, set_device_name, add_service_uuid)
     - ✅ Created GapAdBuilder for automatic GAP AD encoding (eliminates 30-40 lines per example)
     - ✅ Unit tests: 6 tests for GapAdBuilder (encoding, validation, overflow protection)

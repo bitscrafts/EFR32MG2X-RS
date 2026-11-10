@@ -467,17 +467,17 @@ SiliconLabs/arduino/
 
 ```
 EFR32MG24/
-├── efr32mg24-rail-sys/
+├── crates/efr32mg24-rail-sys/
 │   ├── blobs/
 │   │   └── librail_efr32xg24_gcc_release.a  # Shipped in crate
 │   ├── build.rs              # Link blobs
 │   └── src/lib.rs            # FFI bindings (bindgen)
-├── efr32mg24-bluetooth-sys/
+├── crates/efr32mg24-bluetooth-sys/
 │   ├── blobs/
 │   │   └── libbluetooth_efr32xg24_gcc_release.a
 │   ├── build.rs
 │   └── src/lib.rs
-└── efr32mg24-hal/
+└── crates/efr32mg24-hal/
     └── Cargo.toml
         [features]
         radio-bluetooth = ["efr32mg24-bluetooth-sys"]
@@ -524,7 +524,7 @@ _stack_size = 16K;
 _heap_size = 100K;
 ```
 
-**Rust Equivalent** (`efr32mg24-hal/memory.x`):
+**Rust Equivalent** (`crates/efr32mg24-hal/memory.x`):
 
 ```ld
 /* memory.x for EFR32MG24B220 */
@@ -568,7 +568,7 @@ compiler.c.elf.libs.ble=-lbluetooth_efr32xg24_gcc_release
 **Rust build.rs Equivalent**:
 
 ```rust
-// efr32mg24-rail-sys/build.rs
+// crates/efr32mg24-rail-sys/build.rs
 fn main() {
     // Link RAIL blob
     println!("cargo:rustc-link-lib=static=rail_efr32xg24_gcc_release");
@@ -624,7 +624,7 @@ rail_start_tx(...)?;
 #### 2. **Separate Crates per Protocol**
 
 ```toml
-# efr32mg24-hal/Cargo.toml
+# crates/efr32mg24-hal/Cargo.toml
 [features]
 radio-bluetooth = ["efr32mg24-bluetooth"]  # Optional BLE
 radio-matter = ["efr32mg24-matter"]        # Optional Matter

@@ -73,7 +73,7 @@ echo ""
 
 # Check 6: Build examples
 echo -e "${YELLOW}6️⃣  Building all examples...${NC}"
-if cargo build --manifest-path efr32mg24-hal/Cargo.toml --examples --features rt --target thumbv8m.main-none-eabihf --release --quiet; then
+if cargo build --manifest-path crates/efr32mg24-hal/Cargo.toml --examples --features rt --target thumbv8m.main-none-eabihf --release --quiet; then
     echo -e "${GREEN}✅ All examples built successfully${NC}"
 else
     echo -e "${RED}❌ Example build failed${NC}"

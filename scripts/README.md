@@ -81,13 +81,13 @@ Flashes only test application (assumes bootloader already present).
 
 **What it does:**
 - Erases only sectors 2-2 (application start area)
-- Programs `bootloader-test-app/test-app.hex`
+- Programs `crates/bootloader-test-app/test-app.hex`
 - Verifies and resets
 
 **Dependencies:**
-- Custom OpenOCD build in `efr32mg24-bootloader/openocd/`
+- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
 - Pre-flashed bootloader at 0x08000000
-- `bootloader-test-app/test-app.hex`
+- `crates/bootloader-test-app/test-app.hex`
 
 ### flash-arduino-only.sh
 
@@ -106,8 +106,8 @@ Flashes Arduino blink to test hardware functionality.
 - Useful for verifying hardware is working
 
 **Dependencies:**
-- Custom OpenOCD build in `efr32mg24-bootloader/openocd/`
-- `efr32mg24-pac/arduino_blink.hex`
+- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
+- `crates/efr32mg24-pac/arduino_blink.hex`
 
 **When to use:**
 - Testing new hardware
@@ -132,9 +132,9 @@ Flashes bootloader and Arduino blink application together.
 - Resets device
 
 **Dependencies:**
-- Custom OpenOCD build in `efr32mg24-bootloader/openocd/`
-- `efr32mg24-bootloader/bootloader.hex`
-- `efr32mg24-pac/arduino_blink.hex`
+- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
+- `crates/efr32mg24-bootloader/bootloader.hex`
+- `crates/efr32mg24-pac/arduino_blink.hex`
 
 **When to use:**
 - Initial device setup
@@ -159,9 +159,9 @@ Flashes custom bootloader and test application.
 - Resets and runs
 
 **Dependencies:**
-- Custom OpenOCD build in `efr32mg24-bootloader/openocd/`
-- `efr32mg24-bootloader/bootloader.hex`
-- `bootloader-test-app/test-app.hex`
+- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
+- `crates/efr32mg24-bootloader/bootloader.hex`
+- `crates/bootloader-test-app/test-app.hex`
 
 **When to use:**
 - Bootloader development
@@ -193,9 +193,9 @@ Mass erases entire chip and flashes bootloader + application.
 - Verifies and resets
 
 **Dependencies:**
-- Custom OpenOCD build in `efr32mg24-bootloader/openocd/`
-- `efr32mg24-bootloader/bootloader.hex`
-- `bootloader-test-app/test-app.hex`
+- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
+- `crates/efr32mg24-bootloader/bootloader.hex`
+- `crates/bootloader-test-app/test-app.hex`
 
 **When to use:**
 - Device completely bricked

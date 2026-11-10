@@ -100,7 +100,7 @@ cargo install form
 
 ```
 EFR32MG24/
-├── efr32mg24-pac/
+├── crates/efr32mg24-pac/
 │   ├── Cargo.toml
 │   ├── build.rs
 │   ├── memory.x
@@ -245,7 +245,7 @@ warning[E0133]: call to unsafe function is unsafe and requires unsafe block
 **Use Edition 2021**: The PAC compiles cleanly with edition = "2021" in Cargo.toml.
 
 ```toml
-# efr32mg24-pac/Cargo.toml
+# crates/efr32mg24-pac/Cargo.toml
 [package]
 edition = "2021"  # Not 2024
 
@@ -335,7 +335,7 @@ cargo install svd2rust --locked --force
 
 **Verify structure**:
 ```bash
-efr32mg24-pac/
+crates/efr32mg24-pac/
 ├── svd/
 │   └── EFR32MG24A020F1536GM48.svd  # Must exist
 └── src/

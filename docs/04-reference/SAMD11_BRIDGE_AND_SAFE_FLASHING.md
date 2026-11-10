@@ -204,7 +204,7 @@ Extra Operating Current (mA): 0
 - ✅ Integrated with cargo
 - ✅ Fast and reliable
 
-**Configuration** (`efr32mg24-hal/.cargo/config.toml`):
+**Configuration** (`crates/efr32mg24-hal/.cargo/config.toml`):
 
 ```toml
 [build]
@@ -509,7 +509,7 @@ graph TD
 
 ```bash
 # Step 1: Create minimal recovery firmware
-# File: efr32mg24-hal/examples/00_recovery.rs
+# File: crates/efr32mg24-hal/examples/00_recovery.rs
 # (See code example below)
 
 # Step 2: Flash recovery firmware FIRST
@@ -551,7 +551,7 @@ cargo run --example XX_name --features rt --release
 
 ### Recovery Firmware Template
 
-Create `efr32mg24-hal/examples/00_recovery.rs`:
+Create `crates/efr32mg24-hal/examples/00_recovery.rs`:
 
 ```rust
 //! Minimal Recovery Firmware for XIAO MG24 Sense

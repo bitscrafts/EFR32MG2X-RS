@@ -57,7 +57,7 @@ wget https://www.keil.arm.com/packs/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025
 curl -O https://www.keil.arm.com/packs/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack
 ```
 
-**Downloaded to**: `efr32mg24-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
+**Downloaded to**: `crates/efr32mg24-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
 
 ### Step 3: Verify Pack File
 
@@ -302,7 +302,7 @@ svd2rust -i svd/EFR32MG24B210F1536IM48.svd \
 ### Current Structure
 
 ```
-efr32mg24-pac/
+crates/efr32mg24-pac/
 ├── svd/
 │   ├── README.md                           # SVD inventory documentation
 │   ├── EFR32MG24A010F1024IM40.svd         # A-series variants (27 files)
@@ -330,7 +330,7 @@ efr32mg24-pac/
 3. **Updates**: Compare with future pack versions
 4. **Documentation**: Shows exact source and version
 
-**Location**: `efr32mg24-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
+**Location**: `crates/efr32mg24-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
 
 ### Future Updates
 

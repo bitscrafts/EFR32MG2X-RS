@@ -65,7 +65,7 @@ app cycle continues on every boot, re-locking the debug AP.
 
 ## Root Cause: HAL Clocks::new HFXO Bug
 
-The HAL's `Clocks::new` in `efr32mg24-hal/src/clock/clocks.rs:72-123`
+The HAL's `Clocks::new` in `crates/efr32mg24-hal/src/clock/clocks.rs:72-123`
 has a **fatal bug** in the HFXO configuration path:
 
 ```rust
@@ -174,7 +174,7 @@ If an external debugger can get AP access:
 OPENOCD=/path/to/openocd
 SCRIPTS=/path/to/openocd/scripts
 $OPENOCD -s "$SCRIPTS" -f interface/cmsis-dap.cfg -f target/efm32s2_g23.cfg \
-  -c "init; reset halt; program efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
+  -c "init; reset halt; program crates/efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex verify; reset run; shutdown"
 ```
 
 This writes the full image (bootloader at 0x08000000 + app at 0x08006000).
@@ -192,7 +192,7 @@ to its default state. The Gecko bootloader would need to be reflashed after.
 
 ### Fix 1: HAL Clocks::new HFXO sequence (CRITICAL)
 
-File: `efr32mg24-hal/src/clock/clocks.rs:72-123`
+File: `crates/efr32mg24-hal/src/clock/clocks.rs:72-123`
 
 The HFXO configuration must enable HFXO, wait for stabilization, THEN switch
 SYSCLK. The current code switches first and waits second, which is fatal
@@ -253,12 +253,12 @@ bootloader has started HFXO, or after the Clocks::new bug is fixed.
 
 ## File References
 
-- HAL Clocks::new (the bug): `efr32mg24-hal/src/clock/clocks.rs:72-123`
+- HAL Clocks::new (the bug): `crates/efr32mg24-hal/src/clock/clocks.rs:72-123`
 - HAL 02_blink.rs (the example that bricked the board):
-  `efr32mg24-hal/examples/02_blink.rs`
-- Recovery hex: `efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex`
+  `crates/efr32mg24-hal/examples/02_blink.rs`
+- Recovery hex: `crates/efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex`
 - PAC blink_xiao (verified working, uses HFRCO only):
-  `efr32mg24-pac/examples/blink_xiao.rs`
+  `crates/efr32mg24-pac/examples/blink_xiao.rs`
 - Quick flash guide: `docs/01-getting-started/QUICK_FLASH_GUIDE.md`
 - Hardware details: `docs/04-reference/hardware/XIAO_MG24_HARDWARE.md`
 

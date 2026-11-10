@@ -10,11 +10,11 @@
 ```
 EFR32MG24/
 ├── Cargo.toml                     # Workspace configuration (5 member crates)
-├── efr32mg24-pac/                 # Peripheral Access Crate (B220, 138K lines)
-├── efr32mg24-hal/                 # Hardware Abstraction Layer (12 modules)
-├── efr32mg24-rail-sys/            # RAIL radio FFI bindings
-├── efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
-├── xiao-mg24-bsp/                 # Board Support Package (XIAO MG24 Sense)
+├── crates/efr32mg24-pac/                 # Peripheral Access Crate (B220, 138K lines)
+├── crates/efr32mg24-hal/                 # Hardware Abstraction Layer (12 modules)
+├── crates/efr32mg24-rail-sys/            # RAIL radio FFI bindings
+├── crates/efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
+├── crates/xiao-mg24-bsp/                 # Board Support Package (XIAO MG24 Sense)
 ├── docs/                          # Documentation (SSOT-organized)
 ├── PLAN.md                        # This file
 ├── HANDOFF.md                     # Project handoff
@@ -105,7 +105,7 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
 ```
 
 **Key Deliverables**:
-- B220 PAC source code in efr32mg24-pac/src/lib.rs
+- B220 PAC source code in crates/efr32mg24-pac/src/lib.rs
 - A020 PAC preserved in src_backup_a020/ for reference
 - Complete SVD file collection (41 variants)
 
@@ -377,7 +377,7 @@ pub use emu_ns::EMU_NS;  // Non-secure by default
 
 **Structure**:
 ```
-efr32mg24-hal/
+crates/efr32mg24-hal/
 ├── src/
 │   ├── lib.rs
 │   ├── gpio.rs           # GPIO implementation

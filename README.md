@@ -35,11 +35,11 @@ This project aims to provide first-class Rust support for the Silicon Labs EFR32
 
 ```
 EFR32MG24/
-├── efr32mg24-pac/              # Peripheral Access Crate (register-level)
-├── efr32mg24-hal/              # Hardware Abstraction Layer (driver-level)
-├── efr32mg24-bluetooth-sys/    # Bluetooth 5.3 LE stack (BGAPI FFI bindings)
-├── efr32mg24-rail-sys/         # RAIL radio abstraction (FFI bindings)
-├── xiao-mg24-bsp/              # Board Support Package (XIAO MG24 Sense)
+├── crates/efr32mg24-pac/              # Peripheral Access Crate (register-level)
+├── crates/efr32mg24-hal/              # Hardware Abstraction Layer (driver-level)
+├── crates/efr32mg24-bluetooth-sys/    # Bluetooth 5.3 LE stack (BGAPI FFI bindings)
+├── crates/efr32mg24-rail-sys/         # RAIL radio abstraction (FFI bindings)
+├── crates/xiao-mg24-bsp/              # Board Support Package (XIAO MG24 Sense)
 ├── docs/                       # Documentation, plans, and findings
 ├── CLAUDE.md                   # Project instructions for Claude Code
 └── README.md                   # This file
@@ -102,8 +102,8 @@ gantt
 
 **Examples**: 27 working examples
 - HAL examples: 14 (covering all 12 modules, 00_recovery through 12_wdog)
-- BLE FFI examples: 4 (efr32mg24-bluetooth-sys/examples/)
-- BSP examples: 9 (xiao-mg24-bsp/examples/ - blink, safe BLE wrapper, LED control, sensor notifications, microphone streaming)
+- BLE FFI examples: 4 (crates/efr32mg24-bluetooth-sys/examples/)
+- BSP examples: 9 (crates/xiao-mg24-bsp/examples/ - blink, safe BLE wrapper, LED control, sensor notifications, microphone streaming)
 
 **Build Status**: All examples compile successfully with zero errors
 
@@ -157,7 +157,7 @@ The PAC has been successfully generated from Silicon Labs official SVD files for
 - Initial SVD files from community repo (A020) didn't match hardware (B220)
 - Obtained official DFP pack with all 41 EFR32MG24 variants
 - Selected correct B220 SVD for XIAO MG24 Sense hardware
-- Previous A020 PAC preserved in `efr32mg24-pac/src_backup_a020/` for reference
+- Previous A020 PAC preserved in `crates/efr32mg24-pac/src_backup_a020/` for reference
 
 ### PAC Generation Commands
 
