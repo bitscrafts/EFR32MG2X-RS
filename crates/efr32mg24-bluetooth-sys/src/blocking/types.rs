@@ -97,7 +97,7 @@ impl GapAdBuilder {
         let mut offset = 0;
 
         // Add flags field (required for all advertising)
-        buffer[offset] = 2;      // Length
+        buffer[offset] = 2; // Length
         buffer[offset + 1] = 0x01; // AD Type: Flags
         buffer[offset + 2] = 0x06; // Value: General Discoverable + BR/EDR Not Supported
         offset += 3;
@@ -283,9 +283,9 @@ mod tests {
 
         // Should have flags field: [2, 0x01, 0x06]
         assert_eq!(slice.len(), 3);
-        assert_eq!(slice[0], 2);      // Length
-        assert_eq!(slice[1], 0x01);   // AD Type: Flags
-        assert_eq!(slice[2], 0x06);   // Value: General Discoverable + BR/EDR Not Supported
+        assert_eq!(slice[0], 2); // Length
+        assert_eq!(slice[1], 0x01); // AD Type: Flags
+        assert_eq!(slice[2], 0x06); // Value: General Discoverable + BR/EDR Not Supported
     }
 
     #[test]
@@ -297,8 +297,8 @@ mod tests {
 
         // Should have flags + name: [2, 0x01, 0x06] + [5, 0x09, 'T', 'e', 's', 't']
         assert_eq!(slice.len(), 9); // 3 (flags) + 6 (name)
-        assert_eq!(slice[3], 5);       // Name length (type + 4 chars)
-        assert_eq!(slice[4], 0x09);    // AD Type: Complete Local Name
+        assert_eq!(slice[3], 5); // Name length (type + 4 chars)
+        assert_eq!(slice[4], 0x09); // AD Type: Complete Local Name
         assert_eq!(&slice[5..9], b"Test");
     }
 
@@ -320,10 +320,10 @@ mod tests {
 
         // Should have flags + UUID: [2, 0x01, 0x06] + [3, 0x03, 0x0D, 0x18]
         assert_eq!(slice.len(), 7); // 3 (flags) + 4 (UUID)
-        assert_eq!(slice[3], 3);       // UUID field length
-        assert_eq!(slice[4], 0x03);    // AD Type: 16-bit Service UUIDs
-        assert_eq!(slice[5], 0x0D);    // UUID LSB
-        assert_eq!(slice[6], 0x18);    // UUID MSB
+        assert_eq!(slice[3], 3); // UUID field length
+        assert_eq!(slice[4], 0x03); // AD Type: 16-bit Service UUIDs
+        assert_eq!(slice[5], 0x0D); // UUID LSB
+        assert_eq!(slice[6], 0x18); // UUID MSB
     }
 
     #[test]

@@ -23,7 +23,7 @@ fn main() -> ! {
     // Configure PA7 as push-pull output
     // PA7 is in MODEL register (pins 0-7)
     dp.gpio_s.porta_model().modify(|_, w| unsafe {
-        w.mode7().bits(0x4)  // Mode 4 = push-pull
+        w.mode7().bits(0x4) // Mode 4 = push-pull
     });
 
     // Blink loop
@@ -32,16 +32,16 @@ fn main() -> ! {
         // Toggle PA7 using DOUT register
         if state {
             dp.gpio_s.porta_dout().modify(|r, w| unsafe {
-                w.bits(r.bits() | (1 << 7))  // Set bit 7
+                w.bits(r.bits() | (1 << 7)) // Set bit 7
             });
         } else {
             dp.gpio_s.porta_dout().modify(|r, w| unsafe {
-                w.bits(r.bits() & !(1 << 7))  // Clear bit 7
+                w.bits(r.bits() & !(1 << 7)) // Clear bit 7
             });
         }
         state = !state;
 
         // Delay loop
-        cortex_m::asm::delay(10_000_000);  // Longer delay
+        cortex_m::asm::delay(10_000_000); // Longer delay
     }
 }

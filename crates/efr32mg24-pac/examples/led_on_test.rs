@@ -4,10 +4,10 @@
 #![no_std]
 #![no_main]
 
+use cortex_m as _;
 use cortex_m_rt::entry;
 use efr32mg24_pac as _;
 use panic_halt as _;
-use cortex_m as _;
 
 // Gecko Bootloader Application Properties
 #[repr(C)]
@@ -28,8 +28,7 @@ pub struct ApplicationData {
 }
 
 const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
-    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
-    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
 ];
 
 #[used]
@@ -53,7 +52,7 @@ fn main() -> ! {
         // CMU base: 0x40008000
         // CLKEN0 offset: 0x308
         const CMU_CLKEN0: *mut u32 = 0x40008308 as *mut u32;
-        core::ptr::write_volatile(CMU_CLKEN0, 1 << 2);  // Enable GPIO clock (bit 2)
+        core::ptr::write_volatile(CMU_CLKEN0, 1 << 2); // Enable GPIO clock (bit 2)
 
         // GPIO base: 0x50000000 (Port A registers)
         // PORTA_CTRL offset: 0x000

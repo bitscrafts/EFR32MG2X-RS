@@ -110,7 +110,9 @@ impl fmt::Display for BleError {
             BleError::InvalidParameter => write!(f, "Invalid parameter"),
             BleError::NotConnected => write!(f, "Device is not connected"),
             BleError::InvalidState => write!(f, "Invalid Bluetooth state"),
-            BleError::BufferOverflow => write!(f, "Advertising data buffer overflow (max 31 bytes)"),
+            BleError::BufferOverflow => {
+                write!(f, "Advertising data buffer overflow (max 31 bytes)")
+            }
         }
     }
 }

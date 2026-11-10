@@ -4,10 +4,10 @@
 #![no_std]
 #![no_main]
 
+use cortex_m as _;
 use cortex_m_rt::entry;
 use efr32mg24_pac as _;
 use panic_halt as _;
-use cortex_m as _;
 
 // Gecko Bootloader Application Properties
 #[repr(C)]
@@ -28,8 +28,7 @@ pub struct ApplicationData {
 }
 
 const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
-    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
-    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
 ];
 
 #[used]
@@ -54,7 +53,7 @@ fn main() -> ! {
         const CMU_BASE: u32 = 0x40008000;
 
         // CMU registers
-        const CMU_CLKEN0: *mut u32 = (CMU_BASE + 0x308) as *mut u32;     // Clock enable
+        const CMU_CLKEN0: *mut u32 = (CMU_BASE + 0x308) as *mut u32; // Clock enable
         const CMU_SYSCLKCTRL: *mut u32 = (CMU_BASE + 0x100) as *mut u32; // System clock control
 
         // Step 1: Ensure HFRCO (High Frequency RC Oscillator) is enabled and ready
@@ -65,10 +64,10 @@ fn main() -> ! {
         //   0x1 = HFRCODPLL (default)
         //   0x2 = HFXO
         //   0x3 = CLKIN0
-        core::ptr::write_volatile(CMU_SYSCLKCTRL, 0x1);  // Use HFRCODPLL
+        core::ptr::write_volatile(CMU_SYSCLKCTRL, 0x1); // Use HFRCODPLL
 
         // Step 3: Enable GPIO clock
-        core::ptr::write_volatile(CMU_CLKEN0, 1 << 2);  // Bit 2 = GPIO
+        core::ptr::write_volatile(CMU_CLKEN0, 1 << 2); // Bit 2 = GPIO
 
         // Small delay for clock to stabilize
         for _ in 0..1000 {
@@ -79,8 +78,8 @@ fn main() -> ! {
         const GPIO_BASE: u32 = 0x50000000;
 
         // Port A registers
-        const GPIO_PORTA_MODEL: *mut u32 = (GPIO_BASE + 0x004) as *mut u32;  // Pin 0-7 mode
-        const GPIO_PORTA_DOUT: *mut u32 = (GPIO_BASE + 0x00C) as *mut u32;   // Data out
+        const GPIO_PORTA_MODEL: *mut u32 = (GPIO_BASE + 0x004) as *mut u32; // Pin 0-7 mode
+        const GPIO_PORTA_DOUT: *mut u32 = (GPIO_BASE + 0x00C) as *mut u32; // Data out
 
         // Configure PA7 as push-pull output (mode 4)
         // MODEL register: bits [31:28] = mode for pin 7

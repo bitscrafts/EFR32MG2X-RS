@@ -192,7 +192,11 @@ impl Bluetooth {
     /// ```no_run
     /// ble.start_advertising(100, 0)?; // 100ms interval, 0 dBm
     /// ```
-    pub fn start_advertising(&mut self, interval_ms: u16, tx_power_dbm: i16) -> Result<(), BleError> {
+    pub fn start_advertising(
+        &mut self,
+        interval_ms: u16,
+        tx_power_dbm: i16,
+    ) -> Result<(), BleError> {
         // Set advertising data
         let adv_data_slice = self.adv_data.as_slice();
         unsafe {
@@ -212,10 +216,10 @@ impl Bluetooth {
         unsafe {
             let status = bt::sl_bt_advertiser_set_timing(
                 self.advertising_set,
-                interval_units,  // interval_min
-                interval_units,  // interval_max
-                0,               // duration (0 = continuous)
-                0,               // max_events (0 = unlimited)
+                interval_units, // interval_min
+                interval_units, // interval_max
+                0,              // duration (0 = continuous)
+                0,              // max_events (0 = unlimited)
             );
             if status != 0 {
                 return Err(BleError::from(status));
@@ -268,7 +272,11 @@ impl Bluetooth {
     /// ble.set_device_name("My Peripheral")?;
     /// ble.start_connectable(100, 0)?; // 100ms interval, 0 dBm
     /// ```
-    pub fn start_connectable(&mut self, interval_ms: u16, tx_power_dbm: i16) -> Result<(), BleError> {
+    pub fn start_connectable(
+        &mut self,
+        interval_ms: u16,
+        tx_power_dbm: i16,
+    ) -> Result<(), BleError> {
         // Set advertising data
         let adv_data_slice = self.adv_data.as_slice();
         unsafe {
@@ -288,10 +296,10 @@ impl Bluetooth {
         unsafe {
             let status = bt::sl_bt_advertiser_set_timing(
                 self.advertising_set,
-                interval_units,  // interval_min
-                interval_units,  // interval_max
-                0,               // duration (0 = continuous)
-                0,               // max_events (0 = unlimited)
+                interval_units, // interval_min
+                interval_units, // interval_max
+                0,              // duration (0 = continuous)
+                0,              // max_events (0 = unlimited)
             );
             if status != 0 {
                 return Err(BleError::from(status));

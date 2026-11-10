@@ -28,8 +28,7 @@ pub struct ApplicationData {
 }
 
 const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
-    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
-    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
 ];
 
 #[used]
@@ -61,7 +60,9 @@ fn main() -> ! {
         dp.cmu_s.clken1().write(|w| w.bits(0xFFFFFFFF));
 
         // Configure PA7 as push-pull output (mode 4 = 0b0100)
-        dp.gpio_s.porta_model().modify(|_, w| w.bits((w.bits() & !0xF0000000) | 0x40000000));
+        dp.gpio_s
+            .porta_model()
+            .modify(|_, w| w.bits((w.bits() & !0xF0000000) | 0x40000000));
 
         // Blink loop - toggle by reading and XORing
         loop {

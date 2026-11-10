@@ -214,12 +214,8 @@ impl Microphone {
         let iadc_data_addr = 0x4808_4028; // IADC0.SCANFIFODATA
         let mut ch0 = self.dma.channel0();
 
-        ch0.start_peripheral_to_memory(
-            iadc_data_addr,
-            self.buffer,
-            PeripheralRequest::IadcScan,
-        )
-        .map_err(|_| MicError::DmaError)?;
+        ch0.start_peripheral_to_memory(iadc_data_addr, self.buffer, PeripheralRequest::IadcScan)
+            .map_err(|_| MicError::DmaError)?;
 
         self.sample_rate = sample_rate;
         self.running = true;

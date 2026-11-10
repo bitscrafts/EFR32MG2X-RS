@@ -117,12 +117,20 @@ impl XiaoBle {
     }
 
     /// Start non-connectable advertising (beacon mode)
-    pub fn start_advertising(&mut self, interval_ms: u16, tx_power_dbm: i16) -> Result<(), BleError> {
+    pub fn start_advertising(
+        &mut self,
+        interval_ms: u16,
+        tx_power_dbm: i16,
+    ) -> Result<(), BleError> {
         self.bluetooth.start_advertising(interval_ms, tx_power_dbm)
     }
 
     /// Start connectable advertising (peripheral mode)
-    pub fn start_connectable(&mut self, interval_ms: u16, tx_power_dbm: i16) -> Result<(), BleError> {
+    pub fn start_connectable(
+        &mut self,
+        interval_ms: u16,
+        tx_power_dbm: i16,
+    ) -> Result<(), BleError> {
         self.bluetooth.start_connectable(interval_ms, tx_power_dbm)
     }
 

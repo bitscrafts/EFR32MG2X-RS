@@ -46,8 +46,8 @@
 
 use core::panic::PanicInfo;
 use cortex_m_rt::entry;
-use xiao_mg24_bsp::Board;
 use xiao_mg24_bsp::radio::ble::XiaoBle;
+use xiao_mg24_bsp::Board;
 
 // Panic handler (required for no_std)
 #[panic_handler]
@@ -80,8 +80,7 @@ fn main() -> ! {
     // - Encodes GAP AD format
     // - Configures advertising parameters
     // - Starts non-connectable advertising
-    let _ble = XiaoBle::beacon(&mut delay, "XIAO Beacon")
-        .expect("Failed to create BLE beacon");
+    let _ble = XiaoBle::beacon(&mut delay, "XIAO Beacon").expect("Failed to create BLE beacon");
 
     // Beacon is now broadcasting!
     // The device will appear as "XIAO Beacon" in BLE scanner apps

@@ -276,12 +276,9 @@ impl<const N: u8> Channel<N> {
                     // Configure LDMAXBAR for peripheral request routing
                     // SAFETY: Writing to LDMAXBAR routes peripheral signals to DMA channels.
                     unsafe {
-                        ldmaxbar.ch0_reqsel().write(|w| {
-                            w.sourcesel()
-                                .bits(sourcesel)
-                                .sigsel()
-                                .bits(sigsel)
-                        });
+                        ldmaxbar
+                            .ch0_reqsel()
+                            .write(|w| w.sourcesel().bits(sourcesel).sigsel().bits(sigsel));
                     }
 
                     // Configure descriptor for circular buffer
@@ -321,8 +318,7 @@ impl<const N: u8> Channel<N> {
 
                         // Configure addresses
                         ldma.ch0_src().write(|w| w.bits(peripheral_addr));
-                        ldma.ch0_dst()
-                            .write(|w| w.bits(buffer.as_mut_ptr() as u32));
+                        ldma.ch0_dst().write(|w| w.bits(buffer.as_mut_ptr() as u32));
 
                         // Clear any pending interrupts
                         ldma.if_().write(|w| w.bits(1 << N));

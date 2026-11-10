@@ -55,7 +55,7 @@
 
 use core::panic::PanicInfo;
 use cortex_m_rt::entry;
-use xiao_mg24_bsp::{Board, sensors::Microphone};
+use xiao_mg24_bsp::{sensors::Microphone, Board};
 
 #[panic_handler]
 fn panic(_info: &PanicInfo) -> ! {

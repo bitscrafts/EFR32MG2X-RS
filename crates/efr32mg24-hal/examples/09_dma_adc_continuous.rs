@@ -104,12 +104,8 @@ fn main() -> ! {
     // 2. Configure CH0 for peripheral-to-memory transfer
     // 3. Enable circular buffer mode (LINK descriptor)
     // 4. Wait for IADC scan requests (no CPU intervention)
-    ch0.start_peripheral_to_memory(
-        IADC0_SCANFIFODATA,
-        adc_buffer,
-        PeripheralRequest::IadcScan,
-    )
-    .expect("Failed to start DMA");
+    ch0.start_peripheral_to_memory(IADC0_SCANFIFODATA, adc_buffer, PeripheralRequest::IadcScan)
+        .expect("Failed to start DMA");
 
     // ========================================================================
     // Step 4: Main Loop - DMA Runs Autonomously

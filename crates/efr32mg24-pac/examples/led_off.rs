@@ -28,8 +28,7 @@ pub struct ApplicationData {
 }
 
 const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
-    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
-    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
 ];
 
 #[used]
@@ -70,7 +69,7 @@ fn main() -> ! {
 
         // Turn LED OFF by clearing PA7 (set to 0)
         const GPIO_PORTA_DOUT: *mut u32 = 0x5003C03C as *mut u32;
-        core::ptr::write_volatile(GPIO_PORTA_DOUT, 0);  // Clear all bits including bit 7
+        core::ptr::write_volatile(GPIO_PORTA_DOUT, 0); // Clear all bits including bit 7
 
         // Infinite loop - just keep LED off
         loop {

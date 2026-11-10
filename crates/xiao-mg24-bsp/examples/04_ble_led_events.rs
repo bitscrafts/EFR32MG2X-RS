@@ -120,7 +120,8 @@ fn main() -> ! {
     let mut ble = XiaoBle::init(&mut delay).expect("Failed to initialize BLE");
 
     // Set device name (will appear in scanners)
-    ble.set_device_name("XIAO LED").expect("Failed to set device name");
+    ble.set_device_name("XIAO LED")
+        .expect("Failed to set device name");
 
     // Initialize GATT database with default values
     ble.write_attribute(GATTDB_LED_CONTROL, &[LED_OFF])
@@ -198,8 +199,7 @@ fn main() -> ! {
                         }
 
                         // Update LED state characteristic to reflect current state
-                        ble.write_attribute(GATTDB_LED_STATE, &[led_state])
-                            .ok();
+                        ble.write_attribute(GATTDB_LED_STATE, &[led_state]).ok();
                     }
                 }
 

@@ -97,47 +97,46 @@ use panic_halt as _;
 // Arduino has 8-byte header BEFORE magic, Word 13 points to magic (not header)
 #[repr(C)]
 pub struct ApplicationProperties {
-    header: [u8; 8],                // 8-byte header (02 01 02 02 02 03 02 04 from Arduino)
-    magic: [u8; 16],                // Magic signature (Word 13 points HERE, not to header)
-    struct_version: u32,             // Version of this struct
-    signature_type: u32,             // Type of signature (0 = none)
-    signature_location: u32,         // Pointer to signature (0xFFFFFFFF = none)
-    app_info: ApplicationData,       // Application metadata
-    cert: u32,                       // Pointer to certificate (NULL = 0)
+    header: [u8; 8],           // 8-byte header (02 01 02 02 02 03 02 04 from Arduino)
+    magic: [u8; 16],           // Magic signature (Word 13 points HERE, not to header)
+    struct_version: u32,       // Version of this struct
+    signature_type: u32,       // Type of signature (0 = none)
+    signature_location: u32,   // Pointer to signature (0xFFFFFFFF = none)
+    app_info: ApplicationData, // Application metadata
+    cert: u32,                 // Pointer to certificate (NULL = 0)
     long_token_section_address: u32, // Pointer to long token section (NULL = 0)
-    decrypt_key: [u8; 16],          // Decryption key (zeros if not encrypted)
+    decrypt_key: [u8; 16],     // Decryption key (zeros if not encrypted)
 }
 
 #[repr(C)]
 pub struct ApplicationData {
-    app_type: u32,           // Arduino uses 0x22 (34)
+    app_type: u32, // Arduino uses 0x22 (34)
     version: u32,
     capabilities: u32,
     product_id: [u8; 16],
 }
 
 const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
-    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
-    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
 ];
 
 #[used]
 #[link_section = ".app_properties"]
 static APP_PROPERTIES: ApplicationProperties = ApplicationProperties {
-    header: [0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x02, 0x04],  // Match Arduino exactly
+    header: [0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x02, 0x04], // Match Arduino exactly
     magic: APPLICATION_PROPERTIES_MAGIC,
-    struct_version: 0x0201,        // Version 2.1
+    struct_version: 0x0201,         // Version 2.1
     signature_type: 0,              // No signature
     signature_location: 0xFFFFFFFF, // No signature
     app_info: ApplicationData {
-        app_type: 0x22,             // Match Arduino (34 decimal) - CRITICAL!
-        version: 0x00000001,        // Match Arduino byte order (v0.0.1)
+        app_type: 0x22,      // Match Arduino (34 decimal) - CRITICAL!
+        version: 0x00000001, // Match Arduino byte order (v0.0.1)
         capabilities: 0,
         product_id: [0u8; 16],
     },
-    cert: 0,                        // NULL pointer - no certificate
-    long_token_section_address: 0,  // NULL pointer - no long token section
-    decrypt_key: [0u8; 16],         // All zeros - no encryption
+    cert: 0,                       // NULL pointer - no certificate
+    long_token_section_address: 0, // NULL pointer - no long token section
+    decrypt_key: [0u8; 16],        // All zeros - no encryption
 };
 
 /// Delay loop: roughly ~1 Hz toggle at the default FSRCO (~19 MHz) or the

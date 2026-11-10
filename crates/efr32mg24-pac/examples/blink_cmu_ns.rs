@@ -28,8 +28,7 @@ pub struct ApplicationData {
 }
 
 const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
-    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7,
-    0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
 ];
 
 #[used]
@@ -59,8 +58,8 @@ fn main() -> ! {
         const CMU_CLKEN1: *mut u32 = 0x4000830C as *mut u32;
 
         // Enable GPIO clock via non-secure CMU
-        core::ptr::write_volatile(CMU_CLKEN0, 1 << 2);  // GPIO bit
-        core::ptr::write_volatile(CMU_CLKEN1, 0xFFFF);  // All CLKEN1
+        core::ptr::write_volatile(CMU_CLKEN0, 1 << 2); // GPIO bit
+        core::ptr::write_volatile(CMU_CLKEN1, 0xFFFF); // All CLKEN1
 
         // Also try secure version just in case
         const CMU_S_CLKEN0: *mut u32 = 0x50008308 as *mut u32;

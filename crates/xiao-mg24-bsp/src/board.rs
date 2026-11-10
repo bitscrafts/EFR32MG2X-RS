@@ -89,9 +89,7 @@ impl Board {
             pins,
             clocks: frozen_clocks,
             core: cp,
-            peripherals: BoardPeripherals {
-                ldma_s: dp.ldma_s,
-            },
+            peripherals: BoardPeripherals { ldma_s: dp.ldma_s },
         }
     }
 
@@ -128,9 +126,7 @@ impl Board {
             pins,
             clocks: frozen_clocks,
             core: cp,
-            peripherals: BoardPeripherals {
-                ldma_s: dp.ldma_s,
-            },
+            peripherals: BoardPeripherals { ldma_s: dp.ldma_s },
         })
     }
 

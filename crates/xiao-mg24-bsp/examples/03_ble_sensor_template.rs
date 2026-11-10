@@ -244,10 +244,8 @@ fn main() -> ! {
         // ====================================================================
 
         // Write new sensor values to GATT characteristics
-        ble.write_attribute(GATTDB_ACCEL_DATA, &accel_data)
-            .ok();
-        ble.write_attribute(GATTDB_GYRO_DATA, &gyro_data)
-            .ok();
+        ble.write_attribute(GATTDB_ACCEL_DATA, &accel_data).ok();
+        ble.write_attribute(GATTDB_GYRO_DATA, &gyro_data).ok();
 
         // ====================================================================
         // Send BLE Notifications

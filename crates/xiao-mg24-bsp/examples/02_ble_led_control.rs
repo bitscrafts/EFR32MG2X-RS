@@ -162,12 +162,10 @@ fn main() -> ! {
 
         if led_on {
             led.set_high().ok();
-            ble.write_attribute(GATTDB_LED_STATE, &[LED_ON])
-                .ok();
+            ble.write_attribute(GATTDB_LED_STATE, &[LED_ON]).ok();
         } else {
             led.set_low().ok();
-            ble.write_attribute(GATTDB_LED_STATE, &[LED_OFF])
-                .ok();
+            ble.write_attribute(GATTDB_LED_STATE, &[LED_OFF]).ok();
         }
 
         // Note: In production, the LED would be controlled by actual GATT
