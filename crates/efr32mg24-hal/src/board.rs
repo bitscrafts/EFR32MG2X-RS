@@ -68,6 +68,14 @@ impl Board {
         Button::new(&self.dp.gpio_s)
     }
 
+    /// The piezo buzzer on PC03, driven by TIMER0 CC0.
+    ///
+    /// `None` if the timer never reports a running counter — a missing clock, not a
+    /// missing buzzer.
+    pub fn buzzer(&self) -> Option<crate::buzzer::Buzzer<'_>> {
+        crate::buzzer::Buzzer::new(&self.dp)
+    }
+
     /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.
     ///
     /// HFRCOEM23 rather than FSRCO: measured, with IADCCLK from FSRCO the

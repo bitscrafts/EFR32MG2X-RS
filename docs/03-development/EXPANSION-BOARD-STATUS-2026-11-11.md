@@ -253,3 +253,31 @@ digit; a bus glitch must not become a time).
 HAL parity for the base board is now complete: panel, BME68x, RTC, button, buzzer,
 microphone, IMU. What is left of the ladder is the BSP facade and the peripherals
 behind it (microSD, Grove UART/ADC, servo), then the radio.
+
+## Buzzer in the HAL, and two calibration traps
+
+`crates/efr32mg24-hal/src/buzzer.rs` drives the base's piezo on PC03 through TIMER0
+CC0, reachable as `board.buzzer()`. Silence is `CC0_CTRL.CMOA = none` with the counter
+still running — stopping the timer stops `CNT`, which breaks any wait that uses it.
+
+Two mistakes, both caught by the report rather than by ear:
+
+1. **`CNT` wraps.** With `TOP = 0xFFFF` the counter rolls over every 3.4 ms at 19 MHz,
+   so a 10 ms calibration window measures the remainder, not the count. The driver now
+   halves the window until it sees no wrap.
+2. **`asm::delay(n)` is not `n` cycles.** Counting delay *iterations* against timer
+   ticks inflated the rate by exactly 3.0 (19 MHz became 57 MHz). The calibration now
+   counts **CPU cycles** with DWT, which is what the vendor's own MVP driver does.
+
+Measured on the board:
+
+```
+buzzer tick=19000000Hz (sysclk=19000000) top=3518 tone=2700Hz
+```
+
+`TOP = 3518 = 19 MHz / (2 × 2700)`, and the tone is exact by construction. The one
+remaining assumption is SYSCLK itself — 19 MHz is what this board produced when the
+1 Hz blink was calibrated against a stopwatch — and the driver says so in the report
+and allows `set_sysclk_hz` to override it. A tone measured against an assumed clock is
+not the same claim as a tone measured with an instrument, and the output does not
+pretend otherwise.
