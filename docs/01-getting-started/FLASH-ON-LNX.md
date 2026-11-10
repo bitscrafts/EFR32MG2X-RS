@@ -120,6 +120,42 @@ the 2026-06-29 note in `blink_xiao.rs` (LED on PA7 blinking after a
 `probe-rs run`), and the bricking incident that followed it came from the HAL
 clock path, not from the PAC path.
 
+### 2026-11-10: the blink was verified without eyes
+
+`scripts/read-pin-lnx.sh 0x5003C040 7 8` samples PORTA_DOUT bit 7 over SWD,
+halting and resuming the core between samples. Result:
+
+```
+sample 1: dout=0x00000000 bit7=0
+sample 2: dout=0x00000000 bit7=0
+sample 3: dout=0x00000080 bit7=1
+sample 4: dout=0x00000080 bit7=1
+sample 5: dout=0x00000000 bit7=0
+sample 6: dout=0x00000080 bit7=1
+sample 7: dout=0x00000080 bit7=1
+sample 8: dout=0x00000000 bit7=0
+VERDICT: bit 7 toggles -> firmware is executing the toggle loop
+```
+
+Supporting reads from the same session: `0x08006000` holds
+`20001208 08006159 0800623d 0800624f` (the app vector table: SP 0x20001208,
+reset 0x08006158), and two halts taken ~300 ms apart report `pc=0x0800060c`
+(inside the bootloader) then `pc=0x08006212` (inside the app's `.text`). The
+image on the board is `blink_xiao`, PAC only, no HAL.
+
+Reads use OpenOCD (`scripts/openocd-mg24-mini.cfg`), not probe-rs: probe-rs
+0.32 wedged its own CMSIS-DAP session at 03:05 during an attempt to read the
+whole 1.5 MiB flash in one transfer, and afterwards every probe-rs command
+fails with `Command ID in response (0x14) does not match sent command ID`
+while OpenOCD talks to the same probe normally. A USB port reset
+(`usbreset`), an `authorized` toggle and an unbind/bind did not clear it; a
+physical replug will. Nothing was written to the board by any of this.
+
+**Also not verified**: the LED itself, only the pin. PA7 being the user LED
+comes from the Silicon Labs Arduino core (`variants/xiao_mg24/pins_arduino.h`:
+`LED_BUILTIN 20`, `LED_BUILTIN_ACTIVE LOW`) and is consistent with the
+project's 2026-06-29 hardware note.
+
 No image may be flashed while the open question below is open.
 
 ---

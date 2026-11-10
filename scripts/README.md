@@ -19,6 +19,10 @@ Status legend:
 | `elf-sections.py` | safety / inspection | current |
 | `inventory-pac-examples.py` | safety / inspection | current |
 | `build-crates.sh` | build matrix (workspace) | current |
+| `openocd-mg24-mini.cfg` | SWD read path (no flash driver) | current |
+| `read-pin-lnx.sh` | verification: pin state over SWD | current |
+| `read-mailbox.sh` | verification: RAM mailbox over SWD | current |
+| `dump-flash-lnx.sh` | backup: flash dump over SWD | current |
 | `erase_and_flash.sh` | flash | macOS only (legacy) |
 | `flash-app-only.sh` | flash | macOS only |
 | `flash-arduino-only.sh` | flash | macOS only |
@@ -161,6 +165,33 @@ the clock keywords, and in `blink_xiao` the match is the comment block that
 documents the incident, not a register write.
 
 ---
+
+### `read-pin-lnx.sh [reg] [bit] [samples]`
+
+Samples a GPIO port DOUT register over SWD (`halt`, `mdw`, `resume` per
+sample) and reports one bit per sample plus a verdict. This is how "the LED
+blinks" became data on 2026-11-10: eight samples of `0x5003C040` bit 7 gave
+`0 0 1 1 0 1 1 0`, i.e. PA7 toggles, i.e. the PAC-only image is executing its
+loop. Read-only: nothing is written to the target.
+
+### `read-mailbox.sh`
+
+Reads the 216-byte diagnostic record at `0x2003_F000` written by examples that
+include `crates/efr32mg24-pac/examples/common/mailbox.rs`, and prints the
+sequence number, status and message. Read-only.
+
+### `openocd-mg24-mini.cfg`
+
+Minimal OpenOCD target (Cortex-M33 via `swj_newdap` + `dap create`) with **no
+flash driver**, so it can read memory but cannot program the part. Exists
+because probe-rs 0.32 can wedge its own CMSIS-DAP session (`Command ID in
+response (0x14) does not match sent command ID`) while OpenOCD still talks to
+the same probe. This is the read path that survives that wedge.
+
+### `dump-flash-lnx.sh <out.bin> [chunk] [base] [size]`
+
+Chunked flash dump for the original-image backup, with per-chunk retry: a
+single 1.5 MiB `probe-rs read` wedges this CMSIS-DAP, hence the chunking.
 
 ## Repository maintenance
 
