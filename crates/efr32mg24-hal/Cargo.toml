@@ -33,3 +33,9 @@ cortex-m-rt = { workspace = true, default-features = false }
 panic-halt = "0.2"
 
 [build-dependencies]
+
+# The fall detector is written as a project (main + app + ui + recorded), not a
+# single file, because the whole application lives there.
+[[example]]
+name = "fall-detector"
+path = "examples/fall_detector/main.rs"
