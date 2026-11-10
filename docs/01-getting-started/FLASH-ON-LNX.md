@@ -160,6 +160,54 @@ No image may be flashed while the open question below is open.
 
 ---
 
+## 2026-11-10: the guarded flash path, exercised end to end
+
+The first image written under this procedure was `pac_blink_double` (two short
+pulses, then a pause). Every step below is a measurement.
+
+```
+guards        load_min=0x08006000 load_max=0x08006517 size=1304, 3 segments
+probe         exactly 1 CMSIS-DAP on lnx
+write         probe-rs download   Finished in 0.49s
+read-back     probe-rs verify     Verification successful
+```
+
+Bootloader region, read over SWD before and after the write:
+
+```
+before  0x08000000: 20001008 08000171 0800265d 08002201
+after   0x08000000: 20001008 08000171 0800265d 08002201   (identical)
+```
+
+That is the proof the procedure protects the bootloader: the same four words,
+before and after, read from the chip rather than asserted by the tool.
+
+The application actually runs:
+
+```
+0x08006000: 20001208 08006159 080063ed 080064c3    (vector table of the new image)
+pc = 0x08006340                                    (inside its .text)
+PORTA_MODEL mode7 = 4 (push-pull), DOUT bit7 toggles, DIN follows in 6/6 samples
+```
+
+And the LED was **seen blinking by the operator**, in the requested shape
+(two quick blinks, then a pause). That is the one piece of evidence SWD cannot
+produce, and it now agrees with the register-level evidence.
+
+### What the measurement says about the clock (and why the next step is a timer)
+
+`measure-blink-rate.sh 8` counted 56 toggles in 9.10 s → 6.16 toggles/s. With
+`pulses=2, pulse_iters=500_000, gap_iters=2_000_000` a group is 4 toggles and
+4 M iterations, so a group lasts ~0.65 s, i.e. ~160 ms per pulse phase and
+~640 ms of pause. That implies roughly 19 MHz of SYSCLK — FSRCO, exactly what
+the core runs on when `probe-rs reset` starts the image directly instead of
+letting the bootloader set the clock tree.
+
+Consequence: **a NOP-loop blink is not portable**. Flash the same image after a
+power cycle (bootloader path, HFXO/HFRCODPLL) and it runs ~2–4× faster. Timing
+that must be true regardless of how the board started has to come from a
+peripheral timer, not from a loop count — which is the next example.
+
 ## Open question before the next flash
 
 `Clocks::new` no longer switches SYSCLK to HFXO — the sequence that bricked the

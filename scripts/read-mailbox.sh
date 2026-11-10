@@ -4,43 +4,68 @@
 # READ ONLY. Nothing is written to the target; the core is halted only for the
 # duration of the read.
 #
+# Uses OpenOCD rather than probe-rs: probe-rs 0.32 can wedge its own CMSIS-DAP
+# session (see docs/01-getting-started/FLASH-ON-LNX.md), while OpenOCD keeps
+# working against the same probe.
+#
+# TORN RECORDS: the halt can land in the middle of a write. Images built after
+# 2026-11-10 clear the magic word first and publish it last, so a torn record
+# reads as magic=0 and this script simply retries. Older images (including the
+# one on the board before the next flash) can return a record whose `seq` and
+# message disagree -- that is the tearing, not a firmware bug.
+#
 # Usage: scripts/read-mailbox.sh [host] [user]
 set -uo pipefail
 
 HOST="${1:-10.10.10.217}"
 USER_NAME="${2:-mvcorrea}"
 ADDR=0x2003F000
-LEN=216
-CHIP=EFR32MG24B220F1536IM48
+WORDS=20          # 80 bytes: 16 of header + 64 of message (enough for the longest record)
+CFG=/tmp/openocd-mg24-mini.cfg
+ATTEMPTS=5
 
-OUT="$(ssh -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \
-  "sudo -n probe-rs read b8 ${ADDR} ${LEN}" 2>&1)"
+read_words() {
+  local out
+  out="$(ssh -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \
+    "sudo -n openocd -f interface/cmsis-dap.cfg -f ${CFG} \
+       -c 'init; halt' -c 'mdw ${ADDR} ${WORDS}' -c 'resume; shutdown'" 2>&1)"
+  # OpenOCD prints 8 words per line; take every line of the dump, in order.
+  printf '%s\n' "${out}" | sed -n 's/^0x2003f[0-9a-f][0-9a-f][0-9a-f]: \(.*\)/\1/p' | tr '\n' ' ' | sed 's/[[:space:]]*$//' 
+}
 
-if ! printf '%s' "${OUT}" | grep -q -E '([0-9a-f]{2} ){4}'; then
-  echo "read failed:" >&2
-  printf '%s\n' "${OUT}" | tail -5 >&2
-  exit 2
-fi
+for attempt in $(seq 1 "${ATTEMPTS}"); do
+  WORDS_TEXT="$(read_words)"
+  if [ -z "${WORDS_TEXT}" ]; then
+    echo "attempt ${attempt}: read failed" >&2
+    sleep 0.3
+    continue
+  fi
 
-MAILBOX_TEXT="${OUT}" python3 -c '
-import os, re, struct, sys
+  parsed="$(WORDS_TEXT="${WORDS_TEXT}" python3 -c '
+import os, struct, sys
 
-text = os.environ["MAILBOX_TEXT"]
-tokens = re.findall(r"(?<![0-9a-fA-F])[0-9a-fA-F]{2}(?![0-9a-fA-F])", text)
-data = bytes(int(t, 16) for t in tokens)
-if len(data) < 16:
-    print(f"short read: {len(data)} bytes")
-    sys.exit(3)
-
+words = [int(w, 16) for w in os.environ["WORDS_TEXT"].split()]
+data = b"".join(struct.pack("<I", w) for w in words)
 magic, seq, status, length = struct.unpack_from("<IIII", data, 0)
 if magic != 0x4D424F58:
-    print(f"no mailbox record (magic=0x{magic:08X}, expected 0x4D424F58)")
-    print("the image on the board probably does not use the mailbox")
-    sys.exit(4)
-
+    # 0 = a write is in progress; anything else = no mailbox at all.
+    sys.exit(5 if magic == 0 else 4)
 length = min(length, len(data) - 16, 200)
-msg = data[16:16 + length]
 names = {0: "info", 1: "PASS", 2: "FAIL"}
 print(f"seq={seq} status={names.get(status, status)} len={length}")
-print(msg.decode("utf-8", "replace"))
-'
+print(data[16:16 + length].decode("utf-8", "replace"))
+')"
+  rc=$?
+  if [ "${rc}" -eq 0 ]; then
+    printf '%s\n' "${parsed}"
+    exit 0
+  fi
+  if [ "${rc}" -eq 4 ]; then
+    echo "no mailbox record (magic mismatch) — the image on the board may predate the mailbox" >&2
+    exit 4
+  fi
+  sleep 0.2
+done
+
+echo "record still being written after ${ATTEMPTS} attempts (core halts mid-write)" >&2
+exit 5
