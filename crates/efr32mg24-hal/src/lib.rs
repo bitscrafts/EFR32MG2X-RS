@@ -118,6 +118,7 @@ pub mod dma;
 pub mod emu;
 pub mod gpio;
 pub mod i2c;
+pub mod microphone;
 pub mod rtc;
 pub mod sensors;
 pub mod spi;

@@ -57,6 +57,36 @@ impl Board {
         Button::new(&self.dp.gpio_s)
     }
 
+    /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.
+    ///
+    /// HFRCOEM23 rather than FSRCO: measured, with IADCCLK from FSRCO the
+    /// converter's synchroniser never finished disabling and the following
+    /// configuration write faulted. HFRCOEM23 is the oscillator already proven
+    /// to clock TIMER0 here, so it is forced on and waited for before the IADC
+    /// clock is pointed at it.
+    pub fn microphone_adc(&self) -> &pac::iadc0_s::RegisterBlock {
+        self.dp
+            .cmu_s
+            .clken0()
+            .modify(|_r, w| w.iadc0().set_bit().hfrcoem23().set_bit());
+        self.dp
+            .hfrcoem23_s
+            .ctrl()
+            .modify(|_r, w| w.forceen().set_bit());
+        let mut spin = 0u32;
+        while !self.dp.hfrcoem23_s.status().read().rdy().bit_is_set() {
+            spin += 1;
+            if spin > 1_000_000 {
+                break;
+            }
+        }
+        self.dp
+            .cmu_s
+            .iadcclkctrl()
+            .modify(|_r, w| w.clksel().hfrcoem23());
+        &self.dp.iadc0_s
+    }
+
     /// The on-board user LED (PA7, active low).
     pub fn led(&self) -> Led<'_> {
         Led::new(&self.dp.gpio_s)
@@ -113,7 +143,23 @@ impl<'a> SensorPower<'a> {
         Self { gpio }
     }
 
-    /// Drive PD5 high, powering the IMU and the microphone.
+    /// Drive PC8 high, powering the microphone. The IMU's gate is PD5; the
+    /// microphone's is PC8 (`MIC_ENPIN` in Seeed's MG24 backend), so they are
+    /// separate and both belong to the board, not to the drivers.
+    pub fn enable_microphone(&self) {
+        self.gpio.portc_modeh().modify(|_r, w| w.mode0().pushpull());
+        self.gpio
+            .portc_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() | (1 << 8)) });
+        // PC9 is the analog input: leave it in disabled mode so the ADC owns the
+        // pad, and route the odd analog bus to the converter.
+        self.gpio.portc_modeh().modify(|_r, w| w.mode1().disabled());
+        self.gpio
+            .cdbusalloc()
+            .modify(|_r, w| unsafe { w.cdodd0().bits(1) });
+    }
+
+    /// Drive PD5 high, powering the IMU.
     pub fn enable(&self) {
         self.gpio.portd_model().modify(|_r, w| w.mode5().pushpull());
         self.gpio

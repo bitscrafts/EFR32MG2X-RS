@@ -112,3 +112,17 @@ identified rather than another guess:
 One more measured detail worth keeping: scanning with PD5 **low** and raising it
 afterwards leaves the bus dead for the rest of that run, even though both lines
 read 0x30 (high) afterwards. Power the rail first, then talk.
+
+## Microphone (Sense) — written, one power cycle from verified
+
+Seeed's own MG24 backend answers the hardware question: the mic is **analog**,
+on **PC9**, powered by **PC8**, sampled by **IADC0** (not PDM). Both examples are
+written: `pac_mic_vu` (register level) and `hal_mic_vu` (through the HAL driver
+`sensors`/`microphone`). Neither can be verified yet because the converter is
+wedged from the early experiments: `EN` reads `0x3` (enabled *and* disabling) and
+any write to `SINGLE` faults at `BFAR=0x49004098`.
+
+**That state survives a core reset and only a power cycle clears it** — unplug and
+replug the board's USB, then run either example. Full detail, including the four
+IADC rules that were learned the hard way, is in
+`docs/04-reference/IADC-MIC-NOTES.md`.
