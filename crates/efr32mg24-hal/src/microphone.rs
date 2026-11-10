@@ -97,6 +97,28 @@ impl<'a> Microphone<'a> {
             return Err(MicError::ConversionsWontStop);
         }
 
+        // Reset the two handshake registers and drain the FIFO while enabled,
+        // exactly as the vendor's IADC_reset() does. Without this the first
+        // samples come from whatever an earlier run left in the FIFO.
+        adc.maskreq().write(|w| unsafe { w.bits(0) });
+        adc.single().write(|w| unsafe { w.bits(0) });
+        if !wait_bits_clear(|| {
+            adc.status().read().maskreqwritepending().bit_is_set()
+                || adc.status().read().singlewritepending().bit_is_set()
+        }) {
+            return Err(MicError::WriteNotPublished);
+        }
+        let mut drained = 0u32;
+        while adc.status().read().singlefifodv().bit_is_set()
+            || adc.singlefifostat().read().bits() > 0
+        {
+            let _ = adc.singlefifodata().read().bits();
+            drained += 1;
+            if drained > 4096 {
+                break;
+            }
+        }
+
         // Disable and wait for the synchroniser to settle, then configure.
         adc.en().write(|w| w.en().clear_bit());
         if !wait_bits_clear(|| {
@@ -133,6 +155,17 @@ impl<'a> Microphone<'a> {
             w.showid().clear_bit();
             w.dvl().valid1()
         });
+        // Enable before writing the channel: SINGLE is a WSYNC register and the
+        // vendor's driver says so in a comment — "IADCn->SINGLE has WSYNC type
+        // and can only be written while enabled". Writing it disabled is a bus
+        // fault (BFAR=0x49004098) and leaves the converter in DISABLING.
+        adc.en().write(|w| w.en().set_bit());
+        if !wait_bits_clear(|| {
+            adc.status().read().syncbusy().bit_is_set() || adc.en().read().disabling().bit_is_set()
+        }) {
+            return Err(MicError::StuckDisabling);
+        }
+
         adc.single().write(|w| {
             w.portpos().portc();
             unsafe {
@@ -143,13 +176,14 @@ impl<'a> Microphone<'a> {
             w.portneg().gnd();
             w.cfg().config0()
         });
-
         if !wait_bits_clear(|| adc.status().read().singlewritepending().bit_is_set()) {
             return Err(MicError::WriteNotPublished);
         }
-
-        adc.en().write(|w| w.en().set_bit());
-        wait_bits_clear(|| adc.status().read().syncbusy().bit_is_set());
+        // Let the microphone bias settle before the first conversion. Measured:
+        // sampling immediately after configuration returned a railed input
+        // (RMS 2028, peak 2048 of a 12-bit range) where the PAC twin, which does
+        // its reset sequence first, read a 98/115 noise floor.
+        cortex_m::asm::delay(300_000);
         Ok(Self { adc })
     }
 

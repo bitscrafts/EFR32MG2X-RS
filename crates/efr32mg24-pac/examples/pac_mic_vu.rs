@@ -232,7 +232,19 @@ fn main() -> ! {
         w.showid().clear_bit();
         w.dvl().valid1()
     });
-    // One channel: PC9 against ground, config 0, no comparison.
+    adc.en().write(|w| w.en().set_bit());
+    if !wait_idle(adc) {
+        mailbox::fail(b"adc never left sync after enable");
+        loop {
+            cortex_m::asm::nop();
+        }
+    }
+
+    // SINGLE is a WSYNC register: the vendor's own comment says it "can only be
+    // written while enabled". Writing it with EN=0 is what faulted at
+    // BFAR=0x49004098 and left the converter stuck in DISABLING -- the single
+    // most expensive mistake in this example. Order: static config while
+    // disabled, channel config after enabling.
     adc.single().write(|w| {
         w.portpos().portc();
         unsafe {
@@ -243,8 +255,6 @@ fn main() -> ! {
         w.portneg().gnd();
         w.cfg().config0()
     });
-    // SINGLE has its own handshake: wait for the write to reach the working
-    // register before enabling, or the channel configuration is silently lost.
     let mut spin = 0u32;
     while adc.status().read().singlewritepending().bit_is_set() {
         spin += 1;
@@ -252,9 +262,10 @@ fn main() -> ! {
             break;
         }
     }
-
-    adc.en().write(|w| w.en().set_bit());
-    cortex_m::asm::delay(50_000);
+    // Let the microphone bias settle before measuring. Measured: reporting the
+    // first window immediately gave RMS 98 while the same chain measured a few
+    // hundred counts later; the difference is settling, not gain.
+    cortex_m::asm::delay(300_000);
 
     // LED as a plain push-pull output, active low.
     dp.gpio_s.porta_model().modify(|_r, w| w.mode7().pushpull());

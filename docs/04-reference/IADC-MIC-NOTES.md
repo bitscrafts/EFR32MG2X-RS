@@ -37,16 +37,36 @@ use PDM) and it comes straight from Seeed's own MG24 backend in
    Both examples therefore check `EN.DISABLING` before touching any register and
    report it instead of faulting.
 
-## Current state
+## The mistake that cost the most, and the fix
+
+**`SINGLE` can only be written while the converter is ENABLED.** The vendor says
+it in a comment — *"IADCn->SINGLE has WSYNC type and can only be written while
+enabled"* — and `IADC_updateSingleInput()` enables the block, writes `SINGLE`,
+then restores the previous state.
+
+Writing it with `EN=0` is a precise bus fault (`CFSR=0x8200`,
+`BFAR=0x49004098`) that leaves the converter in `EN.DISABLING`, and that state
+**survives a core reset**. The order that works:
 
 ```
-pac_mic_vu   written; blocked by the wedged converter described in (5)
-hal_mic_vu   written (same chain through the HAL driver)
+EN=1 -> stop conversions -> MASKREQ=0, SINGLE=0 (enabled) -> drain FIFO
+EN=0 -> CTRL, CFG0, SCHED0, SINGLEFIFOCFG
+EN=1 -> SINGLE = channel config -> SINGLEWRITEPENDING clear -> start
 ```
 
-Both are ready to run; they need the board's USB unplugged and replugged first,
-because a core reset does not reset the IADC state machine. That is the one step
-a remote session cannot perform.
+## Verified
+
+```
+pac_mic_vu  mic rst=ok rms=562 pk=598 n=128
+hal_mic_vu  hal mic rms=521 pk=544 n=128
+```
+
+128 samples per window from a real microphone, same noise floor through both
+layers (the ~7% difference is run-to-run room noise, not configuration).
+
+**Settling matters for the first reading**: reporting the very first window gave
+RMS 98; the same chain measured ~550 a few hundred milliseconds later. Both
+examples now wait before the first measurement.
 
 ## Why HFRCOEM23 and not FSRCO
 

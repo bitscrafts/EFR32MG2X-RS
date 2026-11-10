@@ -113,16 +113,18 @@ One more measured detail worth keeping: scanning with PD5 **low** and raising it
 afterwards leaves the bus dead for the rest of that run, even though both lines
 read 0x30 (high) afterwards. Power the rail first, then talk.
 
-## Microphone (Sense) — written, one power cycle from verified
+## Microphone (Sense) — verified, PAC and HAL
 
 Seeed's own MG24 backend answers the hardware question: the mic is **analog**,
-on **PC9**, powered by **PC8**, sampled by **IADC0** (not PDM). Both examples are
-written: `pac_mic_vu` (register level) and `hal_mic_vu` (through the HAL driver
-`sensors`/`microphone`). Neither can be verified yet because the converter is
-wedged from the early experiments: `EN` reads `0x3` (enabled *and* disabling) and
-any write to `SINGLE` faults at `BFAR=0x49004098`.
+on **PC9**, powered by **PC8**, sampled by **IADC0** (not PDM).
 
-**That state survives a core reset and only a power cycle clears it** — unplug and
-replug the board's USB, then run either example. Full detail, including the four
-IADC rules that were learned the hard way, is in
-`docs/04-reference/IADC-MIC-NOTES.md`.
+```
+pac_mic_vu   mic rst=ok rms=562 pk=598 n=128
+hal_mic_vu   hal mic rms=521 pk=544 n=128
+```
+
+128 samples per window, same noise floor through both layers, LED brightness
+following the level. The rule that unlocked it: `SINGLE` is a WSYNC register and
+**can only be written while the converter is enabled**; writing it disabled is a
+bus fault that leaves the block stuck in `DISABLING`, a state that survives a
+core reset. Full detail in `docs/04-reference/IADC-MIC-NOTES.md`.
