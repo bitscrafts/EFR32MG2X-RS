@@ -128,3 +128,27 @@ following the level. The rule that unlocked it: `SINGLE` is a WSYNC register and
 **can only be written while the converter is enabled**; writing it disabled is a
 bus fault that leaves the block stuck in `DISABLING`, a state that survives a
 core reset. Full detail in `docs/04-reference/IADC-MIC-NOTES.md`.
+
+## The user LED is mono, not RGB (checked 2026-11-11)
+
+Three independent lines of evidence:
+
+1. **Seeed's own specification table** for both XIAO MG24 variants lists
+   `LEDs: 1x User LED, 1x Power LED`. Boards with an addressable RGB (XIAO
+   ESP32C3/S3, RP2040) say `1x RGB LED` there instead.
+2. **The wiki text calls it "the orange user indicator"** and "the orange LED on
+   the right side", and the pin map names PA07 `User Light_Yellow`. One part,
+   one colour.
+3. **Electrical behaviour**: exactly one pin is configured as an output and the
+   LED lights from it. Measured `PORTA_MODEL = 0x40000000` — PA7 push-pull and
+   nothing else on PORTA; PORTB/PORTD untouched. A tri-colour RGB needs three
+   GPIOs; an addressable RGB (WS2812) cannot be lit by a steady DC level at all,
+   and would show garbage rather than a clean 1 Hz blink when toggled by a NOP
+   loop — which is exactly what the operator saw.
+
+So brightness (PWM) is the only dimension available: the VU meter examples vary
+duty, never colour.
+
+Worth recording: **the factory program on the Sense is this very demo** — Seeed
+ships it with "The louder you shout, the brighter the light will be". `pac_mic_vu`
+and `hal_mic_vu` reproduce the factory behaviour on hardware.
