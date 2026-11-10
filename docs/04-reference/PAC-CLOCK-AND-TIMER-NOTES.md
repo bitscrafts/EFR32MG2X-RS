@@ -119,3 +119,25 @@ That is the clock the core runs on when `probe-rs reset` starts the image
 directly. After a power cycle the bootloader configures HFXO/HFRCODPLL and the
 same image runs 2-4× faster — which is exactly why the 1 Hz blink moved to a
 hardware timer.
+
+---
+
+## 7. HFRCOEM23 calibration (why the datasheet number is not the period)
+
+`pac_timer_blink` first used the datasheet arithmetic
+(20 MHz / 1024 / 2 = 9765 ticks for 500 ms). Measured on this die:
+
+| TOP | measured toggle rate | blink |
+|---|---|---|
+| 9765 (datasheet 20 MHz) | 1.92 / 1.86 Hz | 0.96 / 0.93 Hz |
+| 9229 (calibrated) | 2.04 / 2.04 Hz | 1.02 / 1.02 Hz |
+
+So this HFRCOEM23 sits nearer 18.5 MHz than 20 MHz — a ~5 % error that the
+datasheet frequency alone does not predict. The constant in the example is the
+calibrated one, and the measurement script is the check on it; a change of
+oscillator band (or a different die) invalidates the calibration and the number
+has to be re-measured rather than assumed.
+
+The two calibrated measurements agree to within 0.1 % of each other, which is
+the precision a blink needs; absolute 1.000 Hz would additionally require the
+oscillator to be temperature-compensated, which this part's HFRCOEM23 is not.

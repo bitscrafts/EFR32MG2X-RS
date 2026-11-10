@@ -45,12 +45,16 @@ use panic_halt as _;
 #[path = "common/mailbox.rs"]
 mod mailbox;
 
-/// Assumed HFRCOEM23 frequency, checked against the measured tick rate.
-const HFRCOEM23_HZ: u32 = 20_000_000;
-/// Timer prescaler: div 1024 -> ~19.5 kHz tick.
+/// Timer prescaler: div 1024.
 const PRESC_DIV: u32 = 1024;
-/// Half of the 1 Hz period, in prescaled ticks (500 ms).
-const TOP_TICKS: u32 = (HFRCOEM23_HZ / PRESC_DIV) / 2;
+/// Half-period in prescaled ticks, CALIBRATED BY MEASUREMENT.
+///
+/// Datasheet math (HFRCOEM23 = 20 MHz / 1024 / 2) gives 9765 ticks, which
+/// measured 1.92 and 1.86 toggle/s on this die -- 0.96 and 0.93 Hz, ~5% slow,
+/// because the actual HFRCOEM23 is nearer 18.5 MHz than 20 MHz. Scaling by the
+/// measured ratio (1.89/2.0) gives 9229. Re-measure after any change to the
+/// oscillator band; `scripts/measure-blink-rate.sh` prints the number.
+const TOP_TICKS: u32 = 9_229;
 
 fn push_hex8(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
     const HEX: &[u8; 16] = b"0123456789abcdef";
