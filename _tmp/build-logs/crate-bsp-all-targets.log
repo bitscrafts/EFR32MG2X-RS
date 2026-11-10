@@ -1,0 +1,151 @@
+warning: efr32mg24-bluetooth-sys@0.1.0: cc1: warning: switch '-mcpu=cortex-m33' conflicts with switch '-march=armv8-m.main+fp'
+warning: efr32mg24-bluetooth-sys@0.1.0: Compiled CMSIS runtime stubs for Bluetooth stack
+warning: efr32mg24-bluetooth-sys@0.1.0: Bluetooth controller integrity verified (SHA256 OK)
+warning: efr32mg24-bluetooth-sys@0.1.0: Bluetooth host integrity verified (SHA256 OK)
+warning: efr32mg24-bluetooth-sys@0.1.0: Bluetooth common integrity verified (SHA256 OK)
+warning: efr32mg24-bluetooth-sys@0.1.0: Linking Bluetooth blobs (controller + host + common) from /projects/efr32mg24-rs/crates/efr32mg24-bluetooth-sys/blobs/efr32mg24b220
+warning: efr32mg24-bluetooth-sys@0.1.0: Generated Bluetooth bindings from vendor/bluetooth/sl_bt_api.h
+warning: associated constant `OSC_TIMEOUT` is never used
+  --> crates/efr32mg24-hal/src/clock/clocks.rs:30:11
+   |
+23 | impl Clocks {
+   | ----------- associated constant in this implementation
+...
+30 |     const OSC_TIMEOUT: u32 = 100_000;
+   |           ^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+   Compiling efr32mg24-bluetooth-sys v0.1.0 (/projects/efr32mg24-rs/crates/efr32mg24-bluetooth-sys)
+warning: `efr32mg24-hal` (lib) generated 1 warning
+warning: unexpected `cfg` condition value: `std`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/error.rs:118:7
+    |
+118 | #[cfg(feature = "std")]
+    |       ^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `default`
+    = help: consider adding `std` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about checking conditional configuration
+    = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unused import: `super::error::BleError`
+  --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:53:5
+   |
+53 | use super::error::BleError;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+error[E0609]: no field `connection` on type `&__BindgenUnionField<sl_bt_evt_connection_opened_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:206:38
+    |
+206 |                     connection: data.connection,
+    |                                      ^^^^^^^^^^ unknown field
+
+error[E0609]: no field `address` on type `&__BindgenUnionField<sl_bt_evt_connection_opened_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:207:35
+    |
+207 |                     address: data.address.addr,
+    |                                   ^^^^^^^ unknown field
+
+error[E0609]: no field `address_type` on type `&__BindgenUnionField<sl_bt_evt_connection_opened_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:208:40
+    |
+208 |                     address_type: data.address_type,
+    |                                        ^^^^^^^^^^^^ unknown field
+
+error[E0609]: no field `master` on type `&__BindgenUnionField<sl_bt_evt_connection_opened_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:209:37
+    |
+209 |                     is_master: data.master != 0,
+    |                                     ^^^^^^ unknown field
+
+error[E0609]: no field `bonding` on type `&__BindgenUnionField<sl_bt_evt_connection_opened_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:210:35
+    |
+210 |                     bonding: data.bonding,
+    |                                   ^^^^^^^ unknown field
+
+error[E0609]: no field `connection` on type `&__BindgenUnionField<sl_bt_evt_connection_closed_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:218:38
+    |
+218 |                     connection: data.connection,
+    |                                      ^^^^^^^^^^ unknown field
+
+error[E0609]: no field `reason` on type `&__BindgenUnionField<sl_bt_evt_connection_closed_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:219:34
+    |
+219 |                     reason: data.reason,
+    |                                  ^^^^^^ unknown field
+
+error[E0609]: no field `value` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_attribute_value_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:228:32
+    |
+228 |                 let len = data.value.len as usize;
+    |                                ^^^^^ unknown field
+
+error[E0609]: no field `value` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_attribute_value_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:232:45
+    |
+232 |                     let _ = value.push(data.value.data[i]);
+    |                                             ^^^^^ unknown field
+
+error[E0609]: no field `connection` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_attribute_value_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:236:38
+    |
+236 |                     connection: data.connection,
+    |                                      ^^^^^^^^^^ unknown field
+
+error[E0609]: no field `attribute` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_attribute_value_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:237:37
+    |
+237 |                     attribute: data.attribute,
+    |                                     ^^^^^^^^^ unknown field
+
+error[E0609]: no field `offset` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_attribute_value_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:238:34
+    |
+238 |                     offset: data.offset,
+    |                                  ^^^^^^ unknown field
+
+error[E0609]: no field `connection` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_user_read_request_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:247:38
+    |
+247 |                     connection: data.connection,
+    |                                      ^^^^^^^^^^ unknown field
+
+error[E0609]: no field `attribute` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_user_read_request_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:248:37
+    |
+248 |                     attribute: data.attribute,
+    |                                     ^^^^^^^^^ unknown field
+
+error[E0609]: no field `offset` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_user_read_request_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:249:34
+    |
+249 |                     offset: data.offset,
+    |                                  ^^^^^^ unknown field
+
+error[E0609]: no field `connection` on type `&__BindgenUnionField<sl_bt_evt_gatt_server_notification_tx_completed_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:257:38
+    |
+257 |                     connection: data.connection,
+    |                                      ^^^^^^^^^^ unknown field
+
+error[E0609]: no field `handle` on type `&__BindgenUnionField<sl_bt_evt_advertiser_timeout_s>`
+   --> crates/efr32mg24-bluetooth-sys/src/blocking/events.rs:265:43
+    |
+265 |                     advertising_set: data.handle,
+    |                                           ^^^^^^ unknown field
+
+For more information about this error, try `rustc --explain E0609`.
+warning: `efr32mg24-bluetooth-sys` (lib) generated 2 warnings
+warning: efr32mg24-bluetooth-sys@0.1.0: cc1: warning: switch '-mcpu=cortex-m33' conflicts with switch '-march=armv8-m.main+fp'
+warning: efr32mg24-bluetooth-sys@0.1.0: Compiled CMSIS runtime stubs for Bluetooth stack
+warning: efr32mg24-bluetooth-sys@0.1.0: Bluetooth controller integrity verified (SHA256 OK)
+warning: efr32mg24-bluetooth-sys@0.1.0: Bluetooth host integrity verified (SHA256 OK)
+warning: efr32mg24-bluetooth-sys@0.1.0: Bluetooth common integrity verified (SHA256 OK)
+warning: efr32mg24-bluetooth-sys@0.1.0: Linking Bluetooth blobs (controller + host + common) from /projects/efr32mg24-rs/crates/efr32mg24-bluetooth-sys/blobs/efr32mg24b220
+warning: efr32mg24-bluetooth-sys@0.1.0: Generated Bluetooth bindings from vendor/bluetooth/sl_bt_api.h
+error: could not compile `efr32mg24-bluetooth-sys` (lib) due to 17 previous errors; 2 warnings emitted

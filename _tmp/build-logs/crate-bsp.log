@@ -1,0 +1,14 @@
+warning: associated constant `OSC_TIMEOUT` is never used
+  --> crates/efr32mg24-hal/src/clock/clocks.rs:30:11
+   |
+23 | impl Clocks {
+   | ----------- associated constant in this implementation
+...
+30 |     const OSC_TIMEOUT: u32 = 100_000;
+   |           ^^^^^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `efr32mg24-hal` (lib) generated 1 warning
+   Compiling xiao-mg24-bsp v0.1.0 (/projects/efr32mg24-rs/crates/xiao-mg24-bsp)
+    Finished `release` profile [optimized + debuginfo] target(s) in 1.37s

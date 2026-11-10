@@ -18,6 +18,7 @@ Status legend:
 | `elf-load-range.py` | safety / inspection | current |
 | `elf-sections.py` | safety / inspection | current |
 | `inventory-pac-examples.py` | safety / inspection | current |
+| `build-crates.sh` | build matrix (workspace) | current |
 | `erase_and_flash.sh` | flash | macOS only (legacy) |
 | `flash-app-only.sh` | flash | macOS only |
 | `flash-arduino-only.sh` | flash | macOS only |
@@ -42,6 +43,14 @@ fails, so it can gate CI.
 Why: the PAC examples are the first rung of the ladder and they rot silently
 when the PAC API changes. `blink_pac` has been failing since the svd2rust 0.37
 `bits()` API change and nothing noticed.
+
+### `build-crates.sh`
+
+Builds each workspace crate once and prints `OK`/`FAIL` per crate, so a broken
+crate is visible instead of being discovered at dispatch time. As of
+2026-11-10 `efr32mg24-bluetooth-sys` fails (bindgen union codegen) and
+`xiao-mg24-bsp --features ble` with it; see
+`docs/03-development/BUILD-STATUS-2026-11-10.md`. Logs in `_tmp/build-logs/`.
 
 ### `build-container.sh [--example NAME] [--release] [--clean]`
 

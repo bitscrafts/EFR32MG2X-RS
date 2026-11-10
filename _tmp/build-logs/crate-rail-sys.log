@@ -1,0 +1,6 @@
+   Compiling efr32mg24-rail-sys v0.1.0 (/projects/efr32mg24-rs/crates/efr32mg24-rail-sys)
+warning: efr32mg24-rail-sys@0.1.0: RAIL blob not found at /projects/efr32mg24-rs/crates/efr32mg24-rail-sys/blobs/efr32mg24b220/librail_efr32xg24_gcc_release.a. This is expected during development.
+warning: efr32mg24-rail-sys@0.1.0: To use RAIL, extract librail_efr32xg24_gcc_release.a from Gecko SDK to /projects/efr32mg24-rs/crates/efr32mg24-rail-sys/blobs/efr32mg24b220/librail_efr32xg24_gcc_release.a
+warning: efr32mg24-rail-sys@0.1.0: RAIL headers not found at vendor/rail/rail.h. Bindings will not be generated.
+warning: efr32mg24-rail-sys@0.1.0: To generate bindings, extract rail.h from Gecko SDK to vendor/rail/rail.h
+    Finished `release` profile [optimized + debuginfo] target(s) in 2.33s
