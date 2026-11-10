@@ -78,6 +78,13 @@ impl ExpansionBase {
         self.board.button()
     }
 
+    /// The piezo buzzer on PC03 (TIMER0 CC0), calibrated and silent.
+    ///
+    /// `None` when the timer never reports a running counter.
+    pub fn buzzer(&self) -> Option<efr32mg24_hal::buzzer::Buzzer<'_>> {
+        self.board.buzzer()
+    }
+
     /// The 128×64 OLED at 0x3C.
     ///
     /// `None` when the panel does not answer — a missing display must not stop an
