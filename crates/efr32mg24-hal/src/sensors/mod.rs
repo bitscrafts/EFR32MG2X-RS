@@ -5,5 +5,7 @@
 //! driver it is generic over the I2C transport.
 
 pub mod bme68x;
+pub mod lsm6ds3trc;
 
 pub use bme68x::{Bme68x, Reading, SensorError};
+pub use lsm6ds3trc::{ImuError, Lsm6ds3trc, Motion};

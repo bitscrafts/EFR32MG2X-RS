@@ -41,6 +41,17 @@ impl Board {
         BitBangI2c::new(&self.dp.gpio_s)
     }
 
+    /// Power gate for the on-board sensors (PD5).
+    ///
+    /// The LSM6DS3TR-C on the Sense module does not answer on the I2C bus until
+    /// this pin is driven high — an unpowered IMU looks exactly like an absent
+    /// one, and a bus scan will simply not show 0x6A. Seeed's own example does
+    /// `pinMode(PD5, OUTPUT); digitalWrite(PD5, HIGH);` before touching the
+    /// sensor. That is wiring, so it lives here and not in the driver.
+    pub fn sensors_power(&self) -> SensorPower<'_> {
+        SensorPower::new(&self.dp.gpio_s)
+    }
+
     /// The on-board user LED (PA7, active low).
     pub fn led(&self) -> Led<'_> {
         Led::new(&self.dp.gpio_s)
@@ -82,5 +93,33 @@ impl<'a> Led<'a> {
         self.gpio
             .porta_dout()
             .modify(|r, w| unsafe { w.bits(r.bits() ^ Self::PIN) });
+    }
+}
+
+/// The sensor power enable on PD5.
+pub struct SensorPower<'a> {
+    gpio: &'a pac::gpio_s::RegisterBlock,
+}
+
+impl<'a> SensorPower<'a> {
+    const PIN: u32 = 1 << 5;
+
+    fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
+        Self { gpio }
+    }
+
+    /// Drive PD5 high, powering the IMU and the microphone.
+    pub fn enable(&self) {
+        self.gpio.portd_model().modify(|_r, w| w.mode5().pushpull());
+        self.gpio
+            .portd_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() | Self::PIN) });
+    }
+
+    /// Drop PD5 low again.
+    pub fn disable(&self) {
+        self.gpio
+            .portd_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() & !Self::PIN) });
     }
 }
