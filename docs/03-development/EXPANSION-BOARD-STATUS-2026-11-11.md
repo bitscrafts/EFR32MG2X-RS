@@ -16,7 +16,27 @@ plainly what is missing. Nothing here is "should work".
 | `pac_rtc_read` | PCF8563 date/time | `2038-10-01 00:14:27` then `00:14:29`, `VL=1` |
 | `pac_bme680` | Bosch compensation end to end | `T=31.9 C`, `P=1015 hPa` — matches a 30 C room |
 | `pac_env_display` | sensor + panel together | `T=31.93C P=1015hPa H=68.4%`, **all three lines seen on the panel** |
-| `pac_buzzer_pwm` | TIMER0 tone, self-calibrated | registers verified, `tone=2700Hz` by construction, beep counter climbing — **not yet audible to the operator** |
+| `pac_buzzer_pwm` | TIMER0 tone, self-calibrated | registers verified (`CC0_CFG=0x02`, `TOP=0x2942`, `PORTC_MODEL=0x4000` = PC03 push-pull), beep counter climbing, `tone=2700Hz` by construction — **no sound heard by the operator** |
+
+## Buzzer: no sound — the two candidates
+
+Measured on the running image: `CC0_CFG=0x00000002` (Output Compare),
+`TOP=0x00002942`, `PORTC_MODEL=0x00004000` (PC03 = push-pull), and
+`CC0_CTRL=0x00000000` (`CMOA=None`) in the silence phase. `PORTC_DIN=0` for
+PC03 in every sample.
+
+So the MCU side is configured; what is not proven is that the *pin* moves and
+that the *buzzer* is connected. Two candidates, in order of likelihood:
+
+1. **The base's buzzer trace is cut or has no buzzer fitted.** The Seeed base
+   documents a cuttable trace for the buzzer. Physical check.
+2. **The routed peripheral output does not drive the pin in MODE 4.** Worth one
+   test: program a ~2 Hz square wave on CC0 and sample `PORTC_DIN` bit 3 over
+   several seconds. A 2.7 kHz tone is invisible to a ~1 ms SWD sample, which is
+   why the current image cannot tell "pin moving" from "pin still".
+
+That test is the first thing to run tomorrow; it separates the firmware from the
+board in one flash.
 
 ## Not done yet
 
