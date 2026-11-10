@@ -106,13 +106,20 @@ pub use efr32mg24_pac as pac;
 
 // HAL modules
 pub mod adc;
+#[cfg(feature = "rt")]
+pub use cortex_m_rt::entry;
+
+pub mod board;
+pub mod bus;
 pub mod clock;
 pub mod delay;
+pub mod display;
 pub mod dma;
 pub mod emu;
 pub mod gpio;
 pub mod i2c;
 pub mod rtc;
+pub mod sensors;
 pub mod spi;
 pub mod timer;
 pub mod usart;
