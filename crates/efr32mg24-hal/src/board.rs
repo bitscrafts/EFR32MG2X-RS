@@ -104,6 +104,24 @@ impl Board {
     }
 }
 
+/// The GPIO register block as a `'static` reference.
+///
+/// MMIO lives at a fixed address for the whole life of the program, so `'static` is
+/// literally true here. It exists because a facade (the BSP) needs to own bus
+/// objects that outlive the `Board` value it took them from — the alternative is a
+/// self-referential struct, which Rust does not allow, or passing the register block
+/// through every call, which is worse.
+///
+/// The safety argument is the same one the PAC already makes for every register
+/// access: the address is fixed by the silicon, and concurrent access is prevented
+/// by the bus being owned by one place.
+#[must_use]
+pub fn gpio_static() -> &'static pac::gpio_s::RegisterBlock {
+    // GPIO base from the device memory map.
+    const GPIO_BASE: usize = 0x5003_C000;
+    unsafe { &*(GPIO_BASE as *const pac::gpio_s::RegisterBlock) }
+}
+
 /// The yellow user LED on PA7, wired active low.
 pub struct Led<'a> {
     gpio: &'a pac::gpio_s::RegisterBlock,

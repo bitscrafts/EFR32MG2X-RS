@@ -45,6 +45,7 @@
 //! - **Package**: 48-pin QFN
 
 pub mod board;
+pub mod expansion_base;
 pub mod pins;
 #[cfg(feature = "ble")]
 pub mod radio;
