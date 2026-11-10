@@ -1,306 +1,170 @@
-# Scripts Documentation
-
-This directory contains utility scripts for building, flashing, and managing the EFR32MG24 firmware.
-
-## Build Scripts
-
-### build-container.sh
-
-Container-based build script for EFR32MG24 firmware using Podman.
-
-**Purpose:** Builds Rust firmware in a containerized environment to ensure consistent build conditions across different development machines.
-
-**Usage:**
-```bash
-# Build all targets
-./scripts/build-container.sh
-
-# Build specific example
-./scripts/build-container.sh --example 00_minimal_blink
-
-# Clean build artifacts
-./scripts/build-container.sh --clean
-
-# Release build (default)
-./scripts/build-container.sh --release
-```
-
-**Dependencies:**
-- Podman (install with `brew install podman` on macOS)
-- Containerfile in project root
-
-**Features:**
-- Automatically builds container image if not present
-- Supports workspace and package-specific builds
-- Provides binary size and location after successful build
-- Color-coded output for easy debugging
-
-## Flashing Scripts
-
-All flashing scripts use OpenOCD with CMSIS-DAP interface for the EFR32MG24 chip.
-
-**IMPORTANT SAFETY WARNINGS:**
-- Always verify target device before flashing
-- Incorrect addresses or erasing wrong regions can brick the device
-- Keep backup of working firmware
-- Use mass erase only when you have confirmed bootloader available
-- Test with Arduino blink first to verify hardware functionality
-
-### erase_and_flash.sh
-
-Erases application area and flashes Rust firmware.
-
-**Purpose:** Used for flashing Rust firmware while preserving bootloader area.
-
-**Usage:**
-```bash
-./scripts/erase_and_flash.sh
-```
-
-**What it does:**
-- Erases flash from 0x08006000 to 0x17E000 (application area only)
-- Programs `blink_bare_patched.hex`
-- Verifies programming
-- Resets and runs
-
-**Dependencies:**
-- OpenOCD (Arduino distribution)
-- `blink_bare_patched.hex` in project root
-- CMSIS-DAP compatible debugger connected
-
-### flash-app-only.sh
-
-Flashes only test application (assumes bootloader already present).
-
-**Purpose:** Quick flashing of test application without touching bootloader.
-
-**Usage:**
-```bash
-./scripts/flash-app-only.sh
-```
-
-**What it does:**
-- Erases only sectors 2-2 (application start area)
-- Programs `crates/bootloader-test-app/test-app.hex`
-- Verifies and resets
-
-**Dependencies:**
-- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
-- Pre-flashed bootloader at 0x08000000
-- `crates/bootloader-test-app/test-app.hex`
-
-### flash-arduino-only.sh
-
-Flashes Arduino blink to test hardware functionality.
-
-**Purpose:** Hardware validation and testing using known-good Arduino firmware.
-
-**Usage:**
-```bash
-./scripts/flash-arduino-only.sh
-```
-
-**What it does:**
-- Programs Arduino blink hex file
-- No erase operation (relies on OpenOCD auto-erase)
-- Useful for verifying hardware is working
-
-**Dependencies:**
-- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
-- `crates/efr32mg24-pac/arduino_blink.hex`
-
-**When to use:**
-- Testing new hardware
-- Verifying debugger connection
-- Recovering from failed Rust firmware flash
-
-### flash-bootloader-arduino.sh
-
-Flashes bootloader and Arduino blink application together.
-
-**Purpose:** Complete firmware stack with known-good application for testing.
-
-**Usage:**
-```bash
-./scripts/flash-bootloader-arduino.sh
-```
-
-**What it does:**
-- Programs bootloader at 0x08000000
-- Programs Arduino blink at 0x08006000
-- Verifies both images
-- Resets device
-
-**Dependencies:**
-- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
-- `crates/efr32mg24-bootloader/bootloader.hex`
-- `crates/efr32mg24-pac/arduino_blink.hex`
-
-**When to use:**
-- Initial device setup
-- After mass erase
-- Testing bootloader functionality
-
-### flash-bootloader-test.sh
-
-Flashes custom bootloader and test application.
-
-**Purpose:** Development and testing of custom Rust bootloader with test app.
-
-**Usage:**
-```bash
-./scripts/flash-bootloader-test.sh
-```
-
-**What it does:**
-- Programs custom Rust bootloader
-- Programs custom test application
-- Verifies both images
-- Resets and runs
-
-**Dependencies:**
-- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
-- `crates/efr32mg24-bootloader/bootloader.hex`
-- `crates/bootloader-test-app/test-app.hex`
-
-**When to use:**
-- Bootloader development
-- Testing bootloader API
-- Validating application handoff
-
-### flash-mass-erase.sh
-
-Mass erases entire chip and flashes bootloader + application.
-
-**Purpose:** Complete chip erase and reprogramming. Nuclear option for recovery.
-
-**Usage:**
-```bash
-./scripts/flash-mass-erase.sh
-```
-
-**WARNINGS:**
-- Erases ENTIRE flash from 0x08000000 to 0x08180000
-- Removes all firmware, bootloader, and configuration
-- Cannot be undone
-- Only use when necessary
-
-**What it does:**
-- Halts processor
-- Erases full flash range (1.5MB)
-- Programs bootloader
-- Programs test application
-- Verifies and resets
-
-**Dependencies:**
-- Custom OpenOCD build in `crates/efr32mg24-bootloader/openocd/`
-- `crates/efr32mg24-bootloader/bootloader.hex`
-- `crates/bootloader-test-app/test-app.hex`
-
-**When to use:**
-- Device completely bricked
-- Flash corruption suspected
-- Starting fresh development
-- DO NOT use for routine flashing
-
-## Common Issues and Troubleshooting
-
-### OpenOCD Connection Failed
-
-**Problem:** OpenOCD cannot connect to target
-
-**Solutions:**
-- Check USB connection
-- Verify debugger is detected: `ls /dev/cu.*`
-- Try different USB cable or port
-- Check target power
-- Verify CMSIS-DAP firmware on debugger
-
-### Flash Verification Failed
-
-**Problem:** Programming succeeds but verification fails
-
-**Solutions:**
-- Check power supply stability
-- Reduce SWD clock speed in OpenOCD config
-- Verify hex file integrity
-- Try mass erase and reprogram
-
-### Device Not Responding After Flash
-
-**Problem:** Device does not run after flashing
-
-**Solutions:**
-- Check reset line connection
-- Try manual power cycle
-- Verify application entry point in hex file
-- Check for stack overflow or memory corruption
-- Flash Arduino blink to verify hardware
-
-### SWD Connection Lost
-
-**Problem:** Debug connection lost during operation
-
-**Solutions:**
-- See recovery documentation in `docs/01-getting-started/recovery/`
-- Use recovery scripts in `xiao_mg24_flash_erase_macos/`
-- May need to use Black Magic Probe for low-level recovery
-
-## Flash Memory Layout
-
-Understanding the memory layout is crucial for safe flashing:
-
-```
-0x08000000 - 0x08005FFF : Bootloader (24KB)
-0x08006000 - 0x0817FFFF : Application (1496KB)
-```
-
-Always ensure your application hex files are configured for the correct base address (0x08006000 when using bootloader).
-
-## Development Workflow
-
-Typical development cycle:
-
-1. Initial setup:
-   ```bash
-   ./scripts/flash-bootloader-arduino.sh
-   ```
-
-2. Verify hardware:
-   - LED should blink
-   - If not, check hardware connections
-
-3. Build Rust application:
-   ```bash
-   ./scripts/build-container.sh
-   ```
-
-4. Flash your application:
-   ```bash
-   ./scripts/flash-app-only.sh
-   ```
-
-5. If issues occur, revert to known-good:
-   ```bash
-   ./scripts/flash-arduino-only.sh
-   ```
-
-## Related Documentation
-
-- [Flashing Guide](../docs/01-getting-started/) - Comprehensive flashing procedures
-- [Hardware Guide](../docs/04-reference/hardware/) - Hardware specifications
-- [Recovery Guide](../docs/01-getting-started/recovery/) - Device recovery procedures
-- [Bootloader Documentation](../docs/02-architecture/) - Bootloader architecture
-
-## Script Maintenance
-
-When modifying scripts:
-- Test on actual hardware before committing
-- Update this documentation
-- Verify all paths are correct
-- Check OpenOCD configuration compatibility
-- Consider backward compatibility
+# scripts/
+
+Every script in this directory, what it does, what it touches, and whether it
+still works on the current dev machine (the Linux container on `lnx`).
+
+Status legend:
+
+- **current** — works here, part of the active workflow.
+- **macOS only** — depends on the bundled Mach-O `openocd` binary or on
+  `~/Library/Arduino15`; it cannot run in the container and does not run on lnx.
+- **safety** — a guard; it never writes to the board on its own.
+
+| script | kind | status |
+|---|---|---|
+| `build-pac-examples.sh` | build matrix | current |
+| `build-container.sh` | container build | current (podman) |
+| `flash-lnx.sh` | flash (guarded) | current |
+| `elf-load-range.py` | safety / inspection | current |
+| `elf-sections.py` | safety / inspection | current |
+| `inventory-pac-examples.py` | safety / inspection | current |
+| `erase_and_flash.sh` | flash | macOS only (legacy) |
+| `flash-app-only.sh` | flash | macOS only |
+| `flash-arduino-only.sh` | flash | macOS only |
+| `flash-bootloader-arduino.sh` | flash | macOS only |
+| `flash-bootloader-test.sh` | flash | macOS only |
+| `flash-mass-erase.sh` | flash (destructive) | macOS only |
+| `restructure-crates.sh` | repo maintenance | done once, idempotent |
+| `rewrite-crate-paths.py` | repo maintenance | done once |
+| `README.md` | this file | — |
 
 ---
 
-*Last updated: 2026-05-16*
+## Build
+
+### `build-pac-examples.sh [--features rt]`
+
+Builds **every** example in `crates/efr32mg24-pac/examples/` and prints one
+`OK`/`FAIL` line per example plus a total. Per-example logs land in
+`_tmp/build-logs/pac-<name>.log`; the exit code is non-zero if any example
+fails, so it can gate CI.
+
+Why: the PAC examples are the first rung of the ladder and they rot silently
+when the PAC API changes. `blink_pac` has been failing since the svd2rust 0.37
+`bits()` API change and nothing noticed.
+
+### `build-container.sh [--example NAME] [--release] [--clean]`
+
+Builds the workspace inside the podman image described by `Containerfile`
+(pinned Rust 1.75 + `thumbv8m.main-none-eabihf` + `gcc-arm-none-eabi` +
+`cargo-binutils`). Use it when the host toolchain drifts or when reproducing a
+build on another machine. Not needed for day-to-day work in the container,
+which already has the toolchain.
+
+Note: `Containerfile` pins Rust 1.75, the host toolchain is newer. A green
+container build is therefore *weaker* evidence than a green host build, not
+stronger.
+
+---
+
+## Flash
+
+### `flash-lnx.sh <elf> --confirm [--run]`
+
+The only supported way to write an image to the board. Builds happen here,
+flashing happens on `lnx` (host `10.10.10.217`, user `mvcorrea`) because that
+is where the board is plugged in.
+
+Guards, all fail-safe (each one refuses rather than proceeding):
+
+1. without `--confirm` it is a **dry run** — it prints the image's address
+   range, checks for the probe, and stops;
+2. the image must parse as 32-bit little-endian ELF;
+3. `load_min >= 0x08006000` — anything lower would overwrite the Gecko
+   bootloader at `0x08000000-0x08005FFF`;
+4. `load_max < 0x08180000` — the end of the 1512 KiB application region;
+5. exactly **one** CMSIS-DAP probe must be visible on lnx;
+6. after writing, `probe-rs verify` reads the flash back and compares — a
+   write is only reported as done when the comparison succeeds.
+
+It does **not** reset the core unless `--run` is passed, so the operator
+decides when the new image starts.
+
+```bash
+cargo build --release -p efr32mg24-pac --example blink_xiao --features rt
+scripts/flash-lnx.sh \
+  /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/blink_xiao   # dry run
+scripts/flash-lnx.sh \
+  /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/blink_xiao --confirm
+```
+
+Verified 2026-11-10 both ways: the real image passes all guards; a control
+image whose `p_paddr` was patched to `0x08000000` is refused with exit 3.
+
+### `erase_and_flash.sh` (macOS only)
+
+Legacy. Hardcodes `~/Library/Arduino15/packages/SiliconLabs/tools/openocd/...`
+and programs `blink_bare_patched.hex` from the repository root after erasing
+`0x08006000 + 0x178000`. Cannot run here (no Arduino15, no macOS openocd).
+
+### `flash-app-only.sh`, `flash-arduino-only.sh`, `flash-bootloader-arduino.sh`, `flash-bootloader-test.sh` (macOS only)
+
+All four drive `crates/efr32mg24-bootloader/openocd/bin/openocd`, which is a
+**Mach-O x86_64 macOS binary** — it cannot execute in this container or on
+lnx. They program one or both of `bootloader.hex` and `test-app.hex` /
+`arduino_blink.hex` through `interface/cmsis-dap.cfg` +
+`target/efm32s2_g23.cfg`, then `reset run`.
+
+Kept as the record of how the Gecko bootloader was installed. Do not use them
+as-is on Linux; install a Linux openocd or use `flash-lnx.sh`.
+
+### `flash-mass-erase.sh` (macOS only, destructive)
+
+Erases the whole 1.5 MiB at `0x08000000` and then rewrites bootloader + test
+app. This is the recovery path for a board whose application is broken, and
+the last thing to run on a healthy board: it removes the bootloader, so a
+failure between erase and program leaves a blank chip.
+
+---
+
+## Safety and inspection
+
+### `elf-load-range.py <elf>`
+
+Prints `load_min`, `load_max`, total size and one line per `PT_LOAD`. This is
+the check `flash-lnx.sh` runs before touching the board. Exit codes: `0` ok,
+`2` not a supported ELF, `3` no loadable segments.
+
+This script is why the 2026-11-10 defect was found: every image built before
+`--nmagic` was added to `.cargo/config.toml` carried a 372-byte `PT_LOAD` at
+`0x08000000` — the ELF header, page-aligned down into the bootloader region.
+`probe-rs` silently skips that segment (verified by reading the board's flash
+at `0x08000000`: it still holds the bootloader's vector table,
+`08 10 00 20 71 01 00 08`), but openocd and Simplicity Commander are not known
+to, and an image that writes it destroys the bootloader.
+
+### `elf-sections.py <elf>`
+
+Lists section headers with address, size and flags. Use it when a segment
+looks wrong: it shows which section actually lands at which address, and it is
+what proved no section — only the header — lived at `0x08000000`.
+
+### `inventory-pac-examples.py`
+
+Classifies every PAC example as `TYPED` (PAC typed accessors, SVD-derived
+offsets) or `RAW` (`write_volatile` to a hardcoded address), and flags the ones
+that touch clock-source selection (`sysclkctrl`, `oscencmd`, `hfxo`, `clksel`,
+`emu`, `wdog`, `lock`) — the class of write that bricked the board on
+2026-06-29. Run it before trusting any example on hardware.
+
+Current output: `blink_minimal` and `blink_xiao` are the only two that match
+the clock keywords, and in `blink_xiao` the match is the comment block that
+documents the incident, not a register write.
+
+---
+
+## Repository maintenance
+
+### `restructure-crates.sh`
+
+Moved all seven crate directories into `crates/` (2026-11-10). Idempotent-ish:
+it refuses if `crates/<name>` already exists. Every intra-workspace path
+dependency is a sibling reference, so the move needed no `Cargo.toml` edits.
+
+### `rewrite-crate-paths.py`
+
+The companion pass: rewrites `efr32mg24-pac/…` → `crates/efr32mg24-pac/…` in
+living docs, scripts and CI files, deliberately skipping `CHANGELOG.md`,
+`docs/03-development/LOG.md`, `docs/99-archive/`, `book*/` and `.archive/`,
+because those record where files were at the time and rewriting them would
+falsify the history.

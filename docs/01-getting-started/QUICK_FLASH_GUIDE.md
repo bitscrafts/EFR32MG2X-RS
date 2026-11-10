@@ -42,6 +42,15 @@ probe-rs run --chip EFR32MG24B220F1536IM48 \
 (`0x08000000-0x08005FFF`) because the ELF's sections are linked above
 `0x08006000`.
 
+> **Measured 2026-11-10**: before `--nmagic` was added to `.cargo/config.toml`,
+> every ELF also carried a 372-byte `PT_LOAD` at `0x08000000` (the ELF header,
+> page-aligned down). `probe-rs` skips it — verified against the board's flash —
+> but openocd and Commander are not known to. Images built now have no segment
+> below `0x08006000`. See `FLASH-ON-LNX.md`.
+>
+> On lnx, flash through `scripts/flash-lnx.sh`, which refuses any image whose
+> `load_min` is under `0x08006000` and verifies by read-back.
+
 ### Method 2: Two-step (build first, then flash + run)
 
 ```bash
