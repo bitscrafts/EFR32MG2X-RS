@@ -223,3 +223,33 @@ happens to use, which left the linker 4.5 KB of RAM in total: the 6 KB capture
 buffer failed to link with "stack end address is not below stack start". The stack
 now starts just under the SWD mailbox page (`0x2003F000`) and the linker gets
 252 KB. All twelve PAC examples and every HAL example still build.
+
+## RTC: the last base device now has a driver
+
+`crates/efr32mg24-hal/src/rtc/pcf8563.rs` — the calendar chip at 0x51, seven bytes
+in one transaction (seconds through years, BCD) so a reading cannot straddle a
+rollover. Two behaviours matter more than the register map:
+
+- **`VL` is surfaced, not hidden.** Bit 7 of the seconds register means "clock
+  integrity not guaranteed" after a power loss. The driver returns
+  `RtcError::ClockInvalid` rather than a plausible-looking wrong time: a clock that
+  lies is worse than a clock that complains.
+- **the report says where the value came from.** The first version of the example
+  printed `kept` after the chip had in fact been written from the build-time
+  reference, because the flag described the intent at boot instead of what
+  happened. It now prints `ref-set` or `kept` according to what it really did.
+
+Verified on hardware, including the part that a calendar chip exists for:
+
+```
+rtc 2026-11-10 12:00:02 ref-set   <- chip had lost power (VL set)
+rtc 2026-11-10 12:00:48 kept      <- retained across the flash
+rtc 2026-11-10 12:00:57 kept      <- advanced 9 s over a reset + 6 s wait
+```
+
+Two unit tests cover the BCD round trip and reject invalid nibbles (0x0A is not a
+digit; a bus glitch must not become a time).
+
+HAL parity for the base board is now complete: panel, BME68x, RTC, button, buzzer,
+microphone, IMU. What is left of the ladder is the BSP facade and the peripherals
+behind it (microSD, Grove UART/ADC, servo), then the radio.

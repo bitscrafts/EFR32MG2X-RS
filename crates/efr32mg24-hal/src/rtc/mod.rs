@@ -68,6 +68,8 @@
 //! ).expect("Clock config failed");
 //! ```
 
+pub mod pcf8563;
+
 mod types;
 pub use types::*;
 
