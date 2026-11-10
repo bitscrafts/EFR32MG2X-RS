@@ -78,3 +78,37 @@ board in one flash.
 10. **Halt/read/resume over SWD disturbs nothing** as long as the image is
     idempotent; the mailbox record with its magic/seq protocol is what makes
     autonomous verification possible.
+
+## HAL ladder (same board, drivers instead of registers)
+
+| Example | Status |
+|---|---|
+| `hal_bus_scan` | PASS — `3c 51 76`; powers PD5 first |
+| `hal_oled_hello` | PASS — panel bytes ACKed, text composed through the driver |
+| `hal_button` | PASS — "button released at boot, LED follows" |
+| `hal_env_display` | PASS — `T=31.68C P=1015hPa H=68.2%`, matches the PAC twin within sensor noise |
+| `hal_imu` | written, blocked: **no device at 0x6A/0x6B** on this module (see below) |
+
+HAL pieces: `board::Board` (peripherals + clock gates), `board::SensorPower`
+(PD5), `board::Button`, `board::Led`, `bus::I2cBus` + `BitBangI2c` + `SharedBus`,
+`display::Ssd1306`, `sensors::Bme68x`, `sensors::Lsm6ds3trc`.
+
+The fourteen pre-June HAL examples (`01_clock` … `12_wdog`) were retired: they no
+longer compile (`09_dma_adc_continuous` uses registers the PAC does not have) and
+none was ever verified on hardware. They are staged outside the repository, not
+deleted.
+
+## IMU question, answered by measurement
+
+With PD5 high, a full scan of the bus gives `3c 51 76` and nothing at **0x6A** or
+**0x6B**. The seeed wiki's sketch for the Sense module drives PD5 high before
+touching the IMU, so the power gate is not the missing piece — the part simply is
+not answering on this bus. Two explanations remain, and they need the module
+identified rather than another guess:
+
+1. this is the standard XIAO MG24 (the IMU and the microphone are Sense-only);
+2. the IMU is wired to another bus/pins on the Sense layout.
+
+One more measured detail worth keeping: scanning with PD5 **low** and raising it
+afterwards leaves the bus dead for the rest of that run, even though both lines
+read 0x30 (high) afterwards. Power the rail first, then talk.

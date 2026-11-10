@@ -52,6 +52,11 @@ impl Board {
         SensorPower::new(&self.dp.gpio_s)
     }
 
+    /// The Expansion Base user button on PC01, wired to ground with a pull-up.
+    pub fn button(&self) -> Button<'_> {
+        Button::new(&self.dp.gpio_s)
+    }
+
     /// The on-board user LED (PA7, active low).
     pub fn led(&self) -> Led<'_> {
         Led::new(&self.dp.gpio_s)
@@ -121,5 +126,31 @@ impl<'a> SensorPower<'a> {
         self.gpio
             .portd_dout()
             .modify(|r, w| unsafe { w.bits(r.bits() & !Self::PIN) });
+    }
+}
+
+/// The user button on PC01 (XIAO pin D1).
+///
+/// The base board pulls the pin up and the button shorts it to ground, so the
+/// pin reads high at rest and low while pressed. `MODE 2` (input with pull)
+/// plus `DOUT = 1` selects the internal pull-up, which is what makes the pin
+/// read a defined level when the board is used without the base.
+pub struct Button<'a> {
+    gpio: &'a pac::gpio_s::RegisterBlock,
+}
+
+impl<'a> Button<'a> {
+    const PIN: u32 = 1 << 1;
+
+    fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
+        gpio.portc_model().modify(|_r, w| w.mode1().inputpull());
+        gpio.portc_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() | Self::PIN) });
+        Self { gpio }
+    }
+
+    /// True while the button is held down.
+    pub fn is_pressed(&self) -> bool {
+        self.gpio.portc_din().read().bits() & Self::PIN == 0
     }
 }
