@@ -94,10 +94,22 @@ fn main() -> ! {
         .modify(|_r, w| w.gpio().set_bit().i2c0().set_bit());
 
     // PC04 = SDA, PC05 = SCL. PORTC_MODEL holds pins 0-7; mode4/mode5 are the
-    // fields for pins 4 and 5. WIREDOR = open drain, which is what I2C needs.
+    // fields for pins 4 and 5.
+    //
+    // WIREDOR (mode 6) is WRONG for I2C and silently hangs the bus: the SVD
+    // calls mode 8 WIREDAND = "Open-drain output", and open-drain is what a
+    // wired-AND bus needs. With mode 6 the peripheral sat in STATE=START with
+    // PSTART pending forever (measured: STATE=0x42 -> field 2 = START,
+    // STATUS=0x801 -> PSTART=1, bus idle high 0x30), so every scan reported
+    // "0 devices" while the bus was in fact healthy.
     dp.gpio_s
         .portc_model()
-        .modify(|_r, w| w.mode4().wiredor().mode5().wiredor());
+        .modify(|_r, w| w.mode4().wiredand().mode5().wiredand());
+
+    // DOUT high = release both lines (open-drain only pulls low).
+    dp.gpio_s
+        .portc_dout()
+        .modify(|r, w| unsafe { w.bits(r.bits() | (1 << 4) | (1 << 5)) });
 
     // Route the peripheral to those pins and enable the two routes.
     // PORT field: 0 = PORTA, 1 = PORTB, 2 = PORTC, 3 = PORTD (plain field,
@@ -158,6 +170,9 @@ fn main() -> ! {
         }
 
         // STOP (always, even on timeout: never leave the bus held).
+        if !acked {
+            i2c.cmd().write(|w| w.abort().set_bit());
+        }
         i2c.cmd().write(|w| w.stop().set_bit());
         let mut spin = 0u32;
         while i2c.status().read().pstop().bit_is_set() {
