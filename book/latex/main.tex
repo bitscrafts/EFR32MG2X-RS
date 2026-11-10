@@ -59,21 +59,15 @@
 \begin{center}
     \vspace*{\fill}
     Copyright \copyright\ 2026 Marcelo Correa\\
-    \\
     Licensed under Apache-2.0 or MIT (at your option)\\
-    \\
-    Source code and examples available at:
-    \\
+    \vspace{0.6em}
+    Source code and examples:\\
     \url{https://github.com/bitscrafts/EFR32MG2X-RS}\\
-    \\
+    \vspace{0.6em}
     ISBN: 978-1-XXXX-XXXX-X\\
-    \\
-    Typeset in \LaTeX\ using the XeLaTeX engine
-    \\
-    Compiler: XeTeX version 3.14159265
-    \\
-    Document version: 1.0.0 (2026-01-05)
-    \\
+    \vspace{0.6em}
+    Typeset in \LaTeX\ (pdfLaTeX, TeX Live)\\
+    Document version: 1.0.0 (2026-11-11)\\
     First printing: January 2026
     \vspace*{\fill}
 \end{center}
@@ -373,23 +367,23 @@ This appendix will be added.
 \addcontentsline{toc}{chapter}{Bibliography}
 \clearpage
 
-% Print index
-\printindex
-\addcontentsline{toc}{chapter}{Index}
-\clearpage
+% An index would need \usepackage{imakeidx} and \index{} entries; neither exists,
+% and an undefined \printindex is a hard error, so the page is simply absent.
 
-% Back cover page placeholder
+% Back cover
 \thispagestyle{empty}
 \begin{center}
     \vspace*{\fill}
-    \textbf{\huge End of Book}
-    \\\[2em]
-    \large
-    For more information and updates:
-    \\
+    {\huge\bfseries End of Book}
+
+    \vspace{2em}
+    {\large For more information and updates:}
+
     \url{https://github.com/bitscrafts/EFR32MG2X-RS}
-    \\\[2em]
-    Document built: \today\\
+
+    \vspace{2em}
+    Document built: \today
+
     Build version: 1.0.0
     \vspace*{\fill}
 \end{center}

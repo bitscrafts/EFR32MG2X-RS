@@ -109,11 +109,27 @@ Create \filepath{.cargo/config.toml}:
 target = "thumbv8m.main-none-eabihf"
 
 [target.thumbv8m.main-none-eabihf]
-runner = "probe-rs run --chip EFR32MG24B220F1536IM48"
+# No `runner` on purpose: `cargo run` would program the chip the moment it builds,
+# and on this board that has to go through the guarded script (see the note below).
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  "-C", "link-arg=--nmagic",
+]
 
 [env]
 DEFMT_LOG = "debug"
 \end{minted}
+
+\begin{quote}
+\textbf{Why this book has no cargo run.} The first 24 KB of flash
+belong to the Gecko bootloader. A `runner` in `.cargo/config.toml` turns every
+\codeinline{cargo run} into a write, and a single wrong linker script silently relocates
+the vector table into that region. This project flashes through
+\codeinline{scripts/flash-lnx.sh}: dry run by default, \codeinline{--confirm} to write,
+a hard refusal when the image's lowest address is below \codeinline{0x08006000}, and a
+read-back verification afterwards. The same script is what re-flashes the board after a
+mistake — which matters more than the convenience of \codeinline{cargo run}.
+\end{quote}
 
 \subsection{Building the Project}
 

@@ -98,26 +98,41 @@ Probing OpenUSB... Done
 [0]: J-Link Silicon Labs (<serial-number>) (J-Link)
 \end{minted}
 
-\subsection{Installing Silicon Labs Tools}
+\subsection{Flashing: one sanctioned path}
 \label{subsec:install-silabs-tools}
 
-You'll need the Simplicity Commander for initial board flashing and debug authentication:
+Silicon Labs' Simplicity Commander exists, and it is the right tool for one job: the
+authorisation that unlocks a secured part. It is \emph{not} the flashing path this book
+uses, because a bare \codeinline{commander flash} will happily write wherever the image
+says — including over the bootloader.
 
-\textbf{Linux}:
+What this project uses instead, and why it is worth the extra script:
+
 \begin{minted}{bash}
-wget https://www.silabs.com/documents/public/software/SimplicityCommander-Linux.tar.bz2
-tar xjf SimplicityCommander-Linux.tar.bz2
-sudo cp commander /usr/local/bin/
+# 1. show where the image would land, without touching the board
+python3 scripts/elf-load-range.py target/thumbv8m.main-none-eabihf/release/examples/pac_imu
+# load_min=0x08006000 load_max=0x08006813 size=2068 segments=3
+
+# 2. dry run: prints the plan and refuses anything with load_min < 0x08006000
+bash scripts/flash-lnx.sh "$ELF"
+
+# 3. write, then verify by reading the flash back
+bash scripts/flash-lnx.sh "$ELF" --confirm
 \end{minted}
 
-\textbf{macOS}:
-\begin{minted}{bash}
-wget https://www.silabs.com/documents/public/software/SimplicityCommander-Mac.tar.bz2
-tar xjf SimplicityCommander-Mac.tar.bz2
-sudo cp commander /usr/local/bin/
-\end{minted}
+The board hangs off a separate host (\codeinline{lnx}) reachable over SSH, which is why
+the script copies the ELF over and drives the programmer there. If your board is on the
+machine you build on, the same script works locally — the guards, not the transport, are
+the point.
 
-\textbf{Windows}: Download installer from Silabs.com
+\begin{quote}
+\textbf{Measured caveat.} \codeinline{probe-rs} works for the first attach and then
+desynchronises on this board's onboard CMSIS-DAP bridge
+(\codeinline{Command ID in response (0x14) does not match sent command ID}); a USB
+reset does not clear it and only a physical replug does. OpenOCD talks to the same probe
+without the problem, so the script uses OpenOCD for reads and \codeinline{probe-rs} for
+the write-and-verify step.
+\end{quote}
 
 \subsection{Updating Debug Probe Firmware}
 \label{subsec:update-firmware}

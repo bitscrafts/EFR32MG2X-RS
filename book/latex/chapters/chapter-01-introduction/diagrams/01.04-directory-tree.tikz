@@ -21,19 +21,24 @@
             before computing xy={l=15pt},
         }
         [EFR32MG24/
-            [efr32mg24-pac/
-                [Cargo.toml]
-                [src/]
-                [svd/]
+            [crates/
+                [efr32mg24-pac/
+                    [Cargo.toml]
+                    [memory.x]
+                    [src/]
+                    [svd/]
+                    [examples/]
+                ]
+                [efr32mg24-hal/
+                    [Cargo.toml]
+                    [src/]
+                    [examples/]
+                ]
+                [efr32mg24-rail-sys/]
+                [efr32mg24-bluetooth-sys/]
+                [xiao-mg24-bsp/]
+                [motion-detection/]
             ]
-            [efr32mg24-hal/
-                [Cargo.toml]
-                [src/]
-                [examples/]
-            ]
-            [efr32mg24-rail-sys/]
-            [efr32mg24-bluetooth-sys/]
-            [xiao-mg24-bsp/]
             [docs/]
             [book/
                 [latex/]

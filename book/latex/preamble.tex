@@ -175,3 +175,23 @@
 % ========== NUMBERING DEPTH ==========
 \setcounter{secnumdepth}{2}  % Number sections and subsections
 \setcounter{tocdepth}{2}     % Show sections and subsections in TOC
+
+% ========== UNICODE CHARACTERS THE BOOK USES ==========
+% T1/lmodern does not carry every glyph the text uses: an em-dash or a bullet
+% disappears silently (pdflatex also refuses them outright). Mapping them to LaTeX
+% commands is one fix in one place, and it keeps the source readable.
+\usepackage{newunicodechar}
+\newunicodechar{—}{---}
+\newunicodechar{–}{--}
+\newunicodechar{•}{\textbullet}
+\newunicodechar{…}{\ldots}
+\newunicodechar{×}{\ensuremath{\times}}
+\newunicodechar{→}{\ensuremath{\rightarrow}}
+\newunicodechar{≈}{\ensuremath{\approx}}
+
+% ========== MONOSPACE FONT WITH THE GLYPHS THE EXAMPLES USE ==========
+% The directory trees in the code blocks use box-drawing characters (U+2500..2514)
+% that T1/lmodern does not carry: they vanish without an error, leaving a tree of
+% bare names. DejaVu Sans Mono has them, and XeLaTeX can select it directly.
+\usepackage{fontspec}
+\setmonofont{DejaVu Sans Mono}[Scale=0.86]

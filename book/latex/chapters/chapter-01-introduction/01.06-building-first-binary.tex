@@ -82,7 +82,8 @@ When you run \codeinline{cargo build --release}, here's what happens:
 
 \begin{figure}[H]
     \centering
-    \begin{tikzpicture}[
+    \usetikzlibrary{arrows.meta}
+\begin{tikzpicture}[
         node/.style={rectangle, draw=black, thick, minimum width=2.5cm, minimum height=1cm},
         arrow/.style={-Latex, thick}
     ]
@@ -97,7 +98,7 @@ When you run \codeinline{cargo build --release}, here's what happens:
 
         % External files
         \node[font=\small] (linker-script) at (9, 0.8) {linker.ld};
-        \node[font=\small] (startup) at (9, 1.2) {startup_s};
+        \node[font=\small] (startup) at (9, 1.2) {startup\_s};
 
         % Arrows
         \draw[arrow] (source) -- (rustc);
@@ -242,23 +243,59 @@ Even the unoptimized debug build is only 124 bytes!
 
 The linker script is crucial in embedded systems. It tells the linker where to place code and data in memory.
 \subsection{Memory Layout}
-Create \filepath{memory.x}:
+Create \filepath{memory.x}. The numbers below are the ones this board actually needs,
+and two of them are safety-critical:
+
 \begin{minted}{text}
 MEMORY
 {
-  /* Flash memory for code and constants */
-  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 1536K
+  /* The Gecko bootloader owns the first 24 KB: an application must not start
+     at 0x0800_0000, however tempting the round number looks. */
+  FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
 
-  /* RAM for variables and stack */
-  RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = 256K
+  /* SRAM is 256 KB, but the last 4 KB page is the SWD mailbox this project
+     reads its results from, so the linker gets 252 KB. */
+  RAM : ORIGIN = 0x20000000, LENGTH = 252K
 }
+
+/* cortex-m-rt places the stack here. The Arduino core's stack pointer
+   (0x20001208) is NOT a memory budget: copying it leaves the linker 4.5 KB and
+   any buffer larger than a few kilobytes fails to link with
+   "stack end address is not below stack start". */
+_stack_start = 0x2003F000;
 \end{minted}
 
 This matches the EFR32MG24B220 memory map:
 \begin{itemize}
-    \item Flash: 1,536 KB starting at 0x0000_0000
-    \item SRAM: 256 KB starting at 0x2000_0000
+    \item Flash: 1,536 KB at 0x0800\_0000, of which 0x0800\_0000--0x0800\_5FFF is the
+          bootloader and 0x0800\_6000--0x0817\_FFFF is the application
+    \item SRAM: 256 KB at 0x2000\_0000, the last 4 KB page reserved as a mailbox
 \end{itemize}
+
+\subsection{Two Linker Flags That Are Not Optional}
+\label{sec:linker-flags}
+
+\begin{minted}{toml}
+[target.thumbv8m.main-none-eabihf]
+rustflags = [
+  "-C", "link-arg=-Tlink.x",
+  # Without --nmagic, LLD aligns the first segment to a 64 KB page and emits a
+  # PT_LOAD at 0x0800_0000 -- inside the bootloader. Measured on this board:
+  # 372 bytes written below the application's own start address.
+  "-C", "link-arg=--nmagic",
+]
+\end{minted}
+
+The failure mode is worth stating plainly: the ELF looks fine, \codeinline{cargo build}
+succeeds, and the only sign is a segment the loader would place where the bootloader
+lives. \codeinline{scripts/elf-load-range.py} exists to print exactly that range before
+anything is flashed:
+
+\begin{minted}{text}
+$ python3 scripts/elf-load-range.py target/thumbv8m.main-none-eabihf/release/examples/pac_imu
+load_min=0x08006000 load_max=0x08006813 size=2068 segments=3
+\end{minted}
+
 \subsection{Examining the Linker Output}
 \begin{minted}{bash}
 $ cargo build --release --example minimal --verbose 2>&1 | grep "LINK"
