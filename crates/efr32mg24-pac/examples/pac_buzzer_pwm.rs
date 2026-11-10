@@ -201,8 +201,42 @@ fn main() -> ! {
         mailbox::fail(&buf[..pos]);
     }
 
-    // Leave the tone running: the buzzer should keep sounding after the test.
+    // Beep intermittently rather than holding a continuous tone: a passive
+    // buzzer left on is unpleasant and indistinguishable from a fault. 200 ms
+    // on, 1200 ms off -- and the counter is reported so the pattern can be
+    // verified by sampling CNT over a few seconds (zero during the gap, moving
+    // during the beep).
+    // Timing comes from CNT, not from `asm::delay`: the CPU-cycle delay assumes
+    // a SYSCLK this image never verifies, and measured gaps came out ~3x too
+    // long. CNT is the same clock the tone is calibrated against, so a beep
+    // timed in ticks is right even when SYSCLK is not what we think.
+    let beep_ticks = (timer_hz / 5) as u32; // 200 ms
+    let gap_ticks = ((timer_hz * 12) / 10) as u32; // 1200 ms
+    let wait_ticks = |ticks: u32| {
+        let start = timer.cnt().read().bits();
+        while timer.cnt().read().bits().wrapping_sub(start) < ticks {
+            cortex_m::asm::nop();
+        }
+    };
+
+    let mut beeps: u32 = 0;
     loop {
-        cortex_m::asm::nop();
+        // The counter keeps running through both phases: stopping it would stop
+        // CNT too, and the gap wait would never see a tick (first attempt: the
+        // record never advanced past beep 0). Silence is produced by taking the
+        // compare action away from the pin instead.
+        timer.cc0_ctrl().write(|w| w.cmoa().toggle());
+        wait_ticks(beep_ticks);
+        timer.cc0_ctrl().write(|w| w.cmoa().none());
+        wait_ticks(gap_ticks);
+        beeps = beeps.wrapping_add(1);
+
+        // Refresh the record every beep so a reader sees the count climbing.
+        let mut m = [0u8; 32];
+        let mut mp = push_bytes(&mut m, 0, b"beep=");
+        mp = push_dec(&mut m, mp, beeps);
+        mp = push_bytes(&mut m, mp, b" tone=");
+        mp = push_dec(&mut m, mp, tone_hz as u32);
+        mailbox::pass(&m[..mp]);
     }
 }
