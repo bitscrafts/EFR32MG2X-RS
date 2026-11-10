@@ -8,7 +8,8 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "${REPO_ROOT}" || { echo "REFUSE: cannot cd to ${REPO_ROOT}"; exit 1; }
 
-LOG_DIR="${REPO_ROOT}/_tmp/build-logs"
+# Logs live OUTSIDE the repository: the project root must stay clean.
+LOG_DIR="${TMP_LOG_ROOT:-/projects/_tmp/efr32mg24-rs/build-logs}"
 mkdir -p "${LOG_DIR}"
 
 run() {

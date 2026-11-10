@@ -50,3 +50,12 @@ book/**/*.toc
 **/blobs/*.lib
 **/vendor/**/*.h
 **/vendor/**/*.c
+
+# Local temp work must not land in the repository
+_tmp/
+
+# Build artefacts and vendor packs never belong in the repository
+*.hex
+*.bin
+*.pack
+!scripts/**/*.hex
