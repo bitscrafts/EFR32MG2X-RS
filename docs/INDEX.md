@@ -236,6 +236,7 @@ See [LICENSE](../LICENSE) file for details.
 *Documentation organized using SSOT methodology - Last updated: 2026-05-16*
 
 - [Expansion Base example status](03-development/EXPANSION-BOARD-STATUS-2026-11-11.md) — what is verified, what is not, and the ten hardware lessons
+- [Fall detection calibration](04-reference/FALL-DETECTION-CALIBRATION.md) - nine real drops, and why the impact threshold cannot separate a fall from a knock
 - [I2C0 read defect](04-reference/I2C0-READ-DEFECT.md) — fourteen measurements and the open thread
 
 ### Session records and catalogues
@@ -246,5 +247,6 @@ See [LICENSE](../LICENSE) file for details.
 - [IMU investigation](04-reference/IMU-INVESTIGATION.md) - the bus lines were swapped; how it was found
 - [IADC and microphone notes](04-reference/IADC-MIC-NOTES.md) - `SINGLE` is only writable while the converter is enabled
 - [MVP notes](04-reference/MVP-NOTES.md) - the accelerator, and why hand-programming it is not the supported path
+- [Fall detection calibration](04-reference/FALL-DETECTION-CALIBRATION.md) - nine real drops, and why the impact threshold cannot separate a fall from a knock
 - [I2C0 read defect](04-reference/I2C0-READ-DEFECT.md) - fourteen attempts, still open, workaround documented
 - [PAC clock and timer notes](04-reference/PAC-CLOCK-AND-TIMER-NOTES.md) - the register orders this die demands

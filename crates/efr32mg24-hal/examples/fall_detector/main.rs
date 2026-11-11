@@ -5,9 +5,11 @@
 //!
 //! ```text
 //!   main.rs       wiring only: board, clock, sampling loop, event report
+//!   recording.rs  the 15 s ring buffer, so the demo run is also a dataset
 //!   app.rs        the application: sampling policy, counters, self tests
 //!   ui.rs         what the panel shows
-//!   recorded.rs   320 real samples recorded from this board (the negative case)
+//!   recorded.rs   320 real samples of handling (the negative case)
+//!   falls.rs      2004 real samples containing two genuine drops (the positive case)
 //! ```
 //!
 //! The classifier itself is the `motion-detection` crate — hardware free, host
@@ -45,17 +47,23 @@ use efr32mg24_hal::sensors::Lsm6ds3trc;
 use panic_halt as _;
 
 mod app;
+mod falls;
+mod falls_400hz;
 mod recorded;
+mod recording;
 mod ui;
 
 #[path = "../common/mailbox.rs"]
 mod mailbox;
 
-/// 200 Hz at ~19 MHz SYSCLK. The accelerometer runs at 416 Hz, so nothing is
-/// missed between samples that matters for a fall.
-const SAMPLE_PERIOD_CYCLES: u32 = 95_000;
-/// Milliseconds between samples, handed to the application.
-const DT_MS: u32 = 5;
+/// 400 Hz at ~19 MHz SYSCLK, just under the sensor's 416 Hz output rate.
+///
+/// Measured at 200 Hz, two of five real drops showed the impact but **no free fall**:
+/// a 20–30 ms free fall falls between samples. Halving the period halves that blind
+/// spot, which is the difference between reporting a drop and reporting a knock.
+const SAMPLE_PERIOD_CYCLES: u32 = 47_500;
+/// Microseconds between samples, handed to the application.
+const DT_US: u32 = 2_500;
 
 fn cycle_count() -> u32 {
     unsafe { (*cortex_m::peripheral::DWT::PTR).cyccnt.read() }
@@ -65,6 +73,39 @@ fn dwt_start() {
     let mut core = unsafe { cortex_m::Peripherals::steal() };
     core.DCB.enable_trace();
     core.DWT.enable_cycle_counter();
+}
+
+fn push_hex8(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
+    const HEX: &[u8; 16] = b"0123456789abcdef";
+    for shift in (0..8).rev() {
+        if pos < buf.len() {
+            buf[pos] = HEX[((value >> (shift * 4)) & 0xF) as usize];
+            pos += 1;
+        }
+    }
+    pos
+}
+
+fn push_dec(buf: &mut [u8], mut pos: usize, mut value: u32) -> usize {
+    let mut digits = [0u8; 10];
+    let mut n = 0;
+    if value == 0 {
+        digits[0] = b'0';
+        n = 1;
+    }
+    while value > 0 {
+        digits[n] = b'0' + (value % 10) as u8;
+        value /= 10;
+        n += 1;
+    }
+    while n > 0 {
+        n -= 1;
+        if pos < buf.len() {
+            buf[pos] = digits[n];
+            pos += 1;
+        }
+    }
+    pos
 }
 
 fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
@@ -110,11 +151,17 @@ fn main() -> ! {
     let base_bus = RefCell::new(board.i2c());
     let mut display = Ssd1306::new(SharedBus::new(&base_bus));
 
+    // An alarm you can hear: the panel shows the count, the buzzer says it happened.
+    let mut buzzer = board.buzzer();
+    let mut alarm = app::Alarm::new();
+
     // ---- self tests, before the live loop --------------------------------
     let mut application = app::App::new();
     let verdict = application.self_test();
     let mut msg = [0u8; 64];
-    let mut pos = push_bytes(&mut msg, 0, b"fall selftest real=");
+    let mut pos = push_bytes(&mut msg, 0, b"cap=0x");
+    pos = push_hex8(&mut msg, pos, recording::base_address());
+    pos = push_bytes(&mut msg, pos, b" real=");
     pos = push_bytes(
         &mut msg,
         pos,
@@ -129,11 +176,16 @@ fn main() -> ! {
         &mut msg,
         pos,
         if verdict.synthetic_detected {
-            b"detected"
+            b"ok"
         } else {
-            b"MISSED"
+            b"MISS"
         },
     );
+    pos = push_bytes(&mut msg, pos, b" 200Hz=");
+    pos = push_dec(&mut msg, pos, verdict.real_drops_detected);
+    pos = push_bytes(&mut msg, pos, b"/2 400Hz=");
+    pos = push_dec(&mut msg, pos, verdict.drops_400hz_detected);
+    pos = push_bytes(&mut msg, pos, b"/4");
     if verdict.passed() {
         mailbox::pass(&msg[..pos]);
     } else {
@@ -145,6 +197,8 @@ fn main() -> ! {
     let mut last_cycles = 0u32;
     let mut samples = 0u32;
     let mut in_air = false;
+    let mut ring_index = 0usize;
+    let mut last_falls = 0u32;
 
     loop {
         let now = cycle_count();
@@ -157,10 +211,37 @@ fn main() -> ! {
             continue;
         };
         samples += 1;
-        application.sample(motion.accel_mg, DT_MS);
+        application.sample_us(motion.accel_mg, DT_US);
+
+        // A detected fall starts the alarm; the pattern advances one sample at a time
+        // so classification never pauses.
+        // Trigger on the fall *count* rather than on the last event: two falls in a
+        // row must sound twice, and `last_event` would stay `Fall` the whole time.
+        let falls = application.status().falls;
+        if falls != last_falls {
+            last_falls = falls;
+            alarm.trigger();
+        }
+
+        let sounding = alarm.tick(DT_US);
+        if let Some(b) = buzzer.as_mut() {
+            if sounding {
+                b.sound();
+            } else {
+                b.silence();
+            }
+        }
+
+        // Every classified sample is also recorded: this is what makes the demo run
+        // usable as training data afterwards.
+        recording::push(motion.accel_mg, ring_index);
+        ring_index += 1;
+        if ring_index == recording::CAPTURE_LEN {
+            ring_index = 0;
+        }
 
         // The panel is slow; five times a second is enough to be read.
-        if samples % 40 == 0 {
+        if samples % 80 == 0 {
             let status = application.status();
             ui::render(&mut display, &status);
         }

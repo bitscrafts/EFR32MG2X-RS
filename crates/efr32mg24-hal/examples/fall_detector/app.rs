@@ -8,6 +8,8 @@
 
 use motion_detection::{Event, FallDetector};
 
+use crate::falls::{DROPS, DROPS_DT_MS, DROPS_EXPECTED_FALLS};
+use crate::falls_400hz::{DROPS_400HZ, DROPS_400HZ_DT_US, DROPS_400HZ_EXPECTED};
 use crate::recorded::{RECORDED, RECORDED_DT_MS};
 
 /// What the interface needs to know. Plain data, no drivers.
@@ -41,13 +43,19 @@ pub struct SelfTest {
     pub real_data_clean: bool,
     /// True when the synthetic drop was detected.
     pub synthetic_detected: bool,
+    /// Falls found in the first recorded round (two drops at 200 Hz).
+    pub real_drops_detected: u32,
+    /// Falls found in the second recorded round (four drops at 400 Hz).
+    pub drops_400hz_detected: u32,
 }
 
 impl SelfTest {
-    /// Both tests passed.
+    /// Every test passed.
     #[must_use]
     pub fn passed(&self) -> bool {
-        self.real_data_clean && self.synthetic_detected
+        self.real_data_clean
+            && self.synthetic_detected
+            && self.real_drops_detected == DROPS_EXPECTED_FALLS
     }
 }
 
@@ -67,10 +75,13 @@ impl App {
         self.status
     }
 
-    /// Feed one sample. `dt_ms` is the time since the previous one.
-    pub fn sample(&mut self, accel_mg: [i32; 3], dt_ms: u32) {
+    /// Feed one sample. `dt_us` is the time since the previous one.
+    ///
+    /// Microseconds because the sampler runs at 400 Hz: 2.5 ms per sample rounded to
+    /// whole milliseconds is a 20 % error in every timer in the detector.
+    pub fn sample_us(&mut self, accel_mg: [i32; 3], dt_us: u32) {
         self.status.magnitude_mg = magnitude(accel_mg);
-        match self.detector.update(accel_mg, dt_ms) {
+        match self.detector.update_us(accel_mg, dt_us) {
             Some(Event::Fall {
                 peak_mg,
                 freefall_ms,
@@ -138,12 +149,45 @@ impl App {
         matches!(fall, Some(Event::Fall { .. }))
     }
 
-    /// Run both self tests.
+    /// Replay the two recorded drops and count what the detector reports.
+    ///
+    /// This is the test that decides whether the classifier is real: data from this
+    /// board, falls that happened, and a count to compare with what was performed.
+    #[must_use]
+    pub fn self_test_drops(&self) -> u32 {
+        let mut detector = FallDetector::new();
+        let mut falls = 0;
+        for sample in DROPS.iter() {
+            let accel = [sample[0] as i32, sample[1] as i32, sample[2] as i32];
+            if let Some(Event::Fall { .. }) = detector.update(accel, DROPS_DT_MS) {
+                falls += 1;
+            }
+        }
+        falls
+    }
+
+    /// Replay the four drops recorded at 400 Hz.
+    #[must_use]
+    pub fn self_test_drops_400hz(&self) -> u32 {
+        let mut detector = FallDetector::new();
+        let mut falls = 0;
+        for sample in DROPS_400HZ.iter() {
+            let accel = [sample[0] as i32, sample[1] as i32, sample[2] as i32];
+            if let Some(Event::Fall { .. }) = detector.update_us(accel, DROPS_400HZ_DT_US) {
+                falls += 1;
+            }
+        }
+        falls
+    }
+
+    /// Run every self test.
     #[must_use]
     pub fn self_test(&self) -> SelfTest {
         SelfTest {
             real_data_clean: self.self_test_real(),
             synthetic_detected: self.self_test_synthetic(),
+            real_drops_detected: self.self_test_drops(),
+            drops_400hz_detected: self.self_test_drops_400hz(),
         }
     }
 }
@@ -174,4 +218,89 @@ fn isqrt(value: u64) -> u64 {
         y = (x + value / x) / 2;
     }
     x
+}
+
+/// The audible alarm, advanced by the sampling loop instead of by a blocking delay.
+///
+/// A blocking `beep()` would stop classification for the whole pattern — three beeps
+/// of 150 ms is 750 ms of 200 Hz samples, and a fall comes in bursts: the second
+/// impact lands while the first alarm is still sounding. So the pattern is a state
+/// machine ticked once per sample, and the sampling never stops.
+#[derive(Debug, Clone, Copy)]
+pub struct Alarm {
+    beeps_left: u8,
+    /// True while the tone should be sounding.
+    sounding: bool,
+    /// Time left in the current phase, in microseconds.
+    phase_ms: u32,
+}
+
+impl Alarm {
+    /// How long each beep lasts.
+    pub const BEEP_MS: u32 = 150;
+    /// Silence between beeps.
+    pub const GAP_MS: u32 = 120;
+    /// Beeps in one alarm.
+    pub const BEEPS: u8 = 3;
+
+    /// A silent alarm.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            beeps_left: 0,
+            sounding: false,
+            phase_ms: 0,
+        }
+    }
+
+    /// Start the pattern. Called on a detected fall.
+    pub fn trigger(&mut self) {
+        self.beeps_left = Self::BEEPS;
+        self.sounding = true;
+        self.phase_ms = Self::BEEP_MS * 1000;
+    }
+
+    /// Advance by `dt_ms` and say whether the tone should be on now.
+    ///
+    /// Idempotent with respect to the buzzer: the caller can set the output every
+    /// sample without cost, because the driver writes a register and the timer keeps
+    /// the tone going.
+    pub fn tick(&mut self, dt_us: u32) -> bool {
+        if self.beeps_left == 0 {
+            return false;
+        }
+        if dt_us >= self.phase_ms * 1000 {
+            if self.sounding {
+                // A beep just ended: short silence, then the next beep.
+                self.sounding = false;
+                self.phase_ms = Self::GAP_MS * 1000;
+            } else {
+                self.beeps_left -= 1;
+                if self.beeps_left == 0 {
+                    self.sounding = false;
+                    self.phase_ms = 0;
+                    return false;
+                }
+                self.sounding = true;
+                self.phase_ms = Self::BEEP_MS * 1000;
+            }
+            // Whatever is left of this tick counts against the new phase.
+            self.phase_ms = self.phase_ms.saturating_sub(dt_us);
+        } else {
+            self.phase_ms -= dt_us;
+        }
+        self.sounding
+    }
+
+    /// True while a pattern is in progress.
+    #[must_use]
+    pub fn active(&self) -> bool {
+        self.beeps_left > 0
+    }
+}
+
+impl Default for Alarm {
+    fn default() -> Self {
+        Self::new()
+    }
 }

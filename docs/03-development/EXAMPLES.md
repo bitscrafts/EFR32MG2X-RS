@@ -51,7 +51,7 @@ mailbox at `0x2003_F000` (`scripts/read-mailbox.sh`) or from RAM.
 
 | example | proves | evidence | status |
 |---|---|---|---|
-| `fall_detector/` (`main`, `app`, `ui`, `recorded`) | a classifier over real recordings; free fall + impact + stillness | `fall selftest real=clean synth=detected` | green |
+| `fall_detector/` (`main`, `app`, `ui`, `recording`, `recorded`, `falls`, `falls_400hz`) | fall detection calibrated on nine real drops; records while it classifies; buzzer alarm | `real=clean synth=ok 200Hz=2/2 400Hz=4/4` | green |
 
 ## BSP — the board by name
 
