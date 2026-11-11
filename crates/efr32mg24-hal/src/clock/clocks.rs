@@ -20,14 +20,20 @@ pub struct Clocks {
     pub(super) sysclk: Hertz,
 }
 
+/// The SYSCLK this HAL configures when no other clock source is asked for.
+///
+/// It is a statement about the configuration, not a measurement: the real rate was
+/// measured with the DWT counter at ~19 MHz (a 2700 Hz tone needed TIMER0 TOP=3518), and
+/// anything that needs better than a percent should measure its own.
+pub const DEFAULT_SYSCLK_HZ: u32 = 19_000_000;
+
 impl Clocks {
     /// Default internal RC oscillator frequencies
     const HFRCO_FREQ: u32 = 19_000_000; // 19 MHz default
     const LFRCO_FREQ: u32 = 32_768; // 32.768 kHz
 
-    /// Oscillator stabilization timeout (in loop iterations)
-    /// At ~19 MHz, this gives approximately 10ms timeout
-    const OSC_TIMEOUT: u32 = 100_000;
+    // The oscillator wait is a poll on HFRCOEM23.STATUS.RDY, which reports reality;
+    // an iteration counter only ever reported how fast the loop was going.
 
     /// Configure the clock system with hardware register access
     ///

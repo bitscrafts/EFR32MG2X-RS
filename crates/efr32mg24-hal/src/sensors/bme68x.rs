@@ -180,7 +180,7 @@ impl<B: I2cBus> Bme68x<B> {
         // Humidity oversampling must be set before ctrl_meas.
         self.bus.write_reg(self.addr, REG_CTRL_HUM, 0b001)?;
         // osrs_t x2, osrs_p x2, forced mode.
-        self.bus.write_reg(self.addr, REG_CTRL_MEAS, 0b010_010_01)?;
+        self.bus.write_reg(self.addr, REG_CTRL_MEAS, 0b0100_1001)?;
 
         let mut ready = false;
         for _ in 0..40 {

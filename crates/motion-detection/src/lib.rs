@@ -215,10 +215,12 @@ impl FallDetector {
                 let peak = peak_mg.max(magnitude);
 
                 if peak >= LANDING_MG {
-                    // The impact has happened: from here only quiet matters. There is
-                    // deliberately no deadline for the settle — a board that lands,
-                    // bounces and rolls takes a second, and giving up mid-settle would
-                    // call a real fall a knock (measured: two of five drops).
+                    // The landing has happened: from here only quiet matters. The settle
+                    // itself has no short deadline — a board that lands, bounces and rolls
+                    // takes a second, and giving up mid-settle would call a real fall a
+                    // knock (measured: two of five drops). `GIVE_UP_MS` is the long stop:
+                    // a device that never settles gets no verdict at all, which is better
+                    // than a wrong one.
                     let settled = if magnitude < QUIET_MG {
                         settled_us.saturating_add(dt_us)
                     } else {
@@ -230,6 +232,9 @@ impl FallDetector {
                             peak_mg: peak,
                             freefall_ms: freefall_us / 1000,
                         })
+                    } else if elapsed > GIVE_UP_US {
+                        self.phase = Phase::Idle;
+                        None
                     } else {
                         self.phase = Phase::Candidate {
                             peak_mg: peak,
@@ -289,7 +294,7 @@ fn isqrt(value: u64) -> u64 {
         return 0;
     }
     let mut x = value;
-    let mut y = (x + 1) / 2;
+    let mut y = x.div_ceil(2);
     while y < x {
         x = y;
         y = (x + value / x) / 2;

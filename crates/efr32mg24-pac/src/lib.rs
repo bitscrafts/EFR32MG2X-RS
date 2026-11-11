@@ -3,6 +3,9 @@
 #![allow(non_snake_case)]
 #![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
+// Generated register fields include a `neg` accessor (PCNT0 CTRL); the name is the
+// hardware's, so the lint about shadowing `std::ops::Neg::neg` does not apply here.
+#![allow(clippy::should_implement_trait)]
 #[allow(unused_imports)]
 use generic::*;
 #[doc = "Common register and bit access and modify traits"]

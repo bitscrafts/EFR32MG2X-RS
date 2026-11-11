@@ -76,7 +76,7 @@ fn push_pad2(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
 
 #[entry]
 fn main() -> ! {
-    let mut board = match ExpansionBase::take() {
+    let board = match ExpansionBase::take() {
         Some(b) => b,
         None => loop {
             cortex_m::asm::nop();

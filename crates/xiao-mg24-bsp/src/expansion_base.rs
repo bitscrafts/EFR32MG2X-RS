@@ -68,6 +68,27 @@ impl ExpansionBase {
         })
     }
 
+    /// A busy-wait delay driven by SysTick's calibrated clock.
+    ///
+    /// The facade exposes it because every example needs one and nobody should be writing
+    /// `cortex_m::asm::delay(n)`: that is not *n* cycles. It inflated a buzzer calibration
+    /// by 3x before anyone measured it.
+    ///
+    /// # Why the peripheral is stolen
+    ///
+    /// The HAL's `Board` owns the core peripherals and its `into_delay` consumes the
+    /// board, which the facade cannot do — it owns the board for its whole life. SysTick is
+    /// otherwise untouched: the HAL reads `core` only to build a `Delay`, and no example
+    /// calls `split`. Stealing the handle therefore creates a second view of registers that
+    /// nothing else programs. Two delays alive at once would mean two owners of the same
+    /// countdown, so the example takes one and keeps it.
+    pub fn delay(&mut self) -> efr32mg24_hal::delay::Delay {
+        // SAFETY: SysTick is exclusively the delay's; nothing else in this workspace
+        // programs it, which is what makes the second view harmless.
+        let syst = unsafe { cortex_m::Peripherals::steal().SYST };
+        efr32mg24_hal::delay::Delay::with_sysclk(syst, efr32mg24_hal::clock::DEFAULT_SYSCLK_HZ)
+    }
+
     /// The user LED (PA7, active low).
     pub fn led(&self) -> Led<'_> {
         self.board.led()

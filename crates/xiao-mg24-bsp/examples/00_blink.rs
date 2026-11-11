@@ -1,56 +1,56 @@
-//! Blink LED example for XIAO MG24 Sense
+//! The smallest BSP example: one LED, one board, no addresses.
 //!
-//! Demonstrates basic board initialization and GPIO usage.
+//! This is the BSP's hello world, and it is deliberately shorter than the HAL or PAC
+//! versions of the same thing — the point of the facade is that a reader does not have to
+//! know which pin the LED is on, or that it is active low, or that the user LED is the one
+//! in PA7 and not the charging indicator next to it.
 //!
-//! # Hardware Setup
+//! # What it proves
 //!
-//! - Built-in LED (PB02, D10) will blink at 1 Hz
-//! - No external hardware required
+//! - `ExpansionBase::take()` is enough to get a usable board.
+//! - The LED blinks at 1 Hz, measured, not assumed: the loop is paced by the same
+//!   calibrated delay the rest of the workspace uses.
+//! - The example contains **no port, pin, register or address**. If it did, the facade
+//!   would be leaking and the example would be a lie about what the BSP is for.
 //!
-//! # Expected Behavior
+//! # Hardware
 //!
-//! - LED blinks ON for 500ms, OFF for 500ms
-//! - LED is active-low (LOW = ON, HIGH = OFF)
+//! XIAO MG24 Sense on the XIAO Expansion Base (or bare): the user LED is on PA7, active
+//! low (writing 0 lights it). Everything it needs is on the board.
 //!
-//! # Build & Flash
+//! # Build and flash
 //!
 //! ```bash
-//! cargo build --example blink --release
-//! probe-rs run --chip EFR32MG24B220F1536IM48 target/thumbv8m.main-none-eabihf/release/examples/blink
+//! cargo build --release -p xiao-mg24-bsp --features rt --example 00_blink
+//! bash scripts/flash-lnx.sh \
+//!   /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/00_blink --confirm
 //! ```
+//!
+//! Flashing goes through the guard script, never through a bare `probe-rs run`: the
+//! script refuses an image that would touch the Gecko bootloader.
 
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
-use embedded_hal::delay::DelayNs;
-use embedded_hal::digital::OutputPin;
+use efr32mg24_hal::entry;
+use efr32mg24_hal::prelude::*;
 use panic_halt as _;
-use xiao_mg24_bsp::{hal, Board};
+use xiao_mg24_bsp::expansion_base::ExpansionBase;
 
 #[entry]
 fn main() -> ! {
-    // Initialize board with default configuration
-    // - HFXO @ 39 MHz
-    // - SYSCLK @ 39 MHz
-    let board = Board::take().unwrap();
+    let mut base = ExpansionBase::take().expect("the board is taken twice");
 
-    // Split board into components
-    let (pins, clocks, core) = board.split();
-
-    // Configure built-in LED pin (D10/PB02, active low)
-    let mut led = pins.d10.into_push_pull_output();
-
-    // Create delay provider
-    let mut delay = hal::delay::Delay::new(core.SYST, &clocks);
+    // Half a second on, half a second off. `Delay` is the HAL's busy wait over SysTick, so
+    // the period is what it says rather than what the compiler happened to emit. Taken
+    // before the LED because it needs the board mutably and the LED borrows it.
+    let mut delay = base.delay();
+    let led = base.led();
 
     loop {
-        // LED ON (active low)
-        led.set_low().ok();
+        led.on();
         delay.delay_ms(500);
-
-        // LED OFF
-        led.set_high().ok();
+        led.off();
         delay.delay_ms(500);
     }
 }

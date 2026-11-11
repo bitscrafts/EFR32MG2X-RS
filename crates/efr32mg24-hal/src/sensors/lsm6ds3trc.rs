@@ -31,7 +31,6 @@ const REG_CTRL1_XL: u8 = 0x10;
 const REG_CTRL2_G: u8 = 0x11;
 const REG_CTRL3_C: u8 = 0x12;
 const REG_OUT_G: u8 = 0x22;
-const REG_OUT_XL: u8 = 0x28;
 
 /// What WHO_AM_I must read on an LSM6DS3 / LSM6DS3TR-C.
 pub const WHO_AM_I_LSM6DS3: u8 = 0x6A;

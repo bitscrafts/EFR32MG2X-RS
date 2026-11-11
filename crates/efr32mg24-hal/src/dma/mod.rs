@@ -253,7 +253,7 @@ impl<const N: u8> Channel<N> {
 
         // Validate peripheral address alignment
         let alignment = core::mem::size_of::<T>();
-        if peripheral_addr % alignment as u32 != 0 {
+        if !peripheral_addr.is_multiple_of(alignment as u32) {
             return Err(DmaError::InvalidAddress);
         }
 
@@ -293,7 +293,7 @@ impl<const N: u8> Channel<N> {
                         // [31:2] LINKADDR - Descriptor address / 4
                         // [1]    LINK - Enable linking (1 = enabled)
                         // [0]    LINKMODE - Addressing mode (0 = absolute, 1 = relative)
-                        let link_value = ((descriptor_addr >> 2) << 2) | (1 << 1) | 0; // absolute mode, link enabled
+                        let link_value = (descriptor_addr & !0b11) | (1 << 1); // absolute mode, link enabled
                         ldma.ch0_link().write(|w| w.bits(link_value));
 
                         // Configure transfer control for peripheral-to-memory

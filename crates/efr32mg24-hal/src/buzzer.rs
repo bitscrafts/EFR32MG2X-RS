@@ -83,9 +83,12 @@ impl<'a> Buzzer<'a> {
         // register opens the connection. Both, or the timer toggles a pin nobody is
         // looking at.
         dp.gpio_s.portc_model().modify(|_r, w| w.mode3().pushpull());
-        dp.gpio_s
-            .timer0_cc0route()
-            .write(|w| unsafe { w.port().bits(2).pin().bits(3) });
+        dp.gpio_s.timer0_cc0route().write(|w| unsafe {
+            w.port()
+                .bits(2)
+                .pin()
+                .bits(BUZZER_PIN.trailing_zeros() as u8)
+        });
         dp.gpio_s
             .timer0_routeen()
             .modify(|_r, w| w.cc0pen().set_bit());
@@ -119,10 +122,10 @@ impl<'a> Buzzer<'a> {
         let mut ticks: u32 = 0;
         let mut elapsed_cycles: u32 = 0;
         for _ in 0..6 {
-            let ticks_before = u32::from(timer.cnt().read().cnt().bits());
+            let ticks_before = timer.cnt().read().cnt().bits();
             let cycles_before = cycles.cyccnt.read();
             cortex_m::asm::delay(window);
-            let ticks_after = u32::from(timer.cnt().read().cnt().bits());
+            let ticks_after = timer.cnt().read().cnt().bits();
             let cycles_after = cycles.cyccnt.read();
             if ticks_after >= ticks_before {
                 ticks = ticks_after - ticks_before;

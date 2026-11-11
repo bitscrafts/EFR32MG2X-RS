@@ -61,6 +61,19 @@ impl Delay {
         }
     }
 
+    /// Create a delay provider from a stated clock frequency.
+    ///
+    /// For callers that own the board but not its `FrozenClocks` — the BSP facade is one:
+    /// the HAL's `Board` keeps no clock handle, so it cannot hand one out.
+    pub fn with_sysclk(mut syst: SYST, sysclk_hz: u32) -> Self {
+        syst.set_clock_source(SystClkSource::Core);
+
+        Self {
+            syst,
+            sysclk: Hertz(sysclk_hz),
+        }
+    }
+
     /// Release the SysTick peripheral
     ///
     /// This consumes the Delay and returns the SysTick peripheral

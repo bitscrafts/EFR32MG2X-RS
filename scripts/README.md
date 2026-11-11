@@ -15,6 +15,8 @@ Status legend:
 | `build-pac-examples.sh` | build matrix | current |
 | `build-container.sh` | container build | current (podman) |
 | `flash-lnx.sh` | flash (guarded) | current |
+| `gate.sh` | gate (no hardware) | current |
+| `read-fall-log.sh` | read / decode (SWD) | current |
 | `elf-load-range.py` | safety / inspection | current |
 | `elf-sections.py` | safety / inspection | current |
 | `inventory-pac-examples.py` | safety / inspection | current |
@@ -222,3 +224,29 @@ living docs, scripts and CI files, deliberately skipping `CHANGELOG.md`,
 `docs/03-development/LOG.md`, `docs/99-archive/`, `book*/` and `.archive/`,
 because those record where files were at the time and rewriting them would
 falsify the history.
+
+### `gate.sh`
+
+Everything that can be checked without the board, in one run: `cargo fmt --all --check`,
+clippy at **zero warnings** for the four crates that build, every example, and the host
+tests of `motion-detection`. It prints a `PASS`/`FAIL` row per check and a final
+`VERDICT:`. It names the two crates it does **not** gate (the Bluetooth and RAIL sys
+crates, whose bindgen output does not compile) instead of skipping them silently — a gate
+that hides a broken crate is worse than no gate.
+
+The example-in-a-directory check is worth knowing about: an `examples/foo/main.rs` is only
+built by `--examples` if the manifest declares it, so the gate checks the **declaration**
+and prints the name it is built under (`fall_detector/` is declared as `fall-detector`).
+A directory nobody declared compiles never and fails silently.
+
+### `read-fall-log.sh`
+
+Dumps and decodes the fall detector's state over SWD: the event log, the counters
+(`FALLS`, `IMPACTS`, `AIRBORNE`), the waveform ring and the per-sample intervals. Every
+address is read from the ELF it is given, because these statics move whenever one is added
+and a baked-in address is a silent wrong answer. It analyses only the samples the board has
+actually written: the ring's unwritten slots read as zero, and a zero sample looks exactly
+like free fall.
+
+Measured with it on 2026-11-11: mean interval 4249 µs (235 Hz), display stalls of 63.75 ms,
+and 0 events on a board at rest.
