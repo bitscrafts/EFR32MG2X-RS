@@ -103,6 +103,13 @@ pub enum Event {
         /// How long the free fall lasted.
         freefall_ms: u32,
     },
+    /// The device was in the air for `ms` milliseconds.
+    ///
+    /// Emitted when a qualifying free fall ends, before it is known whether the landing
+    /// makes it a fall. A caller that logs this can tell a missed detection from an
+    /// event that never happened — the difference between tuning a threshold and
+    /// guessing at one.
+    FreeFall { ms: u32 },
     /// An impact without a preceding free fall — knocked, tapped, or set down hard.
     /// Reported separately so a caller can log it without alarming.
     Impact {
@@ -164,24 +171,16 @@ impl FallDetector {
                     return None;
                 }
                 if us >= FREEFALL_MIN_US {
-                    // A qualifying free fall: open the window for the impact.
-                    if magnitude > IMPACT_MG {
-                        self.phase = Phase::Candidate {
-                            peak_mg: magnitude,
-                            freefall_us: us,
-                            elapsed_us: dt_us,
-                            settled_us: 0,
-                        };
-                        None
-                    } else {
-                        self.phase = Phase::Candidate {
-                            peak_mg: 0,
-                            freefall_us: us,
-                            elapsed_us: 0,
-                            settled_us: 0,
-                        };
-                        None
-                    }
+                    // A qualifying free fall: open the window for the landing and say so.
+                    // The landing sample in hand becomes the first peak of the window, so
+                    // returning the free-fall event here loses nothing.
+                    self.phase = Phase::Candidate {
+                        peak_mg: if magnitude > LANDING_MG { magnitude } else { 0 },
+                        freefall_us: us,
+                        elapsed_us: dt_us,
+                        settled_us: 0,
+                    };
+                    Some(Event::FreeFall { ms: us / 1000 })
                 } else {
                     self.phase = Phase::Idle;
                     if magnitude > IMPACT_MG {
@@ -403,11 +402,24 @@ mod tests {
 
     #[test]
     fn a_fall_caught_before_landing_is_not_reported() {
-        // Free fall, then back to one g with no impact: someone caught it.
+        // Free fall, then back to one g with no landing: someone caught it. The free
+        // fall itself is reported — it happened — but it must never become a fall.
         let mut det = FallDetector::new();
         feed(&mut det, [990, 40, 60], 200);
-        feed(&mut det, [25, 20, 18], 150);
-        assert_eq!(feed(&mut det, [990, 45, 60], 1000), None);
+        feed(&mut det, [25, 20, 18], 150); // still in the air
+                                           // The sample that leaves the free fall is the one that reports it.
+        let exit = det.update([990, 45, 60], 5);
+        assert!(
+            matches!(exit, Some(Event::FreeFall { ms }) if ms >= FREEFALL_MIN_MS),
+            "the free fall should be reported, got {exit:?}"
+        );
+        // A board held at one g and then laid down: no landing, so no fall.
+        for _ in 0..300 {
+            assert!(
+                !matches!(det.update([990, 45, 60], 5), Some(Event::Fall { .. })),
+                "a caught board must not be reported as a fall"
+            );
+        }
     }
 
     #[test]

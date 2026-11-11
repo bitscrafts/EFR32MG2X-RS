@@ -25,6 +25,8 @@ pub struct Status {
     pub magnitude_mg: i32,
     /// True while the device is believed to be in the air.
     pub in_free_fall: bool,
+    /// How long the last free fall lasted, in milliseconds.
+    pub freefall_ms: u32,
     /// The most recent event, if any.
     pub last_event: Option<Event>,
 }
@@ -79,9 +81,11 @@ impl App {
     ///
     /// Microseconds because the sampler runs at 400 Hz: 2.5 ms per sample rounded to
     /// whole milliseconds is a 20 % error in every timer in the detector.
-    pub fn sample_us(&mut self, accel_mg: [i32; 3], dt_us: u32) {
+    /// Returns the event, if this sample produced one, so the caller can log it.
+    pub fn sample_us(&mut self, accel_mg: [i32; 3], dt_us: u32) -> Option<Event> {
         self.status.magnitude_mg = magnitude(accel_mg);
-        match self.detector.update_us(accel_mg, dt_us) {
+        let event = self.detector.update_us(accel_mg, dt_us);
+        match event {
             Some(Event::Fall {
                 peak_mg,
                 freefall_ms,
@@ -99,9 +103,17 @@ impl App {
                 self.status.impacts += 1;
                 self.status.last_event = Some(event);
             }
+            Some(event @ Event::FreeFall { .. }) => {
+                self.status.freefall_ms = match event {
+                    Event::FreeFall { ms } => ms,
+                    _ => 0,
+                };
+                self.status.last_event = Some(event);
+            }
             None => {}
         }
         self.status.in_free_fall = self.detector.in_free_fall();
+        event
     }
 
     /// Replay the recorded handling data through a fresh detector.

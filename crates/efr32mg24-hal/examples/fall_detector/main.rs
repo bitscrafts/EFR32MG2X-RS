@@ -44,9 +44,11 @@ use efr32mg24_hal::display::Ssd1306;
 use efr32mg24_hal::entry;
 use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config};
 use efr32mg24_hal::sensors::Lsm6ds3trc;
+use motion_detection::Event;
 use panic_halt as _;
 
 mod app;
+mod events;
 mod falls;
 mod falls_400hz;
 mod recorded;
@@ -196,6 +198,7 @@ fn main() -> ! {
 
     let mut last_cycles = 0u32;
     let mut samples = 0u32;
+    let mut uptime_ms = 0u32;
     let mut in_air = false;
     let mut ring_index = 0usize;
     let mut last_falls = 0u32;
@@ -211,7 +214,30 @@ fn main() -> ! {
             continue;
         };
         samples += 1;
-        application.sample_us(motion.accel_mg, DT_US);
+        uptime_ms = uptime_ms.wrapping_add(DT_US / 1000);
+        // Log what the classifier decided, in RAM, where a later probe read can still
+        // find it: the waveform ring only remembers ten seconds, and a test performed by
+        // hand does not care when the host is ready.
+        match application.sample_us(motion.accel_mg, DT_US) {
+            Some(Event::FreeFall { ms }) => {
+                events::push(uptime_ms, events::Kind::FreeFall, ms as u16, 0);
+            }
+            Some(Event::Impact { peak_mg }) => {
+                events::push(uptime_ms, events::Kind::Impact, 0, peak_mg as u16);
+            }
+            Some(Event::Fall {
+                peak_mg,
+                freefall_ms,
+            }) => {
+                events::push(
+                    uptime_ms,
+                    events::Kind::Fall,
+                    freefall_ms as u16,
+                    peak_mg as u16,
+                );
+            }
+            None => {}
+        }
 
         // A detected fall starts the alarm; the pattern advances one sample at a time
         // so classification never pauses.

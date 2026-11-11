@@ -73,6 +73,7 @@ pub fn render(display: &mut Option<Ssd1306<impl efr32mg24_hal::bus::I2cBus>>, st
         match status.last_event {
             Some(motion_detection::Event::Fall { .. }) => b"LAST FALL",
             Some(motion_detection::Event::Impact { .. }) => b"LAST IMPACT",
+            Some(motion_detection::Event::FreeFall { .. }) => b"AIRBORNE",
             None => b"LAST -",
         },
     );
