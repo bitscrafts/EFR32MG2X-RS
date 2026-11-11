@@ -64,8 +64,23 @@ mod mailbox;
 /// a 20–30 ms free fall falls between samples. Halving the period halves that blind
 /// spot, which is the difference between reporting a drop and reporting a knock.
 const SAMPLE_PERIOD_CYCLES: u32 = 47_500;
-/// Microseconds between samples, handed to the application.
+/// The shortest interval the loop aims for: 400 Hz, just under the sensor's 416 Hz.
+///
+/// It is a floor, not a promise. The measured interval is what the detector and the
+/// recording get, because the display flush alone blocks for tens of milliseconds.
 const DT_US: u32 = 2_500;
+
+/// CPU cycles per microsecond at the frequency the clock module selects.
+const CYCLES_PER_US: u32 = 19;
+
+/// How often the panel is refreshed, in samples. The flush is 1090 bytes on a bit-banged
+/// bus — about 100 ms of blocked CPU — so refreshing every sample would cap the loop at a
+/// handful of hertz. Two seconds costs 5 % of the loop and nobody looks at it faster.
+const DISPLAY_EVERY: u32 = 800;
+
+/// How long after an event the panel is left alone: a flush in the middle of a fall would
+/// stall the sampler exactly when the samples matter most.
+const DISPLAY_QUIET_MS: u32 = 1_200;
 
 fn cycle_count() -> u32 {
     unsafe { (*cortex_m::peripheral::DWT::PTR).cyccnt.read() }
@@ -197,8 +212,10 @@ fn main() -> ! {
     dwt_start();
 
     let mut last_cycles = 0u32;
+    let mut last_sample_cycles = 0u32;
     let mut samples = 0u32;
     let mut uptime_ms = 0u32;
+    let mut last_event_ms = 0u32;
     let mut in_air = false;
     let mut ring_index = 0usize;
     let mut last_falls = 0u32;
@@ -214,21 +231,28 @@ fn main() -> ! {
             continue;
         };
         samples += 1;
-        uptime_ms = uptime_ms.wrapping_add(DT_US / 1000);
+        // The interval that actually elapsed, measured with the same cycle counter that
+        // paces the loop. Assuming DT_US here is what made the timers run 2.5x fast.
+        let dt_us = now.wrapping_sub(last_sample_cycles) / CYCLES_PER_US;
+        last_sample_cycles = now;
+        uptime_ms = uptime_ms.wrapping_add(dt_us / 1000);
         // Log what the classifier decided, in RAM, where a later probe read can still
         // find it: the waveform ring only remembers ten seconds, and a test performed by
         // hand does not care when the host is ready.
-        match application.sample_us(motion.accel_mg, DT_US) {
+        match application.sample_us(motion.accel_mg, dt_us) {
             Some(Event::FreeFall { ms }) => {
+                last_event_ms = uptime_ms;
                 events::push(uptime_ms, events::Kind::FreeFall, ms as u16, 0);
             }
             Some(Event::Impact { peak_mg }) => {
+                last_event_ms = uptime_ms;
                 events::push(uptime_ms, events::Kind::Impact, 0, peak_mg as u16);
             }
             Some(Event::Fall {
                 peak_mg,
                 freefall_ms,
             }) => {
+                last_event_ms = uptime_ms;
                 events::push(
                     uptime_ms,
                     events::Kind::Fall,
@@ -249,7 +273,7 @@ fn main() -> ! {
             alarm.trigger();
         }
 
-        let sounding = alarm.tick(DT_US);
+        let sounding = alarm.tick(dt_us);
         if let Some(b) = buzzer.as_mut() {
             if sounding {
                 b.sound();
@@ -260,14 +284,15 @@ fn main() -> ! {
 
         // Every classified sample is also recorded: this is what makes the demo run
         // usable as training data afterwards.
-        recording::push(motion.accel_mg, ring_index);
+        recording::push_timed(motion.accel_mg, ring_index, dt_us);
         ring_index += 1;
         if ring_index == recording::CAPTURE_LEN {
             ring_index = 0;
         }
 
         // The panel is slow; five times a second is enough to be read.
-        if samples % 80 == 0 {
+        let quiet = uptime_ms.wrapping_sub(last_event_ms) > DISPLAY_QUIET_MS;
+        if samples % DISPLAY_EVERY == 0 && quiet && !application.status().in_free_fall {
             let status = application.status();
             ui::render(&mut display, &status);
         }

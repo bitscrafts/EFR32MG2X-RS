@@ -85,3 +85,47 @@ fall selftest real=clean synth=ok 200Hz=2/2 400Hz=4/4
   threshold and the easier one for the free-fall phase.
 - The **gyroscope is not used**. Rotation would separate "dropped while flat" from
   "tipped over", and the sensor is already there and already read.
+
+## The time base was wrong, and the log found it
+
+Everything above was analysed on a time axis that did not exist. The sampler was written
+to run at 400 Hz and handed the detector a fixed `dt = 2500 µs`, but the loop was actually
+running at **158 Hz**: the display flush is 1090 bytes on a bit-banged bus and blocks for
+tens of milliseconds, so the real interval was ~6.3 ms while every timer believed 2.5 ms.
+Every duration in the first analysis was therefore **2.5 times too short**.
+
+The event log is what exposed it. Four drops onto a bed reported free falls of 85, 52, 120
+and 40 ms, and the gaps between the airborne event and the fall were all suspiciously
+close to 0.62 s — the settle timer, unmoved by any property of the world.
+
+Two fixes, both measured rather than assumed:
+
+1. **The interval is measured, not declared.** The loop takes the difference of the DWT
+   cycle counter between samples and hands *that* to the detector and the recorder.
+2. **Every recorded sample carries its own interval**, one byte in 250 µs units
+   (`recording::DTS`). A dataset whose timing is unknown can only be analysed dishonestly.
+
+The display was also moved out of the critical path: refreshed every 800 samples instead
+of 80, and never while the device is airborne or within 1.2 s of an event. That took the
+loop from **158 Hz to ~257 Hz** without touching the sensor.
+
+### What the corrected round measured
+
+Four drops onto the same bed, with real timing:
+
+| free fall | landing | settle |
+|---|---|---|
+| 176 ms | 11699 mg | 1.04 s |
+| 223 ms | 13840 mg | 1.05 s |
+| 248 ms | 13149 mg | 1.14 s |
+| 252 ms | 13742 mg | 1.17 s |
+
+**4 of 4 detected.** The free falls are 176–252 ms, not the 40–160 ms the compressed axis
+suggested, and the bed is not soft: landings measured 11.7–13.8 g. The prediction that a
+mattress would land below `LANDING_MG = 1100` was wrong.
+
+### What this leaves open
+
+The **false-positive control was measured on the compressed axis**, so "handling produces
+no fall" is not yet proven under real timing. It needs one handling round recorded by the
+current firmware before the detector can be called validated rather than promising.
