@@ -1,0 +1,45 @@
+\section{What To Take Away}
+\label{sec:testing-takeaways}
+
+\begin{keytakeaways}
+    \item \textbf{Put the policy in a crate with no dependencies.} If the classifier needs a
+          PAC to compile, its tests will not be written.
+    \item \textbf{Pass time in as an argument.} It makes fast replay, late samples and
+          deterministic tests free.
+    \item \textbf{Every threshold is a measurement with a test on both sides.} A rule without
+          a near-miss case is a guess with a comment.
+    \item \textbf{Embed the recordings and replay them at boot.} Every power-up becomes a
+          regression test on the exact binary that ships.
+    \item \textbf{Calibrate the instrument first.} A wrong sample rate invalidates every
+          number downstream, silently and consistently.
+    \item \textbf{Say what the validation is not.} Nine drops prove a rule is not arbitrary;
+          they do not prove a detection rate for a product.
+\end{keytakeaways}
+
+\subsection{Exercises}
+
+\begin{exercises}
+    \item \textbf{(Easy)} Take the classifier out of the driver crate in a project of your own
+          and make its tests run with \codeinline{cargo test} on the host. Report how long the
+          suite takes before and after.
+    \item \textbf{(Easy)} Add a test for the boundary on each side of one threshold: a sample
+          exactly at the limit, and one a single unit below it. Which side does your
+          implementation treat as inclusive, and is that what the documentation says?
+    \item \textbf{(Medium)} Instrument your own sampling loop with \codeinline{DWT->CYCCNT} and
+          report the real rate and the worst-case interval. Compare with the rate you intended.
+    \item \textbf{(Medium)} Add the gyroscope to the classifier: compute the rotation during the
+          free fall and use it to separate ``dropped flat'' from ``tipped over''. What
+          additional recording do you need to set the threshold, and can you get it without a
+          second person?
+    \item \textbf{(Hard)} Design the validation for a detector of a different event of your
+          choice (a door being forced, a machine starting, a container being opened) following
+          the protocol of this chapter: rounds, a control that must stay silent, near-miss
+          cases, and an explicit statement of what the sample does not prove.
+\end{exercises}
+
+\begin{notebox}
+    \textbf{Where this leads.} The next chapter takes the same evidence-driven approach to the
+    layer above the drivers: the board support package, where the question stops being ``does
+    this device work'' and becomes ``does this board work, and how do I prove that nobody has
+    to know which pin it is on''.
+\end{notebox}

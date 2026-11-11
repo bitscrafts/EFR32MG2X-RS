@@ -1,0 +1,34 @@
+% Chapter 10: Test-Driven Development and Quality Assurance
+% File: chapters/chapter-14-testing/chapter-14-testing.tex
+
+\chapter[Test-Driven Development]{Test-Driven Development and Quality Assurance: Nine Real Drops}
+\label{ch:chapter-14}
+\chapthumb{10}
+
+\begin{quote}
+    \textit{``A test that passes while the thing it tests is broken is worse than no test at
+    all: it converts an open defect into a certified one.''}
+    \\
+    -- the rule this chapter was written to satisfy
+\end{quote}
+
+Embedded software is usually tested in two places: on a host, where the compiler is friendly
+and the hardware is absent, and on the target, where the opposite is true. Most projects do
+only the second, call it ``testing on hardware'', and never learn that the numbers they
+trusted were produced by an instrument that was lying.
+
+This chapter follows one feature from first line to validated behaviour: a fall detector for
+a wrist-worn or carried device, built on a six-axis IMU. It is a good case study because it
+cannot be judged by inspection — a fall is an event in time, and the only way to know whether
+you detect it is to drop the thing and look. Along the way, three of the measurements used to
+validate it turn out to be wrong in ways that would have certified a defect as fixed.
+
+\minitoc
+
+\clearpage
+
+\input{chapters/chapter-14-testing/10.01-what-can-be-tested-off-target}
+\input{chapters/chapter-14-testing/10.02-tests-that-pin-a-threshold}
+\input{chapters/chapter-14-testing/10.03-nine-real-drops}
+\input{chapters/chapter-14-testing/10.04-the-instrument-that-lied}
+\input{chapters/chapter-14-testing/10.05-what-to-take-away}

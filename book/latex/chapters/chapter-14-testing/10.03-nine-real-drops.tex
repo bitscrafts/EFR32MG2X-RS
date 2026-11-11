@@ -1,0 +1,100 @@
+\section{Nine Real Drops}
+\label{sec:nine-real-drops}
+
+The detector was validated by dropping the board, by hand, and reading what it recorded. Not
+because that is rigorous — it is not, and the chapter says so below — but because it is the
+only measurement that can distinguish a plausible rule from a working one.
+
+\subsection{The Protocol}
+
+Three rounds, each recorded by the board itself, plus one control:
+
+\begin{enumerate}
+    \item Configure the IMU for a range that will not clip ($\pm$8\,g) and the fastest output
+          rate it offers (416\,Hz).
+    \item Sample as fast as the loop allows, and record every sample \emph{with its interval}.
+    \item Drop the board from about 40\,cm, several times, two seconds apart.
+    \item Then perform the negative case: shake hard, set it down suddenly, shake again.
+    \item Read the log over the debug probe, with a script, and analyse it on the host.
+\end{enumerate}
+
+\begin{notebox}
+    \textbf{The control is not optional.} A detector that fires on everything detects every
+    fall. Every round of drops in this chapter was recorded together with a handling round
+    that had to stay silent, and the thresholds were chosen to satisfy both at once.
+\end{notebox}
+
+\subsection{What the Recordings Showed}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Round} & \textbf{Rate} & \textbf{Drops} & \textbf{Detected} \\
+\hline
+1 & 200\,Hz & 2 & 2 \\
+2 & 200\,Hz & 5 & 3 (two lost their free fall between samples) \\
+3 & 400\,Hz & 4 onto a bed & 4 \\
+control & 200\,Hz & handling & 0 false alarms \\
+\hline
+\end{tabular}
+\caption{Three rounds of drops and one control, all recorded on the board.}
+\label{tab:drop-rounds}
+\end{table}
+
+Round 3 is the one worth reading in full, because it is the round that corrected the design:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Free fall} & \textbf{Landing} & \textbf{Quiet before the verdict} & \textbf{Verdict} \\
+\hline
+176\,ms & 11699\,mg & 1.04\,s & fall \\
+223\,ms & 13840\,mg & 1.05\,s & fall \\
+248\,ms & 13149\,mg & 1.14\,s & fall \\
+252\,ms & 13742\,mg & 1.17\,s & fall \\
+\hline
+\end{tabular}
+\caption{Four drops onto a bed, measured. The landings are three to four times harder than
+the prediction that a mattress would absorb them.}
+\label{tab:bed-round}
+\end{table}
+
+\subsection{The Three Assumptions the Data Destroyed}
+
+\paragraph{``A fall is a big impact.''} Real landings measured 1148 to 12823\,mg. Handling
+peaked at 1801\,mg. The ranges overlap: a board laid down flat lands more gently than a board
+shaken hard, so \textbf{no impact threshold can separate a fall from a knock}. What separates
+them is the free-fall phase. The impact threshold only has to distinguish ``landed'' from
+``returned to one g because it was caught''.
+
+\paragraph{``The impact follows the free fall immediately.''} In the first recordings it came
+120\,ms later, and in the second 400\,ms later. A state machine that required the landing at
+the transition detected \textbf{zero of two} drops. Opening a 600\,ms window took the same data
+to two of two.
+
+\paragraph{``A bed is soft.''} Predicted: a mattress landing would fall below the 1100\,mg
+threshold and be missed. Measured: 11.7 to 13.8\,g. The prediction was wrong, the rule was
+right, and the honest conclusion is that nine drops on one bed say nothing about mattresses
+in general.
+
+\begin{warningbox}
+    \textbf{What this validation is not.} Nine drops, one board, one desk, one bed, one
+    person. It proves the detector works on this setup and that the thresholds are not
+    arbitrary. It does not prove a fall-detection rate for a product, and a claim that it did
+    would be the kind of overreach that gets someone hurt.
+\end{warningbox}
+
+\subsection{What Is Still Missing}
+
+Two things are absent from this validation and both are visible in the code:
+
+\begin{itemize}
+    \item \textbf{The gyroscope is read and ignored.} Rotation would separate ``dropped while
+          flat'' from ``tipped over on a table'', and the data is already in the same burst.
+    \item \textbf{A person falling is not a board being dropped.} A carried device falls with
+          its owner: shorter free fall, cushioned landing, and a body that moves afterwards.
+          The classifier is tuned to the harsher case for the impact threshold and the easier
+          one for the free-fall phase, which is a defensible starting point and not an answer.
+\end{itemize}

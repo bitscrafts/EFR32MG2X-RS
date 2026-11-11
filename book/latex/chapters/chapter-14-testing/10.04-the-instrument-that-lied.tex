@@ -1,0 +1,94 @@
+\section{The Instrument That Lied}
+\label{sec:instrument-lied}
+
+Everything in the previous section was, at one point, wrong in the same way: the measurements
+were taken on a time axis that did not exist. This section is the most important one in the
+chapter, because the failure was silent, it survived a code review, and it certified a defect
+as fixed.
+
+\subsection{The Sampler That Claimed 400\,Hz and Ran at 158}
+
+The loop was written to sample at 400\,Hz and handed the detector a constant:
+
+\begin{minted}{rust}
+const SAMPLE_PERIOD_CYCLES: u32 = 47_500;  // 400 Hz at 19 MHz
+const DT_US: u32 = 2_500;                  // 400 Hz, in microseconds
+...
+application.sample_us(motion.accel_mg, DT_US);
+\end{minted}
+
+The loop was paced correctly — it never sampled \emph{faster} than 400\,Hz. But each iteration
+also did work: a 12-byte I2C burst, a detector update, a record write, and periodically a
+1090-byte display flush over the same bit-banged bus. The true interval was set by the
+\textbf{slowest} part of the body, not by the period:
+
+\begin{minted}{text}
+measured: 317 samples in 2 s  ->  158 Hz, mean interval 6.3 ms
+\end{minted}
+
+Every timeout in the detector was therefore 2.5 times too short, and every duration in the
+first analysis — ``40 ms of free fall'' — was 2.5 times too small. The measurements were
+self-consistent, which is exactly why nobody noticed.
+
+\subsection{What Gave It Away}
+
+Not a test. A pattern in the output:
+
+\begin{minted}{text}
+AIRBORNE  free 85ms   ->  FALL   after 0.62 s
+AIRBORNE  free 52ms   ->  FALL   after 0.62 s
+AIRBORNE  free 120ms  ->  FALL   after 0.62 s
+AIRBORNE  free 40ms   ->  FALL   after 0.53 s
+\end{minted}
+
+Four different drops, four different free falls, and the settle time is the same to the
+millisecond. \textbf{The number was describing the code, not the world.} That is the signature
+of a broken instrument: when an output is constant across inputs that should vary, you are
+reading your own parameter back.
+
+\subsection{Three Fixes, and One of Them Was Deleted by the Compiler}
+
+\begin{enumerate}
+    \item \textbf{Measure the interval.} The loop takes the difference of the DWT cycle
+          counter between samples and passes that everywhere — detector, recorder, alarm.
+          \begin{minted}{rust}
+let dt_us = now.wrapping_sub(last_sample_cycles) / CYCLES_PER_US;
+last_sample_cycles = now;
+application.sample_us(motion.accel_mg, dt_us);
+          \end{minted}
+    \item \textbf{Record the interval with every sample.} A dataset whose timing is unknown
+          can only be analysed dishonestly. One byte per sample, in 250\,$\mu$s units.
+    \item \textbf{Get the display out of the critical path.} Refresh every 800 samples instead
+          of 80, and never while the device is airborne or within 1.2\,s of an event: a flush
+          in the middle of a fall stalls the sampler exactly when the samples matter. Measured
+          effect: 158\,Hz to 235\,Hz without touching the sensor.
+\end{enumerate}
+
+And then the second-order failure, which is the reason this section exists:
+
+\begin{warningbox}
+    \textbf{The compiler deleted the per-sample timing array.} The recording was written to
+    ``carry its own timing'', and nothing in the crate ever read that array — so the optimiser
+    removed it from the image entirely. The code compiled, the comment claimed a property, the
+    symbol was absent from the binary, and the recording carried nothing. It was found by
+    running \codeinline{arm-none-eabi-nm} and looking for the symbol instead of trusting the
+    comment. The writes are volatile now, and the check is part of the habit: \emph{a property
+    you cannot see in the artefact is a property you do not have.}
+\end{warningbox}
+
+\subsection{The Instrument Rules}
+
+\begin{keytakeaways}
+    \item \textbf{Never pass the interval you asked for; pass the one you measured.} The
+          intended rate is a wish. The DWT counter is the fact.
+    \item \textbf{A constant output across varying inputs means you are measuring yourself.}
+          The 0.62\,s settle was a parameter echoed back.
+    \item \textbf{A recording must carry its timing.} Otherwise every later analysis inherits
+          an assumption nobody remembers making.
+    \item \textbf{Verify the artefact, not the intent.} Check that the symbol is in the binary,
+          that the counter advanced, that the file grew. Comments describe intentions; the
+          binary is what runs.
+    \item \textbf{Calibrate the instrument before calibrating the product.} The rate, the
+          units and the resolution have to be right before any threshold on top of them means
+          anything.
+\end{keytakeaways}

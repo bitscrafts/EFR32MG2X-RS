@@ -1,0 +1,106 @@
+\section{What Can Be Tested Off Target}
+\label{sec:off-target-testing}
+
+The first design decision of a testable embedded feature is not a test at all: it is where
+the code lives.
+
+\subsection{Split the Policy From the Peripheral}
+
+A fall detector is two things wearing one name:
+
+\begin{itemize}
+    \item \textbf{Acquisition} — power the IMU, configure its scale and output rate, read a
+          12-byte burst, convert to milligees. This only exists on the target.
+    \item \textbf{Classification} — decide, from a stream of magnitudes and the time between
+          them, that what just happened was a fall. This is arithmetic and state, and it does
+          not know that a sensor exists.
+\end{itemize}
+
+If both live in the driver crate, the second becomes untestable: building the tests drags in
+a PAC, a linker script and a target triple, so nobody writes them. This project keeps the
+classifier in its own crate with \textbf{no dependencies at all}:
+
+\begin{minted}{toml}
+[package]
+name = "motion-detection"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# deliberately empty: no PAC, no HAL, no panic handler
+\end{minted}
+
+\begin{tipbox}
+    A dependency-free classifier crate is not an aesthetic choice. It is what makes
+    \codeinline{cargo test} work on the developer's machine in under a second, which is what
+    makes writing the tenth test cheap enough to bother.
+\end{tipbox}
+
+\subsection{The API That Makes Testing Possible}
+
+The crate takes samples and returns events, with the sample interval as a parameter rather
+than something it looks up:
+
+\begin{minted}{rust}
+pub struct FallDetector { /* phase, peak, timers */ }
+
+impl FallDetector {
+    pub const fn new() -> Self;
+    /// Feed one sample; the interval is microseconds.
+    pub fn update_us(&mut self, accel_mg: [i32; 3], dt_us: u32) -> Option<Event>;
+    /// True while the device is believed to be in the air.
+    pub fn in_free_fall(&self) -> bool;
+}
+
+pub enum Event {
+    FreeFall { ms: u32 },
+    Impact { peak_mg: i32 },
+    Fall { peak_mg: i32, freefall_ms: u32 },
+}
+\end{minted}
+
+Two details are worth copying into any similar design:
+
+\begin{enumerate}
+    \item \textbf{Time is an argument.} A detector that calls a clock cannot be fed a
+          recording at ten times real speed, and cannot be tested for how it behaves when a
+          sample arrives late. Passing the interval makes both possible and costs nothing.
+    \item \textbf{Microseconds, not milliseconds.} At 400\,Hz a sample is 2.5\,ms; rounding to
+          whole milliseconds is a 20\,\% error in every timeout. This is not a theoretical
+          concern — see Section~\ref{sec:instrument-lied}.
+\end{enumerate}
+
+\subsection{The Shape of the Whole Test Suite}
+
+Nine host tests cover the classifier. They are not nine variations of the same case; each one
+exists because a specific wrong implementation would pass the others:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{6.6cm}p{7.4cm}}
+\hline
+\textbf{Test} & \textbf{What it would catch} \\
+\hline
+\codeinline{quiet_board_reports_nothing} & an implementation that reports on any movement \\
+\codeinline{a_dip_too_short_is_not_a_fall} & counting a single low sample as free fall \\
+\codeinline{impact_without_free_fall_is_reported_as_impact} & calling every knock a fall \\
+\codeinline{a_fall_caught_before_landing_is_not_reported} & ignoring the landing entirely \\
+\codeinline{handling_is_not_a_fall} & thresholds tuned only to the positive case \\
+\codeinline{real_drop_with_impact_after_a_one_g_interlude_is_detected} &
+  requiring the impact at the transition \\
+\codeinline{real_drop_with_a_long_interlude_is_detected} & the same, with a longer gap \\
+\codeinline{a_soft_landing_after_a_short_free_fall_is_detected} &
+  a settle rule that is too strict \\
+\codeinline{isqrt_is_exact} & square roots that drift and shift every threshold \\
+\hline
+\end{tabular}
+\caption{The classifier's host tests, each justified by the wrong implementation it rejects.}
+\label{tab:classifier-tests}
+\end{table}
+
+\begin{remark}
+    \textbf{Every one of those tests was added after a real failure, not before.} The suite
+    started with five and grew as the recordings exposed assumptions: the interlude tests came
+    from two drops that were missed, the soft-landing test from a third. That is normal. What
+    is not acceptable is deleting a failing test because the new code is ``better''.
+\end{remark}
