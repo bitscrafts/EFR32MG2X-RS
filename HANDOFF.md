@@ -77,3 +77,42 @@ RADIO ░░░░░░░░░  not started
 4. MVP: run a Silicon Labs sample as the oracle, dump the register block before
    `CMD`, diff against `pac_mvp_add`.
 5. Radio last, as agreed.
+
+## Fall detector — state at the end of 2026-11-11 (read this before touching it)
+
+**On the board:** `fall-detector`, self tests `real=clean synth=ok 200Hz=2/2 400Hz=4/4`.
+It classifies **and** records while it classifies, and it beeps three times on a fall.
+
+**Proven with real drops:**
+
+| round | what | result |
+|---|---|---|
+| 1 | 2 drops, 200 Hz | 2/2 |
+| 2 | 5 drops, 200 Hz | 3/3 detectable (two lost their free fall between samples) |
+| 3 | 4 drops, 400 Hz | 4/4 |
+| 4 | 4 drops onto a bed, real timing | 4/4 — free fall 176–252 ms, landing 11.7–13.8 g, settle 1.04–1.17 s |
+| control | handling recording | 0 false alarms **on a time base now known to be wrong** |
+
+**Open, and it is the only thing between "promising" and "validated":** the shaking control
+has to be re-run with the current firmware. The old one was measured while the loop claimed
+400 Hz and ran at 158, and the round that did get recorded filled the log 22 times over
+because every sample above 2 g was its own "impact". Both are fixed; the measurement is not
+made yet.
+
+Read it with `scripts/read-fall-log.sh` (dumps and decodes; addresses come from the ELF, not
+from this file). Three counters decide it: `FALLS` must be 0 after shaking, and equal to the
+number of drops after dropping.
+
+**Facts that cost time in this session, not to be relearned:**
+
+- The loop **cannot** be trusted to run at the rate it aims for. It measured **235 Hz** with a
+  mean interval of 4249 µs and stalls of **63.75 ms** when the display flushes. Always pass
+  the measured interval, never the intended one.
+- An impact is **one event per episode**, reported when the bang ends with the peak it
+  reached. One event per sample turned three seconds of shaking into 1430 log entries.
+- A recording must carry its own timing (`recording::DTS`). The optimiser **deleted** that
+  array until the writes became volatile — the recording would have claimed to be self-timed
+  and carried nothing.
+- The ring's unwritten slots read as zero, and a zero sample looks exactly like free fall.
+  Analyse only `TOTAL` samples.
+- A replug resets the board and loses the RAM log. A log that must survive belongs in BURAM.

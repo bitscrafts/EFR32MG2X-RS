@@ -122,13 +122,22 @@ pub enum Event {
 #[derive(Debug, Clone)]
 pub struct FallDetector {
     phase: Phase,
+    /// Peak of a bang in progress; 0 when none is open.
+    ///
+    /// An impact is one event per episode, not one per sample. Without this the shaking
+    /// control produced 1430 "impact" entries in three seconds — the log wrapped 22 times
+    /// and the question it was meant to answer became unanswerable.
+    impact_peak: i32,
 }
 
 impl FallDetector {
     /// A detector that has seen nothing yet.
     #[must_use]
     pub const fn new() -> Self {
-        Self { phase: Phase::Idle }
+        Self {
+            phase: Phase::Idle,
+            impact_peak: 0,
+        }
     }
 
     /// Feed one sample. `dt_ms` is the time since the previous sample.
@@ -157,7 +166,13 @@ impl FallDetector {
                     self.phase = Phase::FreeFall { us: dt_us };
                     None
                 } else if magnitude > IMPACT_MG {
-                    Some(Event::Impact { peak_mg: magnitude })
+                    self.impact_peak = self.impact_peak.max(magnitude);
+                    None
+                } else if self.impact_peak > 0 {
+                    // The bang is over: report it once, with the highest sample seen.
+                    let peak = self.impact_peak;
+                    self.impact_peak = 0;
+                    Some(Event::Impact { peak_mg: peak })
                 } else {
                     None
                 }
@@ -184,10 +199,9 @@ impl FallDetector {
                 } else {
                     self.phase = Phase::Idle;
                     if magnitude > IMPACT_MG {
-                        Some(Event::Impact { peak_mg: magnitude })
-                    } else {
-                        None
+                        self.impact_peak = self.impact_peak.max(magnitude);
                     }
+                    None
                 }
             }
 
@@ -382,8 +396,13 @@ mod tests {
         let mut det = FallDetector::new();
         assert_eq!(feed(&mut det, [100, 0, 0], 25), None);
         assert!(!det.in_free_fall());
-        let event = feed(&mut det, [6000, 0, 0], DT);
-        assert!(matches!(event, Some(Event::Impact { .. })), "{event:?}");
+        // The bang is reported when it ends, with the peak it reached.
+        assert_eq!(feed(&mut det, [6000, 0, 0], DT), None);
+        let event = feed(&mut det, [980, 0, 0], DT);
+        match event {
+            Some(Event::Impact { peak_mg }) => assert_eq!(peak_mg, 6000),
+            other => panic!("expected an impact with the peak, got {other:?}"),
+        }
         assert!(!matches!(
             feed(&mut det, [980, 0, 0], 1000),
             Some(Event::Fall { .. })
@@ -393,11 +412,17 @@ mod tests {
     #[test]
     fn impact_without_free_fall_is_reported_as_impact() {
         let mut det = FallDetector::new();
-        let event = feed(&mut det, [6000, 300, 200], DT);
-        match event {
-            Some(Event::Impact { peak_mg }) => assert!(peak_mg > IMPACT_MG),
-            other => panic!("expected an impact, got {other:?}"),
+        // One bang, spread over samples: exactly one event, carrying the largest sample.
+        assert_eq!(det.update([6000, 300, 200], DT), None);
+        assert_eq!(det.update([9000, 300, 200], DT), None);
+        assert_eq!(det.update([4200, 300, 200], DT), None);
+        match det.update([980, 300, 200], DT) {
+            // The magnitude of [9000, 300, 200], not an axis value.
+            Some(Event::Impact { peak_mg }) => assert_eq!(peak_mg, 9007),
+            other => panic!("expected a single impact, got {other:?}"),
         }
+        // And nothing else afterwards: an episode is one event, not one per sample.
+        assert_eq!(det.update([980, 300, 200], DT), None);
     }
 
     #[test]

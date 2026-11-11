@@ -48,6 +48,17 @@ pub static mut LOG: [Entry; LOG_LEN] = [Entry {
 /// How many entries have ever been written (may exceed [`LOG_LEN`]).
 pub static mut WRITTEN: u32 = 0;
 
+/// Falls since boot. A counter cannot be overwritten by volume: the shaking control
+/// filled the log 22 times over and made "did anything happen?" unanswerable, which is
+/// the one question a control exists to answer.
+pub static mut FALLS: u32 = 0;
+
+/// Impacts since boot, one per episode.
+pub static mut IMPACTS: u32 = 0;
+
+/// Free-fall episodes since boot.
+pub static mut AIRBORNE: u32 = 0;
+
 /// Append an entry. The caller owns the ordering; this never blocks.
 pub fn push(uptime_ms: u32, kind: Kind, freefall_ms: u16, peak_mg: u16) {
     // SAFETY: single-threaded firmware; this module is the only writer and the address is
@@ -63,6 +74,13 @@ pub fn push(uptime_ms: u32, kind: Kind, freefall_ms: u16, peak_mg: u16) {
         };
         core::ptr::write_volatile(core::ptr::addr_of_mut!(LOG[slot]), entry);
         core::ptr::write_volatile(core::ptr::addr_of_mut!(WRITTEN), written.wrapping_add(1));
+        let counter = match kind {
+            Kind::Fall => core::ptr::addr_of_mut!(FALLS),
+            Kind::Impact => core::ptr::addr_of_mut!(IMPACTS),
+            Kind::FreeFall => core::ptr::addr_of_mut!(AIRBORNE),
+        };
+        let value = core::ptr::read_volatile(counter);
+        core::ptr::write_volatile(counter, value.wrapping_add(1));
     }
 }
 

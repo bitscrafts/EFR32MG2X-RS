@@ -56,10 +56,17 @@ pub fn push_timed(accel_mg: [i32; 3], index: usize, dt_us: u32) {
     // wild sample cannot wrap into a plausible-looking value.
     let clamp = |v: i32| v.clamp(i16::MIN as i32, i16::MAX as i32) as i16;
     let units = (dt_us / 250).min(255) as u8;
+    // Volatile writes, and not for decoration: with plain stores the optimiser dropped
+    // the whole DTS array from the image (no reader in this crate), so the recording would
+    // have claimed to carry its own timing and carried nothing.
     unsafe {
-        CAPTURE.0[index] = [clamp(accel_mg[0]), clamp(accel_mg[1]), clamp(accel_mg[2])];
-        DTS[index] = units;
-        TOTAL = TOTAL.wrapping_add(1);
+        core::ptr::write_volatile(
+            core::ptr::addr_of_mut!(CAPTURE.0[index]),
+            [clamp(accel_mg[0]), clamp(accel_mg[1]), clamp(accel_mg[2])],
+        );
+        core::ptr::write_volatile(core::ptr::addr_of_mut!(DTS[index]), units);
+        let total = core::ptr::read_volatile(core::ptr::addr_of!(TOTAL));
+        core::ptr::write_volatile(core::ptr::addr_of_mut!(TOTAL), total.wrapping_add(1));
     }
 }
 
