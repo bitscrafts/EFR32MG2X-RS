@@ -1,0 +1,97 @@
+\section{The Controller That Could Not Read}
+\label{sec:i2c-controller-cannot-read}
+
+This section is a worked example of a specific and unglamorous engineering skill: proving
+that a peripheral, and not your code, is at fault. It matters because the alternative —
+guessing — is unbounded. You can spend days rewriting a driver that was never the problem.
+
+\subsection{The Symptom}
+
+An I2C0 master was configured with the PAC: bus clock enabled, pins routed, clock divider
+set, address written, and a read requested. Writes completed. Reads did not: the transfer
+never finished, and the state register reported the controller waiting in the transmit path
+with the bus already acknowledged as finished for the write half.
+
+The measurement that matters, taken from \codeinline{I2C0->STATE} after a write-then-read
+sequence:
+
+\begin{minted}{text}
+I2C0 STATE = 0xd7
+    BUSY         = 1
+    TRANSMITTER  = 1
+    NACKED       = 1
+    RXDATAV      = 0     <- no receive data will ever arrive
+\end{minted}
+
+\codeinline{RXDATAV = 0} is the whole story: the controller accepted the read command and
+never received a byte into its buffer. There is nothing to read out, so any polling loop
+written against \codeinline{RXDATAV} waits forever.
+
+\subsection{What Was Ruled Out, and How}
+
+A diagnosis is only worth reading if it says what it eliminated and on what evidence. The
+table below is the actual list, in the order it was worked through.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{p{4.6cm}p{9.2cm}}
+\hline
+\textbf{Hypothesis} & \textbf{Evidence against} \\
+\hline
+Wrong address & The same address acknowledged during the write half of the transfer. \\
+Wrong pins & A bit-banged master on the same two pins read the device immediately. \\
+Missing pull-ups & The pins read high with every GPIO configured as input, no internal
+                  pull: the pull-ups are on the board. \\
+Missing bus clock & \codeinline{CMU\_CLKEN0.I2C0} read back set; with it cleared the
+                    peripheral faults instead of running. \\
+Bad clock divider & Two dividers, including the slowest available, produced the same
+                    \codeinline{STATE}. \\
+The device itself & The device answered a bit-banged transaction on the same bus, at the
+                   same address, in the same second. \\
+\hline
+\end{tabular}
+\caption{Hypotheses eliminated before concluding that the on-chip controller was at fault.}
+\label{tab:i2c-elimination}
+\end{table}
+
+Fourteen measurements across these hypotheses produced the same \codeinline{STATE} every
+time. That repetition is the point: a single failing attempt is consistent with a bug, a
+dozen identical failures along different paths are consistent with the hardware.
+
+\begin{notebox}
+    \textbf{The control experiment is the one that decided it.} The bit-banged master used
+    the same pins, the same pull-ups and the same device. It read the correct identifier on
+    the first attempt. That single result moved the fault from ``our driver'' to ``this
+    controller, on this part, in this configuration'', and it took two minutes to run.
+\end{notebox}
+
+\subsection{What To Do About It}
+
+There are three honest responses to a peripheral that does not work, and only one of them is
+acceptable in a project that has to ship.
+
+\begin{enumerate}
+    \item \textbf{Rewrite the driver.} Cheap to try, unbounded to continue. Only justified
+          while the control experiment has not been run.
+    \item \textbf{Build a transport that works.} Slower, but fully understood, and it turns
+          the bus into something you can debug byte by byte. This is what this project did,
+          and it is the subject of the next section.
+    \item \textbf{Find the missing configuration.} The correct answer when it exists. It does
+          not always: this chapter does not claim the controller is broken in general, only
+          that it could not complete a read under every configuration that was tried, and
+          that a working alternative was available.
+\end{enumerate}
+
+\begin{warningbox}
+    \textbf{Write down which one you chose, and why.} A project that silently switches to a
+    workaround loses the knowledge that it did. This project keeps the fourteen measurements
+    in \filepath{docs/04-reference/I2C0-READ-DEFECT.md}, so that a later engineer — or a
+    later silicon revision — can pick up the investigation instead of repeating it.
+\end{warningbox}
+
+\subsection{Why This Belongs in a Book}
+
+Because it is the normal experience of driving new hardware, and textbooks rarely show it.
+The registers are documented, the sequence is correct, and the thing still does not work.
+The skill being taught here is not I2C: it is how to reduce a hardware failure to a
+statement you can defend, and then how to keep shipping while it is unresolved.

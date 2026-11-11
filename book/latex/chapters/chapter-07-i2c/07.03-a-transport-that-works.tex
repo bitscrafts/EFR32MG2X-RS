@@ -1,0 +1,126 @@
+\section{A Transport That Works: The Bit-Banged Master}
+\label{sec:i2c-bitbang}
+
+Once the on-chip controller is out of the picture, the bus becomes software, and the
+software can be made small enough to hold in your head.
+
+\subsection{The Whole Protocol in Four Primitives}
+
+Every I2C transfer — a register write, a 12-byte burst, a scan of 128 addresses — reduces
+to four operations on the two lines:
+
+\begin{minted}{rust}
+/// Let SDA float (the pull-up makes it a 1) or pull it to ground.
+fn sda(&mut self, high: bool);
+/// Same for the clock.
+fn scl(&mut self, high: bool);
+/// Let the bus settle for half a bit period, then sample SDA back.
+fn read_sda(&self) -> bool;
+/// Half a bit period of wall time.
+fn half_bit(&self);
+\end{minted}
+
+With those, a byte is a loop and a START is two writes:
+
+\begin{minted}{rust}
+fn start(&mut self) -> bool {
+    self.sda(true);
+    self.scl(true);
+    self.half_bit();
+    self.sda(false);        // SDA falls while SCL is high: START
+    self.half_bit();
+    self.scl(false);
+    self.half_bit();
+    true
+}
+
+fn write_byte(&mut self, byte: u8) -> bool {
+    for bit in (0..8).rev() {
+        self.sda(byte & (1 << bit) != 0);
+        self.half_bit();
+        self.scl(true);
+        self.half_bit();
+        self.scl(false);    // data is sampled by the device on the rising edge
+    }
+    // Ninth clock: release SDA and see whether anybody pulls it down.
+    self.sda(true);
+    self.half_bit();
+    self.scl(true);
+    self.half_bit();
+    let acked = !self.read_sda();
+    self.scl(false);
+    acked
+}
+\end{minted}
+
+\begin{tipbox}
+    The acknowledge is the only place where the master \emph{reads}. Reading SDA during a
+    write is what allows the driver to report ``nobody is home'' instead of silently
+    succeeding — and that distinction is what makes a bus scan possible at all.
+\end{tipbox}
+
+\subsection{Timing Without a Timer}
+
+The half-bit period does not need an interrupt or a timer peripheral. A counted loop is
+enough, and its length is calibrated against something known: the CPU clock.
+
+\begin{minted}{rust}
+/// ~5 us at the 19 MHz this board runs at, which is a 100 kHz bus.
+const HALF_BIT_CYCLES: u32 = 60;
+
+fn half_bit(&self) {
+    cortex_m::asm::delay(HALF_BIT_CYCLES);
+}
+\end{minted}
+
+\begin{warningbox}
+    \codeinline{cortex\_m::asm::delay(n)} does \textbf{not} execute exactly $n$ CPU cycles.
+    On this part it ran about three times faster than the name suggests, which turned a
+    nominal 100 kHz bus into a 300 kHz one — and turned a buzzer calibration into a 3$\times$
+    error elsewhere in the same project. Anything that claims a frequency should be measured
+    with the cycle counter (\codeinline{DWT->CYCCNT}), not assumed from a loop count.
+\end{warningbox}
+
+\subsection{The \texttt{embedded-hal} Face}
+
+The transport is more useful if the rest of the ecosystem can use it. \codeinline{embedded-hal}
+v1.0 defines the trait, and the implementation is a thin wrapper over the primitives above:
+
+\begin{minted}{rust}
+impl<B: I2cBus> embedded_hal::i2c::I2c for SharedBus<'_, B> {
+    fn transaction(&mut self, address: u8, operations: &mut [Operation<'_>])
+        -> Result<(), Error>
+    {
+        // One START, the operations in order, one STOP. A register read is a write of the
+        // register number followed by a repeated START and a read: getting the repeated
+        // START wrong is the second most common cause of a silent bus.
+        ...
+    }
+}
+\end{minted}
+
+Designing the driver against the trait rather than against the pin-level functions is what
+allowed the same SSD1306, BME68x, PCF8563 and LSM6DS3TR-C drivers to be written once and
+used on two different buses — one on PC04/PC05, another on PB2/PB3 — without changing a line
+of driver code.
+
+\subsection{Two Buses on One Board}
+
+The board this book was written against has two I2C buses, and the reason is worth recording:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llll}
+\hline
+\textbf{Bus} & \textbf{Pins} & \textbf{Devices} & \textbf{Notes} \\
+\hline
+I2C on the base & PC04 (SDA), PC05 (SCL) & OLED 0x3C, BME68x 0x76, RTC 0x51 & pull-ups on the base \\
+IMU bus         & PB2 (SDA), PB3 (SCL)  & LSM6DS3TR-C 0x6A                & external pull-ups, own power gate \\
+\hline
+\end{tabular}
+\caption{The two I2C buses of the XIAO MG24 Sense on the XIAO Expansion Base.}
+\label{tab:i2c-two-buses}
+\end{table}
+
+That second row is where the chapter's hardest lesson lives, and it is the subject of the
+next section.

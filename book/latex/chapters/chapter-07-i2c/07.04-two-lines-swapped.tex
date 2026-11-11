@@ -1,0 +1,128 @@
+\section{Two Lines, Swapped: A Case Study in Not Trusting a Pin Map}
+\label{sec:i2c-swapped-lines}
+
+A six-axis IMU was supposed to be on this board at address \codeinline{0x6A}. The vendor's
+documentation said so, the vendor's example code said so, and the board's own pin map said
+which two pins carried the bus. Every scan of those pins returned an empty bus: not a
+mismatch, not garbage — nothing at all, as though no device existed.
+
+It existed. The two lines were the other way round.
+
+\subsection{What the Documentation Said}
+
+Three sources, all consistent and all wrong in the same direction:
+
+\begin{itemize}
+    \item The vendor's product page: the IMU answers at \codeinline{0x6A}.
+    \item The vendor's example: \codeinline{LSM6DS3 myIMU(I2C\_MODE, 0x6A)}, and a library
+          header that selects \codeinline{Wire1} rather than the default bus.
+    \item The board support package's pin map: \codeinline{SDA1 = PB3},
+          \codeinline{SCL1 = PB2}.
+\end{itemize}
+
+The third line is the one that matters, and it is the one that is wrong. On this board the
+data line is \textbf{PB2} and the clock is \textbf{PB3}.
+
+\begin{warningbox}
+    \textbf{Why a swapped pair produces silence rather than an error.} Both lines idle high
+    through their pull-ups. If the master drives what it believes to be the clock while the
+    device is watching it as data, the START condition — SDA falling while SCL is high —
+    never occurs. The device never wakes up, never acknowledges, and never reports anything,
+    because no transaction ever began. Every failure mode of a wrong pin assignment looks
+    like an empty bus, not like a bad byte.
+\end{warningbox}
+
+\subsection{How It Was Found}
+
+The useful part of this story is not the answer; it is the method, which is reusable on any
+board with an unknown bus.
+
+\paragraph{Step one: prove the pins are a bus at all.}
+Before talking to anything, configure every GPIO as an input with no internal pull, and read
+the port. Two pins that read high with no internal help are held up by resistances on the
+board — which is what an I2C bus looks like, and nothing else on a general GPIO header does.
+
+\begin{minted}{text}
+PORTB_DIN = 0x0C    ->  bit 2 (PB2) and bit 3 (PB3) are both high, no internal pull
+\end{minted}
+
+\begin{notebox}
+    The first version of this probe was useless: it configured the pins as \emph{outputs}
+    (\codeinline{mode 0}), which disables the input buffer, so the result carried no
+    information at all. \codeinline{mode 1} — input, no pull — is the measurement.
+\end{notebox}
+
+\paragraph{Step two: stop assuming which pin is which.}
+Instead of testing one assignment, test the matrix. Every plausible pin pair, in both
+orders, against both addresses the device could answer on:
+
+\begin{minted}{text}
+8 pin pairs x 2 orders x 2 addresses = 32 probes
+result: sda=p1.2 scl=p1.3 addr=0x6a id=0x6a
+\end{minted}
+
+That single line is the whole fix. The device had been there the entire time, on the pair
+the documentation listed — with the two wires the other way round.
+
+\paragraph{Step three: make the driver's configuration a value, not a hardcoded write.}
+The first attempt after the fix still failed, for a second and much more embarrassing reason:
+the pin-abstraction's write function always addressed the same port, so changing ``which
+bus'' changed nothing about the electrical output while appearing to work. The lesson is
+small and general:
+
+\begin{minted}{rust}
+// Wrong: the selector looked configurable but every branch wrote PORTB.
+fn set(&mut self, pin: u8, high: bool) {
+    self.portb_dout().write(|w| unsafe { w.dout(if high { 1 << pin } else { 0 }) });
+}
+
+// Right: the port is part of the state, so choosing a bus chooses the registers.
+match self.pins {
+    Pins::Base => self.portc_dout().write(...),
+    Pins::Imu  => self.portb_dout().write(...),
+}
+\end{minted}
+
+\begin{remark}
+    \textbf{The pattern to notice.} A parameter that does not reach the hardware is worse than
+    a missing parameter: it produces a plausible-looking experiment whose result is meaningless,
+    and you will believe the result.
+\end{remark}
+
+\subsection{Verification}
+
+The fix was accepted only when two independent implementations agreed:
+
+\begin{table}[H]
+\centering
+\begin{tabular}{lll}
+\hline
+\textbf{Implementation} & \textbf{Reading} & \textbf{Expected} \\
+\hline
+PAC example   & \codeinline{id=6a a=985,81,139 mg} & WHO\_AM\_I = 0x6A, $|a| \approx 1$ g \\
+HAL example   & \codeinline{id=6a a=970,79,142 mg}  & same device, same registers \\
+\hline
+\end{tabular}
+\caption{Two layers, one device: the numbers differ only by sensor noise and the physical
+orientation at the moment of the read.}
+\label{tab:i2c-imu-parity}
+\end{table}
+
+A magnitude of about 1000\,mg is not a detail to skip: a three-axis accelerometer at rest
+measures gravity, so the vector length is a free self-check on both the bus and the
+scale-factor arithmetic. A dead sensor reports zeros; a mis-scaled one reports something
+that is not 1\,g.
+
+\subsection{What This Teaches}
+
+\begin{keytakeaways}
+    \item \textbf{A pin map is a claim, not a measurement.} Check the electrical behaviour of
+          the pins before believing a table in a repository.
+    \item \textbf{Test the matrix, not the hypothesis.} Eight pairs in two orders took less
+          time than a day of reasoning about which document was right.
+    \item \textbf{Silence is informative.} An empty bus narrows the problem to ``no
+          transaction started'', which points at wiring, mode or timing — never at the
+          protocol layer.
+    \item \textbf{Verify with a physical invariant.} Gravity, a chip identifier, a checksum:
+          something that would be wrong if the bus were returning plausible garbage.
+\end{keytakeaways}

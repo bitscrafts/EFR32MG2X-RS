@@ -1,0 +1,78 @@
+\section{I2C Protocol Fundamentals}
+\label{sec:i2c-fundamentals}
+
+I2C is two wires and a clock, and everything else follows from one electrical decision: the
+lines are \structure{open drain}. A device never drives a line high; it releases it and a
+pull-up resistor does the work. Two consequences drive every design decision that follows.
+
+\begin{keytakeaways}
+    \item A device can only pull a line \emph{low}. ``High'' is the absence of anybody
+          pulling.
+    \item Because releasing is not a conflict, two devices can never damage each other by
+          talking at once — the bus resolves it as a wired-AND.
+    \item But because a ``1'' comes from a resistor, the rise time is set by
+          $R \times C$: the bus capacitance is what limits the clock rate and the wire length.
+\end{keytakeaways}
+
+\subsection{The Transaction, in Voltage}
+
+A transfer is a sequence of edges, and each of them means something specific:
+
+\begin{enumerate}
+    \item \textbf{START}: SDA falls while SCL is high. Nothing else on the bus produces that
+          pattern, which is why it can be used as a marker without a separate wire.
+    \item \textbf{Address}: seven bits, most significant first, then a direction bit
+          ($0$ = write, $1$ = read).
+    \item \textbf{ACK}: the addressed device pulls SDA low for the ninth clock. If nobody
+          pulls, the byte is unacknowledged — the single most useful diagnostic on the bus.
+    \item \textbf{Data}: bytes, each followed by an ACK, in the direction agreed.
+    \item \textbf{STOP}: SDA rises while SCL is high.
+\end{enumerate}
+
+The detail that catches everybody the first time: \textbf{SDA may only change while SCL is
+low}. Both the START and the STOP are defined as the violation of that rule, which is
+exactly why they are unambiguous.
+
+\subsection{The Electrical Reality on This Board}
+
+The EFR32MG24 does not have a dedicated I2C pin pair in the sense a beginner expects. The
+peripheral observes ordinary GPIO pins, so the same pin can be used as a GPIO, as an I2C
+line, or as something else — and the routing is a separate configuration step.
+
+That gives two ways to implement a bus on this part:
+
+\begin{description}
+    \item[The on-chip controller (I2C0/I2C1).] The hardware generates the edges, handles
+          addressing, ACK and clock stretching, and interrupts the core when done.
+    \item[A bit-banged master.] Software drives the pins. Slower, more code, and completely
+          under your control — which matters enormously when the first option misbehaves.
+\end{description}
+
+This chapter uses both, and the reason is not stylistic. On this part the on-chip
+controller could not complete a read, and the proof of that is the subject of the next
+section.
+
+\subsection{Open Drain in the Registers}
+
+An open-drain pin is not configured ``as output and set to 1''. It is configured in a mode
+where the output driver can only sink current, and the value written has the opposite
+meaning to the one intuition suggests:
+
+\begin{minted}{rust}
+// The line is released (reads high through the pull-up) when the output latch is 1,
+// and pulled low when it is 0. This is not a convention we chose: it is what WIREDAND
+// means, and it is why a bit-banged master writes `1` to let go.
+porta_dout().write(|w| unsafe { w.dout(1 << pin) }); // release
+porta_dout().write(|w| unsafe { w.dout(0) });        // drive low
+\end{minted}
+
+Getting this backwards produces the most confusing failure in the whole chapter: a bus that
+appears dead, while the code looks correct.
+
+\begin{warningbox}
+    \textbf{The mistake that cost the most time in this project.} The GPIO was configured for
+    the bus, the address was right, the device was powered, and every scan returned nothing —
+    because the pin was in a mode where writing \codeinline{1} \emph{drove the line high}
+    instead of releasing it. Two open-drain lines both driven high is a short through the
+    drivers, and the resulting waveform is not an I2C bus at all.
+\end{warningbox}

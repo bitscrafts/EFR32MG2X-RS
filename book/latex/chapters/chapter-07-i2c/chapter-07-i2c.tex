@@ -1,0 +1,52 @@
+% Chapter 7: I2C Master Mode Implementation
+% File: chapters/chapter-07-i2c/chapter-07-i2c.tex
+
+\chapter[I2C Master Mode]{I2C Master Mode: Two Buses, One That Did Not Work, and Two Lines That Were Swapped}
+\label{ch:chapter-07}
+\chapthumb{7}
+
+\begin{quote}
+    \textit{``The datasheet is a description of the hardware. It is not the hardware.''}
+    \\
+    -- the lesson of this chapter
+\end{quote}
+
+I2C looks like the easiest peripheral in the machine: two open-drain wires, an address, a
+byte, an acknowledge. It is also the peripheral where this project lost the most time, and
+every hour was lost for the same reason — trusting a document over a measurement.
+
+This chapter builds an I2C master from the register level up, and then does something most
+texts skip: it shows what happens when the on-chip controller does not work, how to prove
+that it is the controller and not your code, and how to build a transport that does work
+instead. Along the way it solves a real failure: a sensor that never answered because the
+two bus lines were the other way round, and every scan of the ``correct'' pins returned an
+empty bus.
+
+\minitoc
+
+\clearpage
+
+% ============================================================================
+% SECTION 07.01
+% ============================================================================
+\input{chapters/chapter-07-i2c/07.01-fundamentals}
+
+% ============================================================================
+% SECTION 07.02
+% ============================================================================
+\input{chapters/chapter-07-i2c/07.02-the-controller-that-cannot-read}
+
+% ============================================================================
+% SECTION 07.03
+% ============================================================================
+\input{chapters/chapter-07-i2c/07.03-a-transport-that-works}
+
+% ============================================================================
+% SECTION 07.04
+% ============================================================================
+\input{chapters/chapter-07-i2c/07.04-two-lines-swapped}
+
+% ============================================================================
+% SECTION 07.05
+% ============================================================================
+\input{chapters/chapter-07-i2c/07.05-what-to-take-away}

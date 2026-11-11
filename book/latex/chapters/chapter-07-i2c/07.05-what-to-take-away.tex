@@ -1,0 +1,49 @@
+\section{What To Take Away}
+\label{sec:i2c-takeaways}
+
+This chapter covered one peripheral, but three of its lessons apply to every peripheral in
+this book.
+
+\begin{keytakeaways}
+    \item \textbf{The order of diagnosis is electrical, then protocol, then driver.} Prove the
+          pins, prove the timing, prove the bytes \emph{in that order}. Skipping to the driver
+          is how a project loses a week to a mode bit.
+    \item \textbf{Controls turn opinions into statements.} ``The controller does not complete
+          reads'' is an opinion until the same pins, pull-ups and device are read successfully
+          by a bit-banged master. Then it is a finding.
+    \item \textbf{A workaround is a decision, and decisions get written down.} The
+          bit-banged transport exists because the on-chip one could not be made to work in
+          any configuration that was tried. That is a legitimate engineering outcome, and it
+          is only legitimate while the measurements behind it are kept.
+    \item \textbf{Every abstraction must be tested against the hardware it claims to
+          abstract.} The pin abstraction whose ``which bus'' parameter never reached a
+          register is the canonical example: it compiled, it ran, and it measured nothing.
+\end{keytakeaways}
+
+\subsection{Exercises}
+
+\begin{exercises}
+    \item \textbf{(Easy)} Write a bus scan that reports, for every address that acknowledges,
+          the byte read back from register \codeinline{0x00}. On a bus with three devices,
+          how do you tell a device that answered from one that is not there?
+    \item \textbf{(Easy)} Configure a GPIO as an input with no internal pull and read a pin
+          that has an external pull-up, then one that does not. Compare the port values.
+          What does the difference prove about the board?
+    \item \textbf{(Medium)} Add a repeated-START to the bit-banged master and use it to read a
+          register in a single transaction. Then implement the same read as two transactions
+          and explain, with the device's datasheet, which devices tolerate the difference.
+    \item \textbf{(Medium)} Calibrate \codeinline{HALF\_BIT\_CYCLES} with the DWT cycle
+          counter instead of trusting the constant, and report the bus frequency you actually
+          get. Compare with the value the name suggests.
+    \item \textbf{(Hard)} Reproduce the fault-isolation table of this chapter for a peripheral
+          of your choice: list every hypothesis, the measurement that eliminates it, and the
+          control experiment that decides between ``our code'' and ``the hardware''.
+\end{exercises}
+
+\begin{notebox}
+    \textbf{Where this leads.} The transport built here is what every other device driver in
+    this book sits on: the OLED, the environmental sensor and the real-time clock all use the
+    same bit-banged master, on their own bus, through the same \codeinline{embedded-hal}
+    trait. The next chapter takes the first of them — the display — and shows what changes
+    when the payload is a framebuffer rather than a register.
+\end{notebox}
