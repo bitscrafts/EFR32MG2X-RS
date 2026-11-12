@@ -42,4 +42,8 @@ extern "C" {
     pub fn emlib_sysclk_hz() -> u32;
     /// `CMU_ClockFreqGet(cmuClock_CORE)`: the core branch frequency, in Hz.
     pub fn emlib_core_hz() -> u32;
+    /// `SYSTEM_GetUnique()`: the 64-bit device identifier programmed at manufacture.
+    pub fn emlib_unique_id() -> u64;
+    /// Chip revision, packed as major << 24 | minor << 16 | part number or family.
+    pub fn emlib_chip_revision() -> u32;
 }

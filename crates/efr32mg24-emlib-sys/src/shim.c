@@ -16,3 +16,26 @@ uint32_t emlib_core_hz(void)
 {
   return CMU_ClockFreqGet(cmuClock_CORE);
 }
+
+/* Identity, read from the part. */
+#include "em_system.h"
+
+uint64_t emlib_unique_id(void)
+{
+  return SYSTEM_GetUnique();
+}
+
+/* Packed so one 32-bit word can carry the whole revision: major, minor, part number or family.
+ * The two variants of SYSTEM_ChipRevision_TypeDef are why this wrapper exists at all — the struct's
+ * third field is 16 bits on parts that report a part number and 8 bits on parts that report a family,
+ * and that difference must not leak into Rust. */
+uint32_t emlib_chip_revision(void)
+{
+  SYSTEM_ChipRevision_TypeDef rev;
+  SYSTEM_ChipRevisionGet(&rev);
+#if defined(_SYSCFG_CHIPREV_PARTNUMBER_MASK)
+  return ((uint32_t)rev.major << 24) | ((uint32_t)rev.minor << 16) | (uint32_t)rev.partNumber;
+#else
+  return ((uint32_t)rev.major << 24) | ((uint32_t)rev.minor << 16) | (uint32_t)rev.family;
+#endif
+}
