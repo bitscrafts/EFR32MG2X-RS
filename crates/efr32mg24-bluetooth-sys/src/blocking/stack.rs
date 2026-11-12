@@ -42,6 +42,9 @@ pub struct Bluetooth {
     /// Connection state tracking
     connected: bool,
 
+    /// Whether this device started a scan and has not stopped it.
+    scanning: bool,
+
     /// Active connection handle (if connected)
     connection_handle: u8,
 
@@ -104,6 +107,7 @@ impl Bluetooth {
         Ok(Self {
             advertising_set,
             connected: false,
+            scanning: false,
             connection_handle: 0,
             adv_data,
         })
@@ -374,6 +378,113 @@ impl Bluetooth {
     /// ```
     pub fn add_service_uuid(&mut self, uuid: u16) -> Result<(), BleError> {
         self.adv_data.add_service_uuid_16(uuid)
+    }
+
+    /// Start scanning for advertisers (central role).
+    ///
+    /// # Arguments
+    ///
+    /// - `interval_ms` — how often a scan starts; the radio cycles the three advertising channels
+    /// - `window_ms` — how long each scan listens; must not exceed `interval_ms`, or the stack
+    ///   refuses the command and returns `BleError::InvalidParameter`
+    /// - `active` — active scanning also sends a scan request and receives a scan response, which is
+    ///   how a name carried in the scan response (rather than the advertisement) becomes visible
+    ///
+    /// # The units are not milliseconds
+    ///
+    /// BGAPI takes 0.625 ms units, so both values are multiplied here. That conversion is the whole
+    /// reason this wrapper exists: passing 100 for "100 ms" asks the radio for 62.5 ms, and the
+    /// scanner works — it just scans less than you asked for, which is invisible until you compare
+    /// against a sniffer.
+    ///
+    /// # Errors
+    ///
+    /// `BleError::InvalidParameter` when `window_ms > interval_ms`, or when either is out of range.
+    pub fn start_scan(
+        &mut self,
+        interval_ms: u16,
+        window_ms: u16,
+        active: bool,
+    ) -> Result<(), BleError> {
+        if window_ms > interval_ms || interval_ms < 3 || window_ms < 3 {
+            return Err(BleError::InvalidParameter);
+        }
+        // 0.625 ms units. 20 ms of interval is 32 units; rounding down by one unit is 0.6 ms and
+        // does not matter, so integer division is honest here.
+        let interval = interval_ms * 8 / 5;
+        let window = window_ms * 8 / 5;
+
+        let mode: u8 = if active {
+            bt::sl_bt_scanner_scan_mode_t_sl_bt_scanner_scan_mode_active as u8
+        } else {
+            bt::sl_bt_scanner_scan_mode_t_sl_bt_scanner_scan_mode_passive as u8
+        };
+
+        let status = unsafe {
+            bt::sl_bt_scanner_set_mode(
+                bt::sl_bt_scanner_scan_phy_t_sl_bt_scanner_scan_phy_1m as u8,
+                mode,
+            )
+        };
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        let status = unsafe {
+            bt::sl_bt_scanner_set_timing(
+                bt::sl_bt_scanner_scan_phy_t_sl_bt_scanner_scan_phy_1m as u8,
+                interval,
+                window,
+            )
+        };
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        // Discover-observation mode reports everything, including beacons that are not discoverable —
+        // which is exactly what a demo scanner should see, since the board's own beacon is one.
+        let status = unsafe {
+            bt::sl_bt_scanner_start(
+                bt::sl_bt_scanner_scan_phy_t_sl_bt_scanner_scan_phy_1m as u8,
+                bt::sl_bt_scanner_discover_mode_t_sl_bt_scanner_discover_observation as u8,
+            )
+        };
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        self.scanning = true;
+        Ok(())
+    }
+
+    /// Stop scanning. Stopping a scanner that is not running is not an error.
+    pub fn stop_scan(&mut self) -> Result<(), BleError> {
+        let status = unsafe { bt::sl_bt_scanner_stop() };
+        self.scanning = false;
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        Ok(())
+    }
+
+    /// Whether this device is currently scanning.
+    #[must_use]
+    pub fn is_scanning(&self) -> bool {
+        self.scanning
+    }
+
+    /// Add manufacturer-specific data to the next advertising payload.
+    ///
+    /// The AD structure is `[len][0xFF][company_id_lo][company_id_hi][data...]`, and it shares the
+    /// same 31 bytes as everything else — so adding it may make the payload too large, which the
+    /// builder refuses instead of truncating.
+    ///
+    /// # Errors
+    ///
+    /// `BleError::InvalidParameter` when the company id is the reserved `0xFFFF`, or when the data
+    /// does not fit in the remaining advertising space.
+    pub fn set_manufacturer_data(&mut self, company_id: u16, data: &[u8]) -> Result<(), BleError> {
+        if company_id == 0xFFFF {
+            return Err(BleError::InvalidParameter);
+        }
+        self.adv_data.add_manufacturer_data(company_id, data)
     }
 
     /// Check if device is currently advertising

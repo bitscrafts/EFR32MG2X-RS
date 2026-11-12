@@ -173,6 +173,25 @@ pub enum BleEvent {
     /// - Advertising duration expired
     AdvertisingTimeout { advertising_set: u8 },
 
+    /// An advertisement was received while scanning (central role).
+    ///
+    /// # Fields
+    /// - `address`: 6-byte advertiser address, in the controller's reverse byte order
+    /// - `address_type`: 0 = public, 1 = random
+    /// - `rssi`: received signal strength in dBm (a negative number; -40 is close, -90 is far)
+    /// - `data`: the raw advertising payload, at most 31 bytes for legacy PDUs
+    ///
+    /// The payload is the *raw* AD structure list — the same bytes a phone parses — so an
+    /// application that wants the name has to walk it: `[len][type][value...]` repeated. It is kept
+    /// raw on purpose: decoding belongs to whoever knows what they are looking for, and a
+    /// half-decoder here would lose manufacturer data and service UUIDs.
+    Advertisement {
+        address: [u8; 6],
+        address_type: u8,
+        rssi: i8,
+        data: heapless::Vec<u8, 31>,
+    },
+
     /// Unknown event
     ///
     /// Events not yet implemented are returned as Unknown with the event ID.
@@ -220,6 +239,24 @@ impl BleEvent {
                 Some(BleEvent::Disconnected {
                     connection: data.connection,
                     reason: data.reason,
+                })
+            }
+
+            // A legacy advertisement seen by the scanner (central role)
+            bt::sl_bt_evt_scanner_legacy_advertisement_report_id => {
+                let data = unsafe { evt.data.evt_scanner_legacy_advertisement_report.as_ref() };
+                let len = (data.data.len as usize).min(31);
+                let mut payload: heapless::Vec<u8, 31> = heapless::Vec::new();
+                for i in 0..len {
+                    // Flexible array member: read through the pointer, see the note on GATT values.
+                    let byte = unsafe { data.data.data.as_ptr().add(i).read() };
+                    let _ = payload.push(byte);
+                }
+                Some(BleEvent::Advertisement {
+                    address: data.address.addr,
+                    address_type: data.address_type,
+                    rssi: data.rssi,
+                    data: payload,
                 })
             }
 

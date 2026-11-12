@@ -35,10 +35,17 @@ loop {
 
 ## Examples
 
-| Example | What it proves | Hardware |
+| Example | What it proves | How to check it |
 |---|---|---|
-| `ble_beacon` | the stack boots and a phone can see a name | XIAO MG24 (any variant) |
-| `ble_gatt` | a connection, a subscription, and notifications that arrive in order | XIAO MG24 (any variant) |
+| `ble_beacon` | the stack boots and a phone can see a name | **nRF Connect for Mobile**: the name appears in the list |
+| `ble_advertise_custom` | a framed manufacturer payload inside the 31-byte budget | nRF Connect shows a hex blob under the device; the frame starts `ff e5 02 01 …` |
+| `ble_scanner` | the receive path: address, RSSI and payload length of whoever is nearby | the mailbox reports the strongest advertiser; blink per packet |
+| `ble_gatt` | a connection, a subscription, notifications in order | **staged**: needs the PSA crypto blobs (see RADIO-NOTES) |
+| `rail_version` (rail-sys) | RAIL header and blob agree | mailbox: `rail ver=…` |
+
+Two of those are a pair: flash one board with a beacon and another with the scanner, and the radio is
+proven in both directions without a phone. nRF Connect is the third opinion — it is the only thing that
+proves the antenna, because it is a receiver built by someone else.
 
 ```bash
 cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg24-radio --examples

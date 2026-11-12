@@ -37,5 +37,13 @@ name = "ble_beacon"
 required-features = ["ble"]
 
 [[example]]
+name = "ble_advertise_custom"
+required-features = ["ble"]
+
+[[example]]
+name = "ble_scanner"
+required-features = ["ble"]
+
+[[example]]
 name = "ble_gatt"
 required-features = ["ble", "gatt"]
