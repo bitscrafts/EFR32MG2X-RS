@@ -24,14 +24,14 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::bus::Bus;
-use efr32mg24_hal::bus::{I2cBus, SharedBus};
-use efr32mg24_hal::display::append;
-use efr32mg24_hal::entry;
-use efr32mg24_hal::pin::Port;
-use efr32mg24_hal::sensors::Lsm6ds3trc;
 use panic_halt as _;
+use xiao_mg24_bsp::hal::board::Board;
+use xiao_mg24_bsp::hal::bus::Bus;
+use xiao_mg24_bsp::hal::bus::{I2cBus, SharedBus};
+use xiao_mg24_bsp::hal::display::append;
+use xiao_mg24_bsp::hal::entry;
+use xiao_mg24_bsp::hal::pin::Port;
+use xiao_mg24_bsp::hal::sensors::Lsm6ds3trc;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;

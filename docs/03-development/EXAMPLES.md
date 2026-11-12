@@ -89,3 +89,32 @@ also be declared in its manifest, or `--examples` silently skips it.
 ```bash
 bash scripts/gate.sh    # VERDICT: PASS — pac 19, hal 2, module 4, base 7 (+1), motion-detection 1
 ```
+
+## Bluetooth, at every level where it can exist
+
+| Level | Examples | What it proves | Why not here |
+|---|---|---|---|
+| `efr32mg24-pac` | — | — | the radio is a blob; there are no registers to write |
+| `efr32mg24-hal` | — | — | a HAL that depended on MSLA blobs would tax every GPIO user |
+| `efr32mg24-bluetooth-sys` | `bt_version` | the bindings, the blobs and the CMSIS stubs link | — |
+| `efr32mg24-radio` | `ble_beacon`, `ble_advertise_custom`, `ble_scanner` | the stack, both directions, and a framed payload | `ble_gatt` waits on PSA crypto |
+| `xiao-mg24-bsp` | `module_ble_beacon` | a module user adds BLE with one dev-dependency | — |
+| `xiao-expansion-base-bsp` | `base_ble_env` | the product shape: sensor reading in the advertising payload | — |
+
+The two blanks are the interesting entries. PAC and HAL have no Bluetooth examples **by design**, and
+saying so is part of the catalogue: the radio is not a peripheral you program, it is a stack you link.
+
+## One rule per rung
+
+An example names **only its own crate**:
+
+```
+pac_*     may name efr32mg24_pac        and nothing above it
+hal_*     may name efr32mg24_hal        never the PAC, never a board
+module_*  may name xiao_mg24_bsp        (its `hal::` re-export included)
+base_*    may name xiao_expansion_base_bsp  (its `hal::` and `module::` re-exports included)
+```
+
+Both directions are checked by `scripts/gate.sh`: no PAC type outside the PAC crate, and no
+`efr32mg24_hal::` inside a BSP example. The second check was added because fourteen BSP examples named
+the HAL directly — an example of the layer below, living in the wrong crate.

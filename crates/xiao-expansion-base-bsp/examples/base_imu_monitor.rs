@@ -24,15 +24,15 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::bus::Bus;
-use efr32mg24_hal::bus::{I2cBus, SharedBus};
-use efr32mg24_hal::display::{append, format_fixed, Ssd1306};
-use efr32mg24_hal::entry;
-use efr32mg24_hal::pin::Port;
-use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config};
-use efr32mg24_hal::sensors::Lsm6ds3trc;
 use panic_halt as _;
+use xiao_expansion_base_bsp::hal::board::Board;
+use xiao_expansion_base_bsp::hal::bus::Bus;
+use xiao_expansion_base_bsp::hal::bus::{I2cBus, SharedBus};
+use xiao_expansion_base_bsp::hal::display::{append, format_fixed, Ssd1306};
+use xiao_expansion_base_bsp::hal::entry;
+use xiao_expansion_base_bsp::hal::pin::Port;
+use xiao_expansion_base_bsp::hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config};
+use xiao_expansion_base_bsp::hal::sensors::Lsm6ds3trc;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
@@ -51,12 +51,12 @@ static mut TOTAL: u32 = 0;
 
 // The cycle counter is the HAL's, not a peripheral an example reaches for.
 fn cycle_count() -> u32 {
-    efr32mg24_hal::dwt::cycles()
+    xiao_expansion_base_bsp::hal::dwt::cycles()
 }
 
 fn dwt_start() {
     // SAFETY: nothing else in this example uses DWT.
-    unsafe { efr32mg24_hal::dwt::start() };
+    unsafe { xiao_expansion_base_bsp::hal::dwt::start() };
 }
 
 fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {

@@ -29,14 +29,14 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::bus::Bus;
-use efr32mg24_hal::bus::SharedBus;
-use efr32mg24_hal::display::{append, Ssd1306};
-use efr32mg24_hal::entry;
-use efr32mg24_hal::pin::Port;
-use efr32mg24_hal::rtc::pcf8563::{DateTime, Pcf8563, RtcError};
 use panic_halt as _;
+use xiao_expansion_base_bsp::hal::board::Board;
+use xiao_expansion_base_bsp::hal::bus::Bus;
+use xiao_expansion_base_bsp::hal::bus::SharedBus;
+use xiao_expansion_base_bsp::hal::display::{append, Ssd1306};
+use xiao_expansion_base_bsp::hal::entry;
+use xiao_expansion_base_bsp::hal::pin::Port;
+use xiao_expansion_base_bsp::hal::rtc::pcf8563::{DateTime, Pcf8563, RtcError};
 
 #[path = "common/mailbox.rs"]
 mod mailbox;

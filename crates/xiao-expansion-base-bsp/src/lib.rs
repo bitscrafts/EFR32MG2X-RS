@@ -44,3 +44,7 @@ pub use expansion_base::{Devices, ExpansionBase};
 
 pub use efr32mg24_hal as hal;
 pub use xiao_mg24_bsp as module;
+
+// What an example needs to start a binary, re-exported so that an example names only this crate.
+// (`hal` is re-exported whole below; these two are the pieces every example uses.)
+pub use efr32mg24_hal::{entry, prelude};

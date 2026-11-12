@@ -180,6 +180,18 @@ else
   fail "an example steals a core peripheral: $(echo "$offenders" | tr '\n' ' ')"
 fi
 
+
+# 6. A BSP example names only its own crate. Reaching for `efr32mg24_hal::` inside a BSP
+#    example makes it an example of the layer below, living in the wrong crate -- the same
+#    defect as a HAL example that names the PAC. The BSP re-exports the HAL, so the path
+#    `xiao_mg24_bsp::hal::...` is available and keeps the name in the right crate.
+offenders=$(grep -rln "efr32mg24_hal::\|efr32mg24_pac::" crates/*-bsp/examples/ 2>/dev/null || true)
+if [ -z "$offenders" ]; then
+  pass "BSP examples name only their own crate"
+else
+  fail "a BSP example names the layer below: $(echo "$offenders" | tr '\n' ' ')"
+fi
+
 echo "=== host tests: domain crates ==="
 # Every crate under libraries/ must build and test on the host, and must not drag in
 # anything from the hardware stack. That second half is the rule that keeps them testable:

@@ -53,3 +53,7 @@ pub use module::Module;
 // used for anything its author did not anticipate. The PAC deliberately is not: an application
 // holding the PAC can reconfigure what this crate claims to own.
 pub use efr32mg24_hal as hal;
+
+// What an example needs to start a binary, re-exported so that an example names only this crate.
+// (`hal` is re-exported whole below; these two are the pieces every example uses.)
+pub use efr32mg24_hal::{entry, prelude};

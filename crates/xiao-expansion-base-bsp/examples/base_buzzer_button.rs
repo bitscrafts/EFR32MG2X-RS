@@ -20,8 +20,8 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_hal::prelude::*;
 use panic_halt as _;
+use xiao_expansion_base_bsp::hal::prelude::*;
 use xiao_expansion_base_bsp::ExpansionBase;
 
 #[path = "common/mailbox.rs"]

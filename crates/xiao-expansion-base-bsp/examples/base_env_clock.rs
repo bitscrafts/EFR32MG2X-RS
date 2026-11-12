@@ -22,9 +22,9 @@
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::display::{append, format_fixed};
-use efr32mg24_hal::entry;
 use panic_halt as _;
+use xiao_expansion_base_bsp::hal::display::{append, format_fixed};
+use xiao_expansion_base_bsp::hal::entry;
 use xiao_expansion_base_bsp::ExpansionBase;
 
 #[path = "common/mailbox.rs"]

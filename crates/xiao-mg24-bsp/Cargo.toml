@@ -33,6 +33,9 @@ efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys", optional = true
 # efr32mg24-zigbee-sys = { workspace = true, optional = true }     # Phase D3
 
 [dev-dependencies]
+# Only for `module_ble_beacon`: the radio stack is three MSLA blobs, and a user of a GPIO must not
+# inherit them. The example opts in; the crate does not.
+efr32mg24-radio = { path = "../efr32mg24-radio" }
 panic-halt = "0.2"
 
 [features]

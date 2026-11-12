@@ -26,6 +26,8 @@ critical-section = { workspace = true }
 heapless = "0.8"
 
 [dev-dependencies]
+# Only the two BLE examples: the carrier's users should not inherit three MSLA blobs.
+efr32mg24-radio = { path = "../efr32mg24-radio" }
 panic-halt = "0.2"
 motion-detection = { path = "../../libraries/motion-detection" }
 
@@ -42,3 +44,6 @@ path = "examples/base_env_clock.rs"
 [[example]]
 name = "base_fall_detector"
 path = "examples/fall_detector/main.rs"
+
+[[example]]
+name = "base_ble_env"

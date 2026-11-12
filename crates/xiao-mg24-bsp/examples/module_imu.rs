@@ -20,11 +20,11 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_hal::delay::Delay;
-use efr32mg24_hal::prelude::*;
-use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, Lsm6ds3trc};
-use efr32mg24_hal::sensors::ImuError;
 use panic_halt as _;
+use xiao_mg24_bsp::hal::delay::Delay;
+use xiao_mg24_bsp::hal::prelude::*;
+use xiao_mg24_bsp::hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, Lsm6ds3trc};
+use xiao_mg24_bsp::hal::sensors::ImuError;
 use xiao_mg24_bsp::Module;
 
 #[path = "common/mailbox.rs"]

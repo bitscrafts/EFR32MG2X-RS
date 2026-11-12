@@ -3,7 +3,7 @@
 //! Kept apart so the application can be read without display code in the middle of
 //! it, and so a different panel (or none) changes this file alone.
 
-use efr32mg24_hal::display::{append, Ssd1306};
+use xiao_expansion_base_bsp::hal::display::{append, Ssd1306};
 
 use crate::app::Status;
 
@@ -31,7 +31,10 @@ pub fn decimal(out: &mut [u8], mut pos: usize, mut value: u32) -> usize {
 }
 
 /// Redraw the whole screen from the current status.
-pub fn render(display: &mut Option<Ssd1306<impl efr32mg24_hal::bus::I2cBus>>, status: &Status) {
+pub fn render(
+    display: &mut Option<Ssd1306<impl xiao_expansion_base_bsp::hal::bus::I2cBus>>,
+    status: &Status,
+) {
     let Some(d) = display.as_mut() else {
         return;
     };
