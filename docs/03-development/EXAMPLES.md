@@ -99,6 +99,8 @@ bash scripts/gate.sh    # VERDICT: PASS — pac 19, hal 2, module 4, base 7 (+1)
 | `efr32mg24-bluetooth-sys` | `bt_version` | the bindings, the blobs and the CMSIS stubs link | — |
 | `efr32mg24-radio` | `ble_beacon`, `ble_advertise_custom`, `ble_scanner` | the stack, both directions, and a framed payload | `ble_gatt` waits on PSA crypto |
 | `xiao-mg24-bsp` | `module_ble_beacon` | a module user adds BLE with one dev-dependency | — |
+| `module_ble_motion` | `xiao-mg24-bsp` | the IMU on the air: 10-byte frame, 10 Hz, no connection |
+| `module_ble_fall` | `xiao-mg24-bsp` | the calibrated classifier's verdict broadcast: flags, falls, peak, free-fall |
 | `xiao-expansion-base-bsp` | `base_ble_env` | the product shape: sensor reading in the advertising payload | — |
 
 The two blanks are the interesting entries. PAC and HAL have no Bluetooth examples **by design**, and

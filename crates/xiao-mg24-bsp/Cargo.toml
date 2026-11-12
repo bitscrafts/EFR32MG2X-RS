@@ -36,6 +36,8 @@ efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys", optional = true
 # Only for `module_ble_beacon`: the radio stack is three MSLA blobs, and a user of a GPIO must not
 # inherit them. The example opts in; the crate does not.
 efr32mg24-radio = { path = "../efr32mg24-radio" }
+# The classifier is hardware-free policy: the BLE fall example is an application of it.
+motion-detection = { path = "../../libraries/motion-detection" }
 panic-halt = "0.2"
 
 [features]
@@ -59,4 +61,12 @@ required-features = ["sense"]
 
 [[example]]
 name = "module_mic_level"
+required-features = ["sense"]
+
+[[example]]
+name = "module_ble_motion"
+required-features = ["sense"]
+
+[[example]]
+name = "module_ble_fall"
 required-features = ["sense"]
