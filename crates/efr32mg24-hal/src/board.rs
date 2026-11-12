@@ -12,7 +12,7 @@
 
 use efr32mg24_pac as pac;
 
-use crate::bus::{BitBangI2c, Wiring};
+use crate::bus::{BitBangI2c, Bus, Port};
 
 /// Everything an application needs from the XIAO MG24 Sense + Expansion Base.
 pub struct Board {
@@ -38,7 +38,7 @@ impl Board {
     /// `docs/04-reference/I2C0-READ-DEFECT.md`. When that is fixed this method
     /// returns the hardware backend and nothing above it changes.
     pub fn i2c(&self) -> BitBangI2c<'_> {
-        BitBangI2c::new(&self.dp.gpio_s)
+        BitBangI2c::on(&self.dp.gpio_s, Bus::new(Port::C, 1 << 4, 1 << 5))
     }
 
     /// The IMU's own bus (PB2 = SDA, PB3 = SCL).
@@ -49,7 +49,7 @@ impl Board {
     /// `docs/04-reference/IMU-INVESTIGATION.md` — and both are why the sensor
     /// answered nothing until this wiring was found.
     pub fn imu_i2c(&self) -> BitBangI2c<'_> {
-        BitBangI2c::on(&self.dp.gpio_s, Wiring::ImuBus)
+        BitBangI2c::on(&self.dp.gpio_s, Bus::new(Port::B, 1 << 2, 1 << 3))
     }
 
     /// Power gate for the on-board sensors (PD5).

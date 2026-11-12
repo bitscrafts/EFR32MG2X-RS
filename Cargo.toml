@@ -1,12 +1,14 @@
 [workspace]
 resolver = "2"
+# `crates/` is the hardware stack: PAC <- HAL <- BSP <- bindings, one direction only.
 members = [
     "crates/efr32mg24-pac",
     "crates/efr32mg24-hal",
-    "crates/motion-detection",
     "crates/efr32mg24-rail-sys",
     "crates/efr32mg24-bluetooth-sys",
     "crates/xiao-mg24-bsp",
+    # `libraries/` is domain policy: no hardware, builds and tests on the host.
+    "libraries/motion-detection",
 ]
 exclude = [
     "crates/efr32mg24-bootloader",

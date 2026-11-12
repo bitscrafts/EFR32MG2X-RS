@@ -1,0 +1,270 @@
+\section{What Goes In Each Crate, and Why}
+\label{sec:what-goes-in-each-crate}
+
+The PAC/HAL/BSP pattern from Section~\ref{sec:pac-hal-bsp-architecture} says the layers exist.
+It does not say where one ends and the next begins, and every project fills that gap
+differently. That gap is what you face the first time you add support for a new MCU or a new
+board — which is the situation this book is written for, and the one it should leave you
+equipped to handle.
+
+This section argues the choice, compares it with what four mature Rust embedded ecosystems do,
+gives a decision procedure you can apply to hardware that is not in this book, and states the
+rules that keep the answer from drifting.
+
+\subsection{The Question, Stated Sharply}
+
+Three pieces of code make the ambiguity visible. All three are real, from this project:
+
+\begin{enumerate}
+    \item \textbf{A pin pair.} The IMU on this board answers on \texttt{SDA = PB2},
+          \texttt{SCL = PB3} — the opposite of what the vendor's pin map declares. Whose
+          knowledge is that?
+    \item \textbf{A power gate.} The same sensor does not answer until \texttt{PD5} is driven
+          high. Is that a driver detail or a board detail?
+    \item \textbf{An algorithm.} A fall classifier takes acceleration samples and decides
+          whether the device fell. It has no registers, no pins and no clock. Where does it
+          live so that it stays testable?
+\end{enumerate}
+
+A HAL that answers (1) and (2) knows too much: every new board becomes a fork of the HAL. An
+example that answers them re-derives them, and the same investigation gets repeated by the
+next person — the failure this project has already paid for once.
+
+\subsection{Three Candidate Layouts}
+
+\paragraph{Layout A — no BSP at all; wiring lives in the examples.}
+This is the smallest possible structure: the HAL offers drivers, and each example says which
+pins to use. It is what the STM32 and ESP32 ecosystems do, and it is defensible when the point
+of the example is to teach the peripheral.
+
+Its cost appears the moment the wiring is not obvious. This board's IMU needed a swapped
+\texttt{SDA}/\texttt{SCL} and a power gate before it answered anything; putting that in every
+example means every example can get it wrong independently, and the knowledge is only as good
+as the most recently written one.
+
+\paragraph{Layout B — one BSP crate, features for the optional hardware.}
+A single \codeinline{xiao-}\allowbreak\codeinline{mg24-bsp} with features
+\codeinline{sense} and \codeinline{expansion-base}. It looks like the cheapest correct answer, and it has a specific
+trap that the nRF ecosystem documents in its own repository: \emph{cargo unifies features
+across a workspace}, so a build that enables the base for one target can silently enable it
+for another. More importantly, the API lies: a \codeinline{ExpansionBase} type that exists in a
+build without the base has to answer ``no OLED'' at runtime, and every method that could have
+been a compile error becomes an \codeinline{Option}.
+
+\paragraph{Layout C — one BSP crate per board, and a feature for a variant of one board.}
+The module gets its own crate (LED on both variants; IMU and microphone behind
+\codeinline{sense}), the Expansion Base gets its own crate that depends on the module's, and
+the dependency arrow points one way. A user who does not own the base never compiles it, and
+never sees an \codeinline{Option} that only exists because two boards were welded together.
+
+\subsection{What Four Ecosystems Actually Do}
+
+Read from the repositories, not from memory:
+
+\begin{table}[H]
+\centering
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.3cm}>{\raggedright\arraybackslash}p{2.6cm}>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{3.0cm}@{}}
+\hline
+\textbf{ecosystem} & \textbf{chip selection} & \textbf{BSP crates} & \textbf{where examples live} & \textbf{where wiring is written} \\
+\hline
+\textbf{rp-hal} (RP2040/RP2350) & one HAL per chip & \textbf{yes}, one per board,
+  in a \emph{separate repository} (\codeinline{rp-hal-boards/boards/}) & in each BSP, plus
+  separate example crates & in the BSP, once \\
+\textbf{nrf-hal} & one HAL per chip (\codeinline{nrf52840-hal}, \codeinline{nrf9160-hal}, \dots)
+  + \codeinline{nrf-hal-common} & no & in the HAL repo, board chosen by feature & in the
+  examples \\
+\textbf{stm32f4xx-hal} & one HAL per family & no & in the HAL crate &
+  in the examples (pin numbers inline) \\
+\textbf{esp-hal} & one crate, chip by feature & no & one \codeinline{examples/} grouped by
+  capability & in the examples \\
+\hline
+\end{tabular}
+\caption{How four Rust embedded ecosystems split PAC, HAL, BSP and examples. Verified from the
+repositories in November 2026.}
+\label{tab:ecosystem-layouts}
+\end{table}
+
+Two details in that table are worth more than the table.
+
+First, \textbf{rp-hal puts its BSPs in a different repository from the HAL}. That is stronger
+than a folder: the HAL's continuous integration cannot depend on a board, because the board is
+not present. The BSP crates describe themselves as a HAL for one board that re-exports the
+chip HAL — a facade, exactly as this book calls it.
+
+Second, \textbf{nrf-hal ships a workspace template instead of a workspace}, and says why:
+\emph{``Since Cargo resolves all features for all crates in the workspace together, it is not
+possible to have a workspace with all the crates together, since they enable incompatible
+features.''} That sentence is the argument against Layout B in the ecosystem's own words.
+
+\subsection{The Decision, and the Rule Behind Each Part}
+
+\begin{table}[H]
+\centering
+\footnotesize
+\begin{tabular}{@{}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{5.2cm}@{}}
+\hline
+\textbf{crate / folder} & \textbf{what goes in} & \textbf{what must never go in} \\
+\hline
+\codeinline{efr32mg24-pac} & registers, generated from the SVD & anything hand-written that
+  a generator could produce \\
+\codeinline{efr32mg24-hal} & drivers: which bytes, in which order, with which timing & pins,
+  addresses, power gates, board names \\
+\codeinline{xiao-mg24-bsp} & the module: LED; behind \codeinline{sense}, the IMU bus, its
+  power gate and the microphone & any device that is not on the module \\
+\codeinline{xiao-expansion-base-bsp} & the base: OLED, BME68x, RTC, buzzer, button, Grove,
+  microSD, and the base's own bus & anything that exists without the base \\
+\codeinline{libraries/} & domain policy with no hardware at all & any dependency on the
+  hardware stack, direct or transitive \\
+\hline
+\end{tabular}
+\caption{Ownership. The right-hand column is what the gate checks; the left two are what a
+review checks.}
+\label{tab:crate-ownership}
+\end{table}
+
+Three rules follow, and each one exists because of a specific failure:
+
+\begin{keytakeaways}
+    \item \textbf{A BSP describes one piece of plastic.} Two boards that stack are two
+          crates, because a user may own only one of them.
+    \item \textbf{A variant of one board is a feature, not a crate.} The Sense module is the
+          same PCB with more parts fitted; a separate crate would duplicate the board init
+          and the LED to add two sensors.
+    \item \textbf{A dependency arrow never points at a board.} The base depends on the
+          module; the module does not know the base exists. This is the property that makes
+          ``does it work without the base?'' answerable by the compiler instead of by a test
+          matrix.
+\end{keytakeaways}
+
+\subsection{Where the Algorithm Goes}
+
+The classifier deserves its own sentence because it is where layering usually breaks. It has
+no hardware, but the temptation is to put it ``near'' the driver that produces its input — in
+the same crate as the IMU, or in the example that uses it.
+
+Both are wrong for the same reason: the moment it shares a crate with anything that needs a
+target triple, its tests need a target triple, and the tests are what keep it honest. In this
+project it is a crate with \textbf{zero dependencies}, and the gate fails if its dependency
+tree ever contains a hardware crate:
+
+\begin{minted}{bash}
+$ cargo tree -p motion-detection | grep efr32mg24
+$ echo $?
+1        # nothing from the hardware stack: the rule holds
+\end{minted}
+
+The contract is worth quoting, because it is the whole testability argument in one line:
+
+\begin{minted}{rust}
+// [i32; 3] of milligravity, and the interval between samples in microseconds.
+pub fn update_us(&mut self, accel_mg: [i32; 3], dt_us: u32) -> Option<Event>
+\end{minted}
+
+No sensor type, no bus, no clock. Which is why nine tests run in under a second on a laptop,
+and why the same code can be replayed against a recording at ten times real speed.
+
+\subsection{And Where the Examples Go}
+
+The layout of the examples follows the same principle as the crates, with one addition for
+hardware that stacks: \textbf{an example lives in the crate of the largest hardware
+requirement it has, and states that requirement in its first comment.}
+
+\begin{minted}{text}
+crates/xiao-mg24-bsp/examples/            runs with the module alone on the desk
+crates/xiao-expansion-base-bsp/examples/  needs the module (Sense) and the base
+crates/efr32mg24-pac/examples/            chip level: any pin is legitimate
+\end{minted}
+
+The alternative — every example in one folder — looks tidier and is worse: the crate of the
+module would have no examples, and an API that nothing builds is an API that nothing checks.
+A crate with hardware features and zero examples should fail a gate, not pass it quietly.
+
+\subsection{A Decision Procedure for Hardware Not In This Book}
+
+The four questions below decide the layout. They take minutes and they are the difference
+between a structure that survives the second board and one that has to be refactored.
+
+\begin{enumerate}
+    \item \textbf{How many chips?} If more than one, the HAL is per chip (or per family, when
+          the parts are close enough that one driver set serves them). This is what
+          \codeinline{nrf-hal} does per chip and \codeinline{stm32f4xx-hal} does per family;
+          \codeinline{esp-hal} instead keeps one crate and selects the chip by feature, which
+          works when the vendor's crates already share their register code.
+    \item \textbf{How many boards, and can one sit on top of another?} Boards that are
+          alternatives become one BSP crate each. Boards that \emph{stack} become one crate
+          each \emph{plus} a one-way dependency: the carrier depends on the module. A single
+          crate that knows both cannot answer ``does this work without the carrier?''.
+    \item \textbf{Are there variants of the same board?} A variant — same PCB, different
+          parts fitted — is a \emph{feature}, not a crate. A separate crate duplicates the
+          board init and everything the variants share, in exchange for a name that repeats
+          what the feature flag already says.
+    \item \textbf{Is the wiring obvious or hard-won?} Obvious wiring (an LED on a documented
+          pin) may live in an example. Hard-won wiring — a swapped bus, a power gate, a pin
+          that the vendor's own map gets wrong — belongs in a BSP, once, with the measurement
+          recorded next to it. This is the question that decides between Layout A and
+          Layout C for most hobby-scale projects.
+\end{enumerate}
+
+The same questions decide where an algorithm goes, with one addition: \textbf{if it can be
+tested on a host, it must be}, so it cannot share a crate with anything that needs a target
+triple.
+
+\subsection{Adding Support for a New Chip or Board: the Order of Work}
+
+Having decided the layout, the order below is what this project would follow again. Each step
+produces something checkable before the next one starts.
+
+\begin{enumerate}
+    \item \textbf{Registers first.} Obtain the SVD, generate the PAC, and build one example
+          that only writes a register and reads it back. If the SVD is wrong, everything
+          downstream inherits the error, and a five-line example finds that in minutes.
+    \item \textbf{Clock and pins.} Prove that the peripheral clock gate is on and that a GPIO
+          changes state. This is the step where a missing
+          \codeinline{CMU\_CLKEN0} bit appears as a bus fault at the first register access.
+    \item \textbf{One transport.} Bring up the simplest bus the board has, and read a device
+          identifier through it. A chip identifier or a WHO\_AM\_I is a free proof that
+          addressing, timing and the byte order are all correct.
+    \item \textbf{Drivers, in the HAL, with pins as arguments.} Nothing in this layer may name
+          a port. If a driver needs a pin, take it as a parameter; the BSP will supply it.
+    \item \textbf{The BSP for one board, and its examples.} Put the wiring in one place, in
+          the crate named after the board whose documentation describes the feature, and
+          write the example that proves the board works end to end.
+    \item \textbf{A second board, if there is one, and the dependency direction.} Add the
+          carrier crate only after the module crate stands alone, and make the dependency
+          point one way. If it cannot, the split is wrong.
+    \item \textbf{The gate.} Before more examples are written, make the machine check what
+          the review would check: zero warnings, every example builds, every domain crate
+          tests on the host, and no domain crate depends on the hardware stack.
+\end{enumerate}
+
+\begin{warningbox}
+    \textbf{The step people skip is the first one.} Generating the PAC and immediately
+    writing drivers feels productive, and it hides an SVD error until the driver is
+    complicated enough that the error looks like a driver bug. The five-line register
+    read-back is the cheapest test in the whole project.
+\end{warningbox}
+
+\subsection{What This Costs}
+
+Honesty about a design decision includes its price:
+
+\begin{itemize}
+    \item \textbf{More manifests.} Two BSP crates mean two \filepath{Cargo.toml} files, two
+          example folders and a dependency between them that has to be kept one-way.
+    \item \textbf{Some knowledge is duplicated on purpose.} The clock setup lives in the
+          module crate and the base depends on the module rather than re-initialising; a
+          project with two unrelated boards could not share it this way.
+    \item \textbf{The split is a judgement, not a theorem.} ``Which plastic is this pin on?''
+          is unambiguous for an LED and less so for a Grove connector that reaches the base
+          through the module's castellated pads. The rule that resolves it: the BSP is named
+          after the board whose \emph{documentation} describes the feature.
+\end{itemize}
+
+\begin{notebox}
+    \textbf{The test to apply to your own board.} Ask which of your examples would still make
+    sense to someone holding only the chip. If the answer is ``none of them'', the board has
+    swallowed the crate and a split is due. If the answer is ``all of them'', you may not need
+    a BSP at all — Layout A is not a mistake, it is a choice with a cost that is sometimes
+    worth paying.
+\end{notebox}

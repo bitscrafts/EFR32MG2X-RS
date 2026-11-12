@@ -86,13 +86,29 @@ for dir in crates/*/examples/*/; do
   fi
 done
 
-echo "=== host tests ==="
-if cargo test -p motion-detection --target "$HOST" >/tmp/gate-tests.log 2>&1; then
-  n=$(grep -oE '[0-9]+ passed' /tmp/gate-tests.log | head -1)
-  pass "motion-detection: ${n:-passed}"
-else
-  fail "motion-detection tests"
-fi
+echo "=== host tests: domain crates ==="
+# Every crate under libraries/ must build and test on the host, and must not drag in
+# anything from the hardware stack. That second half is the rule that keeps them testable:
+# one dependency on a HAL turns `cargo test` into a cross-compilation.
+for dir in libraries/*/; do
+  [ -f "${dir}Cargo.toml" ] || continue
+  name=$(basename "$dir")
+
+  if cargo test -p "$name" --target "$HOST" >"/tmp/gate-$name.log" 2>&1; then
+    n=$(grep -oE '[0-9]+ passed' "/tmp/gate-$name.log" | head -1)
+    pass "$name: host tests (${n:-passed})"
+  else
+    fail "$name: host tests"
+  fi
+
+  # The hardware stack, as a dependency, in any kind: normal, build or dev.
+  if cargo tree -p "$name" --edges normal,build -e no-dev --prefix none 2>/dev/null \
+      | grep -qE '^(efr32mg24|motion-detection|cortex-m)'; then
+    fail "$name: depends on the hardware stack"
+  else
+    pass "$name: no hardware dependency"
+  fi
+done
 
 echo
 echo "not gated on purpose:"

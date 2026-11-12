@@ -32,7 +32,7 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::{Board, Button, Led};
-use efr32mg24_hal::bus::{BitBangI2c, I2cBus, SharedBus, Wiring};
+use efr32mg24_hal::bus::{BitBangI2c, Bus, I2cBus, Port, SharedBus};
 use efr32mg24_hal::display::Ssd1306;
 use efr32mg24_hal::rtc::pcf8563::Pcf8563;
 use efr32mg24_hal::sensors::bme68x::Bme68x;
@@ -58,8 +58,8 @@ impl ExpansionBase {
         // The buses are built from the `'static` GPIO view so this struct can own
         // them; borrowing from `board` would make it self-referential.
         let gpio = efr32mg24_hal::board::gpio_static();
-        let base_bus = RefCell::new(BitBangI2c::on(gpio, Wiring::BaseBus));
-        let imu_bus = RefCell::new(BitBangI2c::on(gpio, Wiring::ImuBus));
+        let base_bus = RefCell::new(BitBangI2c::on(gpio, Bus::new(Port::C, 1 << 4, 1 << 5)));
+        let imu_bus = RefCell::new(BitBangI2c::on(gpio, Bus::new(Port::B, 1 << 2, 1 << 3)));
         Some(Self {
             board,
             base_bus,

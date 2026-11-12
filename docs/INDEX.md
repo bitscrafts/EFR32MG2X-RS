@@ -57,6 +57,7 @@ System architecture, design decisions, and technical terminology.
 - [Radio Architecture](02-architecture/RADIO_ARCHITECTURE.md) - Radio subsystem design
 - [Unified Radio Architecture](02-architecture/UNIFIED_RADIO_ARCHITECTURE.md) - Unified radio interface design
 - [Identifier Scheme](02-architecture/IDENTIFIER_SCHEME.md) - Naming and identification conventions
+- [Crate organisation research](02-architecture/CRATE-ORGANISATION-RESEARCH.md) - How rp-hal, nrf-hal, stm32f4xx-hal and esp-hal split PAC/HAL/BSP, and what this workspace took from each
 - [Terminology](02-architecture/TERMINOLOGY.md) - Project terminology and definitions
 
 **HAL (Hardware Abstraction Layer):**

@@ -24,65 +24,85 @@ use super::{BusError, I2cBus};
 /// Half-bit delay in CPU cycles (~5 us at 19 MHz): sets the bus clock.
 const HALF_BIT_CYCLES: u32 = 60;
 
-/// Which pair of pins this master drives.
+/// Which GPIO port a bus is on.
 ///
-/// Both buses are bit-banged from the same code; only the pins differ. The
-/// Expansion Base sits on PC04/PC05, the on-board LSM6DS3TR-C on PB2/PB3.
-///
-/// The order is worth stating because it cost a night: the Arduino variant
-/// declares `PIN_WIRE_SDA1 = PB3` / `PIN_WIRE_SCL1 = PB2`, and with the lines in
-/// that order the sensor never answers. Measured on the board, SDA is **PB2**
-/// and SCL is **PB3**.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Wiring {
-    /// Expansion Base: PC04 = SDA, PC05 = SCL.
-    BaseBus,
-    /// On-board IMU: PB2 = SDA, PB3 = SCL.
-    ImuBus,
+/// The HAL does not know which pins a board uses; it only knows how to drive a port. The
+/// BSP supplies the port and the two bit masks.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum Port {
+    /// PORTA.
+    A,
+    /// PORTB.
+    B,
+    /// PORTC.
+    C,
+    /// PORTD.
+    D,
 }
 
-impl Wiring {
-    fn pins(self) -> (u32, u32) {
-        match self {
-            Wiring::BaseBus => (1 << 4, 1 << 5),
-            Wiring::ImuBus => (1 << 2, 1 << 3),
-        }
+/// The two pins of a bit-banged bus, as bit masks on one port.
+///
+/// **The order is not a detail.** On the XIAO MG24 Sense the IMU answers on `SDA = PB2`,
+/// `SCL = PB3` — the opposite of what the Arduino variant declares — and with the lines the
+/// other way round the START condition never occurs, so the device never answers and the bus
+/// looks empty. Measured, not assumed: see `docs/04-reference/IMU-INVESTIGATION.md`.
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub struct Bus {
+    /// The port both lines live on.
+    pub port: Port,
+    /// Bit mask of the data line within that port.
+    pub sda: u32,
+    /// Bit mask of the clock line within that port.
+    pub scl: u32,
+}
+
+impl Bus {
+    /// Two pins on one port, as masks (`1 << pin`).
+    #[must_use]
+    pub const fn new(port: Port, sda: u32, scl: u32) -> Self {
+        Self { port, sda, scl }
     }
 }
 
-/// Software I2C master driving PC04/PC05 through PAC GPIO registers.
+/// `MODE n = 0b1000` in the GPIO model register: open drain, pulls down, lets the pull-up
+/// bring the line high. The value is the hardware's, from `gpio_s::porta_model::Mode0`.
+const MODE_WIREDAND: u32 = 8;
+
+/// Software I2C master over PAC GPIO registers, on whatever pins it is given.
 ///
-/// Cheap, deterministic and — unlike the on-chip master on this die — able to
-/// complete a read after a write.
+/// Cheap, deterministic and — unlike the on-chip master on this die — able to complete a
+/// read after a write.
 pub struct BitBangI2c<'a> {
     gpio: &'a pac::gpio_s::RegisterBlock,
-    wiring: Wiring,
+    bus: Bus,
 }
 
 impl<'a> BitBangI2c<'a> {
-    /// Take the Expansion Base pins (PC04/PC05) and release both lines.
-    pub fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
-        Self::on(gpio, Wiring::BaseBus)
-    }
-
-    /// Take the given bus, set both pins open drain and release them.
-    pub fn on(gpio: &'a pac::gpio_s::RegisterBlock, wiring: Wiring) -> Self {
-        let (sda, scl) = wiring.pins();
-        match wiring {
-            Wiring::BaseBus => {
-                gpio.portc_model()
-                    .modify(|_r, w| w.mode4().wiredand().mode5().wiredand());
-                gpio.portc_dout()
-                    .modify(|r, w| unsafe { w.bits(r.bits() | sda | scl) });
-            }
-            Wiring::ImuBus => {
-                gpio.portb_model()
-                    .modify(|_r, w| w.mode2().wiredand().mode3().wiredand());
-                gpio.portb_dout()
-                    .modify(|r, w| unsafe { w.bits(r.bits() | sda | scl) });
-            }
+    /// Take the given two pins, set both open drain, and release them.
+    pub fn on(gpio: &'a pac::gpio_s::RegisterBlock, bus: Bus) -> Self {
+        // Both pins become WIREDAND, keeping the other pins of the port untouched: a blind
+        // write would reconfigure every other pin on the port, which is how a bus silently
+        // breaks whatever else shares it.
+        let clear = !((0xF << (4 * bus.sda.trailing_zeros()))
+            | (0xF << (4 * bus.scl.trailing_zeros())));
+        let set = (MODE_WIREDAND << (4 * bus.sda.trailing_zeros()))
+            | (MODE_WIREDAND << (4 * bus.scl.trailing_zeros()));
+        // The four MODEL registers are four different types, so the same write has to be
+        // spelled in each arm; a macro keeps that from being four copies of the expression.
+        macro_rules! set_mode {
+            ($reg:expr) => {
+                $reg.modify(|r, w| unsafe { w.bits((r.bits() & clear) | set) })
+            };
         }
-        Self { gpio, wiring }
+        match bus.port {
+            Port::A => set_mode!(gpio.porta_model()),
+            Port::B => set_mode!(gpio.portb_model()),
+            Port::C => set_mode!(gpio.portc_model()),
+            Port::D => set_mode!(gpio.portd_model()),
+        };
+        // Writing 1 releases the line: the pull-up does the rest.
+        self_write_dout(gpio, bus.port, self_read_dout(gpio, bus.port) | bus.sda | bus.scl);
+        Self { gpio, bus }
     }
 
     fn delay(&self) {
@@ -90,39 +110,29 @@ impl<'a> BitBangI2c<'a> {
     }
 
     fn set(&self, sda_low: bool, scl_low: bool) {
-        let (pin_sda, pin_scl) = self.wiring.pins();
-        let mut bits = match self.wiring {
-            Wiring::BaseBus => self.gpio.portc_dout().read().bits(),
-            Wiring::ImuBus => self.gpio.portb_dout().read().bits(),
-        };
+        let mut bits = self_read_dout(self.gpio, self.bus.port);
         bits = if sda_low {
-            bits & !pin_sda
+            bits & !self.bus.sda
         } else {
-            bits | pin_sda
+            bits | self.bus.sda
         };
         bits = if scl_low {
-            bits & !pin_scl
+            bits & !self.bus.scl
         } else {
-            bits | pin_scl
+            bits | self.bus.scl
         };
-        match self.wiring {
-            Wiring::BaseBus => {
-                self.gpio.portc_dout().write(|w| unsafe { w.bits(bits) });
-            }
-            Wiring::ImuBus => {
-                self.gpio.portb_dout().write(|w| unsafe { w.bits(bits) });
-            }
-        }
+        self_write_dout(self.gpio, self.bus.port, bits);
         self.delay();
     }
 
     fn sda_high(&self) -> bool {
-        let (pin_sda, _) = self.wiring.pins();
-        let din = match self.wiring {
-            Wiring::BaseBus => self.gpio.portc_din().read().bits(),
-            Wiring::ImuBus => self.gpio.portb_din().read().bits(),
+        let din = match self.bus.port {
+            Port::A => self.gpio.porta_din().read().bits(),
+            Port::B => self.gpio.portb_din().read().bits(),
+            Port::C => self.gpio.portc_din().read().bits(),
+            Port::D => self.gpio.portd_din().read().bits(),
         };
-        din & pin_sda != 0
+        din & self.bus.sda != 0
     }
 
     fn start(&self) {
@@ -195,6 +205,27 @@ impl<'a> BitBangI2c<'a> {
         self.stop();
         Ok(())
     }
+}
+
+
+/// Read the output latch of a port.
+fn self_read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
+    match port {
+        Port::A => gpio.porta_dout().read().bits(),
+        Port::B => gpio.portb_dout().read().bits(),
+        Port::C => gpio.portc_dout().read().bits(),
+        Port::D => gpio.portd_dout().read().bits(),
+    }
+}
+
+/// Write the output latch of a port.
+fn self_write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bits: u32) {
+    match port {
+        Port::A => gpio.porta_dout().write(|w| unsafe { w.bits(bits) }),
+        Port::B => gpio.portb_dout().write(|w| unsafe { w.bits(bits) }),
+        Port::C => gpio.portc_dout().write(|w| unsafe { w.bits(bits) }),
+        Port::D => gpio.portd_dout().write(|w| unsafe { w.bits(bits) }),
+    };
 }
 
 impl I2cBus for BitBangI2c<'_> {
