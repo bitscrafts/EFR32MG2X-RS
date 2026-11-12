@@ -24,12 +24,14 @@
 # ## What it advertises
 #
 #   02 01 06                        flags: LE general discoverable, BR/EDR not supported
-#   0A 09 "xiao-mg24"               complete local name
+#   <len> 09 "lnx-ble"              complete local name
 #   07 FF FF FF 58 49 41 4F         manufacturer data, company 0xFFFF, payload "XIAO"
 set -euo pipefail
 
 IFACE=${IFACE:-hci0}
-NAME=${NAME:-xiao-mg24}
+# The name on THIS host is the host's. "xiao-mg24" belongs to the board, and using it here once made a
+# scanner listing look like the board was advertising when it was not.
+NAME=${NAME:-lnx-ble}
 
 # Walk up a sysfs path until it names a USB device directory (e.g. .../usb1/1-8) and print it.
 usb_parent() {
