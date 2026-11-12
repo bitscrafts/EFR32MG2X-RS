@@ -17,7 +17,7 @@
 //! Nothing here knows about the Expansion Base. If you own the base, depend on
 //! `xiao-expansion-base-bsp` as well, which depends on this crate.
 
-use efr32mg24_hal::board::{self, Board as HalBoard};
+use efr32mg24_hal::board::Board as HalBoard;
 use efr32mg24_hal::delay::Delay;
 use efr32mg24_hal::pin::{Output, Port};
 
@@ -58,8 +58,8 @@ impl Module {
 
     /// The on-board user LED: PA7, active low (writing 0 lights it).
     #[must_use]
-    pub fn led(&self) -> Output<'static> {
-        Output::new(board::gpio_static(), Port::A, 7, true)
+    pub fn led(&self) -> Output<'_> {
+        self.board.output_on(Port::A, 7, true)
     }
 
     /// The IMU's own I2C bus: `SDA = PB2`, `SCL = PB3`.
@@ -69,16 +69,16 @@ impl Module {
     /// never answers. The pins also have external pull-ups on the module.
     #[cfg(feature = "sense")]
     #[must_use]
-    pub fn imu_bus(&self) -> BitBangI2c<'static> {
-        BitBangI2c::on(board::gpio_static(), Bus::new(Port::B, 1 << 2, 1 << 3))
+    pub fn imu_bus(&self) -> BitBangI2c<'_> {
+        self.board.i2c_on(Bus::new(Port::B, 1 << 2, 1 << 3))
     }
 
     /// The IMU's power gate on PD5 — an unpowered IMU looks exactly like an absent one, so
     /// this must be driven high before the first bus access.
     #[cfg(feature = "sense")]
     #[must_use]
-    pub fn imu_power(&self) -> Output<'static> {
-        Output::new(board::gpio_static(), Port::D, 5, false)
+    pub fn imu_power(&self) -> Output<'_> {
+        self.board.output_on(Port::D, 5, false)
     }
 
     /// Power the microphone: PC8 high, PC9 left to the converter, and IADC0 clocked.
@@ -91,10 +91,9 @@ impl Module {
     /// [`MicError`] when the converter will not leave its disabled state — the symptom of a
     /// clock source that is not running.
     #[cfg(feature = "sense")]
-    pub fn microphone(&self) -> Result<Microphone<'static>, MicError> {
+    pub fn microphone(&self) -> Result<Microphone<'_>, MicError> {
         // PC8: enable, active high. PC9 stays in disabled mode so the ADC owns the pad.
-        let enable = Output::new(board::gpio_static(), Port::C, 8, false);
-        enable.on();
-        Microphone::new(self.board.converter())
+        self.board.output_on(Port::C, 8, false).on();
+        self.board.converter().microphone()
     }
 }

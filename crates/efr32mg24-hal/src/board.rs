@@ -31,10 +31,6 @@ impl Board {
 
     /// The GPIO register block this board's pins live on.
     #[must_use]
-    pub fn gpio(&self) -> &pac::gpio_s::RegisterBlock {
-        &self.dp.gpio_s
-    }
-
     /// A bit-banged I2C master on the two pins the caller names.
     ///
     /// Bit-banged on purpose: the on-chip I2C0 master on this die cannot complete a read
@@ -58,6 +54,27 @@ impl Board {
         crate::pin::Input::with_pull_up(&self.dp.gpio_s, port, pin)
     }
 
+    /// TIMER0 on the pin the caller names, calibrated but undecided about what it means.
+    ///
+    /// `None` when the counter does not move — a clock that is not running.
+    pub fn timer0_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::pwm::Timer0<'_>> {
+        crate::pwm::Timer0::take(&self.dp, port, pin)
+    }
+
+    /// A PWM channel on the pin the caller names, at `freq_hz`, dark.
+    ///
+    /// This is the call an example should reach for: the PAC is taken once, by `take()`, and a
+    /// HAL example that writes `pac::Peripherals::steal()` is a HAL that failed to hand out what
+    /// it already owns.
+    pub fn pwm_on(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+        freq_hz: u32,
+    ) -> Option<crate::pwm::Pwm<'_>> {
+        Some(crate::pwm::Pwm::new(self.timer0_on(port, pin)?, freq_hz))
+    }
+
     /// A TIMER0 PWM buzzer on the pin the caller names.
     ///
     /// `None` if the timer never reports a running counter — a missing clock, not a missing
@@ -73,7 +90,7 @@ impl Board {
     /// configuration write faulted. HFRCOEM23 is the oscillator already proven
     /// to clock TIMER0 here, so it is forced on and waited for before the IADC
     /// clock is pointed at it.
-    pub fn converter(&self) -> &'static pac::iadc0_s::RegisterBlock {
+    pub fn converter(&self) -> crate::microphone::Converter {
         self.dp
             .cmu_s
             .clken0()
@@ -96,8 +113,20 @@ impl Board {
         // The converter lives at a fixed address for the life of the program, so a
         // `'static` view is literally true — the same argument `gpio_static` makes.
         const IADC0_BASE: usize = 0x4900_4000;
-        unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) }
+        let reg = unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) };
+        crate::microphone::Converter::new(reg)
     }
+}
+
+/// A bit-banged bus that outlives the `Board` it came from.
+///
+/// A facade owns its buses for the life of the program, and a bus borrowed from a `Board` cannot
+/// be stored in the same struct that owns the board. The registers live at a fixed address, so the
+/// `'static` view is literally true; this function exists so a BSP never has to name the PAC to
+/// get one.
+#[must_use]
+pub fn i2c_static(bus: crate::bus::Bus) -> crate::bus::BitBangI2c<'static> {
+    crate::bus::BitBangI2c::on(gpio_static(), bus)
 }
 
 /// The GPIO register block as a `'static` reference.
@@ -112,7 +141,7 @@ impl Board {
 /// access: the address is fixed by the silicon, and concurrent access is prevented
 /// by the bus being owned by one place.
 #[must_use]
-pub fn gpio_static() -> &'static pac::gpio_s::RegisterBlock {
+pub(crate) fn gpio_static() -> &'static pac::gpio_s::RegisterBlock {
     // GPIO base from the device memory map.
     const GPIO_BASE: usize = 0x5003_C000;
     unsafe { &*(GPIO_BASE as *const pac::gpio_s::RegisterBlock) }

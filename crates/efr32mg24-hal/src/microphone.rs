@@ -29,6 +29,32 @@
 
 use efr32mg24_pac as pac;
 
+/// The converter, as the microphone driver needs it.
+///
+/// A handle and not a register block: the public API of this crate must never hand a caller a
+/// `pac` type, because the moment it does, the caller has to own the PAC singleton to use a
+/// driver — which is exactly how an example ends up writing `Peripherals::steal()`.
+#[derive(Clone, Copy)]
+pub struct Converter {
+    reg: &'static pac::iadc0_s::RegisterBlock,
+}
+
+impl Converter {
+    /// Wrap the converter's register block. Only `hal::board` calls this.
+    pub(crate) const fn new(reg: &'static pac::iadc0_s::RegisterBlock) -> Self {
+        Self { reg }
+    }
+
+    /// Start a microphone on this converter.
+    ///
+    /// # Errors
+    ///
+    /// [`MicError`] when the converter will not leave its disabled state.
+    pub fn microphone(self) -> Result<Microphone<'static>, MicError> {
+        Microphone::new(self.reg)
+    }
+}
+
 /// Result of one measurement window.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Level {
@@ -74,7 +100,7 @@ impl<'a> Microphone<'a> {
     /// The caller must have powered the microphone (PC8) and enabled the IADC0
     /// bus clock; both are board-level concerns handled by
     /// `board::SensorPower` and `board::Board`.
-    pub fn new(adc: &'a pac::iadc0_s::RegisterBlock) -> Result<Self, MicError> {
+    pub(crate) fn new(adc: &'a pac::iadc0_s::RegisterBlock) -> Result<Self, MicError> {
         // Refuse to touch a converter that cannot leave DISABLING: this is the
         // state that faults on write and survives a core reset.
         if adc.en().read().disabling().bit_is_set() {

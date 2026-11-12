@@ -113,6 +113,59 @@ for dir in crates/*/examples/*/; do
   fi
 done
 
+echo "=== layer boundaries: the PAC belongs to the PAC, the wiring to a BSP ==="
+# These are the four rules the stack exists to keep. Each one has been broken at least once,
+# and every time it was broken the code still compiled — which is why they are checks here and
+# not paragraphs in a document.
+
+# 1. An example may only name the layer it demonstrates. A HAL example that mentions the PAC
+#    is a HAL that failed to hand out what it owns; the caller then has to steal the singleton.
+offenders=$(grep -rln "efr32mg24_pac\|pac::" crates/*/examples/ --include=*.rs 2>/dev/null \
+  | grep -v "^crates/efr32mg24-pac/" \
+  | grep -v "^crates/efr32mg24-bluetooth-sys/" \
+  | grep -v "^crates/efr32mg24-rail-sys/" || true)
+if [ -z "$offenders" ]; then
+  pass "examples outside the PAC crate name no PAC type"
+else
+  fail "examples outside the PAC crate name a PAC type: $(echo "$offenders" | tr '\n' ' ')"
+fi
+
+# 2. A BSP must not re-export the PAC. An application holding it can reconfigure what the board
+#    claimed to own, and every layer above becomes advisory.
+offenders=$(grep -rln "pub use efr32mg24_pac" crates/*/src/ 2>/dev/null | grep -v "^crates/efr32mg24-hal/" || true)
+if [ -z "$offenders" ]; then
+  pass "no BSP re-exports the PAC"
+else
+  fail "a BSP re-exports the PAC: $(echo "$offenders" | tr '\n' ' ')"
+fi
+
+# 3. The HAL must not put a register block in a public signature. The moment it does, every
+#    caller needs a PAC handle to use a driver.
+if grep -rqE "pub (fn|const fn) [^\n]*pac::[a-z0-9_]*::RegisterBlock" crates/efr32mg24-hal/src/ 2>/dev/null; then
+  fail "the HAL exposes a register block in a public signature"
+else
+  pass "the HAL exposes no register block publicly"
+fi
+
+# 4. Every crate in the hardware stack carries at least one example, and a crate with hardware
+#    in it carries examples for each level it exposes. A crate with zero examples passes every
+#    other check trivially and its API rots in silence.
+for dir in crates/*/ libraries/*/; do
+  [ -f "${dir}Cargo.toml" ] || continue
+  name=$(basename "$dir")
+  case "$name" in
+    efr32mg24-bluetooth-sys|efr32mg24-rail-sys|efr32mg24-bootloader|bootloader-test-app) continue ;;
+  esac
+  # one example is a file, or a directory with a main.rs; a project's modules are not examples
+  n=$(find "$dir/examples" -maxdepth 1 -name '*.rs' 2>/dev/null | wc -l)
+  for d in "$dir"examples/*/; do [ -f "${d}main.rs" ] && n=$((n + 1)); done
+  if [ "$n" -gt 0 ]; then
+    pass "$name: $n examples of its own level"
+  else
+    fail "$name: no examples -- its API is not built by anything"
+  fi
+done
+
 echo "=== host tests: domain crates ==="
 # Every crate under libraries/ must build and test on the host, and must not drag in
 # anything from the hardware stack. That second half is the rule that keeps them testable:

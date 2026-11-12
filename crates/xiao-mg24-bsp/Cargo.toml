@@ -30,7 +30,6 @@ heapless = "0.8"
 
 # Radio protocol implementations
 efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys", optional = true }  # Phase D2 complete
-efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys", optional = true }
 # efr32mg24-zigbee-sys = { workspace = true, optional = true }     # Phase D3
 
 [dev-dependencies]
@@ -41,10 +40,6 @@ default = []
 # The Sense variant is the same PCB with more components fitted: the IMU and the analog
 # microphone. Same board, fewer parts — so a feature, not a crate.
 sense = []
-# Radio features
-radio = ["efr32mg24-rail-sys"]           # Phase D1 complete
-ble = ["efr32mg24-bluetooth-sys"]        # Phase D2 complete
-microphone = []                           # Microphone driver (has pre-existing PAC API issues)
 # radio-zigbee = ["radio", "efr32mg24-zigbee-sys"]      # Phase D3 (future)
 
 [package.metadata.docs.rs]

@@ -64,7 +64,7 @@ pub struct BitBangI2c<'a> {
 
 impl<'a> BitBangI2c<'a> {
     /// Take the given two pins, set both open drain, and release them.
-    pub fn on(gpio: &'a pac::gpio_s::RegisterBlock, bus: Bus) -> Self {
+    pub(crate) fn on(gpio: &'a pac::gpio_s::RegisterBlock, bus: Bus) -> Self {
         // Both pins become WIREDAND, keeping the other pins of the port untouched: a blind
         // write would reconfigure every other pin on the port, which is how a bus silently
         // breaks whatever else shares it.

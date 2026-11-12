@@ -42,7 +42,7 @@ pub mod mode {
 /// Pins 0..7 live in `MODEL`, pins 8..15 in `MODEH`, four bits each. A blind write to those
 /// registers reconfigures every other pin that shares them, which is how a bus silently
 /// breaks whatever else is on the port — so the read-modify-write below is not tidiness.
-pub fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, value: u32) {
+pub(crate) fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, value: u32) {
     debug_assert!(pin < 16, "pin index out of range");
     let shift = 4 * u32::from(pin % 8);
     let clear = !(0xF << shift);
@@ -71,7 +71,7 @@ pub fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, value: u
 }
 
 /// Read a whole port's output latch.
-pub fn read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
+pub(crate) fn read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
     match port {
         Port::A => gpio.porta_dout().read().bits(),
         Port::B => gpio.portb_dout().read().bits(),
@@ -81,7 +81,7 @@ pub fn read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
 }
 
 /// Write a whole port's output latch.
-pub fn write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bits: u32) {
+pub(crate) fn write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bits: u32) {
     match port {
         Port::A => gpio.porta_dout().write(|w| unsafe { w.bits(bits) }),
         Port::B => gpio.portb_dout().write(|w| unsafe { w.bits(bits) }),
@@ -91,7 +91,7 @@ pub fn write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bits: u32) {
 }
 
 /// Read a whole port's input register.
-pub fn read_din(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
+pub(crate) fn read_din(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
     match port {
         Port::A => gpio.porta_din().read().bits(),
         Port::B => gpio.portb_din().read().bits(),
@@ -114,7 +114,7 @@ pub struct Output<'a> {
 
 impl<'a> Output<'a> {
     /// Configure one pin as a push-pull output, starting in the off state.
-    pub fn new(
+    pub(crate) fn new(
         gpio: &'a pac::gpio_s::RegisterBlock,
         port: Port,
         pin: u8,
@@ -180,7 +180,7 @@ pub struct Input<'a> {
 
 impl<'a> Input<'a> {
     /// Configure one pin as an input with the internal pull-up.
-    pub fn with_pull_up(gpio: &'a pac::gpio_s::RegisterBlock, port: Port, pin: u8) -> Self {
+    pub(crate) fn with_pull_up(gpio: &'a pac::gpio_s::RegisterBlock, port: Port, pin: u8) -> Self {
         set_mode(gpio, port, pin, mode::INPUT_PULL);
         // The pull-up is selected by the output latch, not by the mode alone.
         write_dout(gpio, port, read_dout(gpio, port) | (1 << pin));

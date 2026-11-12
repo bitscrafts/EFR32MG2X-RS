@@ -39,196 +39,71 @@
 use efr32mg24_pac as pac;
 
 use crate::pin::Port;
+use crate::pwm::Timer0;
 
 /// The piezo on this board is loudest near 2.7 kHz; the base's own demo uses it.
 pub const DEFAULT_TONE_HZ: u32 = 2700;
 
-/// A calibrated buzzer.
+/// A calibrated buzzer: TIMER0 in toggle mode on one pin.
+///
+/// All of the timer's bring-up, routing and calibration lives in [`Timer0`], because a PWM
+/// channel needs exactly the same machinery and two copies of it would eventually disagree.
 pub struct Buzzer<'a> {
-    timer: &'a pac::timer0_s::RegisterBlock,
-    /// Measured TIMER0 tick rate in Hz (ticks per CPU cycle × SYSCLK).
-    tick_hz: u32,
-    /// The SYSCLK this rate was derived from.
-    sysclk_hz: u32,
-    top: u32,
+    timer: Timer0<'a>,
 }
 
 impl<'a> Buzzer<'a> {
-    /// Take TIMER0 on the given pin, calibrate against the CPU, and stay silent.
+    /// Take TIMER0 on the given pin and stay silent.
     ///
-    /// The pin is a parameter because it is wiring: which pin the buzzer sits on is the
-    /// board's knowledge, not the driver's. Returns `None` if the timer never reports a
-    /// running counter, which is what a missing or mis-selected clock looks like.
-    pub fn new(dp: &'a pac::Peripherals, port: Port, pin: u8) -> Option<Self> {
-        // TIMER0, GPIO and HFRCOEM23 must all be clocked before any register is
-        // touched: a missing CMU_CLKEN0 bit is a precise bus fault on first access.
-        dp.cmu_s
-            .clken0()
-            .modify(|_r, w| w.timer0().set_bit().gpio().set_bit().hfrcoem23().set_bit());
-        dp.hfrcoem23_s.ctrl().modify(|_r, w| w.forceen().set_bit());
-        let mut spin = 0u32;
-        while !dp.hfrcoem23_s.status().read().rdy().bit_is_set() {
-            spin += 1;
-            if spin > 1_000_000 {
-                return None;
-            }
-        }
-        // TIMER0 clocked from HFRCOEM23: it keeps running in low energy modes, so a
-        // beep pattern survives an EM2 sleep.
-        dp.cmu_s
-            .em01grpaclkctrl()
-            .modify(|_r, w| w.clksel().hfrcoem23());
-
-        // Route CC0 to the pin: the route register picks port and pin, the route-enable
-        // register opens the connection. Both, or the timer toggles a pin nobody is looking
-        // at — which is indistinguishable from a silent buzzer.
-        crate::pin::set_mode(&dp.gpio_s, port, pin, crate::pin::mode::PUSH_PULL);
-        let port_index = match port {
-            Port::A => 0,
-            Port::B => 1,
-            Port::C => 2,
-            Port::D => 3,
-        };
-        dp.gpio_s
-            .timer0_cc0route()
-            .write(|w| unsafe { w.port().bits(port_index).pin().bits(pin) });
-        dp.gpio_s
-            .timer0_routeen()
-            .modify(|_r, w| w.cc0pen().set_bit());
-
-        let timer = &dp.timer0_s;
-        timer.lock().write(|w| unsafe { w.lockkey().bits(0xCE80) });
-        timer.en().write(|w| w.en().clear_bit());
-        timer
-            .cfg()
-            .write(|w| w.mode().up().clksel().prescem01grpaclk().presc().div1());
-        timer.cc0_cfg().write(|w| w.mode().outputcompare());
-        timer.en().write(|w| w.en().set_bit());
-
-        // Calibrate: run the counter with the largest TOP and see how far it gets in
-        // a CPU delay. `asm::delay` is a NOP count, so the ratio is stable even
-        // though neither clock is exactly its nominal value.
-        //
-        // The counter wraps at TOP, and 0xFFFF ticks is only ~3.4 ms at 19 MHz: a
-        // 10 ms measurement reads the remainder, not the count. Measured the hard
-        // way — the first version reported 988 kHz and a "correct" 2.7 kHz tone
-        // derived from a wrong rate. The window is halved until no wrap is seen.
-        timer.top().write(|w| unsafe { w.top().bits(0xFFFF) });
-        timer.cmd().write(|w| w.start().set_bit());
-
-        // Measure timer ticks against CPU cycles, not against `asm::delay`
-        // iterations: `delay(n)` costs about three cycles per iteration, so counting
-        // iterations inflated the rate by that factor (measured: 3.0 exactly, which
-        // turned 19 MHz into 57 MHz).
-        let cycles = &unsafe { cortex_m::Peripherals::steal() }.DWT;
-        let mut window: u32 = 4_000;
-        let mut ticks: u32 = 0;
-        let mut elapsed_cycles: u32 = 0;
-        for _ in 0..6 {
-            let ticks_before = timer.cnt().read().cnt().bits();
-            let cycles_before = cycles.cyccnt.read();
-            cortex_m::asm::delay(window);
-            let ticks_after = timer.cnt().read().cnt().bits();
-            let cycles_after = cycles.cyccnt.read();
-            if ticks_after >= ticks_before {
-                ticks = ticks_after - ticks_before;
-                elapsed_cycles = cycles_after.wrapping_sub(cycles_before);
-                if ticks >= 500 && elapsed_cycles > 0 {
-                    break;
-                }
-            }
-            window /= 2; // wrapped, or too few ticks to measure: try a smaller window
-        }
-        if ticks < 500 || elapsed_cycles == 0 {
-            return None; // counting nothing usable: wrong clock, do not pretend otherwise
-        }
-        // Ticks per CPU cycle, scaled by 1000 to keep it integral.
-        let ticks_per_1000_cycles = (u64::from(ticks) * 1000) / u64::from(elapsed_cycles);
-
-        // Turning ticks-per-cycle into Hz needs SYSCLK, which this driver cannot
-        // measure on its own. The value below is the figure this board produced when
-        // the 1 Hz blink was calibrated against a stopwatch (docs/04-reference/
-        // PAC-CLOCK-AND-TIMER-NOTES.md); a caller that knows better can override it
-        // with `set_sysclk_hz`.
-        const SYSCLK_HZ: u64 = 19_000_000;
-        let tick_hz = (ticks_per_1000_cycles * SYSCLK_HZ / 1000) as u32;
-
-        let mut buzzer = Self {
-            timer,
-            tick_hz,
-            sysclk_hz: SYSCLK_HZ as u32,
-            top: 0,
-        };
-        buzzer.set_tone(DEFAULT_TONE_HZ);
-        buzzer.silence();
-        Some(buzzer)
-    }
-
-    /// Override the assumed SYSCLK, in Hz.
-    ///
-    /// Only affects the absolute pitch: the timer is calibrated against CPU cycles,
-    /// so a caller that measures SYSCLK precisely (against the 32.768 kHz reference,
-    /// for instance) can remove the last few percent of error here.
-    pub fn set_sysclk_hz(&mut self, hz: u32) {
-        if hz > 1_000_000 {
-            let ratio = (self.tick_hz as u64 * 1000) / self.sysclk_hz as u64;
-            self.sysclk_hz = hz;
-            self.tick_hz = ((ratio * u64::from(hz)) / 1000) as u32;
-        }
-    }
-
-    /// The assumed SYSCLK, in Hz.
-    #[must_use]
-    pub fn sysclk_hz(&self) -> u32 {
-        self.sysclk_hz
+    /// The pin is a parameter because it is wiring: which pin the buzzer sits on is the board's
+    /// knowledge, not the driver's. The clock, the route and the calibration all live in
+    /// [`crate::pwm::Timer0`], which is the same machinery a PWM channel uses — a piezo and an
+    /// LED are the same waveform at different frequencies, and maintaining two copies of the
+    /// bring-up is how one of them ends up wrong.
+    pub(crate) fn new(dp: &'a pac::Peripherals, port: Port, pin: u8) -> Option<Self> {
+        let mut timer = Timer0::take(dp, port, pin)?;
+        timer.square_wave(DEFAULT_TONE_HZ);
+        timer.silence();
+        Some(Self { timer })
     }
 
     /// The measured TIMER0 tick rate, in Hz.
     #[must_use]
     pub fn tick_hz(&self) -> u32 {
-        self.tick_hz
+        self.timer.tick_hz()
+    }
+
+    /// The assumed SYSCLK, in Hz.
+    #[must_use]
+    pub fn sysclk_hz(&self) -> u32 {
+        self.timer.sysclk_hz()
+    }
+
+    /// Override the assumed SYSCLK, keeping the measured tick/cycle ratio.
+    pub fn set_sysclk_hz(&mut self, hz: u32) {
+        self.timer.set_sysclk_hz(hz);
     }
 
     /// Set the pitch. Values between roughly 200 Hz and 8 kHz are usable.
-    pub fn set_tone(&mut self, hz: u32) {
-        if hz == 0 || self.tick_hz == 0 {
-            return;
-        }
-        // One CC0 toggle per timer period, so the pin changes at tick/TOP and the
-        // square wave — which is what a piezo reproduces — is half that.
-        let period = (self.tick_hz / (hz * 2)).clamp(2, 0xFFFF);
-        self.top = period;
-        // Buffered registers: both of these need the timer enabled.
-        self.timer.top().write(|w| unsafe { w.top().bits(period) });
-        self.timer
-            .cc0_oc()
-            .write(|w| unsafe { w.oc().bits(period / 2) });
-        self.timer
-            .cc0_ctrl()
-            .write(|w| w.cmoa().toggle().outinv().clear_bit());
+    ///
+    /// Returns the TIMER0 period it used, which is the number worth quoting in a report.
+    pub fn set_tone(&mut self, hz: u32) -> u32 {
+        self.timer.square_wave(hz)
     }
 
     /// Sound the tone.
     pub fn sound(&mut self) {
-        self.timer
-            .cc0_ctrl()
-            .write(|w| w.cmoa().toggle().outinv().clear_bit());
+        self.timer.sound();
     }
 
-    /// Silence without stopping the counter, so timings that wait on `CNT` keep
-    /// working.
+    /// Silence without stopping the counter, so timings that wait on `CNT` keep working.
     pub fn silence(&mut self) {
-        self.timer.cc0_ctrl().write(|w| w.cmoa().none());
+        self.timer.silence();
     }
 
     /// The configured period in timer ticks, for tests and reports.
     #[must_use]
     pub fn period_ticks(&self) -> u32 {
-        self.top
-    }
-
-    /// Give the peripherals back.
-    pub fn free(self) {
-        self.timer.cmd().write(|w| w.stop().set_bit());
+        self.timer.period_ticks()
     }
 }

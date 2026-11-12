@@ -117,10 +117,10 @@ pub mod delay;
 pub mod display;
 pub mod dma;
 pub mod emu;
-pub mod gpio;
 pub mod i2c;
 pub mod microphone;
 pub mod pin;
+pub mod pwm;
 pub mod rtc;
 pub mod sensors;
 pub mod spi;
@@ -145,7 +145,4 @@ pub mod prelude {
 
     /// Re-export embedded-hal SPI trait
     pub use embedded_hal::spi::SpiBus as _embedded_hal_spi_SpiBus;
-
-    /// Re-export GPIO extension trait
-    pub use crate::gpio::GpioExt as _efr32mg24_hal_gpio_GpioExt;
 }

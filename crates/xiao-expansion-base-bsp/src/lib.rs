@@ -43,5 +43,4 @@ pub mod expansion_base;
 pub use expansion_base::{Devices, ExpansionBase};
 
 pub use efr32mg24_hal as hal;
-pub use efr32mg24_pac as pac;
 pub use xiao_mg24_bsp as module;

@@ -31,7 +31,7 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::Board;
+use efr32mg24_hal::board::{i2c_static, Board};
 use efr32mg24_hal::bus::{BitBangI2c, Bus, I2cBus, SharedBus};
 use efr32mg24_hal::display::Ssd1306;
 use efr32mg24_hal::pin::{Input, Output, Port};
@@ -58,9 +58,8 @@ impl ExpansionBase {
         let board = Board::take()?;
         // The buses are built from the `'static` GPIO view so this struct can own
         // them; borrowing from `board` would make it self-referential.
-        let gpio = efr32mg24_hal::board::gpio_static();
-        let base_bus = RefCell::new(BitBangI2c::on(gpio, Bus::new(Port::C, 1 << 4, 1 << 5)));
-        let imu_bus = RefCell::new(BitBangI2c::on(gpio, Bus::new(Port::B, 1 << 2, 1 << 3)));
+        let base_bus = RefCell::new(i2c_static(Bus::new(Port::C, 1 << 4, 1 << 5)));
+        let imu_bus = RefCell::new(i2c_static(Bus::new(Port::B, 1 << 2, 1 << 3)));
         Some(Self {
             board,
             base_bus,
@@ -159,7 +158,7 @@ impl ExpansionBase {
     ) -> Result<efr32mg24_hal::microphone::Microphone<'_>, efr32mg24_hal::microphone::MicError>
     {
         self.board.output_on(Port::C, 8, false).on();
-        efr32mg24_hal::microphone::Microphone::new(self.board.converter())
+        self.board.converter().microphone()
     }
 
     /// Verify the devices the facade claims are present, and report which answered.
