@@ -1,0 +1,74 @@
+\section{The Tree, in the Order You Meet It}
+\label{sec:clocks-tree}
+
+A Series 2 clock tree is not complicated once it is drawn as three questions. This section answers
+them for this board only, because the full diagram in the reference manual has forty boxes and no
+project needs forty.
+
+\subsection{Question 1: Which Oscillator}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.20\textwidth}p{0.16\textwidth}p{0.52\textwidth}@{}}
+        \toprule
+        \textbf{Oscillator} & \textbf{Rate} & \textbf{When it is the right answer} \\
+        \midrule
+        \codeinline{HFRCO0} & 19 MHz default & the reset state; enough for GPIO, timers and I2C \\
+        \codeinline{HFXO0}  & 38.4 MHz crystal & radio, USB, anything needing ppm accuracy \\
+        \codeinline{FSRCO}  & 20 MHz fast RC & cheap and fast, but see the IADC below \\
+        \codeinline{HFRCOEM23} & 19 MHz & low-energy domain; the IADC and TIMER0 like it \\
+        \codeinline{DPLL0}  & up to 78 MHz & the CPU's fast mode, locked to HFRCO or HFXO \\
+        \codeinline{LFRCO}/\codeinline{LFXO} & 32.768 kHz & RTC, sleep, wake-up \\
+        \bottomrule
+    \end{tabular}
+    \caption{Six oscillators, and the four that matter for a board with an I2C bus, a buzzer and a
+    microphone.}
+    \label{tab:clocks-oscillators}
+\end{table}
+
+\subsection{Question 2: Which Branch}
+
+Each oscillator feeds branches, and each branch has a selector and a divider:
+
+\begin{minted}{rust}
+// The low-energy peripherals (IADC, TIMER0 in this project) are clocked from EM01GRPACLK.
+dp.cmu_s.em01grpaclkctrl().modify(|_r, w| w.clksel().hfrcoem23());
+\end{minted}
+
+The name matters when reading the manual: \codeinline{EM01GRPACLK} is one branch,
+\codeinline{EM23GRPACLK} another, and a peripheral belongs to exactly one. Choosing the right
+oscillator on the wrong branch gives a peripheral clocked at zero — which looks identical to a
+peripheral whose registers are not being written.
+
+\subsection{Question 3: Which Gate}
+
+Every peripheral has a bus-clock gate in \codeinline{CMU\_CLKEN0} or \codeinline{CMU\_CLKEN1}. On
+this part the GPIO bank is bit 0 of \codeinline{CLKEN0} and the MVP's is bit 30 of
+\codeinline{CLKEN1}. A register access with the gate closed is a bus fault, precisely reported:
+
+\begin{minted}{text}
+CFSR = 0x00008200   # PRECISERR set: a precise data bus fault
+BFAR = 0x5003C040   # ...at PORTA_DOUT, whose clock was off
+\end{minted}
+
+That pair of registers is the fastest diagnosis in this book. If a peripheral reads as zero, check
+the gate; if a write faults, read \codeinline{CFSR} and \codeinline{BFAR} before anything else.
+
+\subsection{The Three Questions, Together}
+
+\begin{minted}{rust}
+// Oscillator: force HFRCOEM23 on and wait for it.
+dp.cmu_s.clken0().modify(|_r, w| w.hfrcoem23().set_bit());
+dp.hfrcoem23_s.ctrl().modify(|_r, w| w.forceen().set_bit());
+while !dp.hfrcoem23_s.status().read().rdy().bit_is_set() {}
+
+// Branch: the low-energy domain comes from it.
+dp.cmu_s.em01grpaclkctrl().modify(|_r, w| w.clksel().hfrcoem23());
+
+// Gate: the peripheral's own bus clock.
+dp.cmu_s.clken0().modify(|_r, w| w.timer0().set_bit());
+\end{minted}
+
+Three decisions, three writes, and one wait. The wait is the subject of the next-but-one section: it
+is the only one of the four steps that can hang.

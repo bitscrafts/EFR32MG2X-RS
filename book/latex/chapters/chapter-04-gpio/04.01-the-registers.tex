@@ -1,0 +1,73 @@
+\section{The Registers, and How Few There Are}
+\label{sec:gpio-registers}
+
+A GPIO port on the EFR32MG24 is not a black box. It is five things:
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.18\textwidth}p{0.42\textwidth}p{0.30\textwidth}@{}}
+        \toprule
+        \textbf{Register} & \textbf{What it decides} & \textbf{Access} \\
+        \midrule
+        \codeinline{MODEL} & mode of pins 0--7 & read-modify-write, per pin \\
+        \codeinline{MODEH} & mode of pins 8--15 & only on PORTA and PORTC here \\
+        \codeinline{DOUT} & the output latch, one bit per pin & read-modify-write \\
+        \codeinline{DIN} & the pin as the outside world holds it & read only \\
+        \codeinline{CMU\_CLKEN0} & whether the port answers at all & gate before the first access \\
+        \bottomrule
+    \end{tabular}
+    \caption{The GPIO port, in full. Five registers, and only one of them is optional.}
+    \label{tab:gpio-registers}
+\end{table}
+
+The modes are numbers, not types:
+
+\begin{minted}{rust}
+// Measured from the PAC's field encodings, and confirmed by the effect on the pin.
+const DISABLED: u32 = 0;   // the pad is off; an analog peripheral may claim it
+const INPUT:    u32 = 1;   // input buffer on, no pull
+const PUSH_PULL:u32 = 4;   // driven high or low
+const WIRED_AND: u32 = 8;  // open drain: 0 pulls low, 1 lets the pull-up win
+const WIRED_OR:  u32 = 9;  // open drain, inverted sense
+\end{minted}
+
+Two of these decide most of the code in this book. \codeinline{PUSH_PULL} drives an LED and a
+piezo. \codeinline{WIRED_AND} is what makes a bit-banged I2C bus possible, because ``output 1''
+means ``release the line'' and the external pull-up makes it a real 1 — which is exactly what an
+open-drain bus requires and exactly what a push-pull pin must never do.
+
+\subsection{The Clock Gate Comes First}
+
+The most expensive mistake in this whole project was not a wrong bit. It was touching a register
+whose bus clock was off:
+
+\begin{minted}{rust}
+// Before: the write faulted, and the fault handler did not exist yet.
+gpio.porta_dout().modify(|_, w| w.dout7().set_bit());
+
+// After: gate the port, then talk to it.
+dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
+gpio.porta_dout().modify(|_, w| w.dout7().set_bit());
+\end{minted}
+
+The measurement, taken from the fault status register after the fact:
+\codeinline{CFSR = 0x8200} (a precise bus fault) with \codeinline{BFAR} pointing at the GPIO address
+that was written. A GPIO register with no clock is not ``reads as zero'' — it is a bus fault, and if
+the vector table still points at a default handler the board simply stops.
+
+\subsection{Not Every Port Has Every Register}
+
+\begin{minted}{rust}
+// This package is a 48-pin QFN: PORTB and PORTD expose eight pins, not sixteen.
+// MODEH covers 8..15, so on those two ports it does not exist at all.
+match port {
+    Port::A | Port::C => { /* MODEL and MODEH */ }
+    Port::B | Port::D => { /* MODEL only */ }
+}
+\end{minted}
+
+That is not a simplification invented for this book; it is what the SVD says, and a HAL that
+pretends otherwise fails to compile \emph{after} someone has written the code. Two of the eight
+compile errors during this project's pin primitive came from exactly that: the generated register
+blocks differ per port, and a macro written for one does not typecheck for the other.

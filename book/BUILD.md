@@ -18,11 +18,14 @@ ssh "$BUILD_HOST" 'cd ~/podman/latex-remote/efr32book && md5sum \
     latex/chapters/chapter-01-introduction/01.08-layer-boundaries.tex'
 md5sum book/latex/chapters/chapter-01-introduction/01.08-layer-boundaries.tex   # must match
 
-# 3. compile (twice, for the table of contents and cross-references)
+# 3. refuse the mistakes this book has already paid for (cheap, and it names the line)
+python3 book/check-tex.py           # must print "0 defect(s)"
+
+# 4. compile (twice, for the table of contents and cross-references)
 ssh "$BUILD_HOST" 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
     xelatex -shell-escape -interaction=nonstopmode main.tex'
 
-# 4. bring the PDF back
+# 5. bring the PDF back
 scp "$BUILD_HOST":~/podman/latex-remote/efr32book/latex/main.pdf .
 ```
 
@@ -39,7 +42,7 @@ ssh "$BUILD_HOST" 'podman exec --workdir /workspace/efr32book/latex latex-compil
            grep -o \"Output written on main.pdf ([0-9]* pages\" main.log | tail -1"'
 ```
 
-Current: **0 errors, 0 missing characters, 120 pages**.
+Current: **136 pages, 0 errors, 0 missing characters, 0 check-tex defects**.
 
 ## Two traps, both of which produced a green build and a wrong PDF
 

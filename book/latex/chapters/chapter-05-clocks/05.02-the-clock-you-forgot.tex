@@ -1,0 +1,81 @@
+\section{The Clock You Forgot You Were Using}
+\label{sec:clocks-sysclk}
+
+Every HAL has a constant called something like \codeinline{DEFAULT\_SYSCLK\_HZ}, and it is almost
+always wrong for the board it runs on. This section is about the one on this board, because it
+silently defines the length of every delay in the project.
+
+\subsection{19 MHz, Not 78}
+
+The EFR32MG24 can run at 78 MHz. It does not, out of reset, and this board's firmware never raises
+it. The default is \codeinline{HFRCO0} at 19 MHz, and the measurement that settled it was a stopwatch
+rather than a datasheet:
+
+\begin{minted}{text}
+# a blink with a 500 ms half-period, counted against a phone stopwatch
+# 20 blinks took 20.0 s  ->  1.000 s per cycle  ->  the delay was right at 19 MHz
+# the same code timed as if SYSCLK were 78 MHz produced a 4x fast blink
+\end{minted}
+
+That is a crude instrument, and it is the right one: a stopwatch over twenty cycles has an error far
+below the 4× discrepancy being tested.
+
+\subsection{Why the Error Is Invisible}
+
+A wrong \codeinline{SYSCLK\_HZ} does not produce a wrong-looking program. It produces a program whose
+delays are all scaled by the same factor — blinks that are too fast, tones that are too high, buses
+that are too slow or too fast. Each of those looks like a bug in that peripheral:
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.30\textwidth}p{0.30\textwidth}p{0.32\textwidth}@{}}
+        \toprule
+        \textbf{Symptom} & \textbf{Blamed on} & \textbf{Actually} \\
+        \midrule
+        LED blinks at 4× the rate & the delay loop & \codeinline{SYSCLK\_HZ} too high \\
+        Tone is 4× the intended pitch & the timer's TOP & same constant \\
+        I2C bus works on one board, not another & the devices & same constant, other clock \\
+        Buzzer sounds, then the beep pattern is wrong & the pattern code & same constant \\
+        \bottomrule
+    \end{tabular}
+    \caption{One wrong constant, four different suspects. This is why it is measured once and written
+    down next to the definition.}
+    \label{tab:sysclk-symptoms}
+\end{table}
+
+\subsection{The Right Shape for the Constant}
+
+The version that survives contact with a second board is not a number in the HAL. It is a number the
+board passes in:
+
+\begin{minted}{rust}
+// The HAL knows how to delay; it does not know how fast this board's clock runs.
+let mut delay = Delay::with_sysclk(syst, 19_000_000);
+\end{minted}
+
+and in this project's board layer, one place says it out loud:
+
+\begin{minted}{rust}
+pub const DEFAULT_SYSCLK_HZ: u32 = 19_000_000;   // measured, see 05.02
+\end{minted}
+
+A second board with a 38.4 MHz crystal changes one line, and every delay, tone and bus timing
+follows it. A HAL with the constant baked in cannot be reused, and — worse — fails in a way that
+looks like the new board's fault.
+
+\subsection{Measuring It Properly}
+
+The stopwatch is enough to catch a factor of four. For anything finer, use the cycle counter, which
+counts CPU cycles and therefore cannot disagree with the CPU:
+
+\begin{minted}{rust}
+let start = dwt::cycles();
+delay.delay_ms(1000);
+let elapsed = dwt::since(start);
+// elapsed / 19_000_000 must be ~1.0 s; a factor of 3.0 here means the delay's
+// internal arithmetic is wrong, not the constant.
+\end{minted}
+
+That distinction — constant wrong \emph{versus} arithmetic wrong — is the difference between
+recalibrating and debugging, and the cycle counter is what separates them.

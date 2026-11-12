@@ -1,0 +1,43 @@
+% Chapter 5: Clock Management
+% File: chapters/chapter-05-clocks/chapter-05-clocks.tex
+
+\chapter{Phase A: Clock Management and System Configuration}
+\label{ch:chapter-05}
+\chapthumb{5}
+
+\begin{quote}
+    \textit{``Every timing bug is a clock bug wearing a disguise.''}
+\end{quote}
+
+Nothing on this part runs without a clock, and almost nothing that goes wrong is blamed on one. This
+chapter is the record of four separate defects in one project that were all clocks: a delay that was
+three times too short because a loop is not an instruction count, a peripheral that never started
+because its oscillator was selected but not enabled, a converter that hung because it was clocked
+from the wrong source, and a sampling loop that claimed 400 Hz and ran at 158.
+
+The numbers here are measured with the cycle counter, not read from a datasheet.
+
+\minitoc
+
+\clearpage
+
+\input{chapters/chapter-05-clocks/05.01-the-tree}
+\input{chapters/chapter-05-clocks/05.02-the-clock-you-forgot}
+\input{chapters/chapter-05-clocks/05.03-selecting-is-not-starting}
+\input{chapters/chapter-05-clocks/05.04-delay-without-lying}
+\input{chapters/chapter-05-clocks/05.05-what-to-write-down}
+
+\clearpage
+
+\begin{keytakeaways}
+    \item A clock tree is three separate decisions: which oscillator, which branch, and which
+          peripheral gate. Getting one of the three wrong produces the same symptom — a peripheral
+          that reads as zero.
+    \item SYSCLK on this board is the HFRCO default, measured at 19 MHz. The part can do 78 MHz; the
+          board does not, until someone configures it.
+    \item Selecting an oscillator is not starting it. Force it on, then wait for the ready bit.
+    \item \codeinline{asm::delay(n)} is not \codeinline{n} cycles — it measured about three per
+          iteration here, which is a 3× error in every derived period.
+    \item A loop's \emph{intended} rate is not its actual rate. Measure the interval between samples
+          and pass the measurement on, never the intention.
+\end{keytakeaways}

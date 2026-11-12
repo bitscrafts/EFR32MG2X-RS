@@ -1,0 +1,89 @@
+\section{What to Write Down, and Where}
+\label{sec:clocks-write-down}
+
+A clock fact has three places it can live, and only one of them survives the project.
+
+\subsection{The Three Places}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.28\textwidth}p{0.30\textwidth}p{0.34\textwidth}@{}}
+        \toprule
+        \textbf{Place} & \textbf{Lifetime} & \textbf{What happens to it} \\
+        \midrule
+        In the chat where you found it & minutes & lost \\
+        In a commit message & months, if you search & nobody searches \\
+        In the source, next to the constant it explains & the life of the code & \textbf{read by the next person} \\
+        \bottomrule
+    \end{tabular}
+    \caption{The only durable location is the one somebody will read while editing the thing it
+    describes.}
+    \label{tab:where-facts-live}
+\end{table}
+
+\subsection{How the Numbers Here Are Written}
+
+Every measured constant in this project carries three things: the number, the unit, and how it was
+obtained. For example:
+
+\begin{minted}{rust}
+/// Half a bit period on the bit-banged I2C bus, in loop iterations.
+///
+/// Measured: 60 iterations take ~5 us at SYSCLK = 19 MHz on this board, so ~95 kHz.
+/// This is a measurement, not a datasheet value -- `asm::delay` is about three cycles
+/// per iteration here, so the divisor is not the clock.
+const HALF_BIT_CYCLES: u32 = 60;
+\end{minted}
+
+and for the value that everything else depends on:
+
+\begin{minted}{rust}
+/// SYSCLK as measured with a stopwatch over 20 blink cycles: 19 MHz (the HFRCO default).
+/// The part supports 78 MHz; this board's firmware never selects it.
+pub const DEFAULT_SYSCLK_HZ: u32 = 19_000_000;
+\end{minted}
+
+\subsection{The Table That Belongs in Every Project}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.28\textwidth}p{0.24\textwidth}p{0.40\textwidth}@{}}
+        \toprule
+        \textbf{Quantity} & \textbf{Value here} & \textbf{How it was measured} \\
+        \midrule
+        SYSCLK & 19 MHz & stopwatch over 20 blink cycles \\
+        \codeinline{asm::delay} cost & ~3 cycles/iteration & cycle counter, two build profiles \\
+        I2C half period & ~5 $\mu$s (60 iterations) & scope-free: 95 kHz against a known device \\
+        Buzzer tone & 2.7 kHz, TOP = 3518 & TIMER0 TOP read back over SWD \\
+        IMU sample rate & 416 Hz configured & \codeinline{CTRL1\_XL} register + measured intervals \\
+        Sampling loop & 158 Hz when claiming 400 & cycle counter, per-sample interval recorded \\
+        \bottomrule
+    \end{tabular}
+    \caption{The clock facts of this project. The last line is the one that mattered: a loop that
+    reports a rate it does not achieve poisons every timing test downstream.}
+    \label{tab:clock-facts}
+\end{table}
+
+\subsection{The One That Generalises}
+
+The last row of that table is the lesson of this chapter. The firmware said 400 Hz because the
+\emph{intended} interval was 2500 $\mu$s. It ran at 158 Hz because the display flush blocked for tens
+of milliseconds inside the loop. Every threshold in the state machine was therefore 2.5× fast, and
+three rounds of drop tests were interpreted against a wrong time base before anyone noticed that four
+different drops showed the same 0.62 s of calm.
+
+The fix was not a better delay. It was to \textbf{measure the interval between samples and pass the
+measurement on}:
+
+\begin{minted}{rust}
+let now = dwt::cycles();
+let dt_us = dwt::cycles_to_us(dwt::since(self.last), sysclk_hz);
+self.last = now;
+// The classifier is told what actually happened, not what was planned.
+detector.update(&accel, dt_us);
+\end{minted}
+
+Every timing defect in this project — and there were four — would have been caught on the day it was
+introduced by that three-line habit.

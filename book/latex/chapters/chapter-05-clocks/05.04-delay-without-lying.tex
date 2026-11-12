@@ -1,0 +1,87 @@
+\section{Delay Without Lying}
+\label{sec:clocks-delay}
+
+There are three ways to wait on a Cortex-M and this project has been wrong about all three.
+
+\subsection{asm::delay Is Not a Cycle Count}
+
+\begin{minted}{rust}
+// "1000 cycles", according to the name and to every example on the internet.
+cortex_m::asm::delay(1000);
+\end{minted}
+
+Measured against the cycle counter, one iteration of the loop that \codeinline{asm::delay} expands
+to takes about \textbf{three} cycles on this part with this compiler. So
+\codeinline{delay(1\_000\_000)} waits three million cycles, not one — a 3× error, and the reason a
+2.7 kHz tone computed with it came out as something else entirely.
+
+Two consequences, both practical:
+
+\begin{itemize}
+    \item \textbf{Never derive a period from it.} A tone, a baud rate or a bus half-period computed
+          with \codeinline{asm::delay} is wrong by a factor nobody wrote down.
+    \item \textbf{Do not multiply by three and call it fixed.} The factor is a property of the
+          compiler's code generation, not of the hardware; it changed between optimisation levels in
+          this project.
+\end{itemize}
+
+\subsection{SysTick: Real Milliseconds}
+
+SysTick counts CPU cycles and can therefore produce real time:
+
+\begin{minted}{rust}
+pub fn delay_us(&mut self, us: u32) {
+    let cycles = (u64::from(us) * u64::from(self.sysclk_hz)) / 1_000_000;
+    // SysTick's reload is 24 bits: split anything larger into chunks.
+    let mut remaining = cycles;
+    while remaining > 0 {
+        let chunk = remaining.min(0x00FF_FFFF);
+        self.syst.set_reload(chunk as u32);
+        self.syst.clear_current();
+        self.syst.enable_counter();
+        while !self.syst.has_wrapped() {}
+        self.syst.disable_counter();
+        remaining -= chunk;
+    }
+}
+\end{minted}
+
+It has one owner — the board — and it must never be shared with a scheduler that also wants it. In
+this project that rule is enforced by the type system in the smallest possible way: \codeinline{SYST}
+is taken once by \codeinline{Board::take()}, and \codeinline{board.delay()} hands it out.
+
+\subsection{Ever the Millisecond: Do Not Divide Early}
+
+A defect worth its own paragraph, because it looks like arithmetic hygiene:
+
+\begin{minted}{rust}
+// The sample interval arrives as microseconds: 2500 us, i.e. 416 Hz.
+let dt_ms = dt_us / 1000;        // 2 ms
+// Every timeout in the state machine is now 20% short.
+\end{minted}
+
+Integer division by 1000 truncated 2500 to 2, and every threshold derived from it inherited a 20%
+error. The classifier's free-fall window, its landing window and its settle timer were all wrong at
+once, and every one of them was measured against real drops before anyone suspected the unit.
+
+The rule: \textbf{carry the finest unit the hardware gives you and divide only where a human reads
+it}. This project's classifier now takes microseconds everywhere and converts once, at the boundary,
+for display.
+
+\subsection{The Cycle Counter: Measurement, Not Delay}
+
+The third instrument is not for waiting at all:
+
+\begin{minted}{rust}
+let start = dwt::cycles();
+// ... work ...
+let elapsed_us = dwt::cycles_to_us(dwt::since(start), 19_000_000);
+\end{minted}
+
+Two registers and no ownership questions: enable \codeinline{TRCENA} in \codeinline{DEMCR}, then
+\codeinline{CYCCNTENA} in \codeinline{DWT->CTRL}, then read \codeinline{CYCCNT}. It is how every
+timing number in this book was obtained, and it is the only instrument here that cannot lie about
+the clock because the CPU \emph{is} the clock.
+
+One trap, measured: a counter that was never enabled reads as zero, and zero elapsed cycles looks
+exactly like a loop that ran impossibly fast. Compare two consecutive reads before trusting either.

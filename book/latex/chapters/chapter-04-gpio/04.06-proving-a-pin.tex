@@ -1,0 +1,82 @@
+\section{Proving a Pin Without Trusting Your Eyes}
+\label{sec:gpio-proving}
+
+The blink is the first program every embedded developer writes, and it is the first one that lies. A
+blink that does not blink has four different causes that look identical: the code never ran, the pin
+is wrong, the polarity is wrong, or the LED is not connected. This section is about telling them
+apart with instruments that are already there.
+
+\subsection{The Case That Made This Necessary}
+
+This project had a blink that flashed successfully and did not blink. The write verified, the
+read-back matched, the board was silent. Every step of the toolchain reported success:
+
+\begin{minted}{text}
+cargo build            Finished `release` profile [optimized] target(s)
+python3 scripts/elf-load-range.py   load_min=0x08006000 load_max=0x08006813
+probe-rs download      Finished in 0.41s
+probe-rs verify        Finished in 0.28s
+\end{minted}
+
+Four green steps and no light. The only way forward was to stop asking the board to show and start
+asking the register to tell.
+
+\subsection{Reading the Latch Over SWD}
+
+The probe can read any address while the program runs. The output latch is one word, and it toggles
+or it does not:
+
+\begin{minted}{bash}
+# halt, read DOUT twice, resume
+openocd -c "init; halt" -c "mdw 0x5003C040 1" -c "sleep 500" -c "mdw 0x5003C040 1" -c "resume; shutdown"
+
+# 0x5003c040: 00000080      <- bit 7 high
+# 0x5003c040: 00000000      <- bit 7 low, 500 ms later
+\end{minted}
+
+That pair of readings is a proof of the \emph{program}: the latch is moving at the rate the code
+intended. What it is not is a proof of the \emph{board}: a latch that toggles and an LED that stays
+dark means the pin is not the LED's pin, or the LED is active-low and the code drives it backwards.
+
+The second reading of \codeinline{PORTA\_MODEL} closes the other half:
+
+\begin{minted}{text}
+PORTA_MODEL = 0x00000040   # mode 4 (push-pull) in the field for pin 7
+\end{minted}
+
+Latch moving, mode correct, and still no light: that combination is now a board question, not a
+software one — which is exactly the division of labour a measurement is for.
+
+\subsection{Three Instruments, Three Questions}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.26\textwidth}p{0.34\textwidth}p{0.34\textwidth}@{}}
+        \toprule
+        \textbf{Instrument} & \textbf{Question it answers} & \textbf{How it is read} \\
+        \midrule
+        The LED & is the whole chain alive? & eyes, and only after the two below \\
+        \codeinline{DOUT}/\codeinline{MODEL} over SWD & is the program right? & \codeinline{mdw} on the port \\
+        A mailbox in RAM & did the code reach this point? & \codeinline{mdw} on a magic word \\
+        \bottomrule
+    \end{tabular}
+    \caption{Order matters: the LED answers last, because it answers slowly and ambiguously.}
+    \label{tab:gpio-instruments}
+\end{table}
+
+\subsection{The Mailbox, Which Is the Real Lesson}
+
+The instrument that made the rest of this project possible is not a pin at all. It is a small block
+of RAM — a magic word, a sequence number, a status and a message — that a program writes before it
+does anything it might not survive:
+
+\begin{minted}{rust}
+// 0x2003F000: magic "MBOX", seq, status (0 info / 1 pass / 2 fail), len, message bytes
+mailbox::write(Status::Pass, b"cap=0x20000000 4000@400Hz real=clean");
+\end{minted}
+
+Read with one \codeinline{mdw} over SWD, it answers questions that no LED can: did the classifier
+load its calibration, how many samples did the ring hold, which of the two I2C aliases answered. It
+costs 300 bytes of RAM and it replaced an entire class of guesswork — which is why every example in
+this book reports through it rather than through a serial port that may not exist.

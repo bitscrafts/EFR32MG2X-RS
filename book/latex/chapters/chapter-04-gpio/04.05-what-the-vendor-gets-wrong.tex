@@ -1,0 +1,62 @@
+\section{What the Vendor's Own Documents Get Wrong}
+\label{sec:gpio-vendor-errors}
+
+Three documents describe this board's pins, and two of them disagree with the board. This section is
+short and uncomfortable, and it exists because a wrong pin in a comment is worse than no comment: it
+is believed.
+
+\subsection{The User LED}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.34\textwidth}p{0.26\textwidth}p{0.32\textwidth}@{}}
+        \toprule
+        \textbf{Source} & \textbf{Says} & \textbf{What it is} \\
+        \midrule
+        The HAL's retired GPIO README & \codeinline{PB2}, active high & wrong pin, wrong polarity \\
+        An earlier board module doc   & \codeinline{PB02/D10}       & wrong pin \\
+        Register read-back (measured) & \codeinline{PA7}, active low & \textbf{this one} \\
+        \bottomrule
+    \end{tabular}
+    \caption{The user LED, as documented and as measured. The measurement is a write to
+    PORTA\_DOUT bit 7 and a read of PORTA\_DOUT to confirm the latch moved.}
+    \label{tab:led-truth}
+\end{table}
+
+Why the error survived: nothing in the project ever \emph{used} the wrong pin in a way that failed.
+A pin that does not exist toggles a latch nobody looks at, and the code still returns
+\codeinline{Ok}. Only the blink example — the one that must be seen — exposed it.
+
+\subsection{The IMU's Two Wires}
+
+The Arduino variant for this board declares:
+
+\begin{minted}{text}
+PIN_WIRE_SDA1 = PB3
+PIN_WIRE_SCL1 = PB2
+\end{minted}
+
+The board is wired the other way round. Measured, in this order:
+
+\begin{enumerate}
+    \item a bit-banged scan of all 128 addresses on the pair \codeinline{(PB2, PB3)} with
+          SDA=\codeinline{PB2} found a device at \codeinline{0x6A};
+    \item the same scan with the roles swapped found nothing;
+    \item the device at \codeinline{0x6A} answered \codeinline{WHO\_AM\_I = 0x6A}, which is the
+          LSM6DS3TR-C's identity register.
+\end{enumerate}
+
+Three independent facts — the scan, the negative control, and the identity register — agree. The
+variant file does not, and it is the file a reader would trust first.
+
+\subsection{The Lesson, Which Is Not ``the Vendor Is Wrong''}
+
+The vendor's documents are mostly right and are the only reason this works at all: the SVD, the
+reference manual, the bootloader layout and the radio headers are all correct and all essential. But
+the pin map of a \emph{board} is not the same document as the pin map of a \emph{chip}, and it is
+maintained by people assembling a product, not by the silicon team.
+
+So the rule this project adopted: \textbf{every pin fact is measured on the board, and the
+measurement is written next to the claim}. Two of the three corrections above cost an afternoon
+each. Both would have been found in ten minutes by reading a register instead of a comment.

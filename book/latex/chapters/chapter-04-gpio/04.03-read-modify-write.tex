@@ -1,0 +1,64 @@
+\section{Read-Modify-Write, or Why the Bus Stopped Working}
+\label{sec:gpio-rmw}
+
+One register, sixteen pins. That sentence is the whole section, and it caused one of the most
+confusing failures in this project.
+
+\subsection{The Defect}
+
+Setting a pin's mode looks like a write. It is a write to a register that also holds fifteen other
+pins:
+
+\begin{minted}{rust}
+// Wrong: this configures *every* pin on the low half of PORTC, not just PC3.
+gpio.portc_model().write(|w| w.mode3().pushpull());
+
+// Right: read what is there, change one field, write it back.
+gpio.portc_model().modify(|_r, w| w.mode3().pushpull());
+\end{minted}
+
+The wrong version does not fail. It reconfigures the fifteen other pins to their reset value — and on
+this board the other pins on that half-port include the two that carry an I2C bus. A bus that had
+just been proved working stops answering, with no error anywhere, because the pins that carried it
+went back to \codeinline{DISABLED}.
+
+\subsection{How It Was Found}
+
+The failure looked like an I2C problem: the device stopped acknowledging, a scan returned nothing,
+and reading the bus's own registers showed the peripheral configured exactly as intended. The
+registers that mattered were the \emph{pin} ones:
+
+\begin{minted}{text}
+PORTC_MODEL = 0x00000000      # every pin on bits 0..7 disabled
+PORTC_DOUT  = 0x00000030      # the bus lines still latched high
+\end{minted}
+
+Both lines at once: the latch said high, the pads were off. That combination can only come from a
+write that reset the mode register, and a search for \codeinline{.write(} on that register found it
+in one place — the function that was setting a buzzer pin.
+
+\subsection{The Rule}
+
+Every write to a GPIO configuration register in this project now goes through
+\codeinline{.modify()}. The only \codeinline{.write()} calls are to registers that genuinely hold one
+field and no other pin — and even then, the code says so in a comment, because the next person will
+copy the pattern somewhere it does not hold.
+
+The same rule applies to \codeinline{DOUT}: a blind \codeinline{write} there sets every pin on the
+port high or low at once. It is the reason the pin primitives in this repository all take a port and
+a bit, and never a whole register value:
+
+\begin{minted}{rust}
+// The signature is the rule: there is no way to write DOUT without saying which bit.
+fn write_dout(gpio: &RegisterBlock, port: Port, bit: u8, high: bool)
+\end{minted}
+
+\subsection{A Second, Quieter Version of the Same Bug}
+
+\codeinline{modify()} on a register whose clock is off is a bus fault, but \codeinline{modify()} on
+a register with a \emph{write-only field} is worse: it reads back a value the field does not
+contribute to, so the read-modify-write silently clears it. This is why the mode values in this
+project are written as an explicit numeric field of the right width rather than as a chain of
+boolean writers, and why the IADC's configuration registers (chapter 7's sibling problem) are written
+once, in one function, in a documented order — conditional writes into a synchronising peripheral
+lose the field you did not intend to touch.

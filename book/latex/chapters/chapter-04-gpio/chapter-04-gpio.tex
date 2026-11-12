@@ -1,0 +1,46 @@
+% Chapter 4: GPIO Implementation
+% File: chapters/chapter-04-gpio/chapter-04-gpio.tex
+
+\chapter{Phase A: GPIO Implementation}
+\label{ch:chapter-04}
+\chapthumb{4}
+
+\begin{quote}
+    \textit{``A pin is not an abstraction problem. It is a register problem that everybody thinks is
+    an abstraction problem.''}
+\end{quote}
+
+A GPIO is the simplest peripheral on any microcontroller and the one that produces the most
+over-engineered code. This chapter takes the opposite route: it starts from the registers on this
+part, derives the smallest abstraction that is still safe, and shows the three defects that the
+bigger abstraction — 605 lines of type-state pins — did not prevent.
+
+Everything here is measured on the XIAO MG24 Sense (EFR32MG24B220F1536IM48-B), and the numbers are
+read back over SWD rather than assumed.
+
+\minitoc
+
+\clearpage
+
+\input{chapters/chapter-04-gpio/04.01-the-registers}
+\input{chapters/chapter-04-gpio/04.02-a-pin-is-three-numbers}
+\input{chapters/chapter-04-gpio/04.03-read-modify-write}
+\input{chapters/chapter-04-gpio/04.04-open-drain}
+\input{chapters/chapter-04-gpio/04.05-what-the-vendor-gets-wrong}
+\input{chapters/chapter-04-gpio/04.06-proving-a-pin}
+
+\clearpage
+
+\begin{keytakeaways}
+    \item A GPIO port on this part is five registers: \codeinline{MODEL}, \codeinline{MODEH},
+          \codeinline{DOUT}, \codeinline{DIN} and the port's clock gate.
+    \item \codeinline{MODEH} does not exist on every port: on PORTB and PORTD this package has eight
+          pins, so those pins live in \codeinline{MODEL} alone.
+    \item A pin is a port, a bit and a polarity. That is enough to drive an LED, read a button and
+          open-drain a bus, and it is 189 lines — not 605.
+    \item Writing \codeinline{MODEL} or \codeinline{MODEH} without reading first reconfigures every
+          other pin on the same half-port, which is how a working bus stops working.
+    \item The LED on this board is \codeinline{PA7}, active \emph{low}. Two of the vendor's own
+          documents disagree with that.
+    \item A blink is proven by the register toggling, not by the LED looking on.
+\end{keytakeaways}

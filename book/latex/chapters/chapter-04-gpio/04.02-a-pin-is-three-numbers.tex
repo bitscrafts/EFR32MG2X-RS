@@ -1,0 +1,93 @@
+\section{A Pin Is Three Numbers}
+\label{sec:pin-three-numbers}
+
+The type-state approach to GPIO is seductive: make an output pin a different \emph{type} from an
+input pin, make a pin claimed by one driver unclaimable by another, and let the compiler refuse the
+mistakes. This book's repository had exactly that — 605 lines of it — and it is now retired, for a
+reason worth stating precisely.
+
+\subsection{What the Small Version Looks Like}
+
+The whole abstraction is a port, a bit and a polarity:
+
+\begin{minted}{rust}
+pub enum Port { A, B, C, D }
+
+pub struct Output<'a> {
+    gpio: &'a pac::gpio_s::RegisterBlock,
+    port: Port,
+    bit: u8,
+    active_low: bool,
+}
+
+impl<'a> Output<'a> {
+    pub fn on(&self)  { self.write(!self.active_low) }
+    pub fn off(&self) { self.write(self.active_low) }
+    pub fn toggle(&self) {
+        let current = read_dout(self.gpio, self.port);
+        self.write(current & (1 << self.bit) == 0);
+    }
+}
+\end{minted}
+
+Everything else is a register write:
+
+\begin{minted}{rust}
+fn write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bit: u8, high: bool) {
+    // Read-modify-write, always: DOUT is one register for sixteen pins.
+    let set = |r: u32, w: &mut pac::W<_>| {
+        let mask = 1u32 << bit;
+        let value = if high { r | mask } else { r & !mask };
+        unsafe { w.bits(value) }
+    };
+    match port {
+        Port::A => gpio.porta_dout().modify(set),
+        Port::B => gpio.portb_dout().modify(set),
+        Port::C => gpio.portc_dout().modify(set),
+        Port::D => gpio.portd_dout().modify(set),
+    }
+}
+\end{minted}
+
+That is the entire output path: 40 lines including the four-way match. The input path is shorter
+still — \codeinline{DIN} needs no mask, only a shift — and the mode setter is the read-modify-write
+of \codeinline{MODEL} or \codeinline{MODEH} shown in the previous section.
+
+\subsection{Why the Larger Version Was Retired}
+
+The type-state layer was not wrong in principle. It was wrong here, in three ways that only show up
+in a real project:
+
+\begin{enumerate}
+    \item \textbf{Nothing used it.} Its only consumer was a board module that a newer facade
+          replaced. An API with zero users compiles, lints clean, and rots: at the time it was
+          retired, its README documented the user LED as \codeinline{PB2} active-\emph{high}, when
+          the board's LED is \codeinline{PA7} active-\emph{low}.
+    \item \textbf{It moved the wiring into the HAL.} To hand out a typed \codeinline{LED} the HAL had
+          to know which pin the LED was on — a board fact in the wrong layer. The layered rule from
+          section~\ref{sec:layer-boundaries} is that the HAL names no board wiring, and the typed
+          pins were the mechanism by which it did.
+    \item \textbf{It cost more than it prevented.} The three real defects in this project's GPIO
+          code — a blind \codeinline{MODEL} write, a mode value with the wrong width, and an
+          open-drain pin configured push-pull — were all invisible to the type system, because all
+          three are legal code with the wrong \emph{number} in it. Types catch the mistakes you can
+          name; registers catch the rest.
+\end{enumerate}
+
+\subsection{What Replaced the Type System}
+
+An ownership rule that is checkable without generics: the board takes the peripherals once
+(\codeinline{Board::take()}), and every pin comes out of it with a port and a bit named at the call
+site:
+
+\begin{minted}{rust}
+let board = Board::take().expect("peripherals taken twice");
+let led     = board.output_on(Port::A, 7, true);      // active low
+let button  = board.input_on(Port::C, 1);             // pull-up fitted on the base
+let buzzer  = board.output_on(Port::C, 3, false);
+\end{minted}
+
+The exclusivity that the type system used to provide is now the PAC singleton's job — one
+\codeinline{take()} per program — and the wiring that the HAL used to hide lives in whichever crate
+owns the board. Fewer lines, fewer layers, and the two facts a reader needs (which pin, which
+polarity) are in the code they are reading.

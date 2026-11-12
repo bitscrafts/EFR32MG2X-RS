@@ -1,0 +1,65 @@
+\section{Open Drain, and the Line That Has Two Masters}
+\label{sec:gpio-open-drain}
+
+An I2C bus has two wires and, on each of them, two possible masters, each of which may want to pull
+the line low while the other wants it high. The electrical answer is the reason the mode list has a
+\codeinline{WIRED\_AND} in it.
+
+\subsection{What WIRED\_AND Does}
+
+\begin{minted}{text}
+mode = WIRED_AND   (8)
+  DOUT bit = 0  ->  the pad pulls the line to ground
+  DOUT bit = 1  ->  the pad releases the line (high impedance)
+\end{minted}
+
+The line is held high by an external resistor. So ``1'' is not something the pin produces — it is
+something the pin \emph{stops preventing}. Two devices can then share the wire: any one of them can
+pull it low, and the only way it goes high is if nobody does. That is what makes arbitration
+possible, and it is why a push-pull pin must never be connected to a shared bus: driving it high
+against another device driving low is a short circuit through two transistors.
+
+\subsection{The Measurement That Proved the Pull-Ups}
+
+The IMU could not be found for two sessions. Before blaming the pin map, this project measured
+whether the bus lines had pull-ups at all:
+
+\begin{minted}{text}
+# every pin on PORTB set to input, then read DIN
+PORTB_MODEL = 0x11111111     # all inputs
+PORTB_DIN   = 0x0000000C     # bits 2 and 3 high
+\end{minted}
+
+Bits 2 and 3 are \codeinline{PB2} and \codeinline{PB3}: the two pins of the IMU's bus, reading high
+with nothing driving them. That is an external pull-up, present and working — which retired the
+``the board has no pull-ups'' hypothesis in one instruction and moved the investigation to the pin
+\emph{order}.
+
+\subsection{Bit-Banging an Open-Drain Bus}
+
+With \codeinline{WIRED\_AND} the whole I2C protocol reduces to two writes and one read:
+
+\begin{minted}{rust}
+fn sda(&self, high: bool) { write_dout(self.gpio, self.bus.port, self.bus.sda_bit, high) }
+fn scl(&self, high: bool) { write_dout(self.gpio, self.bus.port, self.bus.scl_bit, high) }
+fn read_sda(&self) -> bool { read_din(self.gpio, self.bus.port) & (1 << self.bus.sda_bit) != 0 }
+\end{minted}
+
+\textbf{There is no direction switch.} On an open-drain bus a pin used as an input with the output
+latch high is the same electrical state as a released output — which is why a bit-banged I2C master
+can be four functions and no state machine, and why the same pin can be written and read in the same
+transfer.
+
+\subsection{Half a Bit Period, and Why It Is a Number in Cycles}
+
+Timing on a bit-banged bus is a delay per half period, and the delay is not a duration — it is a
+count of loop iterations whose real length depends on the compiler:
+
+\begin{minted}{rust}
+// ~5 us at 19 MHz, measured: 60 iterations of this loop on this compiler.
+const HALF_BIT_CYCLES: u32 = 60;
+\end{minted}
+
+That constant is a measurement, not a datasheet value, and it is the reason chapter~14 exists: the
+same class of mistake — \codeinline{asm::delay(n)} assumed to be \codeinline{n} cycles when it is
+about three per iteration — turned a 2.7 kHz tone into something else entirely.

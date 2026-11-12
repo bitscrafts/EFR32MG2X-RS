@@ -1,0 +1,55 @@
+\section{Selecting an Oscillator Is Not Starting It}
+\label{sec:clocks-starting}
+
+The clock tree has a trap that costs an afternoon the first time and ten minutes every time after:
+choosing a source does not turn it on, and a peripheral clocked by a stopped source behaves like a
+peripheral that ignores you.
+
+\subsection{The Two-Step That Is Actually Three}
+
+\begin{minted}{rust}
+// 1. Ask for it.
+dp.cmu_s.clken0().modify(|_r, w| w.hfrcoem23().set_bit());
+// 2. Force it on: without this the oscillator idles when nothing demands it,
+//    and "nothing" includes the branch you are about to select.
+dp.hfrcoem23_s.ctrl().modify(|_r, w| w.forceen().set_bit());
+// 3. Wait. This is the step that hangs if the oscillator never comes up.
+while !dp.hfrcoem23_s.status().read().rdy().bit_is_set() { /* spin */ }
+\end{minted}
+
+Step 2 is the one people miss. It is also the one that makes step 3 a real wait instead of an
+instant pass — and an instant pass is worse than a hang, because it looks like success.
+
+\subsection{The Converter That Hung on FSRCO}
+
+The microphone's converter (IADC0) had two separate problems in this project, and one of them was
+purely a clock choice. Clocked from \codeinline{FSRCO}, the converter's disable sequence never
+completed:
+
+\begin{minted}{text}
+# after writing EN = 0 and waiting for the disabling bit to clear
+IADC0_STATUS  = ...DISABLING = 1     (still, after 100 ms)
+# the next configuration write then faulted, because the peripheral was mid-synchronisation
+\end{minted}
+
+The same code, clocked from \codeinline{HFRCOEM23}, disabled in microseconds and never faulted. No
+register value changed; only \codeinline{em01grpaclkctrl}. That is the entire difference between a
+working microphone driver and an afternoon of bus faults, and it was found by trying the other
+oscillator rather than by reading harder.
+
+\subsection{The Rule That Came Out of It}
+
+Before blaming a peripheral, confirm that it is \emph{clocked}, and confirm it in the way the
+hardware reports it:
+
+\begin{enumerate}
+    \item read the gate bit back — not the value you wrote, the value the register holds;
+    \item read the oscillator's ready status, not just its enable bit;
+    \item if the peripheral has a synchronisation status, read it: \codeinline{DISABLING},
+          \codeinline{SYNCBUSY} and \codeinline{RESETTING} are the hardware telling you the
+          difference between ``configured'' and ``ready''.
+\end{enumerate}
+
+A peripheral that reads as zero after a correct-looking write has failed one of those three, and the
+three have different fixes. Without the read-backs they are indistinguishable — which is why every
+driver in this repository returns an error instead of a value when a readiness wait expires.
