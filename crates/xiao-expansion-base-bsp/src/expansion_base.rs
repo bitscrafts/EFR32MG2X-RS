@@ -31,17 +31,19 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::{i2c_static, Board};
+use efr32mg24_hal::board::i2c_static;
 use efr32mg24_hal::bus::{BitBangI2c, Bus, I2cBus, SharedBus};
 use efr32mg24_hal::display::Ssd1306;
 use efr32mg24_hal::pin::{Input, Output, Port};
 use efr32mg24_hal::rtc::pcf8563::Pcf8563;
 use efr32mg24_hal::sensors::bme68x::Bme68x;
 use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, ImuError, Lsm6ds3trc};
+use xiao_mg24_bsp::Module;
 
 /// The XIAO MG24 Sense mounted on the Seeed Expansion Base.
 pub struct ExpansionBase {
-    board: Board,
+    /// The XIAO module this carrier sits on. Every pin, gate and bus below is reached through it.
+    module: Module,
     /// PC04/PC05: panel, BME68x, RTC.
     base_bus: RefCell<BitBangI2c<'static>>,
     /// PB2/PB3: the on-board IMU.
@@ -55,13 +57,13 @@ impl ExpansionBase {
     /// Returns `None` if the peripherals were already taken, which is what the PAC
     /// singleton enforces.
     pub fn take() -> Option<Self> {
-        let board = Board::take()?;
+        let module = Module::take()?;
         // The buses are built from the `'static` GPIO view so this struct can own
-        // them; borrowing from `board` would make it self-referential.
+        // them; borrowing from the module would make it self-referential.
         let base_bus = RefCell::new(i2c_static(Bus::new(Port::C, 1 << 4, 1 << 5)));
         let imu_bus = RefCell::new(i2c_static(Bus::new(Port::B, 1 << 2, 1 << 3)));
         Some(Self {
-            board,
+            module,
             base_bus,
             imu_bus,
             imu_powered: false,
@@ -93,20 +95,20 @@ impl ExpansionBase {
     pub fn led(&self) -> Output<'_> {
         // PA7, active low: the module's LED, reached through the module crate's wiring so
         // there is one place that says which pin it is.
-        self.board.output_on(Port::A, 7, true)
+        self.module.hal().output_on(Port::A, 7, true)
     }
 
     /// The user button (PC01, pulled up on the base).
     pub fn button(&self) -> Input<'_> {
         // PC01 on the base, shorted to ground, pulled up.
-        self.board.input_on(Port::C, 1)
+        self.module.hal().input_on(Port::C, 1)
     }
 
     /// The piezo buzzer on PC03 (TIMER0 CC0), calibrated and silent.
     ///
     /// `None` when the timer never reports a running counter.
     pub fn buzzer(&self) -> Option<efr32mg24_hal::buzzer::Buzzer<'_>> {
-        self.board.buzzer_on(Port::C, 3)
+        self.module.hal().buzzer_on(Port::C, 3)
     }
 
     /// The 128×64 OLED at 0x3C.
@@ -136,7 +138,7 @@ impl ExpansionBase {
     /// answer at all, so this is the facade's job and not the driver's.
     pub fn imu(&mut self) -> Result<Lsm6ds3trc<SharedBus<'_, BitBangI2c<'static>>>, ImuError> {
         if !self.imu_powered {
-            self.board.output_on(Port::D, 5, false).on();
+            self.module.hal().output_on(Port::D, 5, false).on();
             // The datasheet's power-up time is 10 ms; the bus tolerates waiting far
             // better than a retry loop.
             cortex_m::asm::delay(400_000);
@@ -157,8 +159,8 @@ impl ExpansionBase {
         &mut self,
     ) -> Result<efr32mg24_hal::microphone::Microphone<'_>, efr32mg24_hal::microphone::MicError>
     {
-        self.board.output_on(Port::C, 8, false).on();
-        self.board.converter().microphone()
+        self.module.hal().output_on(Port::C, 8, false).on();
+        self.module.hal().converter().microphone()
     }
 
     /// Verify the devices the facade claims are present, and report which answered.

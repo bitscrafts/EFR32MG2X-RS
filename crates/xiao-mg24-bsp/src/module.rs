@@ -37,6 +37,19 @@ pub struct Module {
 impl Module {
     /// Take the peripherals. `None` if they were already taken.
     #[must_use]
+    /// The chip-level board underneath this module.
+    ///
+    /// A carrier (the Expansion Base, for instance) has to wire its own devices onto the same
+    /// buses, gates and timer this module already took. Handing out the HAL's board is what keeps
+    /// the dependency arrow pointing one way: the carrier builds on the module, and the module is
+    /// the only crate that touches the HAL's ownership of the peripherals.
+    ///
+    /// It is deliberately the HAL's board and not a re-export of the PAC: a carrier that could see
+    /// registers could undo what this module configured.
+    pub fn hal(&self) -> &HalBoard {
+        &self.board
+    }
+
     pub fn take() -> Option<Self> {
         Some(Self {
             board: HalBoard::take()?,

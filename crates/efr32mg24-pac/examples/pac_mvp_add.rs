@@ -169,10 +169,49 @@ fn main() -> ! {
         }
     }
 
-    // The MVP has two aliases: 0x4D00_0000 (secure) and 0x5D00_0000 (non-secure).
-    // The core runs non-secure here, so writes to the secure alias are dropped —
-    // measured: every array register read back as zero until this used `mvp_ns`.
+    // Two aliases exist: 0x4D00_0000 (secure) and 0x5D00_0000 (non-secure). Measured on this
+    // board: the secure alias reads zero from a non-secure image, and reading FAULTSTATUS (0x24)
+    // through the non-secure alias raises a bus error — so the block is reachable only at
+    // 0x5D00_0000, and only the registers below are safe to touch.
     let mvp = &dp.mvp_ns;
+
+    // A clock gate is not an enable. `EN` at 0x04 has bit 0 = Enable and bit 1 = Disabling busy,
+    // and every configuration write below is dropped while the block is disabled. This write was
+    // missing, and its absence is the reason the program never ran.
+    mvp.en().write(|w| w.en().set_bit());
+    let mut spin = 0u32;
+    while mvp.en().read().disabling().bit_is_set() {
+        spin += 1;
+        if spin > 1_000_000 {
+            mailbox::fail(b"mvp stuck disabling");
+            loop {
+                led();
+                cortex_m::asm::delay(2_000_000);
+            }
+        }
+    }
+
+    // Prove the block keeps what is written to it before blaming the program: a configuration
+    // register that reads back as zero means the writes are being dropped, and every later
+    // symptom (a program that never runs, arrays that stay zero) would be a consequence of that.
+    mvp.array0dim2cfg()
+        .write(|w| unsafe { w.bits(0x0000_0007) });
+    if mvp.array0dim2cfg().read().bits() != 0x0000_0007 {
+        let mut msg = [0u8; 64];
+        let mut pos = push_bytes(&mut msg, 0, b"mvp writes dropped en=");
+        pos = push_dec(&mut msg, pos, mvp.en().read().bits() & 1);
+        pos = push_bytes(&mut msg, pos, b" clken1=");
+        pos = push_dec(
+            &mut msg,
+            pos,
+            u32::from(dp.cmu_s.clken1().read().mvp().bit()),
+        );
+        mailbox::fail(&msg[..pos]);
+        loop {
+            led();
+            cortex_m::asm::delay(2_000_000);
+        }
+    }
 
     // ---- array controllers: a, b, out -------------------------------------
     // dim0: element type. dim1: one row. dim2: N elements, stride 1.
@@ -245,12 +284,25 @@ fn main() -> ! {
     });
 
     // ---- run -------------------------------------------------------------
+    // CMD bit 3 is INIT, described in the SVD as an "Initialization Command/Qualifier": it
+    // qualifies the START written in the same access, it is not a separate pass.
     mvp.cmd().write(|w| w.init().set_bit().start().set_bit());
     let mut spin = 0u32;
     while !mvp.status().read().idle().bit_is_set() {
         spin += 1;
         if spin > 20_000_000 {
-            mailbox::fail(b"mvp never went idle");
+            // FAULTSTATUS (0x24) is not readable through this alias — it raises a bus error — so
+            // the report carries the status bits and whether the instruction word survived, which
+            // is enough to tell "never started" from "started and faulted".
+            let st = mvp.status().read();
+            let mut msg = [0u8; 64];
+            let mut pos = push_bytes(&mut msg, 0, b"mvp stuck run=");
+            pos = push_dec(&mut msg, pos, u32::from(st.running().bit()));
+            pos = push_bytes(&mut msg, pos, b" idle=");
+            pos = push_dec(&mut msg, pos, u32::from(st.idle().bit()));
+            pos = push_bytes(&mut msg, pos, b" instr2=");
+            pos = push_dec(&mut msg, pos, mvp.instr0cfg2().read().bits());
+            mailbox::fail(&msg[..pos]);
             loop {
                 led();
                 cortex_m::asm::delay(2_000_000);

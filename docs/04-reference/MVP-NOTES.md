@@ -113,3 +113,30 @@ Next steps, in order:
    what the SDK's struct copy with CMD last would achieve in one burst).
 3. Check the AHB port mapping (`MVPAHBDATA0/1/2PORTSEL`) if the engine starts but
    the arrays read zero: the ports remap to specific RAM blocks.
+
+## 2026-11-12 — the missing write: `EN` at 0x04
+
+The example never set the block's own enable bit. `CMU_CLKEN1.MVP` gates the *bus clock*; `EN` at
+0x04 is the block's enable, with bit 1 as a "Disabling busy" status. Every configuration write is
+dropped while the block is disabled, which matches the measured symptom exactly: the array
+registers read back as they were written, the command is issued, and nothing executes and nothing
+faults — `exp=396 got=0`.
+
+The example now, in order:
+
+1. gates the bus clock (as before);
+2. **writes `EN = 1`** and waits for `DISABLING` to clear;
+3. proves the block keeps a write (`ARRAY0DIM2CFG` at 0x90, written and read back) before it blames
+   the program;
+4. issues `CMD = INIT | START` — the SVD calls INIT an "Initialization Command/Qualifier", so it
+   qualifies the START in the same write rather than being a separate pass;
+5. on a timeout, reports `STATUS` (running/idle) and the instruction word that survived, instead of
+   a bare "never went idle".
+
+**Alias, measured earlier and still true:** the secure alias 0x4D00_0000 reads as zero from this
+image, and reading `FAULTSTATUS` (0x24) through the non-secure alias raises a bus error. The example
+therefore uses 0x5D00_0000 and reads no fault register — which is why its timeout report carries the
+status bits rather than a PC.
+
+**What is still unproven:** whether the program executes. The write that was missing is a
+precondition, not a proof; the next flash is the measurement.
