@@ -28,6 +28,10 @@
 //! rate. A board sitting still must read about 1000 mg on the axis pointing at
 //! the floor and near zero on the other two, with the gyro near zero — that is a
 //! physical check that needs no instrument.
+//!
+//! It lives in the carrier crate because the devices are on the carrier, and it talks to the
+//! HAL rather than to the facade on purpose: this is the driver-level demo, so a HAL
+//! regression shows up on the board, next to `base_env_clock` which goes through the facade.
 
 #![no_std]
 #![no_main]

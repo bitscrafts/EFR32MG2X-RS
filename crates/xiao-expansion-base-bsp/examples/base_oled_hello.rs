@@ -9,6 +9,10 @@
 //! Verification: the panel is write-only, so the report is the number of bytes
 //! the controller acknowledged plus a fixed string. The pixels need an eye; the
 //! bytes do not.
+//!
+//! It lives in the carrier crate because the devices are on the carrier, and it talks to the
+//! HAL rather than to the facade on purpose: this is the driver-level demo, so a HAL
+//! regression shows up on the board, next to `base_env_clock` which goes through the facade.
 
 #![no_std]
 #![no_main]

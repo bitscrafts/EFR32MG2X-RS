@@ -1,16 +1,16 @@
-//! HAL bus scan: what actually answers on the Expansion Base I2C bus.
+//! The bit-banged transport: scan whatever two pins you give it.
+//!
+//! This is the HAL's own level — a driver and the pins the caller chooses. The pins below
+//! are the Expansion Base's pair (PC04/PC05) because that is where three devices are known to
+//! answer, which makes the scan a comparison rather than a hope. Change the two numbers and
+//! the same example scans any pair on any port.
 //!
 //! Two jobs, on purpose:
 //!
-//! 1. it is the HAL twin of `pac_i2c_scan`, so a disagreement between the two is
-//!    a transport bug;
-//! 2. it powers the on-board sensors first (PD5), which is the only way to see
-//!    whether the LSM6DS3TR-C is on this bus at all — an unpowered IMU is
-//!    indistinguishable from an absent one.
-//!
-//! On the XIAO MG24 **Sense** the IMU should appear at 0x6A; on the standard
-//! module it is not fitted. The scan therefore answers a hardware question with
-//! a measurement instead of a datasheet assumption.
+//! 1. it is the HAL twin of `pac_i2c_scan`, so a disagreement between the two is a transport
+//!    bug and not a device quirk;
+//! 2. it drives the Sense module's power gate first (PD5), because an unpowered IMU is
+//!    indistinguishable from an absent one — that is the whole reason the gate exists.
 
 #![no_std]
 #![no_main]

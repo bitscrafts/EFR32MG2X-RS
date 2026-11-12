@@ -15,6 +15,10 @@
 //! Verification, as in the PAC twin: the mailbox carries the readings and the
 //! number of bytes the panel acknowledged. The pixels need an eye; the numbers
 //! do not.
+//!
+//! It lives in the carrier crate because the devices are on the carrier, and it talks to the
+//! HAL rather than to the facade on purpose: this is the driver-level demo, so a HAL
+//! regression shows up on the board, next to `base_env_clock` which goes through the facade.
 
 #![no_std]
 #![no_main]
