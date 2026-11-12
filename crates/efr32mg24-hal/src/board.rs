@@ -83,7 +83,7 @@ impl Board {
     /// configuration write faulted. HFRCOEM23 is the oscillator already proven
     /// to clock TIMER0 here, so it is forced on and waited for before the IADC
     /// clock is pointed at it.
-    pub fn microphone_adc(&self) -> &pac::iadc0_s::RegisterBlock {
+    pub fn converter(&self) -> &'static pac::iadc0_s::RegisterBlock {
         self.dp
             .cmu_s
             .clken0()
@@ -103,7 +103,10 @@ impl Board {
             .cmu_s
             .iadcclkctrl()
             .modify(|_r, w| w.clksel().hfrcoem23());
-        &self.dp.iadc0_s
+        // The converter lives at a fixed address for the life of the program, so a
+        // `'static` view is literally true — the same argument `gpio_static` makes.
+        const IADC0_BASE: usize = 0x4900_4000;
+        unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) }
     }
 
     /// The on-board user LED (PA7, active low).

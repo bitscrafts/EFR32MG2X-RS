@@ -25,7 +25,7 @@
 use efr32mg24_hal::display::{append, format_fixed};
 use efr32mg24_hal::entry;
 use panic_halt as _;
-use xiao_mg24_bsp::expansion_base::ExpansionBase;
+use xiao_expansion_base_bsp::ExpansionBase;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;

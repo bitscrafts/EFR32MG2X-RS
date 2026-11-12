@@ -45,7 +45,7 @@
 //! - **Package**: 48-pin QFN
 
 pub mod board;
-pub mod expansion_base;
+pub mod module;
 pub mod pins;
 #[cfg(feature = "ble")]
 pub mod radio;
@@ -54,6 +54,7 @@ pub mod sensors;
 
 // Re-export for convenience
 pub use board::Board;
+pub use module::Module;
 pub use pins::Pins;
 
 // Re-export HAL types

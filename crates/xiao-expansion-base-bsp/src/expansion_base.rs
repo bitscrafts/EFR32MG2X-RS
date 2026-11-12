@@ -155,7 +155,7 @@ impl ExpansionBase {
     ) -> Result<efr32mg24_hal::microphone::Microphone<'_>, efr32mg24_hal::microphone::MicError>
     {
         self.board.sensors_power().enable_microphone();
-        efr32mg24_hal::microphone::Microphone::new(self.board.microphone_adc())
+        efr32mg24_hal::microphone::Microphone::new(self.board.converter())
     }
 
     /// Verify the devices the facade claims are present, and report which answered.

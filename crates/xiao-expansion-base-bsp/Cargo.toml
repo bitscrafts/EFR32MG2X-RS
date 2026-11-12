@@ -1,0 +1,36 @@
+[package]
+name = "xiao-expansion-base-bsp"
+version = "0.1.0"
+authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Board support for the Seeed XIAO Expansion Base when it carries a XIAO MG24 module"
+repository = "https://github.com/bitscrafts/EFR32MG2X-RS"
+readme = "README.md"
+keywords = ["xiao", "expansion-base", "efr32", "embedded", "no-std"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+# One board per crate. This one describes the carrier that stacks underneath the XIAO:
+# its OLED, its environmental sensor, its real-time clock, its buzzer and its button.
+# It depends on the module crate; the module knows nothing about it.
+
+[dependencies]
+efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-pac = { path = "../efr32mg24-pac" }
+xiao-mg24-bsp = { path = "../xiao-mg24-bsp" }
+
+cortex-m = { workspace = true }
+cortex-m-rt = { workspace = true }
+embedded-hal = { workspace = true }
+critical-section = { workspace = true }
+heapless = "0.8"
+
+[dev-dependencies]
+panic-halt = "0.2"
+
+[features]
+default = []
+
+[[example]]
+name = "base_env_clock"
+path = "examples/bsp_env_clock.rs"

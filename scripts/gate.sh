@@ -36,15 +36,28 @@ else
   fail "cargo fmt --all --check (run: cargo fmt --all)"
 fi
 
+# Every crate in the workspace gets checked, discovered rather than listed: a hardcoded list
+# silently stops covering the crate that was added last, which is the one that needs it most.
+CRATES=$(ls -d crates/*/ libraries/*/ 2>/dev/null | sed 's:/*$::')
+# Named here so the gap is visible instead of silent:
+#   efr32mg24-bluetooth-sys, efr32mg24-rail-sys  bindgen output does not compile from a clean
+#                                                checkout; their headers are gitignored
+#   efr32mg24-bootloader, bootloader-test-app     separate workspaces, excluded from this
+#                                                one on purpose
+SKIP="efr32mg24-bluetooth-sys efr32mg24-rail-sys efr32mg24-bootloader bootloader-test-app"
+features_for() {
+  case "$1" in
+    efr32mg24-pac|efr32mg24-hal) echo "--features rt" ;;
+    *) echo "" ;;
+  esac
+}
+
 echo "=== clippy, zero warnings ==="
-for spec in \
-  "efr32mg24-pac:--features rt" \
-  "efr32mg24-hal:--features rt" \
-  "motion-detection:" \
-  "xiao-mg24-bsp:"
-do
-  pkg=${spec%%:*}
-  extra=${spec#*:}
+for dir in $CRATES; do
+  pkg=$(basename "$dir")
+  case " $SKIP " in *" $pkg "*) continue ;; esac
+  [ -f "$dir/Cargo.toml" ] || continue
+  extra=$(features_for "$pkg")
   out=$(cargo clippy --release --target "$TARGET" -p "$pkg" $extra 2>&1)
   n=$(printf '%s\n' "$out" | grep -cE '^warning: [a-z]' || true)
   if printf '%s\n' "$out" | grep -qE '^error'; then
@@ -57,19 +70,27 @@ do
 done
 
 echo "=== examples build ==="
-for spec in \
-  "efr32mg24-pac:--features rt" \
-  "efr32mg24-hal:--features rt" \
-  "xiao-mg24-bsp:"
-do
-  pkg=${spec%%:*}
-  extra=${spec#*:}
-  count=$(ls "crates/$pkg/examples/"*.rs 2>/dev/null | wc -l)
+for dir in $CRATES; do
+  pkg=$(basename "$dir")
+  case " $SKIP " in *" $pkg "*) continue ;; esac
+  [ -f "$dir/Cargo.toml" ] || continue
+  extra=$(features_for "$pkg")
+  count=$(ls "$dir/examples/"*.rs 2>/dev/null | wc -l)
   if cargo build --release --target "$TARGET" -p "$pkg" $extra --examples >/dev/null 2>&1; then
     pass "$pkg: $count examples"
   else
     fail "$pkg: examples do not build"
   fi
+  # A hardware crate whose API nothing builds is a crate whose API is not tested. Only the
+  # crates that own pins are held to this; the PAC is exercised by its own 19 examples and
+  # the domain crates by their host tests.
+  case "$pkg" in
+    *-bsp)
+      if [ "$count" -eq 0 ]; then
+        fail "$pkg: exposes hardware but has no examples"
+      fi
+      ;;
+  esac
 done
 # An example that lives in a directory is only built by `--examples` if its [[example]]
 # block declares it. A directory nobody declared compiles never and fails silently, so the

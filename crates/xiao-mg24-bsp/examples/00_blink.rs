@@ -1,4 +1,4 @@
-//! The smallest BSP example: one LED, one board, no addresses.
+//! The smallest BSP example: one LED, one module, no addresses.
 //!
 //! This is the BSP's hello world, and it is deliberately shorter than the HAL or PAC
 //! versions of the same thing — the point of the facade is that a reader does not have to
@@ -7,7 +7,7 @@
 //!
 //! # What it proves
 //!
-//! - `ExpansionBase::take()` is enough to get a usable board.
+//! - `Module::take()` is enough to get a usable board — no Expansion Base needed.
 //! - The LED blinks at 1 Hz, measured, not assumed: the loop is paced by the same
 //!   calibrated delay the rest of the workspace uses.
 //! - The example contains **no port, pin, register or address**. If it did, the facade
@@ -35,17 +35,17 @@
 use efr32mg24_hal::entry;
 use efr32mg24_hal::prelude::*;
 use panic_halt as _;
-use xiao_mg24_bsp::expansion_base::ExpansionBase;
+use xiao_mg24_bsp::Module;
 
 #[entry]
 fn main() -> ! {
-    let mut base = ExpansionBase::take().expect("the board is taken twice");
+    let mut module = Module::take().expect("the peripherals are taken twice");
 
     // Half a second on, half a second off. `Delay` is the HAL's busy wait over SysTick, so
     // the period is what it says rather than what the compiler happened to emit. Taken
     // before the LED because it needs the board mutably and the LED borrows it.
-    let mut delay = base.delay();
-    let led = base.led();
+    let mut delay = module.delay();
+    let led = module.led();
 
     loop {
         led.on();

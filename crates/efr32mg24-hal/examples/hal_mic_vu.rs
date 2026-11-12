@@ -35,7 +35,7 @@ fn main() -> ! {
 
     // Board wiring: microphone powered, analog pin handed to the ADC, IADCCLK on.
     board.sensors_power().enable_microphone();
-    let adc = board.microphone_adc();
+    let adc = board.converter();
 
     let mic = match Microphone::new(adc) {
         Ok(m) => m,

@@ -38,6 +38,9 @@ panic-halt = "0.2"
 
 [features]
 default = []
+# The Sense variant is the same PCB with more components fitted: the IMU and the analog
+# microphone. Same board, fewer parts — so a feature, not a crate.
+sense = []
 # Radio features
 radio = ["efr32mg24-rail-sys"]           # Phase D1 complete
 ble = ["efr32mg24-bluetooth-sys"]        # Phase D2 complete
@@ -75,3 +78,9 @@ required-features = ["microphone"]
 [package.metadata.docs.rs]
 default-target = "thumbv8m.main-none-eabihf"
 targets = ["thumbv8m.main-none-eabihf"]
+
+# The Sense examples need the feature: without it they are skipped rather than failing, so a
+# reader with a plain MG24 module gets a clean absence instead of a confusing error.
+[[example]]
+name = "sense_imu"
+required-features = ["sense"]
