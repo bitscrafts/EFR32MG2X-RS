@@ -13,6 +13,9 @@ categories = ["embedded", "hardware-support", "no-std"]
 [dependencies]
 # The CORE_* helpers the vendor blobs reference; compiled once for the whole workspace.
 cmsis-stubs = { path = "../cmsis-stubs" }
+# The Bluetooth controller is built on RAIL: its chip layer calls RAIL_ConfigAntenna and friends.
+# This is the vendor's own layering, discovered by the linker rather than by a document.
+efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys" }
 # Core types for FFI
 cty = "0.2"
 

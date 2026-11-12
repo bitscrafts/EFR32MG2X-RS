@@ -83,6 +83,8 @@ pub mod ffi {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
+pub mod stack_init;
+
 // Blocking API (always available)
 pub mod blocking;
 

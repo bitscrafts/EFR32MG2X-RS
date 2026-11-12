@@ -27,10 +27,57 @@ use efr32mg24_hal::entry;
 use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::prelude::*;
 use efr32mg24_radio::{BleEvent, Bluetooth};
-use panic_halt as _;
+
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
 mod mailbox;
+
+/// A panic handler that reports where it panicked.
+///
+/// `panic_halt` leaves the core in a loop with no evidence, which is indistinguishable from a
+/// driver waiting for a bit. The location is the one piece of information that turns "the board
+/// stopped" into "line 214 of this file was out of bounds", and it costs a few hundred bytes.
+#[panic_handler]
+fn panic(info: &core::panic::PanicInfo) -> ! {
+    let mut msg = [0u8; 96];
+    let mut at = 0;
+    msg[at..at + 6].copy_from_slice(b"PANIC ");
+    at += 6;
+    if let Some(loc) = info.location() {
+        // The file's basename is what fits and what matters; the line number is the answer.
+        let file = loc.file().as_bytes();
+        let start = file
+            .iter()
+            .rposition(|&b| b == b'/')
+            .map(|i| i + 1)
+            .unwrap_or(0);
+        let name = &file[start..file.len().min(start + 30)];
+        let n = name.len().min(msg.len() - at - 8);
+        msg[at..at + n].copy_from_slice(&name[..n]);
+        at += n;
+        msg[at] = b':';
+        at += 1;
+        let mut line = loc.line();
+        let mut digits = [0u8; 10];
+        let mut k = 0;
+        loop {
+            digits[k] = b'0' + (line % 10) as u8;
+            line /= 10;
+            k += 1;
+            if line == 0 || k == digits.len() {
+                break;
+            }
+        }
+        for i in (0..k).rev() {
+            msg[at] = digits[i];
+            at += 1;
+        }
+    }
+    mailbox::write(mailbox::Status::Fail, &msg[..at]);
+    loop {
+        cortex_m::asm::wfi();
+    }
+}
 
 /// Scan interval and window in milliseconds. A 100 ms interval with a 50 ms window listens half the
 /// time — enough to find a 100 ms advertiser quickly, while leaving the radio free half of every
@@ -69,10 +116,33 @@ fn main() -> ! {
     let mut delay = board.delay();
     let led = board.output_on(Port::A, 7, true);
 
+    // Stale-mailbox trap: RAM survives a reset, so a run that dies early leaves the previous
+    // message visible and every report after it is a lie. This marker proves which run wrote last.
+    mailbox::write(mailbox::Status::Info, b"scan: entered main");
+
+    mailbox::write(mailbox::Status::Info, b"scan: before new");
     let mut ble = match Bluetooth::new(&mut delay) {
         Ok(ble) => ble,
-        Err(_) => {
-            mailbox::write(mailbox::Status::Fail, b"scan: stack did not boot");
+        Err(e) => {
+            // The status code is the diagnosis: a generic "did not boot" cost a round trip.
+            let mut msg = [0u8; 48];
+            let mut at = 0;
+            const PREFIX: &[u8] = b"scan: boot failed ";
+            msg[at..at + PREFIX.len()].copy_from_slice(PREFIX);
+            at += PREFIX.len();
+            match e {
+                efr32mg24_radio::BleError::BgapiError(code) => {
+                    msg[at..at + 5].copy_from_slice(b"bgapi");
+                    at += 5;
+                    at = push_dec(&mut msg, at, u32::from(code));
+                }
+                other => {
+                    let _ = other;
+                    msg[at..at + 5].copy_from_slice(b"other");
+                    at += 5;
+                }
+            }
+            mailbox::write(mailbox::Status::Fail, &msg[..at]);
             loop {
                 cortex_m::asm::wfi();
             }
@@ -81,6 +151,7 @@ fn main() -> ! {
 
     // Active scanning also asks for a scan response, which is where a name usually lives when the
     // advertisement is full of manufacturer data.
+    mailbox::write(mailbox::Status::Info, b"scan: before scan");
     if ble
         .start_scan(SCAN_INTERVAL_MS, SCAN_WINDOW_MS, true)
         .is_err()
@@ -90,6 +161,8 @@ fn main() -> ! {
             cortex_m::asm::wfi();
         }
     }
+
+    mailbox::write(mailbox::Status::Pass, b"scan: after new");
 
     let mut heard: u32 = 0;
     let mut best_rssi: i8 = i8::MIN;

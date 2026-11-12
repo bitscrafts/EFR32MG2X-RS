@@ -81,16 +81,34 @@ impl Bluetooth {
     /// let mut ble = Bluetooth::new(&mut delay)?;
     /// ```
     pub fn new<D: DelayNs>(delay: &mut D) -> Result<Self, BleError> {
-        // Step 1: Start Bluetooth stack
-        unsafe {
-            let status = bt::sl_bt_system_start_bluetooth();
-            if status != 0 {
-                return Err(BleError::from(status));
-            }
+        // Step 1: start the host through the entry points this build actually has.
+        //
+        // `sl_bt_system_start_bluetooth()` is the obvious call and the wrong one here: the
+        // "on-demand start" component is not in this build, so it returns
+        // SL_STATUS_NOT_AVAILABLE (0x000E). Measured on the board; see `stack_init.rs`.
+        let status = unsafe { crate::stack_init::start(crate::stack_init::default_configuration()) };
+        if status != 0 {
+            return Err(BleError::from(status));
         }
 
-        // Step 2: Wait for stack initialization (required 100ms delay)
+        // Step 2: the stack emits `system_boot` when it is ready; give it time and then poll.
         delay.delay_ms(100);
+        let mut waited_ms = 0u32;
+        loop {
+            let mut evt = core::mem::MaybeUninit::<bt::sl_bt_msg_t>::uninit();
+            let popped = unsafe { bt::sl_bt_pop_event(evt.as_mut_ptr()) };
+            if popped == 0 {
+                let evt = unsafe { evt.assume_init() };
+                if evt.header == bt::sl_bt_evt_system_boot_id {
+                    break;
+                }
+            }
+            if waited_ms > 2_000 {
+                return Err(BleError::BgapiError(0xB007)); // boot event never arrived
+            }
+            delay.delay_ms(10);
+            waited_ms += 10;
+        }
 
         // Step 3: Create advertising set
         let mut advertising_set: u8 = 0;
