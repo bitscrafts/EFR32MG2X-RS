@@ -83,8 +83,8 @@ impl<'a> BitBangI2c<'a> {
         // Both pins become WIREDAND, keeping the other pins of the port untouched: a blind
         // write would reconfigure every other pin on the port, which is how a bus silently
         // breaks whatever else shares it.
-        let clear = !((0xF << (4 * bus.sda.trailing_zeros()))
-            | (0xF << (4 * bus.scl.trailing_zeros())));
+        let clear =
+            !((0xF << (4 * bus.sda.trailing_zeros())) | (0xF << (4 * bus.scl.trailing_zeros())));
         let set = (MODE_WIREDAND << (4 * bus.sda.trailing_zeros()))
             | (MODE_WIREDAND << (4 * bus.scl.trailing_zeros()));
         // The four MODEL registers are four different types, so the same write has to be
@@ -101,7 +101,11 @@ impl<'a> BitBangI2c<'a> {
             Port::D => set_mode!(gpio.portd_model()),
         };
         // Writing 1 releases the line: the pull-up does the rest.
-        self_write_dout(gpio, bus.port, self_read_dout(gpio, bus.port) | bus.sda | bus.scl);
+        self_write_dout(
+            gpio,
+            bus.port,
+            self_read_dout(gpio, bus.port) | bus.sda | bus.scl,
+        );
         Self { gpio, bus }
     }
 
@@ -206,7 +210,6 @@ impl<'a> BitBangI2c<'a> {
         Ok(())
     }
 }
-
 
 /// Read the output latch of a port.
 fn self_read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
