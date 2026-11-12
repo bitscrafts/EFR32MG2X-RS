@@ -1,0 +1,44 @@
+% Chapter 12: Bluetooth 5.3 Low Energy
+% File: chapters/chapter-12-bluetooth/chapter-12-bluetooth.tex
+
+\chapter{Phase D2: Bluetooth 5.3 Low Energy}
+\label{ch:chapter-12}
+\chapthumb{12}
+
+\begin{quote}
+    \textit{``A radio stack is the one part of an embedded project you do not write.''}
+\end{quote}
+
+Bluetooth on this part is not a peripheral. It is a second processor's worth of protocol logic,
+delivered as three binary libraries with a C API, and the job of a Rust project is to make that API
+usable without pretending to reimplement it.
+
+This chapter is that job, end to end: what the three blobs are, how the bindings are generated and
+where they lie, the symbols nobody but you can provide, and what a beacon and a GATT peripheral
+actually cost in code. Every claim here was measured on this board's SDK, and the places where it does
+not work yet are marked as such.
+
+\minitoc
+
+\clearpage
+
+\input{chapters/chapter-12-bluetooth/12.01-what-the-stack-is}
+\input{chapters/chapter-12-bluetooth/12.02-the-bridge}
+\input{chapters/chapter-12-bluetooth/12.03-the-symbols-nobody-provides}
+\input{chapters/chapter-12-bluetooth/12.04-beacon-and-gatt}
+\input{chapters/chapter-12-bluetooth/12.05-what-it-costs}
+
+\clearpage
+
+\begin{keytakeaways}
+    \item A Bluetooth stack arrives as binary blobs plus a C API. The Rust work is bindings, symbols
+          and a safe surface — not a protocol implementation.
+    \item The header and the blobs must be the same SDK version. A mismatch produces calls that exist
+          in the blob and not in the bindings, which reads like a typo and is not.
+    \item The blobs reference \codeinline{CORE\_*} helpers that the application must provide, and they
+          must be provided once for the whole binary, not once per stack.
+    \item Legacy advertising carries 31 bytes; a name plus a service UUID uses more than half of it,
+          and a builder that refuses an oversized payload is better than one that truncates.
+    \item A connectable stack pulls the bonding path, which needs a crypto library. That is a license
+          and a link problem, not an API problem.
+\end{keytakeaways}

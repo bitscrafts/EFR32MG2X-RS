@@ -1,0 +1,78 @@
+\section{The Symbols Nobody Provides}
+\label{sec:ble-symbols}
+
+The bindings compile, the blobs are in the link path, and the linker still fails — on functions that
+exist nowhere in the SDK's public surface. This section is the complete answer for this board, because
+it cost a full session to assemble.
+
+\subsection{The CMSIS Helpers}
+
+\begin{minted}{text}
+undefined symbol: CORE_EnterAtomic
+  >>> referenced by bgbuf.c.obj:(bgbuf_free)
+undefined symbol: CORE_ExitAtomic
+  >>> referenced by ll_hci.c.obj:(ll_hciDataFromHost)
+\end{minted}
+
+In a vendor project these are \codeinline{static inline} in the CMSIS headers, so the C compiler
+inlines them and no symbol is ever needed. The blob was compiled against those headers, so its object
+code contains \emph{references}, and the application is expected to provide the definitions.
+
+The definitions are four lines each, and the two that matter differ:
+
+\begin{minted}{c}
+uint32_t CORE_EnterCritical(void) { /* masks with BASEPRI */ }
+uint32_t CORE_EnterAtomic(void)   { /* masks with PRIMASK */ }
+\end{minted}
+
+\textbf{This difference is not cosmetic.} \codeinline{BASEPRI} masks interrupts at or below a chosen
+priority and leaves priority~0 running; \codeinline{PRIMASK} masks everything. A stack that enters a
+buffer-manipulating critical section with the wrong one still links, still works at idle, and corrupts
+its attribute buffer once a connection is active. Implement them from the CMSIS semantics, not from a
+guess about what ``critical'' means.
+
+\subsection{Provided Once, for Every Stack}
+
+This board links two blob families — Bluetooth and RAIL — and both want the same helpers. There are
+two ways to get that wrong:
+
+\begin{itemize}
+    \item \textbf{Compile the C file in each crate.} Two archives with the same symbols: either a
+          duplicate-symbol link error, or one silently wins and the other's semantics are lost.
+    \item \textbf{Give each its own copy.} Works, until the two copies drift and only one is updated.
+\end{itemize}
+
+This project's answer is a build-support crate that compiles the file once, which both stacks depend
+on. A crate with no Rust API, whose entire contract is ``linking me gives you these symbols'':
+
+\begin{minted}{toml}
+[dependencies]
+cmsis-stubs = { path = "../cmsis-stubs" }
+\end{minted}
+
+\subsection{The \#[link] Directive That Is Not Obvious}
+
+Having the crate as a dependency is not enough: nothing in Rust \emph{calls} those symbols, so the
+linker never pulls the archive in, and every symbol comes back undefined while the archive sits in the
+search path. The missing piece is an explicit directive:
+
+\begin{minted}{rust}
+#[link(name = "cmsis_stubs", kind = "static")]
+extern "C" {}
+\end{minted}
+
+Five lines that do nothing at runtime and everything at link time. They belong in the crate whose
+objects need the symbols — the bindings crate — not in the helper crate.
+
+\subsection{The Rule That Generalises}
+
+\begin{enumerate}
+    \item Read the link errors in full, once, and list every symbol. The linker names the object file
+          that wanted each one (\codeinline{bgbuf.c.obj}, \codeinline{ll_hci.c.obj}), which tells you
+          which layer is asking.
+    \item Decide, per symbol, whether it is \emph{data you must supply} (CMSIS, emlib) or \emph{a
+          library you must vendor} (PSA crypto). They have completely different fixes.
+    \item Supply data once for the whole binary; vendor libraries with their licence in mind.
+    \item Declare the link directive where the reference is, and comment why — because the next reader
+          will see an empty \codeinline{extern} block and delete it.
+\end{enumerate}

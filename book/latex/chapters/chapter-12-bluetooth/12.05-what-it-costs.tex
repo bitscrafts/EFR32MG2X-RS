@@ -1,0 +1,72 @@
+\section{What It Costs, and What Is Still Missing}
+\label{sec:ble-costs}
+
+A chapter about a radio stack that only reports successes would be useless. This one ends with the
+bill.
+
+\subsection{The Numbers}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.30\textwidth}p{0.22\textwidth}p{0.40\textwidth}@{}}
+        \toprule
+        \textbf{Example} & \textbf{Image size} & \textbf{What it needs} \\
+        \midrule
+        \codeinline{ble\_beacon} & ~5.9 KB & three blobs, the stubs, a delay \\
+        \codeinline{rail\_version} & ~1.3 KB & one blob, the stubs \\
+        \codeinline{ble\_gatt} & does not link & the above plus PSA crypto \\
+        \bottomrule
+    \end{tabular}
+    \caption{Measured with elf-load-range.py. The application is small; the blobs are
+    not, and they are what fills flash.}
+    \label{tab:ble-sizes}
+\end{table}
+
+The three Bluetooth blobs are on the order of a megabyte together. On a part with 1.5 MB of flash and
+a 24 KiB bootloader, that is affordable once — and it is the reason a project chooses BLE for a
+product rather than adding it ``just in case''.
+
+\subsection{The Gap That Must Be Named: PSA Crypto}
+
+A connectable stack references the PSA crypto API, and this SDK build does not ship it in the blobs.
+The eight symbols are:
+
+\begin{minted}{text}
+psa_crypto_init      psa_destroy_key       psa_import_key    psa_mac_abort
+psa_mac_sign_finish  psa_mac_sign_setup    psa_mac_update    psa_reset_key_attributes
+\end{minted}
+
+They come from Silicon Labs' \codeinline{libpsa\_crypto} and \codeinline{libmbedtls} builds, which are
+separate artefacts with their own licence terms. Until they are vendored, a GATT example is a staged
+file rather than a working one — and this book says so instead of shipping it as an example that
+``should work''.
+
+A project that does not need bonding can sometimes avoid the crypto path, but not by accident: the
+link tells you whether it has.
+
+\subsection{The Three Things to Verify Before Believing a BLE Build}
+
+\begin{enumerate}
+    \item \textbf{Version match.} The header and the blobs are from the same SDK. Check a symbol the
+          blob exports (\codeinline{arm-none-eabi-nm libbluetooth_host*.a | grep sl\_bt\_advertiser})
+          against the generated bindings.
+    \item \textbf{Link, not compile.} A \codeinline{-sys} crate that compiles proves nothing about
+          the blobs. Build one example that links.
+    \item \textbf{One real advertisement.} A phone that sees the name is the only proof that the
+          antenna, the crystal and the stack configuration agree. Everything below that is a build
+          check.
+\end{enumerate}
+
+\subsection{Where This Book Stands}
+
+\begin{minted}{text}
+bindings compile                    yes, with three documented workarounds
+beacon links                        yes
+beacon flashed and seen by a phone  not yet -- the next measurement
+GATT links                          no, PSA crypto missing
+RAIL links for version only         yes; RAIL_Init needs emlib sources
+\end{minted}
+
+Stating that plainly is the point. A chapter that claimed the last four were done would be worse than
+no chapter, because the next person would trust it.

@@ -1,0 +1,73 @@
+\section{A Beacon and a GATT Peripheral}
+\label{sec:ble-beacon}
+
+Two examples, two rungs. The beacon proves the stack boots and the antenna works; the GATT peripheral
+proves a connection, a subscription and a notification path. Everything else in Bluetooth is a
+variation on those.
+
+\subsection{The Beacon: Nine Lines and a Phone}
+
+\begin{minted}{rust}
+let mut ble = Bluetooth::beacon(&mut delay, "xiao-mg24")?;
+loop {
+    if ble.poll_event().is_some() {
+        led.on();  delay.delay_ms(20);  led.off();
+    }
+}
+\end{minted}
+
+What has to be true for a phone to see the name:
+
+\begin{enumerate}
+    \item \textbf{The stack boots.} \codeinline{Bluetooth::new} resets the controller and waits for
+          \codeinline{system\_boot}. If the HFXO never settles, this times out — a board fault, not a
+          radio one.
+    \item \textbf{The payload fits.} Legacy advertising carries \textbf{31 bytes} per PDU. A complete
+          name costs \codeinline{2 + len}; a 128-bit UUID costs 18; the flags cost 3. A name of 20
+          characters and a 16-bit service UUID is already 27 of the 31.
+    \item \textbf{Advertising actually starts.} \codeinline{start\_advertising} returns a status; a
+          non-zero status is a refusal, and the reason is in the event queue, not in the return value.
+\end{enumerate}
+
+\subsection{The GATT Peripheral: Four Steps and Four Traps}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.24\textwidth}p{0.34\textwidth}p{0.38\textwidth}@{}}
+        \toprule
+        \textbf{Step} & \textbf{What it does} & \textbf{The trap} \\
+        \midrule
+        advertise connectable & sets the connectable flag in the PDU & a beacon's PDU is
+        non-connectable; a phone times out with no explanation \\
+        wait for \codeinline{Connected} & gives you the connection handle & the handle is not the
+        advertising set handle, and they are both small integers \\
+        wait for a write on the CCC & the client subscribed & a notification sent before this is
+        dropped by the stack, not queued \\
+        notify & pushes a value & the transmit queue is finite: refusals must be counted, not ignored \\
+        \bottomrule
+    \end{tabular}
+    \caption{Four steps, four traps. Three of the four produce no error — the value simply does not
+    arrive.}
+    \label{tab:ble-gatt}
+\end{table}
+
+\subsection{Counting Refusals Is the Whole Discipline}
+
+\begin{minted}{rust}
+match ble.notify(handle, &payload) {
+    Ok(()) => notified += 1,
+    Err(_) => refused += 1,
+}
+\end{minted}
+
+A product that silently loses measurements is worse than one that reports them late. The counter is
+the difference between ``the phone did not get them'' and ``the board could not send them'', and it is
+the first thing to read when a client reports gaps.
+
+\subsection{The Beacon Is the Debugging Instrument}
+
+Before writing the GATT path, prove the beacon. It exercises the same stack, the same blob, the same
+antenna and the same boot sequence, and it fails for a strictly smaller set of reasons. A project
+that debugs connectable advertising and beacon advertising at the same time is debugging two things
+at once with one symptom.

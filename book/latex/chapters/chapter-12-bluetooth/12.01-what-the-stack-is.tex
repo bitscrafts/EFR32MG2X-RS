@@ -1,0 +1,72 @@
+\section{What the Stack Actually Is}
+\label{sec:ble-what}
+
+Before writing a line of binding code, three questions: what is in the binary, how do you talk to it,
+and what does it expect you to do.
+
+\subsection{Three Libraries, One Protocol}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.34\textwidth}p{0.26\textwidth}p{0.34\textwidth}@{}}
+        \toprule
+        \textbf{Library} & \textbf{What it is} & \textbf{Size on this part} \\
+        \midrule
+        \codeinline{libbluetooth\_controller} & link layer: radio, timing, packets & ~600 KB \\
+        \codeinline{libbluetooth\_host} & GAP, GATT, SM: the protocol logic & ~700 KB \\
+        \codeinline{libbgcommon} & shared buffers, BGAPI parsing & ~40 KB \\
+        \bottomrule
+    \end{tabular}
+    \caption{The three blobs of a Gecko SDK 4.x Bluetooth build. There is no fourth: the profiles and
+    services you need are your code.}
+    \label{tab:ble-blobs}
+\end{table}
+
+Together they are larger than most applications on this part, which is why a project chooses
+Bluetooth deliberately rather than by default. All three are MSLA licensed and therefore not in this
+book's repository; a clean checkout compiles the bindings and fails at link with a list of missing
+symbols, which is the correct behaviour.
+
+\subsection{BGAPI: Commands In, Events Out}
+
+The API is asynchronous and message-based, and both halves matter:
+
+\begin{minted}{text}
+command:  sl_bt_advertiser_set_data(handle, ...)   ->  sl_status_t (immediate)
+reply:    sl_bt_evt_advertiser_set_data_complete   (later, in the event queue)
+\end{minted}
+
+Every command returns a status that says ``accepted'' or ``refused'' — never ``done''. The completion
+arrives as an event, and an application that does not drain the event queue eventually stops being
+able to send commands, because the queue is finite and the stack does not grow it.
+
+\begin{minted}{rust}
+loop {
+    if let Some(event) = ble.poll_event() {
+        match event { /* Connected, Disconnected, GattWrite, ... */ }
+    }
+}
+\end{minted}
+
+That loop is not optional and it is not decoration: it is the other half of every call.
+
+\subsection{What the Stack Assumes You Have Done}
+
+The blobs are written for a vendor project, and they assume the surrounding C world exists:
+
+\begin{itemize}
+    \item \textbf{Clocks.} The radio needs the HFXO; the stack enables it, but if the crystal never
+          settles the boot event never arrives.
+    \item \textbf{Critical sections.} The CMSIS \codeinline{CORE\_*} helpers, which in a vendor
+          project come from headers as \codeinline{static inline}.
+    \item \textbf{An event loop.} Yours.
+    \item \textbf{Memory.} Fixed buffers inside the blobs, sized by the stack configuration in the
+          header. A Rust project cannot change them without regenerating that configuration.
+    \item \textbf{Crypto} — for any connectable, bondable device, a PSA implementation the blob calls
+          but does not contain.
+\end{itemize}
+
+None of that is in the API documentation, and all of it appears as a link error or a timeout on first
+use. Section~\ref{sec:ble-symbols} is about the link errors; section~\ref{sec:ble-beacon} is about the
+timeouts.

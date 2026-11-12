@@ -1,0 +1,78 @@
+\section{The Bridge: bindgen Over a Vendor Header}
+\label{sec:ble-bridge}
+
+Generating Rust bindings from \codeinline{sl_bt_api.h} is one command and three surprises. All three
+of this project's were compile errors in the wrapper, and all three are the kind that look like
+mistakes in your own code.
+
+\subsection{Surprise 1: The Union Is Emulated}
+
+The header declares its event payload as an \emph{anonymous} union inside a struct. bindgen
+represents anonymous unions with \codeinline{\_\_BindgenUnionField<T>}, regardless of the Rust target
+requested — measured: adding \codeinline{.rust\_target(Stable\_1\_71)} left the generated file
+byte-identical.
+
+The consequence is 18 errors of the form:
+
+\begin{minted}{text}
+error[E0609]: no field `connection` on type
+              `&__BindgenUnionField<sl_bt_evt_connection_opened_s>`
+\end{minted}
+
+The fix is not a bindgen flag. It is to read the payload the way the emulation requires:
+
+\begin{minted}{rust}
+// before: reads the wrapper as if it were the union
+let data = &evt.data.evt_connection_opened;
+
+// after: says out loud that the active member is the caller's responsibility
+let data = unsafe { evt.data.evt_connection_opened.as_ref() };
+\end{minted}
+
+That \codeinline{unsafe} is the correct amount of friction. Reading a union is unsafe because nothing
+checks that the member you chose is the one the sender wrote — and the event ID is the only thing that
+tells you.
+
+\subsection{Surprise 2: A Flexible Array Member Is Not a Slice}
+
+\begin{minted}{text}
+pub struct uint8array {
+    pub len: u8,                        // "< Number of bytes stored in data"
+    pub data: __IncompleteArrayField<u8>,
+}
+\end{minted}
+
+\codeinline{data} has no length and no \codeinline{Index}, so \codeinline{data.value.data[i]} does
+not compile. The bytes are read through the pointer, with the length taken from the header's own
+field:
+
+\begin{minted}{rust}
+let byte = unsafe { data.value.data.as_ptr().add(i).read() };
+\end{minted}
+
+Two facts worth keeping: the length is authoritative (it was written by the sender), and the pointer
+arithmetic is the only way to reach a flexible array — which is exactly why C APIs that return them
+need a total-length parameter somewhere.
+
+\subsection{Surprise 3: One Field, Two Names}
+
+\begin{minted}{text}
+sl_bt_evt_gatt_server_attribute_value_t      ->  attribute: u16
+sl_bt_evt_gatt_server_user_read_request_t    ->  characteristic: u16
+\end{minted}
+
+The same 16-bit attribute handle, named differently in two events of the same SDK version. A wrapper
+that assumes one name fails to compile on the other, and a wrapper that ``fixes'' it by renaming the
+Rust type breaks the one that was right.
+
+The project's rule: convert at the boundary, once, with a comment naming both spellings. The
+application-facing type has one field, \codeinline{attribute}, and the FFI layer knows about the
+vendor's inconsistency so nothing above it has to.
+
+\subsection{What the Generated Code Is Good For}
+
+With those three handled, the bindings are genuinely useful in the way the SVD's are: every field
+carries the header's doc comment, so \codeinline{cargo doc} shows the vendor's own description of the
+value you are about to write. That is the strongest argument for generating bindings rather than
+hand-writing them — not the function signatures, which are mechanical, but the documentation that
+travels with them.
