@@ -20,25 +20,10 @@
 use efr32mg24_pac as pac;
 
 use super::{BusError, I2cBus};
+use crate::pin::{read_din, read_dout, write_dout, Port};
 
 /// Half-bit delay in CPU cycles (~5 us at 19 MHz): sets the bus clock.
 const HALF_BIT_CYCLES: u32 = 60;
-
-/// Which GPIO port a bus is on.
-///
-/// The HAL does not know which pins a board uses; it only knows how to drive a port. The
-/// BSP supplies the port and the two bit masks.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Port {
-    /// PORTA.
-    A,
-    /// PORTB.
-    B,
-    /// PORTC.
-    C,
-    /// PORTD.
-    D,
-}
 
 /// The two pins of a bit-banged bus, as bit masks on one port.
 ///
@@ -101,10 +86,10 @@ impl<'a> BitBangI2c<'a> {
             Port::D => set_mode!(gpio.portd_model()),
         };
         // Writing 1 releases the line: the pull-up does the rest.
-        self_write_dout(
+        write_dout(
             gpio,
             bus.port,
-            self_read_dout(gpio, bus.port) | bus.sda | bus.scl,
+            read_dout(gpio, bus.port) | bus.sda | bus.scl,
         );
         Self { gpio, bus }
     }
@@ -114,7 +99,7 @@ impl<'a> BitBangI2c<'a> {
     }
 
     fn set(&self, sda_low: bool, scl_low: bool) {
-        let mut bits = self_read_dout(self.gpio, self.bus.port);
+        let mut bits = read_dout(self.gpio, self.bus.port);
         bits = if sda_low {
             bits & !self.bus.sda
         } else {
@@ -125,18 +110,12 @@ impl<'a> BitBangI2c<'a> {
         } else {
             bits | self.bus.scl
         };
-        self_write_dout(self.gpio, self.bus.port, bits);
+        write_dout(self.gpio, self.bus.port, bits);
         self.delay();
     }
 
     fn sda_high(&self) -> bool {
-        let din = match self.bus.port {
-            Port::A => self.gpio.porta_din().read().bits(),
-            Port::B => self.gpio.portb_din().read().bits(),
-            Port::C => self.gpio.portc_din().read().bits(),
-            Port::D => self.gpio.portd_din().read().bits(),
-        };
-        din & self.bus.sda != 0
+        read_din(self.gpio, self.bus.port) & self.bus.sda != 0
     }
 
     fn start(&self) {
@@ -209,26 +188,6 @@ impl<'a> BitBangI2c<'a> {
         self.stop();
         Ok(())
     }
-}
-
-/// Read the output latch of a port.
-fn self_read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
-    match port {
-        Port::A => gpio.porta_dout().read().bits(),
-        Port::B => gpio.portb_dout().read().bits(),
-        Port::C => gpio.portc_dout().read().bits(),
-        Port::D => gpio.portd_dout().read().bits(),
-    }
-}
-
-/// Write the output latch of a port.
-fn self_write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bits: u32) {
-    match port {
-        Port::A => gpio.porta_dout().write(|w| unsafe { w.bits(bits) }),
-        Port::B => gpio.portb_dout().write(|w| unsafe { w.bits(bits) }),
-        Port::C => gpio.portc_dout().write(|w| unsafe { w.bits(bits) }),
-        Port::D => gpio.portd_dout().write(|w| unsafe { w.bits(bits) }),
-    };
 }
 
 impl I2cBus for BitBangI2c<'_> {
