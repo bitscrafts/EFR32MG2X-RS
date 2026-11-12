@@ -59,3 +59,39 @@ has to receive. That is the RAIL BLE path, not the Bluetooth stack — see `BLE-
 A phone shows a name in a list, which answers "did something arrive". The host adapter answers "what
 arrived, on which channel, at which address, with which payload", and it can do it unattended, which
 means a test that runs while nobody is looking at the board.
+
+## The advertisement we control, and why bluetoothctl was not enough
+
+`bluetoothctl advertise on` produces an advertisement with **flags only** — a scanner shows an
+unnamed address (`*.44:56` in nRF Connect), which answers "is the radio on" and nothing else.
+
+`scripts/host-advertise.sh` writes the HCI commands directly:
+
+```
+02 01 06                        flags: LE general discoverable
+08 09 6C 6E 78 2D 62 6C 65      complete local name "lnx-ble"
+07 FF FF FF 58 49 41 4F         manufacturer data, company 0xFFFF, payload "XIAO"
+```
+
+Company id `0xFFFF` is reserved for testing, which is the honest choice here: a test payload must not
+look like a real product identifier.
+
+Two mistakes this cost, both caught by the controller rather than by me:
+
+1. The AD structure is `[length][type][data]`, with the length counting the type byte. Writing
+   `09 08 <name>` instead of `08 09 <name>` produced a structure whose type byte was a length — the
+   controller still answered Success, because the bytes are legal, just wrong. That is the dangerous
+   class: accepted, and meaningless.
+2. `LE Set Advertising Parameters` takes **15** bytes: two intervals, advertisement type, own address
+   type, peer address type, six peer address bytes, channel map, filter policy. Sending 14 answered
+   `Invalid HCI Command Parameters (0x12)` — the safe class, refused loudly.
+
+Verified after the fix:
+
+```
+LE Set Advertising Parameters  Status: Success (0x00)
+LE Set Advertising Data        Status: Success (0x00)
+LE Set Advertise Enable        Status: Success (0x00)
+```
+
+and a phone, as a receiver built by somebody else, lists `lnx-ble`.
