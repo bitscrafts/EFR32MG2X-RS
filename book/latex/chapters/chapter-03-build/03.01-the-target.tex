@@ -1,0 +1,72 @@
+\section{The Target Triple, Decoded}
+\label{sec:build-target}
+
+\codeinline{thumbv8m.main-none-eabihf} is four decisions in one string, and three of them can be
+wrong in ways that still compile.
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.22\textwidth}p{0.30\textwidth}p{0.42\textwidth}@{}}
+        \toprule
+        \textbf{Part} & \textbf{Means} & \textbf{If you get it wrong} \\
+        \midrule
+        \codeinline{thumbv8m} & ARMv8-M | ARMv8-M Baseline & \codeinline{armv7m} links, then traps on an instruction the core has \\
+        \codeinline{main} & mainline, not baseline & baseline drops the DSP and FPU instructions you may be using \\
+        \codeinline{none} & no OS, no libc & \codeinline{std} becomes available and fails deep in linking \\
+        \codeinline{eabihf} & hard-float ABI & \codeinline{eabi} links and quietly passes floats in the wrong registers \\
+        \bottomrule
+    \end{tabular}
+    \caption{The four decisions. Only the last one fails \emph{quietly}.}
+    \label{tab:target-triple}
+\end{table}
+
+\subsection{Hard Float, and Why It Matters Here}
+
+The EFR32MG24 has a single-precision FPU (FPv5-SP). \codeinline{eabihf} tells the compiler it may
+pass floating-point arguments in \codeinline{s0}--\codeinline{s15} and may emit FPU instructions
+directly. With \codeinline{eabi} the same source compiles to calls into soft-float helpers, links
+perfectly, and runs several times slower on exactly the arithmetic this project's classifier uses.
+
+There is one trap on the way in: \codeinline{-mfpu} and \codeinline{-mfloat-abi} flags that
+\emph{conflict} with the target's own choice produce a warning on every build — ``switch
+\codeinline{-mcpu=cortex-m33} conflicts with switch \codeinline{-march=armv8-m.main+fp}''. That
+warning is not harmless: it appeared once per C file in this project and buried the real warnings
+under it. The flags belong to the target; a build script adding its own is duplicating a decision it
+does not own.
+
+\subsection{The Toolchain, in Files}
+
+\begin{minted}{bash}
+# the target must be installed once
+rustup target add thumbv8m.main-none-eabihf
+
+# .cargo/config.toml decides the default target and the runner
+[build]
+target = "thumbv8m.main-none-eabihf"
+
+[target.thumbv8m.main-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.x"]
+\end{minted}
+
+\codeinline{link.x} comes from \codeinline{cortex-m-rt}, and it is the file that reads
+\codeinline{memory.x} and lays the image out. That indirection is why a wrong \codeinline{memory.x}
+produces no error: \codeinline{link.x} simply places the sections where it was told to.
+
+\subsection{Per-Crate Features, Not Per-Crate Flags}
+
+A workspace with several crates that must not duplicate the vector table uses a feature to decide
+which \emph{one} of them pulls \codeinline{cortex-m-rt}:
+
+\begin{minted}{toml}
+# the HAL exposes the runtime but does not enable it by default
+[features]
+rt = ["dep:cortex-m-rt"]
+
+# examples turn it on; there is exactly one #[entry] per binary
+efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+\end{minted}
+
+Without that split, two crates in one binary each define \codeinline{Reset} and the link fails with a
+duplicate symbol that names neither crate. With it, the rule is explicit: a library may know about
+the runtime; only a final binary may install it.

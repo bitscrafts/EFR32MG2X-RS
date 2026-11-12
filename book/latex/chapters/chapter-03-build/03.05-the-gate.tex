@@ -1,0 +1,68 @@
+\section{The Gate: What Runs Without a Board}
+\label{sec:build-gate}
+
+A project with hardware has a scheduling problem: the compiler is available constantly, the board is
+available sometimes. Anything that needs the board gets deferred, and deferred checks do not happen.
+The answer this project uses is a single script that runs everything that does not need hardware.
+
+\subsection{What It Checks}
+
+\begin{minted}{text}
+$ bash scripts/gate.sh
+PASS  cargo fmt --all --check
+PASS  efr32mg24-hal clippy, 0 warnings
+PASS  efr32mg24-pac clippy, 0 warnings
+PASS  xiao-expansion-base-bsp clippy, 0 warnings
+PASS  xiao-mg24-bsp clippy, 0 warnings
+PASS  motion-detection clippy, 0 warnings
+PASS  efr32mg24-hal: 5 examples of its own level
+PASS  efr32mg24-pac: 19 examples of its own level
+PASS  xiao-expansion-base-bsp: 9 examples of its own level
+PASS  motion-detection: host tests (9 passed)
+PASS  motion-detection: no hardware dependency
+PASS  examples outside the PAC crate name no PAC type
+PASS  no BSP re-exports the PAC
+PASS  the HAL exposes no register block publicly
+PASS  no example steals a core peripheral
+VERDICT: PASS
+\end{minted}
+
+Every line is a property, not a command. That distinction matters: a script that runs
+\codeinline{cargo clippy} tells you a tool ran; a line that says \emph{zero warnings in five crates}
+tells you what is true.
+
+\subsection{The Discovered-vs-Listed Rule}
+
+The first version of this gate had a hard-coded list of crates, and the crate that most needed
+checking was the one that was not on it. The version in use \emph{discovers} crates:
+
+\begin{minted}{bash}
+for dir in crates/*/ libraries/*/; do
+  [ -f "${dir}Cargo.toml" ] || continue
+  name=$(basename "$dir")
+  ...
+done
+\end{minted}
+
+A list is a snapshot of what existed when someone wrote it. Discovery cannot fall behind — which is
+exactly what a check is for.
+
+\subsection{The Rule Nobody Wrote Down}
+
+The most valuable check in that output is the one that sounds odd: \textbf{every crate must have at
+least one example of its own level}.
+
+\begin{itemize}
+    \item An API with zero examples passes every other check trivially — it compiles, it lints, and
+          nothing calls it.
+    \item It then rots silently: in this project a whole board module spent weeks documented and
+          unbuildable, and the only symptom was that nobody used it.
+    \item The check is cheap and it fails loudly, which is the entire point of a gate.
+\end{itemize}
+
+\subsection{What a Gate Cannot Do}
+
+It cannot tell you the LED lit. This project's gate was green on a firmware that flashed successfully
+and did not blink — four green steps, no light. That is not a failure of the gate; it is the boundary
+of what a build-time check can know, and it is why the hardware checks in chapter~14 exist as a
+separate, written procedure with its own measurements.

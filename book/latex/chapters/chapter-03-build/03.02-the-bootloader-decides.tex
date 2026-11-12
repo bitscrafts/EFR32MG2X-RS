@@ -1,0 +1,81 @@
+\section{The Bootloader Decides Your Memory Layout}
+\label{sec:build-bootloader}
+
+The single most dangerous line in an embedded project is the \codeinline{ORIGIN} of the flash region,
+and it is usually copied from a tutorial for a board with no bootloader.
+
+\subsection{What Is at the Base of Flash}
+
+This board ships with a Gecko Bootloader occupying the first 24 KiB. On the EFR32MG24 flash begins at
+\codeinline{0x08000000}, so:
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.26\textwidth}p{0.26\textwidth}p{0.42\textwidth}@{}}
+        \toprule
+        \textbf{Region} & \textbf{Addresses} & \textbf{Owner} \\
+        \midrule
+        Bootloader & \codeinline{0x08000000}--\codeinline{0x08005FFF} & factory; never written by this project \\
+        Application & \codeinline{0x08006000}--end & every image in this book \\
+        \bottomrule
+    \end{tabular}
+    \caption{24 KiB that a linker script must not touch.}
+    \label{tab:flash-map}
+\end{table}
+
+\subsection{The Wrong memory.x, and What It Does}
+
+The version that appeared in this project's first draft of the book — copied from a generic
+\codeinline{cortex-m} example — read:
+
+\begin{minted}{text}
+MEMORY
+{
+  FLASH (rx) : ORIGIN = 0x00000000, LENGTH = 1536K
+  RAM  (rwx) : ORIGIN = 0x20000000, LENGTH = 256K
+}
+\end{minted}
+
+Every line is wrong for this board, and none of them produces an error. The linker happily lays the
+image out from address zero, the programmer writes it exactly there, the write verifies — and the
+board no longer boots, because the bootloader that was at zero has been replaced by an application
+that expects to be at \codeinline{0x08006000}.
+
+\subsection{The Version in Use}
+
+\begin{minted}{text}
+MEMORY
+{
+  /* The Gecko bootloader owns 0x08000000..0x08005FFF. An application that starts
+     below 0x08006000 overwrites it. */
+  FLASH (rx)  : ORIGIN = 0x08006000, LENGTH = 1536K - 24K
+  /* The mailbox at 0x2003F000 is a convention shared by every example; the stack
+     is placed below it so a deep call cannot scribble over the report. */
+  RAM   (rwx) : ORIGIN = 0x20000000, LENGTH = 252K
+}
+
+_stack_start = ORIGIN(RAM) + LENGTH(RAM) - 4096;
+\end{minted}
+
+Both numbers are deliberate: 252K rather than 256K because the top 4 KiB are reserved, and
+\codeinline{\_stack\_start} is below the mailbox so a stack overflow corrupts a report rather than the
+data being reported.
+
+\subsection{The Rule, Enforced in a Script}
+
+A comment is not protection. The project has two mechanical guards:
+
+\begin{minted}{bash}
+# 1. where would this image land?
+python3 scripts/elf-load-range.py target/thumbv8m.main-none-eabihf/release/examples/pac_led_blink
+# load_min=0x08006000 load_max=0x08006523 size=1316 segments=3
+
+# 2. refuse anything below the bootloader boundary, before writing
+bash scripts/flash.sh "$ELF"          # dry run: prints the plan, refuses load_min < 0x08006000
+bash scripts/flash.sh "$ELF" --confirm
+\end{minted}
+
+The first command is the one worth internalising: \textbf{read the load addresses before every flash},
+not after a board stops answering. It takes one second and it is the difference between a mistake and
+a brick.

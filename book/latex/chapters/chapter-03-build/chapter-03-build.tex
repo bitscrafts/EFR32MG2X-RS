@@ -1,0 +1,44 @@
+% Chapter 3: Build Systems
+% File: chapters/chapter-03-build/chapter-03-build.tex
+
+\chapter{Build Systems and Cross-Compilation Setup}
+\label{ch:chapter-03}
+\chapthumb{3}
+
+\begin{quote}
+    \textit{``A build that succeeds is not evidence that it built what you wrote.''}
+\end{quote}
+
+Cross-compiling for a microcontroller means four things have to agree: the target triple, the memory
+layout, the linker's idea of what a loadable segment is, and the image the programmer writes. When
+they disagree, the build still succeeds — that is the nature of linker scripts — and the board either
+does nothing or, in the worst case, no longer boots.
+
+This chapter is the whole chain for this board, with the two build defects that produced a green log
+and a wrong artefact.
+
+\minitoc
+
+\clearpage
+
+\input{chapters/chapter-03-build/03.01-the-target}
+\input{chapters/chapter-03-build/03.02-the-bootloader-decides}
+\input{chapters/chapter-03-build/03.03-nmagic}
+\input{chapters/chapter-03-build/03.04-builds-that-lie}
+\input{chapters/chapter-03-build/03.05-the-gate}
+
+\clearpage
+
+\begin{keytakeaways}
+    \item The triple is \codeinline{thumbv8m.main-none-eabihf}: ARMv8-M mainline, no OS, hardware
+          float. Getting the float ABI wrong links but produces a slow, subtly different binary.
+    \item The bootloader owns the first 24 KiB. \codeinline{memory.x} starts flash at
+          \codeinline{0x08006000}, and a script refuses any image that would start lower.
+    \item \codeinline{--nmagic} is not optional: without it the linker emits a segment whose file
+          offset disagrees with its load address, and the programmer writes to the wrong place.
+    \item Two builds lied in this project: a \codeinline{build.rs} that did not watch its own C file,
+          and a book build that compiled yesterday's sources because of a missing
+          \codeinline{--strip-components}.
+    \item A gate that runs without the board is worth more than a checklist, because it runs every
+          time.
+\end{keytakeaways}

@@ -1,0 +1,59 @@
+\section{--nmagic, or the Linker's Idea of a Segment}
+\label{sec:build-nmagic}
+
+This section documents the least intuitive flag in the whole chain, because without it the image is
+built, verified, and written to the wrong place.
+
+\subsection{What the Linker Does by Default}
+
+ELF loadable segments carry two addresses: a virtual address (\codeinline{VMA}, where the code expects
+to run) and a physical address (\codeinline{LMA}, where the bytes must land in memory). For flash that
+is always 1:1 — you cannot relocate code that runs from flash.
+
+A linker aiming at an operating system still aligns segments to page boundaries, and to do that it
+gives the segment an \emph{offset} that no longer matches its load address. An OS loader compensates;
+a bare-metal programmer does not, and writes the file's bytes at the segment's file offset while the
+code expects them at the segment's address.
+
+\subsection{The Symptom, Measured}
+
+\begin{minted}{text}
+# with a default link: the loadable segment's file offset is 0x1000, its address is 0x08006000
+probe-rs download image.elf        # writes bytes at the wrong offset
+probe-rs verify image.elf          # verifies the same wrong offsets: it agrees with itself
+                                   # the board does not run
+\end{minted}
+
+This is the failure that teaches the difference between ``verified'' and ``correct''. The programmer
+compares the flash against the file it just wrote. If the file was written at the wrong offset by a
+consistent rule, both sides agree and the check passes.
+
+\subsection{The Fix, and Why It Is One Flag}
+
+\begin{minted}{text}
+# in .cargo/config.toml, or as a link argument
+rustflags = ["-C", "link-arg=--nmagic"]
+\end{minted}
+
+\codeinline{--nmagic} tells the linker not to align segments and not to pad them — the image is flat,
+VMA equals LMA for every loadable segment, and the programmer's naive write is correct. Every bare
+metal Rust project needs it and most tutorials omit it, because their toolchain's runner happens to
+compensate.
+
+\subsection{Checking the Invariant Instead of Trusting the Flag}
+
+The project's inspection script prints exactly what matters, so the flag is verified rather than
+believed:
+
+\begin{minted}{bash}
+python3 scripts/elf-load-range.py "$ELF"
+# for each PT_LOAD: paddr == vaddr, and load_min >= 0x08006000
+#   seg paddr=0x08006158 vaddr=0x08006158 filesz=5400
+#   seg paddr=0x08007670 vaddr=0x08007670 filesz=108
+#   seg paddr=0x080076DC vaddr=0x20000000 filesz=4     <- the .data initialiser
+\end{minted}
+
+Three lines, and two facts read directly off them: every code segment has \codeinline{paddr == vaddr}
+(the flag worked), and \codeinline{load\_min} is above the bootloader (the memory map is right). The
+third segment is the initialiser for \codeinline{.data}, which correctly has a flash address and a RAM
+address — that one is supposed to differ.

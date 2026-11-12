@@ -1,0 +1,74 @@
+\section{Builds That Lie}
+\label{sec:builds-that-lie}
+
+Two defects in this project had the same shape, and it is the most dangerous shape a build system can
+have: \textbf{the build succeeded, and the artefact was not what the sources said.}
+
+\subsection{Case 1: A build.rs That Did Not Watch Its Own C File}
+
+A C file compiled by the \codeinline{cc} crate, used to provide symbols the vendor blobs reference:
+
+\begin{minted}{rust}
+// build.rs — the version that lied
+cc::Build::new().file("src/cmsis_stubs.c").compile("cmsis_stubs");
+println!("cargo:rerun-if-changed=blobs/");
+println!("cargo:rerun-if-changed=vendor/");
+\end{minted}
+
+Editing \codeinline{src/cmsis_stubs.c} changed nothing. Cargo had no reason to re-run the script, the
+old object file stayed, and the link failed on a symbol that was visibly present in the source — with
+a message that sends you looking at the blob instead of the build.
+
+\begin{minted}{rust}
+// the version that tells the truth
+println!("cargo:rerun-if-changed=src/cmsis_stubs.c");
+\end{minted}
+
+The general rule: \textbf{any file a build script reads or compiles is an input, and an input it does
+not declare is an input the build ignores.} Cargo does not scan your script for file paths.
+
+\subsection{Case 2: A Book That Compiled Yesterday's Sources}
+
+This book is built in a container on a different machine, from a tarball:
+
+\begin{minted}{bash}
+# the version that lied: extracts to efr32book/book/latex/
+tar cf - book/latex | ssh host 'cd ~/efr32book && tar xf -'
+
+# ...while the container compiles efr32book/latex/, so every build used the previous copy
+podman exec --workdir /workspace/efr32book/latex tex xelatex main.tex
+\end{minted}
+
+The path \codeinline{book/latex} is preserved by \codeinline{tar}, the compile directory is not, and
+the two never met. A whole section was written, ``built'' successfully, and did not appear in the PDF.
+
+The fix is one flag plus one check:
+
+\begin{minted}{bash}
+tar cf - book/latex | ssh host 'cd ~/efr32book && tar xf - --strip-components=1'
+
+# and then prove it, before compiling
+md5sum book/latex/chapters/.../01.08-layer-boundaries.tex
+ssh host 'md5sum ~/efr32book/latex/chapters/.../01.08-layer-boundaries.tex'   # must match
+\end{minted}
+
+\subsection{The Pattern Behind Both}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.30\textwidth}p{0.28\textwidth}p{0.34\textwidth}@{}}
+        \toprule
+        \textbf{Lie} & \textbf{What you see} & \textbf{What catches it} \\
+        \midrule
+        unwatched input & link error naming a symbol you wrote & \codeinline{rerun-if-changed} on every input \\
+        wrong extraction path & success, no new content & compare a hash before compiling \\
+        cached artefact & old behaviour at new code & clean the package, or watch the log for the crate \\
+        \bottomrule
+    \end{tabular}
+    \caption{Three ways to build the wrong thing, and the one-line check for each.}
+    \label{tab:build-lies}
+\end{table}
+
+The common answer is the same in all three cases: \textbf{verify that the thing being built is the
+thing you wrote.} It is a one-line check, and it is cheaper than any of the afternoons it saves.
