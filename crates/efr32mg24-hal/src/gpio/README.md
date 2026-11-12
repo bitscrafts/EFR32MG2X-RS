@@ -1,3 +1,8 @@
+<!-- Corrected 2026-11-12: this file described PB2 as the LED and PB1 as the button. Measured
+on the board: the user LED is PA7 and it is active LOW, and the button is on the Expansion
+Base's PC1. PB2/PB3 are the Sense module's IMU bus. The wrong pins in this file were exactly
+the kind of claim that costs a session. -->
+
 # GPIO Module (A1-GPIO)
 
 **Identifier**: A1-GPIO
@@ -59,7 +64,7 @@ The EFR32MG24B220 (48-pin QFN package - XIAO MG24) provides 4 GPIO ports:
 | Port | Available Pins | Notes |
 |------|----------------|-------|
 | Port A | PA0-PA8 | General purpose I/O |
-| Port B | PB0-PB4 | Includes LED (PB2) and button on XIAO MG24 |
+| Port B | PB0-PB4 | IMU bus on the Sense module (SDA PB2, SCL PB3), with external pull-ups |
 | Port C | PC0-PC3 | General purpose I/O |
 | Port D | PD0-PD3 | General purpose I/O |
 
@@ -95,8 +100,8 @@ Each GPIO pin supports:
 ```mermaid
 graph TD
     subgraph "XIAO MG24 - Key Pins"
-        PB2[PB2 - LED Built-in]
-        PB1[PB1 - Button Optional]
+        PA7[PA7 - user LED, active LOW]
+        PC1[PC1 - Expansion Base button, to ground]
         PA5[PA5 - I2C SDA]
         PA6[PA6 - I2C SCL]
         PA8[PA8 - USART TX]
@@ -105,8 +110,8 @@ graph TD
 ```
 
 Key pins on XIAO MG24:
-- **PB2**: Built-in LED (active high)
-- **PB1**: User button (if connected, typically active low with pull-up)
+- **PA7**: the user LED, **active low** (writing 0 lights it)
+- **PC1**: the Expansion Base button, shorts to ground, reads high at restll-up)
 - **PA5/PA6**: I2C SDA/SCL
 - **PA8/PA0**: USART TX/RX for serial communication
 
@@ -162,7 +167,7 @@ let frozen_clocks = clocks.freeze(cmu);
 // GPIO split now requires clocks reference
 let gpio = dp.gpio_s.split(&frozen_clocks);
 
-// Configure PB2 as output (built-in LED on XIAO MG24)
+// Configure PA7 as output (user LED on XIAO MG24, active low)
 let mut led = gpio.portb.pb2.into_push_pull_output();
 
 loop {

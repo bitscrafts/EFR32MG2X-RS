@@ -1,4 +1,9 @@
 //! I2C Master Mode Driver
+//! **This driver does not work on this die.** The on-chip I2C0 master accepts a read and
+//! never delivers a byte; fourteen measurements are recorded in
+//! `docs/04-reference/I2C0-READ-DEFECT.md`. The transport used everywhere in this workspace is
+//! `crate::bus::BitBangI2c`. Kept for whoever picks the investigation up.
+//!
 //!
 //! This module provides a hardware abstraction layer for the EFR32MG24 I2C peripherals
 //! in master mode with support for 7-bit addressing.

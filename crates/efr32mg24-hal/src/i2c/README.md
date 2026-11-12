@@ -1,3 +1,8 @@
+<!-- This module drives the on-chip I2C0 master, which on this die cannot complete a read that
+follows a write: fourteen measurements are recorded in docs/04-reference/I2C0-READ-DEFECT.md.
+The working transport is `hal::bus::BitBangI2c`. Corrected 2026-11-12: the pin order quoted
+below had SDA and SCL the wrong way round. -->
+
 # I2C Module (B2-I2C)
 
 **Identifier**: B2-I2C
@@ -138,7 +143,8 @@ i2c.write_read(0x6B, 0x75, &mut data)?;
 - Location 1: SCL=PC4, SDA=PC5
 
 **I2C1**:
-- Location 0: SCL=PB2, SDA=PB3
+- Location 0: **SDA=PB2, SCL=PB3** on this board (the vendor's Arduino variant declares the
+  opposite, and with that order the device never answers — measured)
 - Location 1: SCL=PC6, SDA=PC7
 
 **Pull-up Resistors**: External pull-up resistors (typically 4.7kΩ) are required on both SCL and SDA lines.

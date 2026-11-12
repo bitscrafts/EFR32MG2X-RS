@@ -1,4 +1,9 @@
 //! General Purpose Input/Output (GPIO) Module
+//! **Not the path this project took.** This is the template's type-state GPIO, which no
+//! example exercises on this part; the primitives the drivers and both BSPs use are in
+//! `crate::pin`. Kept because the BSP still names its pins through `GpioExt`, not because it
+//! is proven: treat a claim from this module as unverified until an example uses it.
+//!
 //!
 //! This module provides type-safe, zero-cost abstractions for GPIO pins on the EFR32MG24.
 //!
@@ -28,7 +33,7 @@
 //! let dp = pac::Peripherals::take().unwrap();
 //! let gpio = dp.gpio_s.split();
 //!
-//! // Configure PB2 as push-pull output (LED on XIAO MG24)
+//! // Configure PA7 as push-pull output (user LED on XIAO MG24, active low)
 //! let mut led = gpio.portb.pb2.into_push_pull_output();
 //!
 //! // Turn LED on
@@ -47,7 +52,7 @@
 //! let dp = pac::Peripherals::take().unwrap();
 //! let gpio = dp.gpio_s.split();
 //!
-//! // Configure PB1 as input with internal pull-up (button)
+//! // Configure PC1 as input with internal pull-up (Expansion Base button)
 //! let button = gpio.portb.pb1.into_pull_up_input();
 //!
 //! // Read button state (active low)
