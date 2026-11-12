@@ -27,7 +27,7 @@ RADIO ░░░░░░░░░  not started
 | `pac_pullup_probe` | PAC | found the IMU bus by external pull-ups |
 | `pac_imu_probe` | PAC | `sda=p1.2 scl=p1.3 a=6a id=6a` |
 | `hal_rtc` | HAL | `rtc 2026-11-10 12:00:57 kept` (ticks across resets) |
-| `fall-detector` | app | `fall selftest real=clean synth=detected` |
+| `base_fall_detector` | app | `fall selftest real=clean synth=detected` |
 | `bsp_env_clock` | BSP | `bsp dev=111 T=31C P=1017hPa H=67` |
 
 ## Layering, as built (2026-11-12)
@@ -96,7 +96,7 @@ this one (and how rp-hal, nrf-hal, stm32f4xx-hal and esp-hal each do it differen
 
 ## Fall detector — state at the end of 2026-11-11 (read this before touching it)
 
-**On the board:** `fall-detector`, self tests `real=clean synth=ok 200Hz=2/2 400Hz=4/4`.
+**On the board:** `base_fall_detector`, self tests `real=clean synth=ok 200Hz=2/2 400Hz=4/4`.
 It classifies **and** records while it classifies, and it beeps three times on a fall.
 
 **Proven with real drops:**

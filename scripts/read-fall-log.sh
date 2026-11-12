@@ -16,7 +16,7 @@
 set -euo pipefail
 
 HOST="${1:-mvcorrea@10.10.10.217}"
-ELF="${2:-/projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/fall-detector}"
+ELF="${2:-/projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/base_fall_detector}"
 ODD=/tmp/openocd-mg24-mini.cfg
 OUT=/tmp/fall-read
 mkdir -p "$OUT"

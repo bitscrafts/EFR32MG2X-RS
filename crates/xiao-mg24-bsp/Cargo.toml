@@ -47,44 +47,18 @@ ble = ["efr32mg24-bluetooth-sys"]        # Phase D2 complete
 microphone = []                           # Microphone driver (has pre-existing PAC API issues)
 # radio-zigbee = ["radio", "efr32mg24-zigbee-sys"]      # Phase D3 (future)
 
-[[example]]
-name = "00_blink"
-required-features = []
-
-[[example]]
-name = "01_ble_beacon_safe"
-required-features = ["ble"]
-
-[[example]]
-name = "02_ble_led_control"
-required-features = ["ble"]
-
-[[example]]
-name = "03_ble_sensor_template"
-required-features = ["ble"]
-
-[[example]]
-name = "04_ble_led_events"
-required-features = ["ble"]
-
-[[example]]
-name = "05_ble_sensor_events"
-required-features = ["ble"]
-
-[[example]]
-name = "06_microphone_streaming"
-required-features = ["microphone"]
-
 [package.metadata.docs.rs]
 default-target = "thumbv8m.main-none-eabihf"
 targets = ["thumbv8m.main-none-eabihf"]
 
 # The Sense examples need the feature: without it they are skipped rather than failing, so a
 # reader with a plain MG24 module gets a clean absence instead of a confusing error.
+
+# The Sense examples: same board with more parts fitted, so the feature is what gates them.
 [[example]]
-name = "sense_imu"
+name = "module_imu"
 required-features = ["sense"]
 
 [[example]]
-name = "sense_microphone"
+name = "module_mic_level"
 required-features = ["sense"]

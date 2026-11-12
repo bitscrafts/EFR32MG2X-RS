@@ -166,7 +166,7 @@ Rules that the gate enforces rather than states (`scripts/gate.sh`):
    tests stop being written.
 2. **Every crate with examples must declare the example in its manifest**, and the example
    directory must be the one the manifest names (`examples/fall_detector/` is built as
-   `fall-detector`).
+   `base_fall_detector`).
 3. **A crate that exposes hardware features and has zero examples fails the gate**: a crate
    whose API nothing builds is a crate whose API is not tested.
 

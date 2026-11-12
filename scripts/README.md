@@ -236,7 +236,7 @@ that hides a broken crate is worse than no gate.
 
 The example-in-a-directory check is worth knowing about: an `examples/foo/main.rs` is only
 built by `--examples` if the manifest declares it, so the gate checks the **declaration**
-and prints the name it is built under (`fall_detector/` is declared as `fall-detector`).
+and prints the name it is built under (`fall_detector/` is declared as `base_fall_detector`).
 A directory nobody declared compiles never and fails silently.
 
 ### `read-fall-log.sh`
