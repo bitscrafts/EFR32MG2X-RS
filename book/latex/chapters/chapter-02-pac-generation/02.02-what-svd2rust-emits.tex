@@ -1,0 +1,82 @@
+\section{What svd2rust Emits, and How to Read It}
+\label{sec:svd2rust-emits}
+
+The generated PAC looks impenetrable because it is generated: names are long, types nest three deep,
+and every field has a writer type. It is worth ten minutes to learn the four shapes, because after
+that the generated code is the best documentation the chip has.
+
+\subsection{Shape 1: The Peripheral}
+
+\begin{minted}{rust}
+pub type MvpS = crate::Periph<mvp_s::RegisterBlock, 0x4d00_0000>;
+\end{minted}
+
+A peripheral is a zero-sized handle carrying its base address as a const generic. That is what makes
+\codeinline{Peripherals::take()} sound: the singleton exists once, and each field is a handle with a
+compile-time address.
+
+\subsection{Shape 2: The Register Block}
+
+\begin{minted}{rust}
+#[repr(C)]
+pub struct RegisterBlock {
+    ipversion: Ipversion,     // 0x00
+    en: En,                   // 0x04
+    swrst: Swrst,             // 0x08
+    cfg: Cfg,                 // 0x0c
+    status: Status,           // 0x10
+    ...
+}
+\end{minted}
+
+The field order is the address map, and the doc comment on each accessor carries the offset — the one
+piece of information you need when comparing code against a manual page.
+
+\subsection{Shape 3: Read, Write, Modify}
+
+Every register has three call styles, and choosing the right one is a safety decision, not a style
+preference:
+
+\begin{minted}{rust}
+// read: no side effects on the hardware
+let bits = mvp.status().read().bits();
+
+// write: sets every field in the register, the others to their writer default
+mvp.en().write(|w| w.en().set_bit());
+
+// modify: read-modify-write, preserving fields you did not name
+gpio.portc_model().modify(|_r, w| w.mode3().pushpull());
+\end{minted}
+
+Chapter~4's central defect — a \codeinline{write} where a \codeinline{modify} was needed, which
+disabled fifteen other pins — is visible in these three signatures and invisible in the code that
+calls them. That is why the rule is stated at the level of the register, not of the driver.
+
+\subsection{Shape 4: The Field Writer}
+
+The most useful generated code is the field writer, because it is where the SVD's enumerated values
+become a Rust enum:
+
+\begin{minted}{rust}
+// From the SVD: <field><name>CMOA</name> with values None/Toggle/Clear/Set
+mvp.cc0_ctrl().modify(|_r, w| w.cmoa().toggle());
+
+// And when the SVD says a register has no such field, the compiler says so:
+// error[E0599]: no method named `pwm` found for `FieldWriter<.. Cmoa, ..>`
+\end{minted}
+
+That second snippet is from this project. It is a compile error that saved a silent misconfiguration:
+the timer's compare-action field genuinely has four values, and PWM is not one of them — the PWM
+waveform in this part comes from the register's \emph{mode}, not from the action field. A HAL written
+against a guess would have written a valid-looking bit pattern and configured the wrong waveform.
+
+\subsection{Unsafe, and Where It Is Honest}
+
+\begin{minted}{rust}
+mvp.instr0cfg0().write(|w| unsafe { w.bits(0x0102_0000) });
+\end{minted}
+
+\codeinline{bits()} is unsafe because the type system cannot know whether the value you assembled
+means what you think. That \codeinline{unsafe} is the correct amount of friction: it appears exactly
+where a field-level API does not exist, and its presence in a diff is a signal that the code is at
+the register level on purpose.

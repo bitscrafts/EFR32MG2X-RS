@@ -1,0 +1,82 @@
+\section{What an SVD Actually Contains}
+\label{sec:svd-what}
+
+An SVD (System View Description) is an XML file — CMSIS-SVD, a standard — that describes a
+microcontroller's memory-mapped surface. It exists because every debugger needs the same information
+and nobody should re-derive it per vendor.
+
+\subsection{The Five Things That Matter}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.20\textwidth}p{0.34\textwidth}p{0.42\textwidth}@{}}
+        \toprule
+        \textbf{Element} & \textbf{What it says} & \textbf{Where you meet it in Rust} \\
+        \midrule
+        \codeinline{peripheral} & base address and register layout & \codeinline{Periph<T, ADDR>} \\
+        \codeinline{register} & offset, size, access (r/w/rw) & \codeinline{registers.read()}, \codeinline{.write()} \\
+        \codeinline{field} & bit offset, width, access & \codeinline{w.mvp().set\_bit()} \\
+        \codeinline{enumeratedValue} & named values, and their descriptions & the enum in the field writer \\
+        \codeinline{resetValue} & what the hardware holds after reset & \codeinline{reset()} \\
+        \bottomrule
+    \end{tabular}
+    \caption{The five elements that produce all the code you will actually call. Everything else in
+    an SVD — interrupts, dim arrays, clusters — is scaffolding around them.}
+    \label{tab:svd-elements}
+\end{table}
+
+\subsection{A Register, in the SVD and in Rust}
+
+The MVP's command register, as the SVD describes it:
+
+\begin{minted}{text}
+<register>
+  <name>CMD</name>
+  <addressOffset>0x174</addressOffset>
+  <fields>
+    <field><name>START</name><bitOffset>0</bitOffset><bitWidth>1</bitWidth>
+           <description>Start Command</description></field>
+    <field><name>INIT</name><bitOffset>3</bitOffset><bitWidth>1</bitWidth>
+           <description>Initialization Command/Qualifier</description></field>
+    ...
+\end{minted}
+
+and what that becomes, which is what you type:
+
+\begin{minted}{rust}
+// One write, two fields: the qualifier and the command together.
+mvp.cmd().write(|w| w.init().set_bit().start().set_bit());
+\end{minted}
+
+The word \emph{Qualifier} in the description is the whole interface contract for that register: it
+says INIT modifies the meaning of the command in the same write rather than being a separate command
+of its own. Reading the generated code is reading the SVD.
+
+\subsection{Where the SVD Comes From, and Why It Is Trustworthy}
+
+Silicon Labs publishes SVD files per part, and their own tools build register views from the same
+file. That is the reason to trust it more than a PDF: a manual is written once and then slowly drifts,
+while an SVD that disagrees with the hardware breaks the vendor's debugger on the same day.
+
+It is still not a specification of the \emph{board}. Three of the errors documented in
+section~\ref{sec:gpio-vendor-errors} are board facts — which pin the LED is on, which way the I2C
+lines go — and no SVD contains them. Chapter~4's rule applies: chip facts from the SVD, board facts
+from a measurement.
+
+\subsection{The Practical Consequence: One File, One Crate}
+
+The project's PAC is generated once and checked in, because a build that downloads an SVD from the
+network is a build that stops working when the network does. Regeneration is a deliberate act:
+
+\begin{minted}{bash}
+# the SVD lives beside the crate it generates
+ls vendor/EFR32MG24B220F1536IM48.svd
+svd2rust -i vendor/EFR32MG24B220F1536IM48.svd --target cortex-m
+# then split the generated lib.rs into one module per peripheral, which is what
+# makes `cargo doc` usable and keeps a 40k-line file reviewable
+\end{minted}
+
+That split is why this repository's PAC is a directory of small modules rather than one enormous
+file: \codeinline{mvp\_s/}, \codeinline{gpio\_s/}, \codeinline{cmu\_s/}, and so on. It costs a script
+and saves every future diff.

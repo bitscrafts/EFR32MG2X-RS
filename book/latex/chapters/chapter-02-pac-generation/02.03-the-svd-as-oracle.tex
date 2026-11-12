@@ -1,0 +1,58 @@
+\section{The SVD as an Oracle}
+\label{sec:svd-oracle}
+
+This section is the reason to read generated register accessors before writing a driver. In this
+project it turned two dead ends into two solved ones, in minutes, after days of guessing.
+
+\subsection{Case 1: The Accelerator That Never Ran}
+
+The matrix-vector processor (MVP) was configured exactly as the public material suggested: arrays
+filled, dimensions written, one loop, one instruction, then \codeinline{CMD = START}. It never ran.
+The result array stayed zero, the status never returned to idle, and nothing faulted — the most
+expensive kind of failure, because there is nothing to read.
+
+Two things came from the SVD, in this order:
+
+\begin{enumerate}
+    \item \textbf{The block has its own enable register.} The generated code contains an
+          \codeinline{EN} register at offset \codeinline{0x04}, described as \emph{Block Enable}, with
+          bit~1 as \codeinline{DISABLING}. The firmware had enabled the bus clock
+          (\codeinline{CMU\_CLKEN1.MVP}) and never set \codeinline{EN}. A clock gate is not an enable:
+          with the block disabled, configuration writes are dropped and the command goes nowhere.
+    \item \textbf{The command register's INIT is a qualifier.} The field description says
+          ``Initialization Command/Qualifier'', which means it modifies the command written in the
+          same access — not a separate initialisation pass, which is what the firmware assumed it had
+          to do.
+\end{enumerate}
+
+Neither fact is in the tutorial material this project started from. Both are in the file the vendor's
+debugger uses.
+
+\subsection{Case 2: A Register That Is Not There}
+
+The GPIO modes taught the same lesson in the other direction. The generated \codeinline{portb\_model}
+and \codeinline{porta\_model} are \emph{different types}:
+
+\begin{minted}{rust}
+// PORTA and PORTC: sixteen pins, so MODEL and MODEH.
+// PORTB and PORTD: eight pins on this package, so MODEL only.
+// error[E0609]: no field `portb_modeh` on type `&pac::gpio_s::RegisterBlock`
+\end{minted}
+
+A hand-written header would have declared \codeinline{MODEH} for all four ports, because that is what
+the family's documentation describes. The SVD describes \emph{this part}, and the compile error it
+produces is a fact about the package rather than a limitation of the tool.
+
+\subsection{The Habit}
+
+\begin{enumerate}
+    \item Before writing a driver, read the generated module for the peripheral. The doc comments
+          carry the offsets and the field names as the silicon team wrote them.
+    \item Grep the generated code for the register you think you need. If it is not there, the
+          peripheral does not have it on this part — not ``the PAC is incomplete''.
+    \item When behaviour disagrees with expectation, read the \emph{neighbouring} registers. In the
+          MVP case the answer was four bytes below \codeinline{CFG}: a register that existed, had a
+          name, and was never written.
+    \item Write what you learn into the crate's docs, not into a chat window: the next person reads
+          the accessor's doc comment, not your transcript.
+\end{enumerate}

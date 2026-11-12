@@ -1,0 +1,67 @@
+\section{What the SVD Cannot Tell You}
+\label{sec:svd-limits}
+
+The SVD is the best document about this chip and it is still not enough. Three classes of fact are
+outside it, and every one of them cost this project real time.
+
+\subsection{Class 1: The Board}
+
+An SVD describes a \emph{part}, and a board is a part plus wires:
+
+\begin{itemize}
+    \item which pin the LED is on, and whether it is active low;
+    \item which two pins carry a bus, and in which order;
+    \item what external pull-ups exist;
+    \item which pin gates power to a sensor.
+\end{itemize}
+
+None of that is in XML, which is why chapter~4 ends with a table of contradictions between the
+vendor's board documents and the board. The general rule: \textbf{chip facts from the SVD, board
+facts from a measurement, and the measurement written next to the code that depends on it.}
+
+\subsection{Class 2: The Aliases}
+
+This part's peripheral map has two windows: a secure alias at \codeinline{0x4D00\_0000} and a
+non-secure one at \codeinline{0x5D00\_0000}, for every peripheral that is not fixed to one domain.
+The SVD lists both, and it cannot list which one \emph{your image} may use — that depends on the
+security attribution the bootloader and the linker applied.
+
+Measured, on the MVP, from a non-secure image:
+
+\begin{minted}{text}
+0x4D00_0000 (secure alias, from non-secure code)  -> reads as zero
+0x5D00_0000 (non-secure alias) FAULTSTATUS (0x24) -> bus error
+0x5D00_0000 (non-secure alias) the rest           -> works
+\end{minted}
+
+Three different behaviours from one block, none of them described by the register file. The practical
+consequence is a rule this project now follows for any peripheral with two aliases: \textbf{probe
+reachability with a read-back of a harmless register before configuring anything}, and report which
+alias answered.
+
+\subsection{Class 3: Timing and Sequencing}
+
+An SVD says which bits exist. It does not say:
+
+\begin{itemize}
+    \item that \codeinline{EN} must be written and \codeinline{DISABLING} polled before configuring;
+    \item that a converter's \codeinline{SYNCBUSY} must clear between writes;
+    \item that a timer's compare register is buffered and takes effect on the next period;
+    \item that an oscillator must be forced on and waited for.
+\end{itemize}
+
+Those are in the reference manual's prose, and the only reliable way to learn them is to watch a
+peripheral misbehave and then find the paragraph. What helps is knowing they exist: a peripheral that
+ignores a correct-looking configuration is almost always waiting for a sequence, not a bit.
+
+\subsection{The Order to Read Things In}
+
+\begin{enumerate}
+    \item \textbf{Generated register accessors} — for what exists, where, and with which fields.
+    \item \textbf{Field descriptions} — for what a value means; they are the SVD's own text.
+    \item \textbf{Reference manual prose} — for sequencing and timing, searched by register name.
+    \item \textbf{The board, with a probe} — for every wire, polarity and address.
+\end{enumerate}
+
+Skipping to step 4 is expensive but sometimes correct; skipping step 1 is never correct, and it is the
+most common mistake in a project that started from someone's blog post.

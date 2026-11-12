@@ -1,0 +1,71 @@
+\section{Why PAC-Level Examples Exist Anyway}
+\label{sec:why-pac-examples}
+
+An example that pokes registers directly is an antipattern in a project that has a HAL. It duplicates
+knowledge, it names pins inline, and it is exactly the code a reader should not copy into a product.
+This project keeps nineteen of them, deliberately, and this section is the argument.
+
+\subsection{The Ladder}
+
+The same demo exists at four levels, and the differences are the whole curriculum:
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.26\textwidth}p{0.12\textwidth}p{0.50\textwidth}@{}}
+        \toprule
+        \textbf{Example} & \textbf{Lines} & \textbf{What a reader has to know to change it} \\
+        \midrule
+        \codeinline{pac\_led\_blink}   & ~90 & the port's MODEL and DOUT registers, and its clock gate \\
+        \codeinline{hal\_led\_blink}   & ~50 & that a pin has a port, a bit and a polarity \\
+        \codeinline{module\_led\_blink}& ~35 & that the board has an LED \\
+        \codeinline{base\_led\_blink}  & ~35 & that the module is on a carrier \\
+        \bottomrule
+    \end{tabular}
+    \caption{One program, four rungs. Each rung removes a fact the reader must hold in their head —
+    and each rung is only trustworthy if the rung below it is still testable.}
+    \label{tab:blink-ladder}
+\end{table}
+
+\subsection{What the PAC Level Proves}
+
+The bottom rung is not a tutorial. It is an instrument:
+
+\begin{itemize}
+    \item \textbf{It proves the PAC matches the silicon.} If \codeinline{pac\_led\_blink} blinks, the
+          SVD, the generator and the part agree. If it does not, no amount of HAL work will help,
+          and the failure has exactly one suspect.
+    \item \textbf{It localises a regression.} When a HAL example stops working, the PAC example says
+          whether the hardware path or the abstraction broke. That question has cost this project a
+          full session at least once.
+    \item \textbf{It documents facts the HAL deliberately hides.} \codeinline{pac\_pullup\_probe}
+          reads \codeinline{PORTB\_DIN} with every pin in input mode and proves the external pull-ups
+          exist; \codeinline{pac\_i2c\_scan} proves the on-chip controller cannot complete a read.
+          Neither is expressible through the HAL, because the HAL exists to make those facts
+          invisible.
+\end{itemize}
+
+\subsection{The Rule That Keeps It Honest}
+
+Proof-of-concept code rots faster than any other code, so it is held to a stricter rule than the
+HAL: \textbf{a PAC example may only name the layer it demonstrates}.
+
+\begin{minted}{bash}
+# from this project's gate: no example outside the PAC crate may mention the PAC
+grep -rln 'efr32mg24_pac\|pac::' crates/*/examples/ \
+  | grep -v '^crates/efr32mg24-pac/'
+\end{minted}
+
+The inverse is enforced too: a PAC example that imports the HAL is not a PAC example, and would
+quietly stop testing what it claims to test. Between the two checks, each example belongs to exactly
+one rung of the ladder, and a reader can trust which rung they are standing on.
+
+\subsection{When to Delete One}
+
+\begin{itemize}
+    \item When its fact is now proved elsewhere \emph{and} the example no longer adds a distinct
+          failure signal. Two examples that fail for the same reason are one example.
+    \item Never merely because it looks old. This project retired six HAL examples that had rotted
+          into non-compiling code, and kept every PAC example that still builds and still tells you
+          something the layer above cannot.
+\end{itemize}

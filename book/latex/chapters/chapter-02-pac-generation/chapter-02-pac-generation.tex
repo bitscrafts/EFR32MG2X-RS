@@ -1,4 +1,4 @@
-% Chapter 2: Understanding SVD Files and the PAC Generation Process
+% Chapter 2: SVD Files and PAC Generation
 % File: chapters/chapter-02-pac-generation/chapter-02-pac-generation.tex
 
 \chapter{Understanding SVD Files and the PAC Generation Process}
@@ -6,65 +6,40 @@
 \chapthumb{2}
 
 \begin{quote}
-    \textit{"The PAC is the foundation of all embedded Rust development---get it right, and everything else follows naturally."}
-    \\
-    -- Embedded Rust Working Group, 2024
+    \textit{``The SVD is the only document about this chip that cannot be out of date, because the
+    vendor generates the same file the debugger uses.''}
 \end{quote}
 
-This chapter dives deep into System View Description (SVD) files and the process of generating a Peripheral Access Crate (PAC). You'll learn how to obtain official SVD files from Silicon Labs, use \codeinline{svd2rust} to generate type-safe register access code, and verify the resulting 138,000+ lines of generated Rust code.
+Before a single line of HAL can be written, something has to know what registers exist, where they
+live, which bits mean what and what the reset values are. On ARM that something is an SVD file, and
+the tool that turns it into Rust is \codeinline{svd2rust}.
+
+This chapter is not a tutorial on running \codeinline{svd2rust}. It is about the two things that
+actually matter: what the generated code looks like when you have to read it, and what the SVD knows
+that no other document does — including the register that explained why a week of work had produced
+zero results.
 
 \minitoc
 
 \clearpage
 
-% ============================================================================
-% SECTION 02.01: What are SVD Files?
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.01-what-are-svd-files}
-
-% ============================================================================
-% SECTION 02.02: Obtaining SVD Files from Silicon Labs
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.02-obtaining-svd-files}
-
-% ============================================================================
-% SECTION 02.03: svd2rust: The PAC Generation Tool
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.03-svd2rust-tool}
-
-% ============================================================================
-% SECTION 02.04: Analyzing Generated PAC Output
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.04-analyzing-pac-output}
-
-% ============================================================================
-% SECTION 02.04a: Progressive Example Part 2 - PAC-Based Blink
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.04a-pac-blink-example}
-
-% ============================================================================
-% SECTION 02.05: Building and Verifying the PAC Crate
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.05-building-verifying-pac}
-
-% ============================================================================
-% SECTION 02.06: PAC Variants and Device Selection
-% ============================================================================
-\input{chapters/chapter-02-pac-generation/02.06-pac-variants}
+\input{chapters/chapter-02-pac-generation/02.01-what-an-svd-is}
+\input{chapters/chapter-02-pac-generation/02.02-what-svd2rust-emits}
+\input{chapters/chapter-02-pac-generation/02.03-the-svd-as-oracle}
+\input{chapters/chapter-02-pac-generation/02.04-why-pac-examples-exist}
+\input{chapters/chapter-02-pac-generation/02.05-what-the-svd-cannot-tell-you}
 
 \clearpage
 
-% ============================================================================
-% Chapter Summary and Key Takeaways
-% ============================================================================
-
 \begin{keytakeaways}
-    \item SVD files are XML-based hardware descriptions provided by chip vendors
-    \item \codeinline{svd2rust} generates type-safe Rust code from SVD files automatically
-    \item The \codeinline{--locked} flag is critical when installing \codeinline{svd2rust} to avoid dependency conflicts
-    \item Generated PACs contain 138,000+ lines of register access code for the EFR32MG24
-    \item PAC code should never be edited manually---always regenerate from SVD
-    \item Device variant selection (A020 vs B220) must match your actual hardware
-    \item The PAC provides zero-cost type-safe abstractions over hardware registers
-    \item Build verification ensures PAC correctness before using in HAL development
+    \item An SVD is XML describing every peripheral, register, field, enumerated value and reset
+          value. It is the same file the vendor's debugger uses.
+    \item \codeinline{svd2rust} turns it into a PAC: a \codeinline{Periph<T, ADDR>} per peripheral, a
+          register block, and type-safe readers and writers per field.
+    \item The generated field descriptions are documentation you can trust more than the manual,
+          because they travel with the register accessors you are already calling.
+    \item A register the SVD names \emph{Block Enable} is not a suggestion. It was the missing write
+          in an accelerator that had never executed.
+    \item PAC-level examples are an antipattern for applications and indispensable as proof: they are
+          the only place a HAL can be checked against the hardware.
 \end{keytakeaways}
