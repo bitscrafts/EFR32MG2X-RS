@@ -46,4 +46,8 @@ extern "C" {
     pub fn emlib_unique_id() -> u64;
     /// Chip revision, packed as major << 24 | minor << 16 | part number or family.
     pub fn emlib_chip_revision() -> u32;
+    /// Start the HFXO and report whether it is ready. Returns false if the crystal did not come up.
+    pub fn emlib_hfxo_start() -> bool;
+    /// HFCLK frequency in Hz, which is what the radio derives its synthesizer timing from.
+    pub fn emlib_hfxo_freq() -> u32;
 }

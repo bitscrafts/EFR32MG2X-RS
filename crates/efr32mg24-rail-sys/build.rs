@@ -93,6 +93,12 @@ fn main() {
         // Generate Rust bindings from C headers using bindgen
         let bindings = bindgen::Builder::default()
             .header(header_path.to_str().unwrap())
+            // rail.h does not pull in the protocol headers, so the BLE configuration API
+            // (`RAIL_BLE_ConfigPhy1Mbps`, `RAIL_BLE_ConfigChannelRadioParams`) never appeared in the
+            // bindings — the functions existed in the header and in the blob, and were unreachable
+            // from Rust. Adding the protocol header is what makes them callable.
+            .header("vendor/rail/protocol/ble/rail_ble.h")
+            .clang_arg("-Ivendor/rail/protocol/ble")
             // Add clang arguments
             .clang_args(&clang_args)
             // Use core instead of std (for no_std compatibility)
