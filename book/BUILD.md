@@ -7,15 +7,22 @@ No LaTeX lives in the development container; the compile runs through the `texli
 container on `lnx`:
 
 ```bash
-# 1. copy the sources over
-tar cf - book/latex | ssh mvcorrea@lnx 'mkdir -p ~/podman/latex-remote/efr32book && \
-    cd ~/podman/latex-remote/efr32book && tar xf -'
+# 1. copy the sources over. --strip-components=1 is NOT optional: without it the
+#    archive lands as efr32book/book/latex/ while the container compiles
+#    efr32book/latex/, and every build silently compiles the previous copy.
+tar cf - book/latex | ssh mvcorrea@lnx \
+    'cd ~/podman/latex-remote/efr32book && tar xf - --strip-components=1'
 
-# 2. compile (twice, for the table of contents and cross-references)
+# 2. prove the copy landed before compiling anything
+ssh mvcorrea@lnx 'cd ~/podman/latex-remote/efr32book && md5sum \
+    latex/chapters/chapter-01-introduction/01.08-layer-boundaries.tex'
+md5sum book/latex/chapters/chapter-01-introduction/01.08-layer-boundaries.tex   # must match
+
+# 3. compile (twice, for the table of contents and cross-references)
 ssh mvcorrea@lnx 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
     xelatex -shell-escape -interaction=nonstopmode main.tex'
 
-# 3. bring the PDF back
+# 4. bring the PDF back
 scp mvcorrea@lnx:~/podman/latex-remote/efr32book/latex/main.pdf .
 ```
 
@@ -23,7 +30,25 @@ If the container is stopped: `ssh lnx 'podman start latex-compiler-shared'`.
 
 **What "it builds" means here**: `rc=0`, zero `! ` errors in `main.log`, and zero
 `Missing character` warnings. The last one matters — a missing glyph does not fail the
-build, it silently deletes a character from the page, which is how an em-dash made a
-sentence read "not arbitrary it reflects" and how a directory tree lost all its lines.
+build, it just silently deletes a character from the page (this book lost 544 of them
+once: every `─ │ ├ └ ✓` in every code block). Check the page count moved when it should:
 
-Last verified: 2026-11-11, 96 pages, 0 errors, 0 missing characters.
+```bash
+ssh mvcorrea@lnx 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
+    sh -c "grep -c \"^! \" main.log; grep -c \"Missing character\" main.log; \
+           grep -o \"Output written on main.pdf ([0-9]* pages\" main.log | tail -1"'
+```
+
+Current: **0 errors, 0 missing characters, 120 pages**.
+
+## Two traps, both of which produced a green build and a wrong PDF
+
+1. **A stale source tree** (2026-11-12). The copy command omitted `--strip-components=1`, so the
+   new sources went to `efr32book/book/latex/` and the container kept compiling
+   `efr32book/latex/`. Every build reported success, and the PDF was one revision behind — a new
+   section "built" without appearing. Step 2 above exists because of this: a build that succeeds
+   is not evidence that it compiled what you wrote.
+2. **`\codeinline{}` inside an argument** (`\caption{}`, `\textbf{}`, a section title). It is a
+   verbatim-like command, so LaTeX refuses it with *"Verbatim-like command '\oldstylenums' illegal
+   in argument"* — a message that names an unrelated macro and points at the wrong line. Keep
+   `\codeinline` in the body, use plain text inside captions and headings.

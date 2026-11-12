@@ -1,0 +1,230 @@
+\section{The Boundaries the Compiler Cannot See}
+\label{sec:layer-boundaries}
+
+The previous section said what belongs in each crate. This section is about what happens when the
+answer is written down, agreed, and then quietly violated — because \emph{the compiler has no idea
+that a layer boundary exists}. Every example in this section compiled. Every test passed. Every
+lint was clean. That is what makes this class of defect expensive: there is no error message, only a
+slow loss of the property the layering was supposed to provide.
+
+\subsection{The Question That Finds Them}
+
+There is a single question that finds these defects, and it is cheap to ask:
+
+\begin{quote}
+    \textbf{For this public signature, what does it force the caller to own?}
+\end{quote}
+
+A function that takes a register block forces the caller to have a handle to that register block.
+A function that takes the whole peripheral singleton forces the caller to hold the singleton. Both
+compile. Both are wrong the moment the caller is a layer above: the caller now has to reach for
+something the layer below was supposed to keep to itself.
+
+A real example, from this project. The HAL's buzzer and PWM constructors took the peripheral
+singleton:
+
+\begin{minted}{rust}
+// Before: the caller has to own the PAC to start a tone.
+pub fn new(dp: &pac::Peripherals, port: Port, pin: u8) -> Option<Self>
+pub fn take(dp: &pac::Peripherals, port: Port, pin: u8) -> Option<Self>
+\end{minted}
+
+The signature looks innocent — it is the idiom of every Rust HAL, and it is how exclusivity is
+proven at compile time. The consequence only showed up two layers up, in an example that had
+already called \codeinline{Board::take()}:
+
+\begin{minted}{rust}
+// The example could not compile without this line, and nobody wrote down why.
+let pac = unsafe { efr32mg24_pac::Peripherals::steal() };
+let timer = Timer0::take(&pac, Port::A, 7);
+\end{minted}
+
+An example that has to steal the singleton is not an example with a problem; it is a HAL that
+failed to hand out what it already owned. The fix is not to teach the example to steal more
+politely. The fix is a door on the layer that owns the thing:
+
+\begin{minted}{rust}
+// After: the board owns the PAC once, and hands out what a caller needs.
+let mut board = Board::take().expect("peripherals taken twice");
+let mut led = board.pwm_on(Port::A, 7, 1_000)?;   // no PAC in sight
+let mut mic = board.converter().microphone()?;    // a handle, not a register block
+\end{minted}
+
+The two constructs that make this work are worth naming, because they generalise:
+
+\begin{itemize}
+    \item \textbf{A constructor on the owner.} \codeinline{Board::pwm_on} is one line: it calls the
+          private \codeinline{Timer0::take} with the singleton the board already holds. The
+          information did not have to travel; it was already below.
+    \item \textbf{An opaque handle.} \codeinline{microphone::Converter} is a \codeinline{Copy}
+          wrapper around the register block, with a private constructor and one public method,
+          \codeinline{microphone()}. The driver takes the handle; the caller never sees the type
+          inside it.
+\end{itemize}
+
+\subsection{The Same Defect, One Layer Down}
+
+Once you have the question, it stops being about the PAC. Three examples in the same project
+reached for a \emph{core} peripheral — SysTick for a delay, DWT for the cycle counter:
+
+\begin{minted}{rust}
+let mut delay = Delay::with_sysclk(unsafe { cortex_m::Peripherals::steal().SYST }, 19_000_000);
+let mut core = unsafe { cortex_m::Peripherals::steal() };
+core.DCB.enable_trace();
+core.DWT.enable_cycle_counter();
+\end{minted}
+
+Exactly the same shape: the layer that owns SysTick is the board, and it was not offering a door.
+Worse than a style problem — two owners of SysTick is a delay that lies, and a cycle counter that
+was never enabled reads as zero, which looks exactly like a measurement of a very fast loop. This
+project lost a full round of fall-detection data to that second one: the loop declared 400 Hz and
+ran at 158 Hz, and the only clue was that four different drops all showed the same 0.62 s of calm.
+
+The fix, again, is doors rather than discipline:
+
+\begin{minted}{rust}
+let mut delay = board.delay();          // SysTick, handed out by its owner
+let start = unsafe { dwt::start() };    // the cycle counter, switched on in one place
+let elapsed = dwt::since(start);
+\end{minted}
+
+\subsection{A Layer That Exports the Layer Below}
+
+The most damaging version of the same mistake is a re-export, because it does not look like code
+at all:
+
+\begin{minted}{rust}
+// in a board support package
+pub use efr32mg24_pac as pac;
+\end{minted}
+
+One line, entirely reasonable-looking, and it means every application can reconfigure every
+register the board claimed to own. The board's API becomes advisory: the pins it configured, the
+power gates it enabled, the clock tree it chose — all of it can be undone by a caller that has the
+PAC. A BSP that re-exports its PAC is not a BSP; it is a suggestion.
+
+The same crate carried a second, subtler version: \emph{two facades at once}. A newer one
+(\codeinline{Module}, the LED and the on-board sensors) and an older one (\codeinline{Board} with
+\codeinline{Pins} and a type-state GPIO layer) both existed, both public, and the examples had
+split between them. Half the code proved one, half proved the other, and nothing exercised the
+older one — which is the failure mode that matters: \textbf{an API with zero examples passes every
+check trivially}. It compiled, it was documented, and it had been dead for weeks.
+
+\subsection{Why It Kept Happening: The Table}
+
+Seven defects of this class were found in a single pass over a codebase that built cleanly. What
+they have in common is the column that says why nothing complained.
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.30\textwidth}p{0.30\textwidth}p{0.32\textwidth}@{}}
+        \toprule
+        \textbf{Defect} & \textbf{Why it compiled} & \textbf{What it cost} \\
+        \midrule
+        HAL constructors took a singleton or a register block
+            & The signature is legal Rust, and idiomatic
+            & examples had to \codeinline{steal()} the PAC \\
+        BSP re-exported the PAC
+            & A \codeinline{pub use} is invisible in review
+            & the board's promises became advisory \\
+        Two facades in one BSP crate
+            & Both compiled; neither was unused by the compiler's standards
+            & half the examples proved a dead API \\
+        \codeinline{Board::gpio()} was public
+            & Returning a register block is legal
+            & callers reconfigured pins the board owned \\
+        Two GPIO implementations in one HAL
+            & Different modules, both public, no overlap warning
+            & 605 unproven lines, and docs naming the wrong pin \\
+        Documentation outlived the code
+            & Prose is not compiled
+            & 78 MHz, 256 KB, and an API that did not exist \\
+        Examples stole SysTick and DWT
+            & \codeinline{steal()} is \codeinline{unsafe} but compiles
+            & a delay that lied, a counter that read zero \\
+        \bottomrule
+    \end{tabular}
+    \caption{Seven layer violations in a codebase where cargo build, cargo test and cargo clippy
+    were all green.}
+    \label{tab:layer-defects}
+\end{table}
+
+\subsection{Writing the Boundary Down as a Check}
+
+A boundary that is only a paragraph is a boundary that will be crossed, and this project crossed
+all seven. The rules only started holding when each one became a line in the gate script — the same
+script that checks formatting and tests, so that it runs when nothing else does:
+
+\begin{minted}{bash}
+# 1. An example may only name the layer it demonstrates.
+grep -rln 'efr32mg24_pac|pac::' crates/*/examples/ | grep -v '^crates/efr32mg24-pac/'
+# 2. A BSP must not re-export the PAC.
+grep -rln 'pub use efr32mg24_pac' crates/*/src/ | grep -v '^crates/efr32mg24-hal/'
+# 3. The HAL must not put a register block in a public signature.
+grep -rqE 'pub (fn|const fn) [^\n]*::RegisterBlock' crates/efr32mg24-hal/src/
+# 4. No example may steal a core peripheral.
+grep -rln 'Peripherals::steal' crates/*/examples/
+# 5. Every crate carries at least one example of its own level.
+for dir in crates/*/ libraries/*/; do find "$dir/examples" -maxdepth 1 -name '*.rs'; done
+\end{minted}
+
+Each of those five checks failed at least once during the pass that wrote them. That is the
+argument for having them: not that the code was wrong, but that the code was wrong in ways that
+had already survived review.
+
+\subsection{What Is Not a Violation}
+
+The distinction that took the longest to state clearly is between a \emph{token} and a
+\emph{register block}:
+
+\begin{minted}{rust}
+// Legitimate: the singleton token proves exclusivity at compile time.
+pub fn new(usart: pac::Usart0S, config: Config, clocks: &FrozenClocks) -> Self
+
+// A violation: the caller receives the registers themselves.
+pub fn new(adc: &pac::iadc0_s::RegisterBlock) -> Result<Self, MicError>
+\end{minted}
+
+Both mention \codeinline{pac}. The first is how every Rust HAL on the market works —
+\codeinline{dp.USART0} in \codeinline{stm32f4xx-hal}, \codeinline{peripherals.USART0} in
+\codeinline{rp2040-hal} — and it is the mechanism that makes it impossible to create two USART
+drivers for one USART. The second hands over the hardware itself, with no ownership at all: any
+number of callers may now configure the same converter, and the driver's invariants are whatever
+the last writer decided.
+
+The rule, then, is not ``never mention the PAC in the HAL''. It is: \textbf{the HAL may take a
+token, and may never give out registers}.
+
+\subsection{The Procedure, for the Next Project}
+
+The pass that found seven defects was mechanical, and it transfers:
+
+\begin{enumerate}
+    \item \textbf{List every public signature} in every crate, oldest and least used first. The dead
+          API is where the violations accumulate, because nothing compiles against it.
+    \item \textbf{Ask the question} of each one — what does this force the caller to own? — and
+          write the answer down next to the signature.
+    \item \textbf{Close each leak with a door on the owner}: a method on the struct that already
+          holds the thing, or an opaque handle for what must be passed through.
+    \item \textbf{Turn each rule into a check} in the gate that already runs, and confirm the check
+          fails on the old code before accepting it. A check that has never been red has not been
+          tested.
+\end{enumerate}
+
+The last step is the one that decides whether the work survives. This project had already written
+the layering down — in the README, in this book, in the crate documentation — and had violated it
+seven times anyway. What changed the outcome was not a better description of the layers. It was
+five greps that fail the build.
+
+\begin{keytakeaways}
+    \item A layer boundary is invisible to the compiler: the code compiles either way, which is why
+          this class of defect survives review.
+    \item The question that finds them is \emph{what does this force the caller to own?}
+    \item A HAL may take a peripheral \emph{token} to prove exclusivity, and may never hand out
+          \emph{registers} — the difference decides whether a driver's invariants mean anything.
+    \item A BSP that re-exports the PAC makes its own configuration advisory.
+    \item An API with zero examples passes every check trivially; it is dead and nobody notices.
+    \item A rule that is only prose will be broken. A rule that is a line in the gate script is a
+          rule that holds.
+\end{keytakeaways}

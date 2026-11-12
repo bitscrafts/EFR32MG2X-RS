@@ -52,6 +52,11 @@ This chapter introduces embedded Rust development and establishes the foundation
 % ============================================================================
 \input{chapters/chapter-01-introduction/01.07-what-goes-in-each-crate}
 
+% ============================================================================
+% SECTION 01.08: The Boundaries the Compiler Cannot See
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.08-layer-boundaries}
+
 \clearpage
 
 % ============================================================================
@@ -66,5 +71,6 @@ This chapter introduces embedded Rust development and establishes the foundation
     \item Building embedded binaries involves multiple steps: compile, link, and optionally convert to binary/hex format
     \item All necessary tools (rustup, probe-rs, cargo-binutils) are available cross-platform
     \item Our minimal program compiles to just 80 bytes in release mode
+    \item A layer boundary is invisible to the compiler; it holds only when a check fails the build
 \end{keytakeaways}
 
