@@ -62,6 +62,9 @@
 //! - Distribution requires MSLA compliance
 
 // Raw FFI bindings (always available)
+#[allow(clippy::missing_safety_doc)]
+// ^ the safety docs are in the C headers this module is generated from, and bindgen does not carry
+// them across; adding them here would be documenting generated code that regenerates on every build
 pub mod ffi {
     //! Raw BGAPI FFI bindings
     //!
@@ -85,3 +88,9 @@ pub mod blocking;
 
 // Re-export blocking API at root for convenience
 pub use blocking::*;
+
+// The vendor blob references the `CORE_*` helpers as external symbols, and nothing in Rust calls
+// them — so without this `#[link]` the archive is dropped by the linker and every one of those
+// symbols comes back undefined. The definitions live in the `cmsis-stubs` crate, compiled once.
+#[link(name = "cmsis_stubs", kind = "static")]
+extern "C" {}

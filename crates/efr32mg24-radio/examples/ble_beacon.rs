@@ -1,0 +1,101 @@
+//! A BLE beacon: the smallest thing that proves the whole stack is alive.
+//!
+//! Plug the board into USB and this advertises a name for anyone with a phone. It is the radio
+//! equivalent of the blink: no protocol on top, no service, no connection — just "the stack booted,
+//! the crystal is running, the antenna is connected, and a scan finds it".
+//!
+//! ## What has to be true for the name to appear
+//!
+//! 1. **The stack boots.** `Bluetooth::new` resets the controller and waits for `system_boot`. If
+//!    the HFXO never settles, the wait times out and the mailbox says so — that is a board fault,
+//!    not a radio one.
+//! 2. **The advertising data fits in 31 bytes.** A legacy PDU carries one name and one UUID; this
+//!    example sets a name and lets the builder refuse one that is too long rather than truncating
+//!    it silently.
+//! 3. **The event loop keeps running.** Every command's answer arrives as an event, so the loop
+//!    polls; a beacon that stops polling keeps advertising but stops accepting new commands.
+//!
+//! ## Reading the result without a phone
+//!
+//! The mailbox reports `adv=<set> name=<len>b` once advertising starts, and `evt=` counters as
+//! events arrive. A phone is still the better instrument: it proves the antenna, not just the API.
+
+#![no_std]
+#![no_main]
+
+use efr32mg24_hal::board::Board;
+use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
+use efr32mg24_hal::prelude::*;
+use efr32mg24_radio::Bluetooth;
+use panic_halt as _;
+
+#[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
+mod mailbox;
+
+fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
+    let mut digits = [0u8; 10];
+    let mut n = 0;
+    loop {
+        digits[n] = b'0' + (value % 10) as u8;
+        value /= 10;
+        n += 1;
+        if value == 0 || n == digits.len() {
+            break;
+        }
+    }
+    for i in (0..n).rev() {
+        out[at] = digits[i];
+        at += 1;
+    }
+    at
+}
+
+#[entry]
+fn main() -> ! {
+    let mut board = Board::take().expect("peripherals taken twice");
+    let mut delay = board.delay();
+    let led = board.output_on(Port::A, 7, true);
+
+    let mut ble = match Bluetooth::beacon(&mut delay, "xiao-mg24") {
+        Ok(ble) => ble,
+        Err(_) => {
+            mailbox::write(
+                mailbox::Status::Fail,
+                b"ble: stack did not boot (HFXO? blob? heap?)",
+            );
+            loop {
+                cortex_m::asm::wfi();
+            }
+        }
+    };
+
+    let mut msg = [0u8; 64];
+    let mut at = 0;
+    msg[at..at + 4].copy_from_slice(b"adv=");
+    at += 4;
+    at = push_dec(&mut msg, at, u32::from(ble.advertising_set()));
+    msg[at..at + 6].copy_from_slice(b" name=");
+    at += 6;
+    at = push_dec(&mut msg, at, 9);
+    msg[at..at + 2].copy_from_slice(b"b ");
+    at += 2;
+    msg[at..at + 5].copy_from_slice(b"gatt=");
+    at += 5;
+    at = push_dec(&mut msg, at, u32::from(ble.is_connected()));
+    mailbox::write(mailbox::Status::Pass, &msg[..at]);
+
+    // One blink per event: the LED is the cheapest event counter there is, and it keeps the board
+    // saying "I am still in the loop" while a phone does the actual measuring.
+    let mut events = 0u32;
+    loop {
+        if ble.poll_event().is_some() {
+            events += 1;
+            led.on();
+            delay.delay_ms(20);
+            led.off();
+        } else {
+            cortex_m::asm::wfi();
+        }
+    }
+}

@@ -11,6 +11,8 @@ keywords = ["efr32", "bluetooth", "ble", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
+# The CORE_* helpers the vendor blobs reference; compiled once for the whole workspace.
+cmsis-stubs = { path = "../cmsis-stubs" }
 # Core types for FFI
 cty = "0.2"
 
@@ -31,12 +33,15 @@ efr32mg24-pac = { path = "../efr32mg24-pac" }
 bindgen = "0.69"
 # For verifying Bluetooth blob integrity
 sha2 = "0.10"
-# For compiling CMSIS runtime stubs
-cc = "1.0"
+
+[[example]]
+name = "bt_version"
 
 [features]
 # No default features
 default = []
+# `core::error::Error` is only implemented behind this feature; the crate is otherwise no_std.
+std = []
 
 [package.metadata.docs.rs]
 # Don't attempt to build blobs on docs.rs

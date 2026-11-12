@@ -34,23 +34,6 @@ fn main() {
     // Get the target architecture
     let target = env::var("TARGET").unwrap();
 
-    // Compile CMSIS runtime stubs for ARM Cortex-M targets
-    if target.starts_with("thumbv") {
-        // Compile CMSIS stubs (required by Bluetooth stack)
-        cc::Build::new()
-            .file("src/cmsis_stubs.c")
-            .flag("-mcpu=cortex-m33")
-            .flag("-mthumb")
-            .flag("-mfloat-abi=hard")
-            .flag("-mfpu=fpv5-sp-d16")
-            .flag("-Os") // Optimize for size
-            .flag("-ffunction-sections")
-            .flag("-fdata-sections")
-            .compile("cmsis_stubs");
-
-        println!("cargo:warning=Compiled CMSIS runtime stubs for Bluetooth stack");
-    }
-
     // Only link blobs for ARM Cortex-M targets
     if target.starts_with("thumbv") {
         // Path to the binary blob directory (use absolute path for cross-compilation)
@@ -77,10 +60,6 @@ fn main() {
                         println!("cargo:warning=Bluetooth controller blob SHA256 mismatch!");
                         println!("cargo:warning=  Expected: {}", EXPECTED_CONTROLLER_SHA256);
                         println!("cargo:warning=  Got:      {}", hash);
-                    } else {
-                        println!(
-                            "cargo:warning=Bluetooth controller integrity verified (SHA256 OK)"
-                        );
                     }
                 }
                 Err(e) => {
@@ -97,8 +76,6 @@ fn main() {
                         println!("cargo:warning=Bluetooth host blob SHA256 mismatch!");
                         println!("cargo:warning=  Expected: {}", EXPECTED_HOST_SHA256);
                         println!("cargo:warning=  Got:      {}", hash);
-                    } else {
-                        println!("cargo:warning=Bluetooth host integrity verified (SHA256 OK)");
                     }
                 }
                 Err(e) => {
@@ -112,8 +89,6 @@ fn main() {
                         println!("cargo:warning=Bluetooth common blob SHA256 mismatch!");
                         println!("cargo:warning=  Expected: {}", EXPECTED_COMMON_SHA256);
                         println!("cargo:warning=  Got:      {}", hash);
-                    } else {
-                        println!("cargo:warning=Bluetooth common integrity verified (SHA256 OK)");
                     }
                 }
                 Err(e) => {
@@ -126,10 +101,6 @@ fn main() {
             println!("cargo:rustc-link-lib=static=bluetooth_controller_efr32xg24_gcc_release");
             println!("cargo:rustc-link-lib=static=bluetooth_host_efr32xg24_gcc_release");
             println!("cargo:rustc-link-lib=static=bgcommon_efr32xg24_gcc_release");
-            println!(
-                "cargo:warning=Linking Bluetooth blobs (controller + host + common) from {}",
-                blob_dir.display()
-            );
         } else {
             println!(
                 "cargo:warning=Bluetooth blobs not found. This is expected during development."
@@ -168,6 +139,12 @@ fn main() {
             .use_core()
             // Use cty for C types
             .ctypes_prefix("cty")
+            // NOTE: these headers declare an *anonymous* union inside `sl_bt_msg_t`, and bindgen
+            // emulates anonymous unions with `__BindgenUnionField<T>` no matter which rust target
+            // is requested -- measured: adding `.rust_target(Stable_1_71)` left the output
+            // byte-identical. The emulation is not a bug to work around; it is what makes the
+            // access explicit, and `src/blocking/events.rs` reads every payload through
+            // `as_ref()`, which is `unsafe` and says so.
             // Don't generate layout tests (they fail on cross-compilation)
             .layout_tests(false)
             // Allowlist Bluetooth BGAPI functions and types
@@ -186,11 +163,6 @@ fn main() {
         bindings
             .write_to_file(out_path.join("bindings.rs"))
             .expect("Couldn't write bindings!");
-
-        println!(
-            "cargo:warning=Generated Bluetooth bindings from {}",
-            header_path.display()
-        );
     } else {
         println!(
             "cargo:warning=Bluetooth headers not found at {}. Bindings will not be generated.",
@@ -210,6 +182,9 @@ fn main() {
     }
 
     // Tell Cargo to re-run this build script if these files change
+    // The stubs are part of this crate's compiled output, and cargo does not watch them by
+    // default: without this line an edit to cmsis_stubs.c is silently not compiled, the link
+    // fails on symbols that are visibly present in the source, and the build looks stale.
     println!("cargo:rerun-if-changed=blobs/");
     println!("cargo:rerun-if-changed=vendor/");
 }

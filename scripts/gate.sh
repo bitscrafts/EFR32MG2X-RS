@@ -154,7 +154,7 @@ for dir in crates/*/ libraries/*/; do
   [ -f "${dir}Cargo.toml" ] || continue
   name=$(basename "$dir")
   case "$name" in
-    efr32mg24-bluetooth-sys|efr32mg24-rail-sys|efr32mg24-bootloader|bootloader-test-app) continue ;;
+    cmsis-stubs|efr32mg24-bootloader|bootloader-test-app) continue ;;
   esac
   # one example is a file, or a directory with a main.rs; a project's modules are not examples
   n=$(find "$dir/examples" -maxdepth 1 -name '*.rs' 2>/dev/null | wc -l)
@@ -206,8 +206,8 @@ done
 
 echo
 echo "not gated on purpose:"
-echo "  efr32mg24-bluetooth-sys  -- 17 errors from its own bindgen output; headers gitignored"
-echo "  efr32mg24-rail-sys       -- needs the SDK headers, same reason"
+echo "  cmsis-stubs              -- a build-support crate: C only, no Rust API, no examples"
+echo "  efr32mg24-radio/ble_gatt -- needs the PSA crypto blobs; documented in docs/04-reference/RADIO-NOTES.md"
 echo
 if [ "$FAILED" -eq 0 ]; then
   echo "VERDICT: PASS"

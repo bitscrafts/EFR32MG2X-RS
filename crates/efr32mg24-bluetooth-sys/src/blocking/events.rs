@@ -50,7 +50,6 @@
 //! }
 //! ```
 
-use super::error::BleError;
 use crate::ffi as bt;
 
 /// Bluetooth Low Energy event
@@ -71,6 +70,10 @@ use crate::ffi as bt;
 /// - Connection handle (for GATT operations)
 /// - Advertising state (future)
 #[derive(Debug, Clone)]
+// The largest variant carries a 512-byte heapless buffer, because a GATT write can be that big and
+// this crate has no allocator to box it. The alternative -- a smaller variant behind a pointer --
+// would need an allocator or a static pool, and the pool would be the same 512 bytes.
+#[allow(clippy::large_enum_variant)]
 pub enum BleEvent {
     /// Remote device connected
     ///
@@ -201,7 +204,7 @@ impl BleEvent {
         match event_id {
             // Connection opened (peripheral role)
             bt::sl_bt_evt_connection_opened_id => {
-                let data = &evt.data.evt_connection_opened;
+                let data = unsafe { evt.data.evt_connection_opened.as_ref() };
                 Some(BleEvent::Connected {
                     connection: data.connection,
                     address: data.address.addr,
@@ -213,7 +216,7 @@ impl BleEvent {
 
             // Connection closed
             bt::sl_bt_evt_connection_closed_id => {
-                let data = &evt.data.evt_connection_closed;
+                let data = unsafe { evt.data.evt_connection_closed.as_ref() };
                 Some(BleEvent::Disconnected {
                     connection: data.connection,
                     reason: data.reason,
@@ -222,14 +225,17 @@ impl BleEvent {
 
             // GATT server attribute value (write from client)
             bt::sl_bt_evt_gatt_server_attribute_value_id => {
-                let data = &evt.data.evt_gatt_server_attribute_value;
+                let data = unsafe { evt.data.evt_gatt_server_attribute_value.as_ref() };
 
                 // Copy value data to heapless::Vec
                 let len = data.value.len as usize;
                 let mut value: heapless::Vec<u8, 512> = heapless::Vec::new();
                 for i in 0..len.min(512) {
-                    // Truncate to 512 bytes max
-                    let _ = value.push(data.value.data[i]);
+                    // Truncate to 512 bytes max. `data.value.data` is a flexible array member —
+                    // bindgen's `__IncompleteArrayField` has no length and no `Index`, so the byte
+                    // is read through its pointer. The length came from the header's own `len`.
+                    let byte = unsafe { data.value.data.as_ptr().add(i).read() };
+                    let _ = value.push(byte);
                 }
 
                 Some(BleEvent::GattWrite {
@@ -242,17 +248,20 @@ impl BleEvent {
 
             // GATT server user read request
             bt::sl_bt_evt_gatt_server_user_read_request_id => {
-                let data = &evt.data.evt_gatt_server_user_read_request;
+                let data = unsafe { evt.data.evt_gatt_server_user_read_request.as_ref() };
                 Some(BleEvent::GattRead {
                     connection: data.connection,
-                    attribute: data.attribute,
+                    // The header names this field `characteristic`; it is the same 16-bit handle
+                    // the write path calls `attribute`. Two names for one thing across two
+                    // events, which is a good reason to keep the conversion in one place.
+                    attribute: data.characteristic,
                     offset: data.offset,
                 })
             }
 
             // GATT notification transmission completed
             bt::sl_bt_evt_gatt_server_notification_tx_completed_id => {
-                let data = &evt.data.evt_gatt_server_notification_tx_completed;
+                let data = unsafe { evt.data.evt_gatt_server_notification_tx_completed.as_ref() };
                 Some(BleEvent::GattNotificationComplete {
                     connection: data.connection,
                 })
@@ -260,7 +269,7 @@ impl BleEvent {
 
             // Advertising timeout
             bt::sl_bt_evt_advertiser_timeout_id => {
-                let data = &evt.data.evt_advertiser_timeout;
+                let data = unsafe { evt.data.evt_advertiser_timeout.as_ref() };
                 Some(BleEvent::AdvertisingTimeout {
                     advertising_set: data.handle,
                 })

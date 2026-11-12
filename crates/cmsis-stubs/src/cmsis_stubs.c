@@ -131,3 +131,36 @@ void CORE_Yield(void)
 {
     __asm__ volatile ("wfe");
 }
+
+/**
+ * @brief Enter an atomic section (PRIMASK save + disable)
+ *
+ * The Bluetooth stack calls this around its buffer manipulation. It is *not* the same as
+ * CORE_EnterAtomic in some CMSIS versions that only raise BASEPRI: masking with PRIMASK also
+ * blocks priority 0, and the stack's assumption is that nothing preempts the buffer it is
+ * editing. Getting this wrong does not fail to link — it corrupts the attribute buffer under
+ * interrupt load, which is a bug that only appears once a connection is active.
+ *
+ * @return Previous PRIMASK value, to be passed to CORE_ExitAtomic()
+ */
+uint32_t CORE_EnterAtomic(void)
+{
+    uint32_t primask;
+
+    __asm__ volatile ("mrs %0, primask" : "=r" (primask));
+    __asm__ volatile ("cpsid i" ::: "memory");
+    __asm__ volatile ("isb");
+
+    return primask;
+}
+
+/**
+ * @brief Exit an atomic section (restore PRIMASK)
+ *
+ * @param primask Previous PRIMASK value from CORE_EnterAtomic()
+ */
+void CORE_ExitAtomic(uint32_t primask)
+{
+    __asm__ volatile ("msr primask, %0" :: "r" (primask) : "memory");
+    __asm__ volatile ("isb");
+}

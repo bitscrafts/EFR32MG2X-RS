@@ -62,3 +62,9 @@
 
 // Include the auto-generated bindings from build.rs
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+
+// The vendor blob references the `CORE_*` helpers as external symbols, and nothing in Rust calls
+// them — so without this `#[link]` the archive is dropped by the linker and every one of those
+// symbols comes back undefined. The definitions live in the `cmsis-stubs` crate, compiled once.
+#[link(name = "cmsis_stubs", kind = "static")]
+extern "C" {}

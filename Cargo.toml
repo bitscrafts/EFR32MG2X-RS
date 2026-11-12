@@ -2,10 +2,12 @@
 resolver = "2"
 # `crates/` is the hardware stack: PAC <- HAL <- BSP <- bindings, one direction only.
 members = [
+    "crates/cmsis-stubs",
     "crates/efr32mg24-pac",
     "crates/efr32mg24-hal",
     "crates/efr32mg24-rail-sys",
     "crates/efr32mg24-bluetooth-sys",
+    "crates/efr32mg24-radio",
     "crates/xiao-mg24-bsp",
     "crates/xiao-expansion-base-bsp",
     # `libraries/` is domain policy: no hardware, builds and tests on the host.

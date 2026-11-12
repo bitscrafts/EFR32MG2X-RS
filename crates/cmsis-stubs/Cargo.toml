@@ -1,0 +1,13 @@
+[package]
+name = "cmsis-stubs"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "CMSIS core helpers the Silicon Labs radio blobs expect the application to provide"
+readme = "README.md"
+
+[dependencies]
+
+[build-dependencies]
+cc = "1"

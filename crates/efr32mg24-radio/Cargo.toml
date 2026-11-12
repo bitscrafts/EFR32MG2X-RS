@@ -1,0 +1,41 @@
+[package]
+name = "efr32mg24-radio"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+description = "Safe radio layer for EFR32MG24: Bluetooth (BGAPI) and RAIL, with the buffers and state machines the vendor API assumes"
+readme = "README.md"
+keywords = ["efr32", "mg24", "bluetooth", "ble", "rail"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+# The two vendor stacks, as generated bindings plus their binary blobs.
+efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys" }
+# The HAL is here for one thing only: a delay the stack can use while it boots.
+efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+
+cortex-m = { workspace = true }
+cortex-m-rt = { workspace = true }
+embedded-hal = { workspace = true }
+heapless = "0.8"
+panic-halt = "0.2"
+
+[features]
+default = ["ble"]
+# Bluetooth 5.3 through the Silicon Labs BGAPI stack.
+ble = []
+# RAIL (proprietary and 802.15.4) — enabled once emlib and a radio config are vendored.
+rail = []
+# A connectable stack pulls the bonding/encryption path, which needs Silicon Labs' PSA crypto
+# blobs. They are not vendored, so the example is staged: `--features gatt` fails at link with a
+# list of psa_* symbols, which is the honest state. See docs/04-reference/RADIO-NOTES.md.
+gatt = []
+
+[[example]]
+name = "ble_beacon"
+required-features = ["ble"]
+
+[[example]]
+name = "ble_gatt"
+required-features = ["ble", "gatt"]

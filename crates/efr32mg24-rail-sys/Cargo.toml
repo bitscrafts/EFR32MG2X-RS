@@ -11,8 +11,19 @@ keywords = ["efr32", "rail", "radio", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
+# The same helpers, the same definitions, shared with the Bluetooth stack.
+cmsis-stubs = { path = "../cmsis-stubs" }
 # Core types for FFI
 cty = "0.2"
+
+[dev-dependencies]
+# Examples need a board, a delay and a way to report: the HAL provides the first two, and the
+# mailbox module in the module BSP provides the third.
+efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+panic-halt = "0.2"
+
+[[example]]
+name = "rail_version"
 
 [build-dependencies]
 # For generating Rust bindings from C headers
