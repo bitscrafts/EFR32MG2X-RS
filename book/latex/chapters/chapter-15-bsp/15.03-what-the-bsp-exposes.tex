@@ -1,0 +1,70 @@
+\section{What a BSP Should Expose}
+\label{sec:bsp-api}
+
+A BSP's public API is a vocabulary, and the test of a vocabulary is what a user can say with it without
+knowing anything else.
+
+\subsection{The Right Shape}
+
+\begin{minted}{rust}
+let module = Module::take().expect("peripherals taken twice");
+let mut led = module.led();
+
+let base = ExpansionBase::take().expect("peripherals taken twice");
+let mut oled = base.oled();
+let env = base.environment()?;      // BME68x
+let rtc = base.rtc()?;              // PCF8563
+let mut buzzer = base.buzzer();
+\end{minted}
+
+Every one of those names is a thing on the desk. None of them is an address, a bus, a pin, an alias or
+a register — and that is the whole specification.
+
+\subsection{What the Signature Hides, and What It Must Not}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.26\textwidth}p{0.30\textwidth}p{0.40\textwidth}@{}}
+        \toprule
+        \textbf{Hidden} & \textbf{Example} & \textbf{Why hiding it is right} \\
+        \midrule
+        addresses & \codeinline{0x3C}, \codeinline{0x76}, \codeinline{0x51} & a user cannot check them and must not need to \\
+        pins & \codeinline{PC04}/\codeinline{PC05}, \codeinline{PB2}/\codeinline{PB3} & measured facts; wrong in half the documents \\
+        power gates & \codeinline{PD5}, \codeinline{PC8} & sequencing the user would get wrong \\
+        aliases & which peripheral window answered & a security-attribution detail \\
+        baud and clock & I2C half-period, PWM frequency & driver knowledge \\
+        \bottomrule
+    \end{tabular}
+    \caption{What a facade should hide. Note that every row is a \emph{fact}, not a \emph{choice} — the
+    user has no decision to make about any of them.}
+    \label{tab:bsp-hides}
+\end{table}
+
+\subsection{What It Must Not Hide: Structure}
+
+The temptation is to hide the two buses, because ``two I2C buses'' is an implementation detail. It is
+not — it is a fact about the hardware that changes what the user can do:
+
+\begin{itemize}
+    \item The panel, the BME68x and the RTC share \codeinline{PC04}/\codeinline{PC05}.
+    \item The IMU has its own pair, \codeinline{PB2}/\codeinline{PB3}, because the module's sensors are
+          wired to the module's pins.
+    \item A single \codeinline{i2c()} would have to take a ``which bus'' argument anyway, so hiding it
+          only moves the choice to a place with less information.
+\end{itemize}
+
+The rule that came out of this: \textbf{hide the addresses, keep the structure}. A facade that hides
+structure has to guess, and guessing is what the layer below exists to prevent.
+
+\subsection{Conflicts Should Be Refused, Not Resolved}
+
+\begin{minted}{rust}
+// The microSD card's chip select shares a pin on this board. When that driver lands,
+// this facade is where the conflict is refused -- not silently arbitrated.
+pub fn sd(&mut self) -> Result<SdCard<'_>, BoardError>
+\end{minted}
+
+A facade that resolves a real conflict silently is a facade that produces a bug the user cannot see.
+Returning an error — or not offering the operation at all — is honest, and it is the difference between
+an API that documents the hardware and one that pretends the hardware is simpler than it is.

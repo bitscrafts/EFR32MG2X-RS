@@ -25,25 +25,23 @@ def strip_comments(text):
 
 
 def check_codeinline_in_argument(text, name):
-    """`\\codeinline` is verbatim-like: it cannot appear inside another command's argument."""
+    """`\\codeinline` is verbatim-like: it cannot appear inside ANY command argument.
+
+    The check is written as the class, not as a list of commands, because the first version only
+    looked at sections and captions and let `\\textbf{\\codeinline{...}}` through -- which fails with
+    the same message about an unrelated macro.
+    """
     defects = []
-    for cmd in ("section", "subsection", "subsubsection", "caption", "chapter"):
-        for m in re.finditer(r"\\" + cmd + r"\*?\{", text):
-            start = m.end()
-            depth, i = 1, start
-            while i < len(text) and depth:
-                if text[i] == "{":
-                    depth += 1
-                elif text[i] == "}":
-                    depth -= 1
-                i += 1
-            arg = text[start : i - 1]
-            if "\\codeinline{" in arg:
-                line = text[: m.start()].count("\n") + 1
-                defects.append(
-                    f"{name}:{line}: \\codeinline inside \\{cmd}{{}} -- "
-                    f"use plain text (the error names '\\oldstylenums' and points elsewhere)"
-                )
+    for m in re.finditer(r"\\codeinline\{", text):
+        line = text[: m.start()].count("\n") + 1
+        before = text[: m.start()]
+        # inside a command argument? e.g. "\\textbf{" ... "\\codeinline{" ...
+        cmd = re.search(r"\\([A-Za-z]+)\*?\{([^{}]*)$", before)
+        if cmd:
+            defects.append(
+                f"{name}:{line}: \\codeinline inside \\{cmd.group(1)}{{}} -- use plain text "
+                f"(the error names '\\oldstylenums' and points elsewhere)"
+            )
     return defects
 
 

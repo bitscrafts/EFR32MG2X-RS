@@ -1,0 +1,81 @@
+\section{One Crate per Board, and the Arrow Between Them}
+\label{sec:bsp-one-crate}
+
+The crate layout is not a matter of taste. It follows from one question: \emph{which of these things
+can be owned separately?}
+
+\subsection{The Two Schools}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.24\textwidth}p{0.32\textwidth}p{0.36\textwidth}@{}}
+        \toprule
+        \textbf{Project} & \textbf{Layout} & \textbf{Where the wiring lives} \\
+        \midrule
+        \codeinline{stm32f4xx-hal} & one HAL per family, no BSP & in every example \\
+        \codeinline{esp-hal} & one HAL, no BSP, chip by feature & in every example \\
+        \codeinline{rp-hal} / \codeinline{rp-hal-boards} & HAL per chip + a BSP crate per board & in the BSP crate \\
+        \bottomrule
+    \end{tabular}
+    \caption{Two schools. The difference is not sophistication: it is whether the board's wiring is a
+    fact worth writing down once.}
+    \label{tab:bsp-schools}
+\end{table}
+
+Both schools are legitimate. The first optimises for a HAL whose users all have a schematic in front of
+them; the second optimises for a board whose wiring was expensive to establish. This project is firmly
+in the second camp, for a reason that is in chapter~4's table of contradictions: the pin map of this
+board was measured, and a measurement that is repeated in every example is a measurement that will be
+repeated wrongly.
+
+\subsection{The Four Crate Questions}
+
+\begin{enumerate}
+    \item \textbf{How many chips?} One HAL per chip or per family. This part gets one.
+    \item \textbf{Do the boards stack?} If a carrier holds a module, one crate per piece, arrow carrier
+          $\rightarrow$ module.
+    \item \textbf{Are there variants?} A variant of the \emph{same} PCB is a feature. A different PCB is
+          a crate.
+    \item \textbf{Was the wiring obvious or was it conquered?} Obvious wiring can live in examples;
+          conquered wiring belongs in a BSP with the measurement next to it.
+\end{enumerate}
+
+\subsection{What Ends Up in the Workspace}
+
+\begin{minted}{text}
+crates/
+  efr32mg24-pac/            registers
+  efr32mg24-hal/            drivers + pin and bus primitives
+  xiao-mg24-bsp/            Module: led(), and with --features sense: imu(), microphone()
+  xiao-expansion-base-bsp/  ExpansionBase: oled(), environment(), rtc(), buzzer(), button()
+libraries/
+  motion-detection/         domain policy: no hardware at all
+\end{minted}
+
+Two rules hold that shape together, and both are checks in this project's gate:
+
+\begin{itemize}
+    \item \textbf{Nothing in libraries/ may depend on the hardware stack.} A classifier
+          that needs a HAL is a classifier that cannot be tested on a laptop, and the test suite is the
+          only thing that makes it trustworthy.
+    \item \textbf{Every crate that exposes hardware carries at least one example of its own level.} An
+          API with no examples compiles, lints, and rots — this project had a whole module do exactly
+          that for weeks.
+\end{itemize}
+
+\subsection{The Defect the Layout Prevented}
+
+Before the split, the HAL itself contained \codeinline{board.rs} with the carrier's wiring — the OLED
+bus, the button pin, the buzzer channel — because it was convenient. Two consequences followed
+immediately:
+
+\begin{enumerate}
+    \item The HAL became unusable without the carrier's assumptions, so a user with a bare XIAO had to
+          read carrier pins to blink an LED.
+    \item Two BSPs existed at once: the HAL's board module and the new facade. Half the examples proved
+          one, half the other, and the older one stopped compiling without anyone noticing.
+\end{enumerate}
+
+The fix was not better documentation. It was deleting the wiring from the HAL and making the
+dependency direction a manifest fact.

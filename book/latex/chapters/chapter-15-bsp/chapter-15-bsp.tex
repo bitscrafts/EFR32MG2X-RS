@@ -1,0 +1,42 @@
+% Chapter 15: BSP
+% File: chapters/chapter-15-bsp/chapter-15-bsp.tex
+
+\chapter{Board Support Packages and Hardware Abstraction}
+\label{ch:chapter-15}
+\chapthumb{15}
+
+\begin{quote}
+    \textit{``A BSP is the layer that knows which wire is which — and it is the only layer allowed
+    to.''}
+\end{quote}
+
+The PAC knows registers. The HAL knows protocols. Neither knows that a particular board puts an LED on
+\codeinline{PA7} with the cathode to the pin, and that is the BSP's job: the last layer between the
+user's intent and the silicon, and the only one that should contain a pin number.
+
+This chapter builds a BSP for hardware that arrives in two pieces — a module and a carrier — which is
+the arrangement that exposes every mistake in the design.
+
+\minitoc
+
+\clearpage
+
+\input{chapters/chapter-15-bsp/15.01-two-pieces-of-hardware}
+\input{chapters/chapter-15-bsp/15.02-one-crate-per-board}
+\input{chapters/chapter-15-bsp/15.03-what-the-bsp-exposes}
+\input{chapters/chapter-15-bsp/15.04-the-facade-that-hides-too-much}
+
+\clearpage
+
+\begin{keytakeaways}
+    \item Hardware that can be owned in pieces needs a crate per piece, with the dependency arrow
+          pointing one way: carrier depends on module, module depends on HAL.
+    \item A variant of the same PCB is a feature, not a crate. Two crates would duplicate the boot,
+          the clock tree and the LED, and one of them would drift.
+    \item A BSP's API is what a user asks for — \codeinline{led()}, \codeinline{imu()},
+          \codeinline{oled()} — never an address, an alias or a register.
+    \item A facade that hides a real conflict (two buses, a shared pin) hides it until the user hits
+          it. Hide the addresses; keep the structure visible.
+    \item Every example belongs to the crate whose hardware it needs, and the gate fails a crate that
+          has hardware and no example.
+\end{keytakeaways}

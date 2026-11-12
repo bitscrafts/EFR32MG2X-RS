@@ -1,0 +1,65 @@
+\section{Examples Belong to the Hardware They Need}
+\label{sec:bsp-examples}
+
+The most practical BSP rule in this book is about where example files live, because that is where a
+layout either documents itself or lies.
+
+\subsection{The Rule}
+
+\begin{quote}
+    An example lives in the crate whose \textbf{smallest} hardware requirement it satisfies.
+\end{quote}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.36\textwidth}p{0.28\textwidth}p{0.32\textwidth}@{}}
+        \toprule
+        \textbf{Example} & \textbf{Lives in} & \textbf{Needs} \\
+        \midrule
+        \codeinline{module\_led\_blink} & \codeinline{xiao-mg24-bsp} & the module \\
+        \codeinline{module\_imu} & \codeinline{xiao-mg24-bsp} (\codeinline{sense}) & the module, Sense variant \\
+        \codeinline{base\_env\_clock} & \codeinline{xiao-expansion-base-bsp} & module + carrier \\
+        \codeinline{base\_fall\_detector} & \codeinline{xiao-expansion-base-bsp} & module + carrier (panel, buzzer) \\
+        \bottomrule
+    \end{tabular}
+    \caption{The path of the file is the bill of materials.}
+    \label{tab:bsp-examples}
+\end{table}
+
+\subsection{The Three Ways to Get It Wrong}
+
+\begin{enumerate}
+    \item \textbf{Everything in the carrier crate.} Convenient, and it makes the module crate's API
+          unexercised: this project's module facade had no examples for weeks, and its documentation
+          described a pin that did not exist.
+    \item \textbf{Everything in the module crate.} Impossible without the carrier's devices, so the
+          examples would need \codeinline{cfg} guards and would prove neither level.
+    \item \textbf{A flat examples/ directory at the workspace root.} The path stops telling you
+          anything, and \codeinline{cargo} stops checking that the crate still builds its own examples.
+\end{enumerate}
+
+\subsection{The Check That Keeps It True}
+
+\begin{minted}{bash}
+# every crate that exposes hardware must carry at least one example of its own level
+for dir in crates/*/ libraries/*/; do
+  [ -f "${dir}Cargo.toml" ] || continue
+  n=$(find "$dir/examples" -maxdepth 1 -name '*.rs' | wc -l)
+  [ "$n" -gt 0 ] || fail "$(basename "$dir"): no examples -- its API is not built by anything"
+done
+\end{minted}
+
+That check is why this project's module facade has a \codeinline{module\_led\_blink} that uses only the
+module, and why the carrier's examples are in the carrier. A rule enforced by the file system is a rule
+nobody has to remember.
+
+\subsection{The Half-Example That Taught the Rule}
+
+A fall detector was written in the HAL's examples directory. It used the IMU, the panel and the buzzer:
+two boards' worth of hardware, in the crate that knows neither. It compiled, because the HAL happened to
+contain the wiring at the time — which was itself the defect the split fixed.
+
+After the split, the same program had an obvious home: the carrier crate, which depends on the module
+and therefore has both the IMU (through the module) and the panel (its own). Moving it changed no code.
+That is the sign of a layout that was right: the program did not have to change to be correctly placed.

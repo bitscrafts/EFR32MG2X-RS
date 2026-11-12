@@ -1,0 +1,70 @@
+\section{Two Pieces of Hardware, Not One}
+\label{sec:bsp-two-pieces}
+
+This board is not one board. It is a module — the XIAO MG24 Sense, which runs on its own — plus a
+carrier that the module plugs into. The distinction is physical, it decides who owns which feature, and
+a single BSP crate erases it.
+
+\subsection{What Each Piece Owns}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.22\textwidth}p{0.30\textwidth}p{0.40\textwidth}@{}}
+        \toprule
+        \textbf{Piece} & \textbf{Components} & \textbf{Can be used alone?} \\
+        \midrule
+        XIAO MG24 & LED \codeinline{PA7}, USB, radio & yes \\
+        XIAO MG24 \emph{Sense} & the above + IMU \codeinline{LSM6DS3TR-C}, analog mic & yes \\
+        Expansion Base & OLED, BME68x, RTC, buzzer, button, Grove, microSD & no; needs a XIAO \\
+        \bottomrule
+    \end{tabular}
+    \caption{Three hardware identities and one board on the desk. The Sense is a variant of the module,
+    not a different module.}
+    \label{tab:bsp-pieces}
+\end{table}
+
+\subsection{The Same PCB With More Parts}
+
+The Sense is a XIAO with two extra components fitted. That single fact decides the crate layout:
+
+\begin{itemize}
+    \item \textbf{A feature, not a crate.} Two crates would each need the boot sequence, the clock
+          tree, the LED and the pin map — four things to keep in step, for two products that are
+          physically the same PCB.
+    \item \textbf{A feature that is opt-in.} A user with a plain XIAO must not compile the IMU driver
+          or its bus. \codeinline{--features sense} adds exactly those.
+    \item \textbf{The feature names the thing that is fitted,} not the price bracket or the marketing
+          name: \codeinline{sense} means ``the two sensors are populated''.
+\end{itemize}
+
+\begin{minted}{toml}
+[features]
+default = []
+# The Sense variant is the same PCB with more components fitted: the IMU and the
+# analog microphone. Same board, fewer parts -- so a feature, not a crate.
+sense = []
+\end{minted}
+
+\subsection{The Carrier Is a Different Crate, and It Points One Way}
+
+The Expansion Base adds devices the module has never heard of, and a user may own neither, one or both.
+So it is its own crate, and the dependency has a direction:
+
+\begin{minted}{text}
+xiao-expansion-base-bsp  ──depends on──▶  xiao-mg24-bsp  ──depends on──▶  efr32mg24-hal
+\end{minted}
+
+The opposite arrow — the module crate knowing that a carrier exists — is the defect this book's
+section~\ref{sec:layer-boundaries} describes: it makes the module unusable without the carrier's code,
+and it puts carrier pins in a crate whose whole claim is ``the XIAO on its own''.
+
+\subsection{What the Direction Buys}
+
+\begin{itemize}
+    \item A user with only the XIAO compiles one small crate, not the carrier's drivers.
+    \item Carrier examples live where the carrier is, so the path of a file tells you the hardware it
+          needs before you open it.
+    \item The module crate cannot drift into knowing the carrier, because the manifest forbids it —
+          and \codeinline{cargo} enforces manifests even when reviewers do not.
+\end{itemize}
