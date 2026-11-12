@@ -22,7 +22,6 @@
 use cortex_m_rt::entry;
 use efr32mg24_hal::board::Board;
 use efr32mg24_hal::bus::Bus;
-use efr32mg24_hal::delay::Delay;
 use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::prelude::*;
 use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, Lsm6ds3trc};
@@ -72,12 +71,8 @@ fn push_dec(out: &mut [u8], mut at: usize, mut value: i32) -> usize {
 
 #[entry]
 fn main() -> ! {
-    let board = Board::take().expect("peripherals taken twice");
-    let mut delay = Delay::with_sysclk(
-        // SAFETY: SysTick belongs to the delay; nothing else programs it here.
-        unsafe { cortex_m::Peripherals::steal().SYST },
-        efr32mg24_hal::clock::DEFAULT_SYSCLK_HZ,
-    );
+    let mut board = Board::take().expect("peripherals taken twice");
+    let mut delay = board.delay();
 
     // Power first, talk after: the gate is not optional.
     let power = board.output_on(Port::D, 5, false);

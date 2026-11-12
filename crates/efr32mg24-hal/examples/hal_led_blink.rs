@@ -30,12 +30,8 @@ mod mailbox;
 
 #[entry]
 fn main() -> ! {
-    let board = Board::take().expect("peripherals taken twice");
-    let mut delay = efr32mg24_hal::delay::Delay::with_sysclk(
-        // SAFETY: SysTick is the delay's alone; nothing else in this example programs it.
-        unsafe { cortex_m::Peripherals::steal().SYST },
-        efr32mg24_hal::clock::DEFAULT_SYSCLK_HZ,
-    );
+    let mut board = Board::take().expect("peripherals taken twice");
+    let mut delay = board.delay();
 
     // PA7, active low: the same two facts `module_led_blink` hides behind the facade.
     let led = board.output_on(Port::A, 7, true);

@@ -116,6 +116,7 @@ pub mod clock;
 pub mod delay;
 pub mod display;
 pub mod dma;
+pub mod dwt;
 pub mod emu;
 pub mod i2c;
 pub mod microphone;

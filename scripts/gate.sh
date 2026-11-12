@@ -166,6 +166,20 @@ for dir in crates/*/ libraries/*/; do
   fi
 done
 
+
+# 5. An example may not steal a core peripheral. SysTick and the cycle counter belong to the HAL
+#    (`board.delay()`, `hal::dwt`), for the same reason the PAC does: an example that steals one
+#    has no owner for it, and two owners of SysTick is a delay that lies.
+offenders=$(grep -rln "Peripherals::steal" crates/*/examples/ --include=*.rs 2>/dev/null \
+  | grep -v "^crates/efr32mg24-pac/" \
+  | grep -v "^crates/efr32mg24-bluetooth-sys/" \
+  | grep -v "^crates/efr32mg24-rail-sys/" || true)
+if [ -z "$offenders" ]; then
+  pass "no example steals a core peripheral"
+else
+  fail "an example steals a core peripheral: $(echo "$offenders" | tr '\n' ' ')"
+fi
+
 echo "=== host tests: domain crates ==="
 # Every crate under libraries/ must build and test on the host, and must not drag in
 # anything from the hardware stack. That second half is the rule that keeps them testable:

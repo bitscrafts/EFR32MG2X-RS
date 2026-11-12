@@ -49,14 +49,14 @@ struct Samples([[i16; 3]; CAPTURE_LEN]);
 static mut CAPTURE: Samples = Samples([[0; 3]; CAPTURE_LEN]);
 static mut TOTAL: u32 = 0;
 
+// The cycle counter is the HAL's, not a peripheral an example reaches for.
 fn cycle_count() -> u32 {
-    unsafe { (*cortex_m::peripheral::DWT::PTR).cyccnt.read() }
+    efr32mg24_hal::dwt::cycles()
 }
 
 fn dwt_start() {
-    let mut core = unsafe { cortex_m::Peripherals::steal() };
-    core.DCB.enable_trace();
-    core.DWT.enable_cycle_counter();
+    // SAFETY: nothing else in this example uses DWT.
+    unsafe { efr32mg24_hal::dwt::start() };
 }
 
 fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {

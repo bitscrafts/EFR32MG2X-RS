@@ -73,12 +73,8 @@ fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
 
 #[entry]
 fn main() -> ! {
-    let board = Board::take().expect("peripherals taken twice");
-    let mut delay = efr32mg24_hal::delay::Delay::with_sysclk(
-        // SAFETY: SysTick belongs to the delay; the timer below is TIMER0, a different peripheral.
-        unsafe { cortex_m::Peripherals::steal() }.SYST,
-        efr32mg24_hal::clock::DEFAULT_SYSCLK_HZ,
-    );
+    let mut board = Board::take().expect("peripherals taken twice");
+    let mut delay = board.delay();
 
     // The microphone: PC8 enable (active high), then the converter.
     board.output_on(Port::C, 8, false).on();

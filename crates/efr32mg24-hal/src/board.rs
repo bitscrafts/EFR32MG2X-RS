@@ -14,6 +14,9 @@ use efr32mg24_pac as pac;
 
 /// Everything an application needs from the XIAO MG24 Sense + Expansion Base.
 pub struct Board {
+    /// Held so `cortex_m::Peripherals::take()` cannot succeed a second time. SysTick stays
+    /// inside it; `delay()` borrows it back.
+    _cp: cortex_m::Peripherals,
     dp: pac::Peripherals,
 }
 
@@ -23,10 +26,29 @@ impl Board {
     /// Returns `None` if called twice, which is what the PAC singleton is for.
     pub fn take() -> Option<Self> {
         let dp = pac::Peripherals::take()?;
+        // The core peripherals (SysTick, NVIC) are taken here for the same reason the PAC is:
+        // so a caller never has to `steal()` one. `cortex_m::Peripherals::take()` returns `None`
+        // the second time, exactly like the PAC's.
+        let cp = cortex_m::Peripherals::take()?;
         // GPIO is needed by the I2C bit-banger and the LED; without this gate
         // the first DOUT/MODEL access faults (CFSR=0x8200, BFAR = the address).
         dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
-        Some(Self { dp })
+        Some(Self { dp, _cp: cp })
+    }
+
+    /// A millisecond delay on SysTick.
+    ///
+    /// The board owns the core peripherals, so no caller has to reach for
+    /// `cortex_m::Peripherals::steal()` to get a delay — which is the same defect as stealing the
+    /// PAC, one layer down.
+    pub fn delay(&self) -> crate::delay::Delay {
+        // SAFETY: the core peripherals were taken by `take()` and are held in `_cp`, so this is
+        // not a second owner -- it is the same SysTick, borrowed back. `Delay` only programs the
+        // SysTick registers and nothing else in this crate touches them.
+        crate::delay::Delay::with_sysclk(
+            unsafe { cortex_m::Peripherals::steal() }.SYST,
+            crate::clock::DEFAULT_SYSCLK_HZ,
+        )
     }
 
     /// The GPIO register block this board's pins live on.

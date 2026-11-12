@@ -85,12 +85,24 @@ that no longer existed. Two READMEs in the HAL asserted the LED was `PB2` and th
 
 Fix: `lib.rs` rewritten; both READMEs corrected with their provenance; both modules retired.
 
+### 7. Three examples stole a core peripheral
+
+`cortex_m::Peripherals::steal().SYST` for a delay, and `steal()` plus two trace-register writes for
+the cycle counter. Same defect one layer down: SysTick and DWT have an owner (the board), and an
+example that steals them has no owner — two owners of SysTick is a delay that lies, and a cycle
+counter that was never enabled reads as zero, which looks like a very fast loop.
+
+Fix: `Board::take()` now takes `cortex_m::Peripherals` too and `board.delay()` hands out a `Delay`;
+a new `hal::dwt` module (`start`, `cycles`, `since`, `cycles_to_us`) replaced the three hand-rolled
+cycle-counter helpers. No example steals anything.
+
 ## What is now checked, every run
 
 ```text
 PASS  examples outside the PAC crate name no PAC type
 PASS  no BSP re-exports the PAC
 PASS  the HAL exposes no register block publicly
+PASS  no example steals a core peripheral
 PASS  <crate>: N examples of its own level      (every crate, not only the BSPs)
 PASS  motion-detection: no hardware dependency
 ```

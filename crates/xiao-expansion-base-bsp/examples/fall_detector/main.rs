@@ -85,13 +85,12 @@ const DISPLAY_EVERY: u32 = 800;
 const DISPLAY_QUIET_MS: u32 = 1_200;
 
 fn cycle_count() -> u32 {
-    unsafe { (*cortex_m::peripheral::DWT::PTR).cyccnt.read() }
+    efr32mg24_hal::dwt::cycles()
 }
 
 fn dwt_start() {
-    let mut core = unsafe { cortex_m::Peripherals::steal() };
-    core.DCB.enable_trace();
-    core.DWT.enable_cycle_counter();
+    // SAFETY: nothing else in this project uses the cycle counter.
+    unsafe { efr32mg24_hal::dwt::start() };
 }
 
 fn push_hex8(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
