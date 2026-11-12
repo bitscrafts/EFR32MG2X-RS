@@ -87,3 +87,14 @@ pub fn pass(msg: &[u8]) {
 pub fn fail(msg: &[u8]) {
     write(Status::Fail, msg);
 }
+
+/// Append a byte string to a message buffer, taking the length from the string itself.
+///
+/// Three examples in this project panicked with "source slice length does not match destination
+/// slice length" because they wrote `msg[at..at + 17].copy_from_slice(b"...18 bytes...")` by hand.
+/// A hand-counted length is a bug waiting for the day somebody edits the text, and the panic lands in
+/// a `panic_halt` loop that looks exactly like a hardware hang. Use this instead.
+pub fn push(out: &mut [u8], at: &mut usize, bytes: &[u8]) {
+    out[*at..*at + bytes.len()].copy_from_slice(bytes);
+    *at += bytes.len();
+}

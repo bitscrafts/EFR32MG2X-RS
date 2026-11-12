@@ -28,7 +28,6 @@ use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::prelude::*;
 use efr32mg24_radio::{BleEvent, Bluetooth};
 
-
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
 mod mailbox;
 

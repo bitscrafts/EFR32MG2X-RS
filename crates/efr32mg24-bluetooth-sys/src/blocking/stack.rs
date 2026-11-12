@@ -86,7 +86,8 @@ impl Bluetooth {
         // `sl_bt_system_start_bluetooth()` is the obvious call and the wrong one here: the
         // "on-demand start" component is not in this build, so it returns
         // SL_STATUS_NOT_AVAILABLE (0x000E). Measured on the board; see `stack_init.rs`.
-        let status = unsafe { crate::stack_init::start(crate::stack_init::default_configuration()) };
+        let status =
+            unsafe { crate::stack_init::start(crate::stack_init::default_configuration()) };
         if status != 0 {
             return Err(BleError::from(status));
         }

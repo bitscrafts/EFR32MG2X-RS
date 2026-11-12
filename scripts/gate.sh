@@ -59,7 +59,10 @@ for dir in $CRATES; do
   [ -f "$dir/Cargo.toml" ] || continue
   extra=$(features_for "$pkg")
   out=$(cargo clippy --release --target "$TARGET" -p "$pkg" $extra 2>&1)
-  n=$(printf '%s\n' "$out" | grep -cE '^warning: [a-z]' || true)
+  # `cargo:warning=` from a build script is echoed as "warning: <crate>@<version>: ..." and is an
+  # INFORMATIVE message, not a lint. Counting those made this check fail crates whose own code had
+  # zero warnings — a gate that lies in the strict direction is still a gate that lies.
+  n=$(printf '%s\n' "$out" | grep -E '^warning: [a-z]' | grep -vE '^warning: [a-z0-9_-]+@[0-9.]+:' | wc -l)
   if printf '%s\n' "$out" | grep -qE '^error'; then
     fail "$pkg clippy (does not compile)"
   elif [ "$n" -eq 0 ]; then

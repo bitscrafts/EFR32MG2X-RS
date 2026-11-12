@@ -41,6 +41,7 @@ motion-detection = { path = "../../libraries/motion-detection" }
 panic-halt = "0.2"
 
 [features]
+stack = []  # BLE examples: see docs/04-reference/BLE-BRINGUP-CHAIN.md
 default = []
 # The Sense variant is the same PCB with more components fitted: the IMU and the analog
 # microphone. Same board, fewer parts — so a feature, not a crate.
@@ -65,8 +66,12 @@ required-features = ["sense"]
 
 [[example]]
 name = "module_ble_motion"
-required-features = ["sense"]
+required-features = ["sense", "stack"]
 
 [[example]]
 name = "module_ble_fall"
-required-features = ["sense"]
+required-features = ["sense", "stack"]
+
+[[example]]
+name = "module_ble_beacon"
+required-features = ["stack"]

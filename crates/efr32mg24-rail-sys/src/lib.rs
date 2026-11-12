@@ -68,3 +68,10 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 // symbols comes back undefined. The definitions live in the `cmsis-stubs` crate, compiled once.
 #[link(name = "cmsis_stubs", kind = "static")]
 extern "C" {}
+
+// Same reason, one level up: the RAIL blob references emlib functions (`CMU_ClockEnable`,
+// `SystemSYSCLKGet`, `SYSTEM_ChipRevisionGet`, `EMU_DCDCSetPFMXTimeoutMaxCtrl`) and nothing in Rust
+// names them, so the emlib archive would be dropped by an unused-dependency rule and every one of
+// those symbols would come back undefined despite existing two directories away.
+#[link(name = "emlib_min", kind = "static")]
+extern "C" {}

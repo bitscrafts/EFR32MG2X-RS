@@ -11,6 +11,8 @@ keywords = ["efr32", "rail", "radio", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
+# emlib supplies the CMU/EMU/SYSTEM functions the RAIL blob references.
+efr32mg24-emlib-sys = { path = "../efr32mg24-emlib-sys" }
 # The same helpers, the same definitions, shared with the Bluetooth stack.
 cmsis-stubs = { path = "../cmsis-stubs" }
 # Core types for FFI

@@ -5,6 +5,7 @@ members = [
     "crates/cmsis-stubs",
     "crates/efr32mg24-pac",
     "crates/efr32mg24-hal",
+    "crates/efr32mg24-emlib-sys",
     "crates/efr32mg24-rail-sys",
     "crates/efr32mg24-bluetooth-sys",
     "crates/efr32mg24-radio",

@@ -68,6 +68,15 @@ impl Delay {
     pub fn with_sysclk(mut syst: SYST, sysclk_hz: u32) -> Self {
         syst.set_clock_source(SystClkSource::Core);
 
+        // KNOWN DEFECT, measured 2026-11-12: delays come out about 2.3x shorter than requested.
+        // `emlib_clock` compares `delay_ms(10)` against emlib's two clock readings and the DWT; it
+        // reports 4.35 ms where 10 ms was asked for. An attempt to fix this by measuring SysTick's
+        // rate against the cycle counter made it worse (3.0x), so it was reverted rather than shipped:
+        // a wrong mechanism that looks like a fix is worse than a documented defect.
+        //
+        // The next step is the experiment written in docs/04-reference/DELAY-CLOCK-DEFECT.md: time a
+        // SysTick reload of a known tick count directly against the cycle counter, and only then
+        // decide what the correct conversion is.
         Self {
             syst,
             sysclk: Hertz(sysclk_hz),

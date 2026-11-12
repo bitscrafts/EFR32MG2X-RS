@@ -22,6 +22,9 @@ heapless = "0.8"
 panic-halt = "0.2"
 
 [features]
+# Everything above the RAIL layer: the vendor Bluetooth stack needs nvm3, sleeptimer, the AES
+# radio helper and PSA crypto. Until those are vendored, the examples build only with this flag.
+stack = []
 default = ["ble"]
 # Bluetooth 5.3 through the Silicon Labs BGAPI stack.
 ble = []
@@ -34,16 +37,16 @@ gatt = []
 
 [[example]]
 name = "ble_beacon"
-required-features = ["ble"]
+required-features = ["ble", "stack"]
 
 [[example]]
 name = "ble_advertise_custom"
-required-features = ["ble"]
+required-features = ["ble", "stack"]
 
 [[example]]
 name = "ble_scanner"
-required-features = ["ble"]
+required-features = ["ble", "stack"]
 
 [[example]]
 name = "ble_gatt"
-required-features = ["ble", "gatt"]
+required-features = ["ble", "gatt", "stack"]

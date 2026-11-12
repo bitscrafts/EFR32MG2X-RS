@@ -32,6 +32,7 @@ panic-halt = "0.2"
 motion-detection = { path = "../../libraries/motion-detection" }
 
 [features]
+stack = []  # BLE examples: see docs/04-reference/BLE-BRINGUP-CHAIN.md
 default = []
 
 [[example]]
@@ -47,3 +48,4 @@ path = "examples/fall_detector/main.rs"
 
 [[example]]
 name = "base_ble_env"
+required-features = ["stack"]

@@ -48,7 +48,6 @@ fn main() {
                         println!("cargo:warning=  Got:      {}", hash);
                         println!("cargo:warning=  The blob may be corrupted or from a different Gecko SDK version.");
                         println!("cargo:warning=  Expected version: Gecko SDK v4.4.5");
-                    } else {
                     }
                 }
                 Err(e) => {
