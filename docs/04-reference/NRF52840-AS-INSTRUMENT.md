@@ -83,3 +83,10 @@ Rust, on these HALs, BLE is either a vendor blob or hand-written radio registers
 per-packet truth today is Nordic's sniffer firmware on a dongle; the most interesting path, for this
 project's discipline, is the audited raw-radio advertiser — but it must be written *with* the board in
 hand, not before.
+## Update, 2026-11-12 evening: two cables, two ports, same failure
+
+The module was moved to a second port and then a second cable. The failure is unchanged:
+
+```
+usb 1-3: new full-speed USB device number 26 using xhci_hcd
+usb 1-3: unable to read config ind...[truncated]
