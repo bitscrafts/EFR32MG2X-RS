@@ -30,6 +30,22 @@ RADIO ░░░░░░░░░  not started
 | `fall-detector` | app | `fall selftest real=clean synth=detected` |
 | `bsp_env_clock` | BSP | `bsp dev=111 T=31C P=1017hPa H=67` |
 
+## Layering, as built (2026-11-12)
+
+```
+crates/efr32mg24-pac              registers
+crates/efr32mg24-hal              drivers + pin/bus primitives; no board pins anywhere
+crates/xiao-mg24-bsp              the module: LED; feature "sense": IMU + microphone
+crates/xiao-expansion-base-bsp    the base: OLED, BME68x, RTC, buzzer, button
+libraries/motion-detection        domain policy: [i32;3] + dt_us -> Event, zero dependencies
+```
+
+Rules the gate enforces: nothing in `libraries/` may pull the hardware stack; every
+`*-bsp` crate must have examples; every example living in a directory must be declared in
+its manifest. `docs/03-development/EXAMPLES.md` lists each example with the hardware it
+needs, and `docs/02-architecture/CRATE-ORGANISATION-RESEARCH.md` explains why the split is
+this one (and how rp-hal, nrf-hal, stm32f4xx-hal and esp-hal each do it differently).
+
 ## Layering, as agreed
 
 - **HAL = drivers.** A driver answers "what did the device say". Accelerometer range

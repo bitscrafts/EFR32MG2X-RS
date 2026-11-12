@@ -15,8 +15,8 @@
 //!   Expansion Base bus where the panel, RTC and BME68x live;
 //! - **the power gate**: PD5 high, then a few milliseconds before it answers.
 //!
-//! Hence two buses in this example: `board.imu_i2c()` for the sensor and
-//! `board.i2c()` for the panel.
+//! Hence two buses in this example: `board.i2c_on(Bus::new(Port::B, 1 << 2, 1 << 3))` for the sensor and
+//! `board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5))` for the panel.
 //!
 //! Note on units: `display::format_fixed` takes a value multiplied by 100, so an
 //! integer milligram count is passed already scaled. Passing it raw prints the
@@ -35,9 +35,11 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::bus::{I2cBus, SharedBus};
 use efr32mg24_hal::display::{append, format_fixed, Ssd1306};
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::sensors::Lsm6ds3trc;
 use panic_halt as _;
 
@@ -52,16 +54,16 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
 
     // Wiring first: without this the IMU is invisible on the bus, and it needs
     // time to come up after the rail settles (Seeed's sketch does not show a
     // delay, but the datasheet's power-up time is ~10 ms and the bus tolerates
     // waiting far better than a retry loop here).
-    board.sensors_power().enable();
+    board.output_on(Port::D, 5, false).on();
     cortex_m::asm::delay(4_000_000);
 
-    let bus = RefCell::new(board.imu_i2c());
+    let bus = RefCell::new(board.i2c_on(Bus::new(Port::B, 1 << 2, 1 << 3)));
 
     // Report what the bus actually says, instead of collapsing every failure
     // into one number: "no ACK" and "wrong id" are completely different bugs.
@@ -109,7 +111,7 @@ fn main() -> ! {
     // A second bus for the panel: different pins, same transport code. Sharing
     // one master between the two would mean reconfiguring pins behind the
     // driver's back.
-    let base_bus = RefCell::new(board.i2c());
+    let base_bus = RefCell::new(board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5)));
     let mut oled = Ssd1306::new(SharedBus::new(&base_bus));
 
     loop {

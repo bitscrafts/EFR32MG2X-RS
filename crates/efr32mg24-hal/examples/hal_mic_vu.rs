@@ -12,9 +12,11 @@
 #![no_main]
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::display::format_fixed;
 use efr32mg24_hal::entry;
 use efr32mg24_hal::microphone::Microphone;
+use efr32mg24_hal::pin::Port;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]
@@ -31,10 +33,10 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
 
     // Board wiring: microphone powered, analog pin handed to the ADC, IADCCLK on.
-    board.sensors_power().enable_microphone();
+    board.output_on(Port::C, 8, false).on();
     let adc = board.converter();
 
     let mic = match Microphone::new(adc) {

@@ -20,8 +20,10 @@
 #![no_main]
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::buzzer::DEFAULT_TONE_HZ;
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]
@@ -67,10 +69,10 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
 
     // The board owns the PAC peripherals, so it is what hands out a buzzer.
-    let mut buzzer = match board.buzzer() {
+    let mut buzzer = match board.buzzer_on(Port::C, 3) {
         Some(b) => b,
         None => {
             mailbox::fail(b"buzzer: timer never started");

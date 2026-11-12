@@ -1,87 +1,85 @@
 # Example catalogue
 
-Every example in the workspace, what it proves, and the evidence that it does. A row
-without evidence is a claim, not a result: the `status` column says which is which.
+Every example in the workspace, grouped by the crate whose level it demonstrates, with the
+hardware it needs. The grouping is not cosmetic: **the crate a file lives in tells you the
+smallest board it runs on.**
 
-Measured on: XIAO MG24 Sense on the Seeed Expansion Base, read over SWD from the
-mailbox at `0x2003_F000` (`scripts/read-mailbox.sh`) or from RAM.
+```
+efr32mg24-pac              chip level    any pin is legitimate; the point is the registers
+efr32mg24-hal              driver level  a driver and the pins it is given, named inline
+xiao-mg24-bsp              module        the XIAO on the desk, no base underneath it
+xiao-expansion-base-bsp    module + base the carrier's own devices
+libraries/                 no hardware   runs on the host
+```
 
-## PAC — register level, no HAL, no drivers
+The PAC and HAL examples name pins inline on purpose. They are proof of concept at their own
+level — the antipattern is the point, and it is what makes them readable. The wiring that must
+not be repeated lives in the two BSP crates, once.
 
-| example | proves | evidence | status |
-|---|---|---|---|
-| `pac_blink_base` | GPIO is enough to blink | 43 toggles in 6.83 s | green |
-| `pac_blink_double` | two-phase blink | 56 toggles in 9.10 s → 3.08 Hz | green |
-| `pac_timer_blink` | TIMER0 periodic, calibrated to 1 Hz | `32 toggles in 15.70 s` → 1.02 Hz, `top=0x240d` | green |
-| `pac_gpio_button` | PC01 input with pull-up | `PORTC_DIN=0x02` at rest | green |
-| `pac_i2c_scan` | I2C0 master, pins PC04/PC05 | completed, 0 devices (before the mode fix) | stale |
-| `pac_i2c_probe` | reading a register over I2C0 | reads fail after a write — the defect it documents | red (by design) |
-| `pac_i2c_bitbang_probe` | bit-banged master works where I2C0 does not | `bme=00/0x61`, `rtc=00/0x17/0x19` | green |
-| `pac_oled_hello` | SSD1306 init and text | `298 bytes ACKed`, text visible | green |
-| `pac_rtc_read` | PCF8563 calendar read | `2038-10-01 00:14:27 → 00:14:29` | green |
-| `pac_bme680` | Bosch compensation from raw calibration | `T=31.93C P=1015hPa H=68.4%` | green |
-| `pac_env_display` | two devices on one bus, on screen | `T=31.93C P=1015hPa H=68.4%` seen on the panel | green |
-| `pac_buzzer_pwm` | TIMER0 CC0 PWM on PC03 | `tone=2700Hz`, intermittent beeps | green (MCU side) |
-| `pac_mic_vu` | IADC0 analogue microphone + LED level | `rms=562 pk=598 n=128` | green |
-| `pac_pullup_probe` | finds bus pins by external pull-ups | `a=000002f6 b=0000000c c=00000034 d=00000020` | green |
-| `pac_imu_probe` | finds the IMU's pins and line order | `sda=p1.2 scl=p1.3 a=6a id=6a` | green |
-| `pac_imu` | LSM6DS3TR-C at 0x6A | `id=6a a=985,81,139mg` | green |
-| `pac_imu_capture` | 10 s ring buffer at 100 Hz for training data | `cap base=0x20000000 n=1000 rate=100Hz` | green |
-| `pac_mvp_add` | the matrix/vector accelerator, programmed by hand | `mvp sum exp=396 got=0` | red (open) |
+## `efr32mg24-pac` — chip level (19 examples)
 
-`pac_i2c_scan` is marked stale on purpose: it predates the pin-mode fix (the bus needs
-`WIREDAND`, not push-pull) and its zero-device result is not a finding about the board.
+No HAL, no BSP: `cortex-m-rt` + `efr32mg24-pac` + `panic_halt` and nothing else. Each one
+proves a register sequence against the die, and several of them exist because a HAL-level
+failure needed a second opinion at the lowest level.
 
-## HAL — drivers, transport abstraction, no registers in the example
+| example | what it proves |
+|---|---|
+| `blink_xiao`, `pac_blink_base`, `pac_blink_double`, `pac_timer_blink` | GPIO output, then a timer-paced blink; `pac_timer_blink` measures the toggle rate |
+| `pac_i2c_scan`, `pac_i2c_probe`, `pac_i2c_bitbang_probe` | the buses, and that the on-chip I2C0 cannot read after a write (see the defect doc) |
+| `pac_pullup_probe`, `pac_imu_probe` | external pull-ups on PB2/PB3; the 8×2×2 pin/order/address matrix that found the IMU |
+| `pac_gpio_button` | input with pull-up |
+| `pac_oled_hello`, `pac_env_display`, `pac_rtc_read`, `pac_bme680` | the three base devices, driven by registers alone |
+| `pac_buzzer_pwm`, `pac_mic_vu` | TIMER0 tone; IADC0 single conversions |
+| `pac_imu`, `pac_imu_capture`, `pac_mvp_add` | the IMU at register level; a 400 Hz recording; the MVP accelerator (does not execute — see `MVP-NOTES`) |
 
-| example | proves | evidence | status |
-|---|---|---|---|
-| `hal_bus_scan` | the base bus, through `I2cBus` | `3c 51 76` | green |
-| `hal_oled_hello` | SSD1306 driver | `oled acked≈1090` | green |
-| `hal_env_display` | BME68x driver | `T=31.68C P=1015hPa H=68.2%` (PAC twin: 31.93/1015/68.4) | green |
-| `hal_button` | button + LED through the board layer | `button released at boot, LED follows` | green |
-| `hal_mic_vu` | microphone driver + LED level | `rms=521 pk=544 n=128` | green |
-| `hal_imu` | IMU driver on its own bus | `id=6a a=970,79,142` | green |
-| `hal_imu_regs` | control registers and raw bytes | `c1=40 c2=40 c3=44 ac=6e 3e …` (= 975 mg) | green |
-| `hal_imu_monitor` | 15 s ring at 200 Hz, live values on the panel | `mon base=0x20000000 n=3000 200Hz pm8g` | green |
-| `hal_rtc` | PCF8563 driver, kept across resets | `rtc 2026-11-10 12:00:57 kept` | green |
-| `hal_buzzer` | TIMER0 PWM through the driver | `tone=2700Hz top=3518` | green |
+## `efr32mg24-hal` — driver level (10 examples)
 
-## Application — a project, not a single file
+Each drives one HAL module and states its pins. `Bus`, `Port` and the pin primitives are
+parameters, so the same driver serves the module and the base.
 
-| example | proves | evidence | status |
-|---|---|---|---|
-| `fall_detector/` (`main`, `app`, `ui`, `recording`, `recorded`, `falls`, `falls_400hz`) | fall detection calibrated on nine real drops; records while it classifies; buzzer alarm | `real=clean synth=ok 200Hz=2/2 400Hz=4/4`; live: 4/4 bed drops, 176-252 ms free fall | green |
+| example | what it proves |
+|---|---|
+| `hal_bus_scan` | the bit-banged transport on the base's pins: three devices answer |
+| `hal_oled_hello`, `hal_env_display` | the display driver and the BME68x driver with compensation |
+| `hal_rtc`, `hal_buzzer`, `hal_button` | PCF8563; TIMER0 PWM on a named pin; input with pull-up |
+| `hal_imu`, `hal_imu_regs`, `hal_imu_monitor` | the LSM6DS3TR-C driver, raw registers, and a live monitor |
+| `hal_mic_vu` | the IADC0 microphone driver with 128-sample windows |
 
-## BSP — the board by name
+## `xiao-mg24-bsp` — the module (10 examples)
 
-| example | proves | evidence | status |
-|---|---|---|---|
-| `bsp_env_clock` | the facade carries an app end to end | `bsp dev=111 T=31C P=1017hPa H=67` | green |
+Runs with the XIAO alone. The two `sense_*` examples need `--features sense`, and the manifest
+says so, so a plain MG24 module skips them instead of failing.
 
-The older `00_*` … `06_*` BSP examples belong to the June tree and are not part of the
-verified set; `06_microphone_streaming` in particular targets an API that no longer
-exists.
+| example | needs | what it proves |
+|---|---|---|
+| `00_blink` | any MG24 | `Module::take()` and one LED, with no port or address in the file |
+| `sense_imu` | Sense | PD5 gate, bus on PB2/PB3, `WHO_AM_I = 0x6A`, and `|a| ≈ 1 g` |
+| `sense_microphone` | Sense | PC8 enable, IADC0 window, RMS and peak, LED following the level |
 
-## Rebuilding and flashing
+## `xiao-expansion-base-bsp` — the carrier (2 examples + 1 project)
+
+Needs the base, and the Sense module for the IMU.
+
+| example | needs | what it proves |
+|---|---|---|
+| `base_env_clock` | module + base | the facade end to end: OLED, BME68x, PCF8563 — no address, pin or register in the file |
+| `base_buzzer_button` | module + base | buzzer on TIMER0 CC0 and button on PC01, with the LED answering both |
+| `fall_detector/` (`main`, `app`, `ui`, `recording`, `recorded`, `falls`, `falls_400hz`) | module Sense + base | the classifier calibrated on nine real drops, recording while it classifies, alarming on a fall |
+
+## `libraries/motion-detection` — no hardware (1 example, 9 tests)
+
+| example | what it proves |
+|---|---|
+| `replay` | a recording is fed through the same code path the firmware uses, on a laptop: 174 ms of free fall and a 9.3 g landing produce exactly one fall |
+
+Run with `cargo run --example replay -p motion-detection`.
+
+## Why the counts matter
+
+The gate fails a `*-bsp` crate that exposes hardware with zero examples, because a crate whose
+API nothing builds is a crate whose API is not tested. That rule is what keeps `sense_imu` and
+`base_buzzer_button` from disappearing in a future refactor — and it is checked, not promised:
 
 ```bash
-# PAC example
-cargo build --release -p efr32mg24-pac --example pac_imu --features rt
-
-# HAL example (the `rt` feature provides the vector table)
-cargo build --release -p efr32mg24-hal --features rt --example hal_imu
-
-# the application project
-cargo build --release -p efr32mg24-hal --features rt --example fall-detector
-
-# BSP example
-cargo build --release -p xiao-mg24-bsp --example bsp_env_clock
-
-# flashing: dry run first, then --confirm; the script refuses anything that would
-# touch the bootloader
-ELF=/projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/pac_imu
-python3 scripts/elf-load-range.py "$ELF"
-bash scripts/flash-lnx.sh "$ELF" --confirm
-bash scripts/read-mailbox.sh
+bash scripts/gate.sh    # VERDICT: PASS
 ```

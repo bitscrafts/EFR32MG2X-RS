@@ -39,9 +39,11 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::bus::SharedBus;
 use efr32mg24_hal::display::Ssd1306;
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config};
 use efr32mg24_hal::sensors::Lsm6ds3trc;
 use motion_detection::Event;
@@ -143,13 +145,13 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
 
     // Wiring: the IMU power gate is a board fact, not a driver fact.
-    board.sensors_power().enable();
+    board.output_on(Port::D, 5, false).on();
     cortex_m::asm::delay(4_000_000);
 
-    let imu_bus = RefCell::new(board.imu_i2c());
+    let imu_bus = RefCell::new(board.i2c_on(Bus::new(Port::B, 1 << 2, 1 << 3)));
     let config = Config {
         range: AccelRange::G8,
         odr: AccelOdr::Hz416,
@@ -165,11 +167,11 @@ fn main() -> ! {
         }
     };
 
-    let base_bus = RefCell::new(board.i2c());
+    let base_bus = RefCell::new(board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5)));
     let mut display = Ssd1306::new(SharedBus::new(&base_bus));
 
     // An alarm you can hear: the panel shows the count, the buzzer says it happened.
-    let mut buzzer = board.buzzer();
+    let mut buzzer = board.buzzer_on(Port::C, 3);
     let mut alarm = app::Alarm::new();
 
     // ---- self tests, before the live loop --------------------------------

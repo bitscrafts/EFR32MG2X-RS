@@ -18,8 +18,10 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::bus::I2cBus;
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]
@@ -48,13 +50,13 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
 
     // Power the on-board sensors, then let the rail settle.
-    board.sensors_power().enable();
+    board.output_on(Port::D, 5, false).on();
     cortex_m::asm::delay(4_000_000);
 
-    let bus = RefCell::new(board.i2c());
+    let bus = RefCell::new(board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5)));
     let mut found: [u8; 16] = [0; 16];
     let mut count = 0usize;
     for addr in 0x08u8..=0x77 {

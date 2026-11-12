@@ -27,6 +27,7 @@ heapless = "0.8"
 
 [dev-dependencies]
 panic-halt = "0.2"
+motion-detection = { path = "../../libraries/motion-detection" }
 
 [features]
 default = []
@@ -34,3 +35,14 @@ default = []
 [[example]]
 name = "base_env_clock"
 path = "examples/bsp_env_clock.rs"
+
+[[example]]
+name = "base_buzzer_button"
+path = "examples/base_buzzer_button.rs"
+
+# The fall detector is an application, not a driver demo: it needs the panel and the buzzer,
+# which are on the base, plus the IMU, which is on the Sense module. It lives with the larger
+# of the two requirements.
+[[example]]
+name = "fall-detector"
+path = "examples/fall_detector/main.rs"

@@ -38,8 +38,7 @@
 
 use efr32mg24_pac as pac;
 
-/// Which pin the base's buzzer is on: D3 = PC03, driven by TIMER0 CC0.
-const BUZZER_PIN: u32 = 1 << 3;
+use crate::pin::Port;
 
 /// The piezo on this board is loudest near 2.7 kHz; the base's own demo uses it.
 pub const DEFAULT_TONE_HZ: u32 = 2700;
@@ -55,11 +54,12 @@ pub struct Buzzer<'a> {
 }
 
 impl<'a> Buzzer<'a> {
-    /// Take TIMER0 and PC03, calibrate against the CPU, and stay silent.
+    /// Take TIMER0 on the given pin, calibrate against the CPU, and stay silent.
     ///
-    /// Returns `None` if the timer never reports a running counter, which is what a
-    /// missing or mis-selected clock looks like.
-    pub fn new(dp: &'a pac::Peripherals) -> Option<Self> {
+    /// The pin is a parameter because it is wiring: which pin the buzzer sits on is the
+    /// board's knowledge, not the driver's. Returns `None` if the timer never reports a
+    /// running counter, which is what a missing or mis-selected clock looks like.
+    pub fn new(dp: &'a pac::Peripherals, port: Port, pin: u8) -> Option<Self> {
         // TIMER0, GPIO and HFRCOEM23 must all be clocked before any register is
         // touched: a missing CMU_CLKEN0 bit is a precise bus fault on first access.
         dp.cmu_s
@@ -79,16 +79,19 @@ impl<'a> Buzzer<'a> {
             .em01grpaclkctrl()
             .modify(|_r, w| w.clksel().hfrcoem23());
 
-        // Route CC0 to PC03: the route register picks the pin, the route-enable
-        // register opens the connection. Both, or the timer toggles a pin nobody is
-        // looking at.
-        dp.gpio_s.portc_model().modify(|_r, w| w.mode3().pushpull());
-        dp.gpio_s.timer0_cc0route().write(|w| unsafe {
-            w.port()
-                .bits(2)
-                .pin()
-                .bits(BUZZER_PIN.trailing_zeros() as u8)
-        });
+        // Route CC0 to the pin: the route register picks port and pin, the route-enable
+        // register opens the connection. Both, or the timer toggles a pin nobody is looking
+        // at — which is indistinguishable from a silent buzzer.
+        crate::pin::set_mode(&dp.gpio_s, port, pin, crate::pin::mode::PUSH_PULL);
+        let port_index = match port {
+            Port::A => 0,
+            Port::B => 1,
+            Port::C => 2,
+            Port::D => 3,
+        };
+        dp.gpio_s
+            .timer0_cc0route()
+            .write(|w| unsafe { w.port().bits(port_index).pin().bits(pin) });
         dp.gpio_s
             .timer0_routeen()
             .modify(|_r, w| w.cc0pen().set_bit());

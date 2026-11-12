@@ -1,4 +1,4 @@
-//! Board init: the single place where the HAL touches the PAC singleton.
+//! Peripherals: the single place where the HAL touches the PAC singleton.
 //!
 //! The point of this module is that no **example** ends up naming `pac`. An
 //! application asks the HAL for a board, and the board hands out the pieces
@@ -11,8 +11,6 @@
 //! and the defaults that the hardware demands (gate first, then configure).
 
 use efr32mg24_pac as pac;
-
-use crate::bus::{BitBangI2c, Bus, Port};
 
 /// Everything an application needs from the XIAO MG24 Sense + Expansion Base.
 pub struct Board {
@@ -31,49 +29,41 @@ impl Board {
         Some(Self { dp })
     }
 
-    /// The Expansion Base I2C bus (PC04 = SDA, PC05 = SCL).
-    ///
-    /// Bit-banged on purpose: the on-chip I2C0 master on this die cannot
-    /// complete a read that follows a write. See
-    /// `docs/04-reference/I2C0-READ-DEFECT.md`. When that is fixed this method
-    /// returns the hardware backend and nothing above it changes.
-    pub fn i2c(&self) -> BitBangI2c<'_> {
-        BitBangI2c::on(&self.dp.gpio_s, Bus::new(Port::C, 1 << 4, 1 << 5))
+    /// The GPIO register block this board's pins live on.
+    #[must_use]
+    pub fn gpio(&self) -> &pac::gpio_s::RegisterBlock {
+        &self.dp.gpio_s
     }
 
-    /// The IMU's own bus (PB2 = SDA, PB3 = SCL).
+    /// A bit-banged I2C master on the two pins the caller names.
     ///
-    /// The on-board LSM6DS3TR-C is **not** on the Expansion Base bus: it has its
-    /// own pair, and the lines are the other way round from what the Arduino
-    /// variant declares. Both facts were measured — see
-    /// `docs/04-reference/IMU-INVESTIGATION.md` — and both are why the sensor
-    /// answered nothing until this wiring was found.
-    pub fn imu_i2c(&self) -> BitBangI2c<'_> {
-        BitBangI2c::on(&self.dp.gpio_s, Bus::new(Port::B, 1 << 2, 1 << 3))
+    /// Bit-banged on purpose: the on-chip I2C0 master on this die cannot complete a read
+    /// that follows a write. See `docs/04-reference/I2C0-READ-DEFECT.md`.
+    pub fn i2c_on(&self, bus: crate::bus::Bus) -> crate::bus::BitBangI2c<'_> {
+        crate::bus::BitBangI2c::on(&self.dp.gpio_s, bus)
     }
 
-    /// Power gate for the on-board sensors (PD5).
-    ///
-    /// The LSM6DS3TR-C on the Sense module does not answer on the I2C bus until
-    /// this pin is driven high — an unpowered IMU looks exactly like an absent
-    /// one, and a bus scan will simply not show 0x6A. Seeed's own example does
-    /// `pinMode(PD5, OUTPUT); digitalWrite(PD5, HIGH);` before touching the
-    /// sensor. That is wiring, so it lives here and not in the driver.
-    pub fn sensors_power(&self) -> SensorPower<'_> {
-        SensorPower::new(&self.dp.gpio_s)
+    /// A push-pull output on the pin the caller names.
+    pub fn output_on(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+        active_low: bool,
+    ) -> crate::pin::Output<'_> {
+        crate::pin::Output::new(&self.dp.gpio_s, port, pin, active_low)
     }
 
-    /// The Expansion Base user button on PC01, wired to ground with a pull-up.
-    pub fn button(&self) -> Button<'_> {
-        Button::new(&self.dp.gpio_s)
+    /// An input with the internal pull-up on the pin the caller names.
+    pub fn input_on(&self, port: crate::pin::Port, pin: u8) -> crate::pin::Input<'_> {
+        crate::pin::Input::with_pull_up(&self.dp.gpio_s, port, pin)
     }
 
-    /// The piezo buzzer on PC03, driven by TIMER0 CC0.
+    /// A TIMER0 PWM buzzer on the pin the caller names.
     ///
-    /// `None` if the timer never reports a running counter — a missing clock, not a
-    /// missing buzzer.
-    pub fn buzzer(&self) -> Option<crate::buzzer::Buzzer<'_>> {
-        crate::buzzer::Buzzer::new(&self.dp)
+    /// `None` if the timer never reports a running counter — a missing clock, not a missing
+    /// buzzer.
+    pub fn buzzer_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::buzzer::Buzzer<'_>> {
+        crate::buzzer::Buzzer::new(&self.dp, port, pin)
     }
 
     /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.
@@ -108,11 +98,6 @@ impl Board {
         const IADC0_BASE: usize = 0x4900_4000;
         unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) }
     }
-
-    /// The on-board user LED (PA7, active low).
-    pub fn led(&self) -> Led<'_> {
-        Led::new(&self.dp.gpio_s)
-    }
 }
 
 /// The GPIO register block as a `'static` reference.
@@ -131,112 +116,4 @@ pub fn gpio_static() -> &'static pac::gpio_s::RegisterBlock {
     // GPIO base from the device memory map.
     const GPIO_BASE: usize = 0x5003_C000;
     unsafe { &*(GPIO_BASE as *const pac::gpio_s::RegisterBlock) }
-}
-
-/// The yellow user LED on PA7, wired active low.
-pub struct Led<'a> {
-    gpio: &'a pac::gpio_s::RegisterBlock,
-}
-
-impl<'a> Led<'a> {
-    const PIN: u32 = 1 << 7;
-
-    /// Configure PA7 as a push-pull output, starting off (which is high).
-    pub fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
-        gpio.porta_model().modify(|_r, w| w.mode7().pushpull());
-        gpio.porta_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() | Self::PIN) });
-        Self { gpio }
-    }
-
-    /// On (the pin is driven low).
-    pub fn on(&self) {
-        self.gpio
-            .porta_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() & !Self::PIN) });
-    }
-
-    /// Off (the pin goes high).
-    pub fn off(&self) {
-        self.gpio
-            .porta_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() | Self::PIN) });
-    }
-
-    /// Invert.
-    pub fn toggle(&self) {
-        self.gpio
-            .porta_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() ^ Self::PIN) });
-    }
-}
-
-/// The sensor power enable on PD5.
-pub struct SensorPower<'a> {
-    gpio: &'a pac::gpio_s::RegisterBlock,
-}
-
-impl<'a> SensorPower<'a> {
-    const PIN: u32 = 1 << 5;
-
-    fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
-        Self { gpio }
-    }
-
-    /// Drive PC8 high, powering the microphone. The IMU's gate is PD5; the
-    /// microphone's is PC8 (`MIC_ENPIN` in Seeed's MG24 backend), so they are
-    /// separate and both belong to the board, not to the drivers.
-    pub fn enable_microphone(&self) {
-        self.gpio.portc_modeh().modify(|_r, w| w.mode0().pushpull());
-        self.gpio
-            .portc_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() | (1 << 8)) });
-        // PC9 is the analog input: leave it in disabled mode so the ADC owns the
-        // pad, and route the odd analog bus to the converter.
-        self.gpio.portc_modeh().modify(|_r, w| w.mode1().disabled());
-        self.gpio
-            .cdbusalloc()
-            .modify(|_r, w| unsafe { w.cdodd0().bits(1) });
-    }
-
-    /// Drive PD5 high, powering the IMU.
-    pub fn enable(&self) {
-        self.gpio.portd_model().modify(|_r, w| w.mode5().pushpull());
-        self.gpio
-            .portd_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() | Self::PIN) });
-    }
-
-    /// Drop PD5 low again.
-    pub fn disable(&self) {
-        self.gpio
-            .portd_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() & !Self::PIN) });
-    }
-}
-
-/// The user button on PC01 (XIAO pin D1).
-///
-/// The base board pulls the pin up and the button shorts it to ground, so the
-/// pin reads high at rest and low while pressed. `MODE 2` (input with pull)
-/// plus `DOUT = 1` selects the internal pull-up, which is what makes the pin
-/// read a defined level when the board is used without the base.
-pub struct Button<'a> {
-    gpio: &'a pac::gpio_s::RegisterBlock,
-}
-
-impl<'a> Button<'a> {
-    const PIN: u32 = 1 << 1;
-
-    fn new(gpio: &'a pac::gpio_s::RegisterBlock) -> Self {
-        gpio.portc_model().modify(|_r, w| w.mode1().inputpull());
-        gpio.portc_dout()
-            .modify(|r, w| unsafe { w.bits(r.bits() | Self::PIN) });
-        Self { gpio }
-    }
-
-    /// True while the button is held down.
-    pub fn is_pressed(&self) -> bool {
-        self.gpio.portc_din().read().bits() & Self::PIN == 0
-    }
 }

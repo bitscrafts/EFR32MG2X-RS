@@ -28,7 +28,6 @@ rt = ["efr32mg24-pac/rt", "cortex-m-rt"]
 [dev-dependencies]
 # Examples are applications: they may compose the HAL with an algorithm crate.
 # The dependency never goes the other way — the HAL does not know what a fall is.
-motion-detection = { path = "../../libraries/motion-detection" }
 cortex-m-rt = { workspace = true, default-features = false }
 panic-halt = "0.2"
 
@@ -36,6 +35,4 @@ panic-halt = "0.2"
 
 # The fall detector is written as a project (main + app + ui + recorded), not a
 # single file, because the whole application lives there.
-[[example]]
-name = "fall-detector"
-path = "examples/fall_detector/main.rs"
+

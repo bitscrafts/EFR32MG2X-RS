@@ -25,9 +25,11 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::bus::{I2cBus, SharedBus};
 use efr32mg24_hal::display::append;
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::sensors::Lsm6ds3trc;
 use panic_halt as _;
 
@@ -54,11 +56,11 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
-    board.sensors_power().enable();
+    let led = board.output_on(Port::A, 7, true);
+    board.output_on(Port::D, 5, false).on();
     cortex_m::asm::delay(4_000_000);
 
-    let bus = RefCell::new(board.imu_i2c());
+    let bus = RefCell::new(board.i2c_on(Bus::new(Port::B, 1 << 2, 1 << 3)));
     let mut imu = match Lsm6ds3trc::new(SharedBus::new(&bus)) {
         Ok(i) => i,
         Err(_) => {

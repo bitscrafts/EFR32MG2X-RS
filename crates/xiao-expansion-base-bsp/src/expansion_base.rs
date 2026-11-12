@@ -31,9 +31,10 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::{Board, Button, Led};
-use efr32mg24_hal::bus::{BitBangI2c, Bus, I2cBus, Port, SharedBus};
+use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::{BitBangI2c, Bus, I2cBus, SharedBus};
 use efr32mg24_hal::display::Ssd1306;
+use efr32mg24_hal::pin::{Input, Output, Port};
 use efr32mg24_hal::rtc::pcf8563::Pcf8563;
 use efr32mg24_hal::sensors::bme68x::Bme68x;
 use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, ImuError, Lsm6ds3trc};
@@ -90,20 +91,23 @@ impl ExpansionBase {
     }
 
     /// The user LED (PA7, active low).
-    pub fn led(&self) -> Led<'_> {
-        self.board.led()
+    pub fn led(&self) -> Output<'_> {
+        // PA7, active low: the module's LED, reached through the module crate's wiring so
+        // there is one place that says which pin it is.
+        self.board.output_on(Port::A, 7, true)
     }
 
     /// The user button (PC01, pulled up on the base).
-    pub fn button(&self) -> Button<'_> {
-        self.board.button()
+    pub fn button(&self) -> Input<'_> {
+        // PC01 on the base, shorted to ground, pulled up.
+        self.board.input_on(Port::C, 1)
     }
 
     /// The piezo buzzer on PC03 (TIMER0 CC0), calibrated and silent.
     ///
     /// `None` when the timer never reports a running counter.
     pub fn buzzer(&self) -> Option<efr32mg24_hal::buzzer::Buzzer<'_>> {
-        self.board.buzzer()
+        self.board.buzzer_on(Port::C, 3)
     }
 
     /// The 128×64 OLED at 0x3C.
@@ -133,7 +137,7 @@ impl ExpansionBase {
     /// answer at all, so this is the facade's job and not the driver's.
     pub fn imu(&mut self) -> Result<Lsm6ds3trc<SharedBus<'_, BitBangI2c<'static>>>, ImuError> {
         if !self.imu_powered {
-            self.board.sensors_power().enable();
+            self.board.output_on(Port::D, 5, false).on();
             // The datasheet's power-up time is 10 ms; the bus tolerates waiting far
             // better than a retry loop.
             cortex_m::asm::delay(400_000);
@@ -154,7 +158,7 @@ impl ExpansionBase {
         &mut self,
     ) -> Result<efr32mg24_hal::microphone::Microphone<'_>, efr32mg24_hal::microphone::MicError>
     {
-        self.board.sensors_power().enable_microphone();
+        self.board.output_on(Port::C, 8, false).on();
         efr32mg24_hal::microphone::Microphone::new(self.board.converter())
     }
 

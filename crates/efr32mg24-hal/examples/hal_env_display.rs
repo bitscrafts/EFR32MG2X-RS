@@ -22,9 +22,11 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::bus::SharedBus;
 use efr32mg24_hal::display::{append, format_fixed, Ssd1306};
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::sensors::Bme68x;
 use panic_halt as _;
 
@@ -46,10 +48,10 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
     // One pair of wires, two drivers: the cell is shared, borrows are checked at
     // run time and the drivers never nest them.
-    let bus = RefCell::new(board.i2c());
+    let bus = RefCell::new(board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5)));
 
     let mut oled = match Ssd1306::new(SharedBus::new(&bus)) {
         Some(o) => o,

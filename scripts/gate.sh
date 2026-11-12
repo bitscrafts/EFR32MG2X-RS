@@ -76,7 +76,13 @@ for dir in $CRATES; do
   [ -f "$dir/Cargo.toml" ] || continue
   extra=$(features_for "$pkg")
   count=$(ls "$dir/examples/"*.rs 2>/dev/null | wc -l)
-  if cargo build --release --target "$TARGET" -p "$pkg" $extra --examples >/dev/null 2>&1; then
+  # A domain crate's examples run on the host: they are how its API is exercised without a
+  # board, and building them for the embedded target would be the wrong question.
+  case "$dir" in
+    libraries/*) example_target="$HOST" ;;
+    *)          example_target="$TARGET" ;;
+  esac
+  if cargo build --release --target "$example_target" -p "$pkg" $extra --examples >/dev/null 2>&1; then
     pass "$pkg: $count examples"
   else
     fail "$pkg: examples do not build"

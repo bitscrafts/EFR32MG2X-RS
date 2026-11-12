@@ -30,9 +30,11 @@
 use core::cell::RefCell;
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::bus::SharedBus;
 use efr32mg24_hal::display::{append, Ssd1306};
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::rtc::pcf8563::{DateTime, Pcf8563, RtcError};
 use panic_halt as _;
 
@@ -103,10 +105,10 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let led = board.led();
+    let led = board.output_on(Port::A, 7, true);
 
-    let base_bus = RefCell::new(board.i2c());
-    let display_bus = RefCell::new(board.i2c());
+    let base_bus = RefCell::new(board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5)));
+    let display_bus = RefCell::new(board.i2c_on(Bus::new(Port::C, 1 << 4, 1 << 5)));
     let mut clock = Pcf8563::new(SharedBus::new(&base_bus));
     let mut display = Ssd1306::new(SharedBus::new(&display_bus));
 

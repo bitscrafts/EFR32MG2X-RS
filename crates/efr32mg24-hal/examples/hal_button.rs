@@ -1,7 +1,7 @@
 //! Button + LED: press the user button on the base, the LED follows.
 //!
 //! The smallest example that exercises the HAL's board layer end to end:
-//! `board.button()` (PC01, input with pull-up) and `board.led()` (PA7, active
+//! `board.input_on(Port::C, 1)` (PC01, input with pull-up) and `board.output_on(Port::A, 7, true)` (PA7, active
 //! low). No register, no pin number, no PAC type appears below.
 //!
 //! Verification without pressing anything: at start-up the pin must read
@@ -12,7 +12,9 @@
 #![no_main]
 
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::bus::Bus;
 use efr32mg24_hal::entry;
+use efr32mg24_hal::pin::Port;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]
@@ -26,10 +28,10 @@ fn main() -> ! {
             cortex_m::asm::nop();
         },
     };
-    let button = board.button();
-    let led = board.led();
+    let button = board.input_on(Port::C, 1);
+    let led = board.output_on(Port::A, 7, true);
 
-    let pressed_at_boot = button.is_pressed();
+    let pressed_at_boot = button.is_low();
     if pressed_at_boot {
         mailbox::fail(b"button held at boot (or PC01 stuck low)");
     } else {
@@ -39,7 +41,7 @@ fn main() -> ! {
     let mut last = pressed_at_boot;
     let mut presses: u32 = 0;
     loop {
-        let now = button.is_pressed();
+        let now = button.is_low();
         if now {
             led.on();
         } else {

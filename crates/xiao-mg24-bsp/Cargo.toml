@@ -84,3 +84,7 @@ targets = ["thumbv8m.main-none-eabihf"]
 [[example]]
 name = "sense_imu"
 required-features = ["sense"]
+
+[[example]]
+name = "sense_microphone"
+required-features = ["sense"]
