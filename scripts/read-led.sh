@@ -19,7 +19,7 @@
 #
 # READ ONLY. Nothing is written to the target.
 #
-# Usage: read-led-lnx.sh [samples] [host] [user]
+# Usage: read-led.sh [samples] [host] [user]
 set -uo pipefail
 
 SAMPLES="${1:-8}"

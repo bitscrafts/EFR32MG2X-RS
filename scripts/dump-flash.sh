@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dump the XIAO MG24's whole 1.5 MiB flash to a file on lnx, in chunks.
+# Dump the XIAO MG24's whole 1.5 MiB flash to a file, in chunks.
 #
 # A single 1.5 MiB probe-rs read times out ("CMSIS-DAP command Disconnect:
 # Timeout in USB communication") because one CMSIS-DAP transfer of that size
@@ -7,10 +7,10 @@
 #
 # READ ONLY: this script never writes to the target.
 #
-# Usage (run ON lnx):  bash dump-flash-lnx.sh <out.bin> [chunk_bytes] [base] [size]
+# Usage (run on the host the probe is attached to):  bash dump-flash.sh <out.bin> [chunk_bytes] [base] [size]
 set -uo pipefail
 
-OUT="${1:?usage: dump-flash-lnx.sh <out.bin> [chunk] [base] [size]}"
+OUT="${1:?usage: dump-flash.sh <out.bin> [chunk] [base] [size]}"
 CHUNK="${2:-16384}"
 BASE="${3:-0x08000000}"
 SIZE="${4:-1572864}"

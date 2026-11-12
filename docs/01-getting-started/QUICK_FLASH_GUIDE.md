@@ -46,9 +46,9 @@ probe-rs run --chip EFR32MG24B220F1536IM48 \
 > every ELF also carried a 372-byte `PT_LOAD` at `0x08000000` (the ELF header,
 > page-aligned down). `probe-rs` skips it — verified against the board's flash —
 > but openocd and Commander are not known to. Images built now have no segment
-> below `0x08006000`. See `FLASH-ON-LNX.md`.
+> below `0x08006000`. See `FLASHING.md`.
 >
-> On lnx, flash through `scripts/flash-lnx.sh`, which refuses any image whose
+> On the flash host, use `scripts/flash.sh`, which refuses any image whose
 > `load_min` is under `0x08006000` and verifies by read-back.
 
 ### Method 2: Two-step (build first, then flash + run)

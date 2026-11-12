@@ -3,30 +3,30 @@
 The book is LaTeX with `minted`, so it needs `-shell-escape`, and it uses box-drawing
 characters in the code blocks, so it needs **XeLaTeX**. `pdflatex` cannot build it.
 
-No LaTeX lives in the development container; the compile runs through the `texlive`
-container on `lnx`:
+No LaTeX lives in the development container; the compile runs in a `texlive` container on a
+Linux host, reached over SSH as `$BUILD_HOST`:
 
 ```bash
 # 1. copy the sources over. --strip-components=1 is NOT optional: without it the
 #    archive lands as efr32book/book/latex/ while the container compiles
 #    efr32book/latex/, and every build silently compiles the previous copy.
-tar cf - book/latex | ssh mvcorrea@lnx \
+tar cf - book/latex | ssh "$BUILD_HOST" \
     'cd ~/podman/latex-remote/efr32book && tar xf - --strip-components=1'
 
 # 2. prove the copy landed before compiling anything
-ssh mvcorrea@lnx 'cd ~/podman/latex-remote/efr32book && md5sum \
+ssh "$BUILD_HOST" 'cd ~/podman/latex-remote/efr32book && md5sum \
     latex/chapters/chapter-01-introduction/01.08-layer-boundaries.tex'
 md5sum book/latex/chapters/chapter-01-introduction/01.08-layer-boundaries.tex   # must match
 
 # 3. compile (twice, for the table of contents and cross-references)
-ssh mvcorrea@lnx 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
+ssh "$BUILD_HOST" 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
     xelatex -shell-escape -interaction=nonstopmode main.tex'
 
 # 4. bring the PDF back
-scp mvcorrea@lnx:~/podman/latex-remote/efr32book/latex/main.pdf .
+scp "$BUILD_HOST":~/podman/latex-remote/efr32book/latex/main.pdf .
 ```
 
-If the container is stopped: `ssh lnx 'podman start latex-compiler-shared'`.
+If the container is stopped: `ssh "$BUILD_HOST" 'podman start latex-compiler-shared'`.
 
 **What "it builds" means here**: `rc=0`, zero `! ` errors in `main.log`, and zero
 `Missing character` warnings. The last one matters — a missing glyph does not fail the
@@ -34,7 +34,7 @@ build, it just silently deletes a character from the page (this book lost 544 of
 once: every `─ │ ├ └ ✓` in every code block). Check the page count moved when it should:
 
 ```bash
-ssh mvcorrea@lnx 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
+ssh "$BUILD_HOST" 'podman exec --workdir /workspace/efr32book/latex latex-compiler-shared \
     sh -c "grep -c \"^! \" main.log; grep -c \"Missing character\" main.log; \
            grep -o \"Output written on main.pdf ([0-9]* pages\" main.log | tail -1"'
 ```

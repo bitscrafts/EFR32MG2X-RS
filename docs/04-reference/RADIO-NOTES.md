@@ -68,7 +68,7 @@ psa_mac_sign_finish  psa_mac_sign_setup psa_mac_update     psa_reset_key_attribu
 ```
 
 Those live in Silicon Labs' `libpsa_crypto` + `libmbedtls` builds, which are not vendored here and
-are not in the archived project on `lnx` either. Until they are, `ble_gatt` is a staged file, not a
+are not in the archived copy of this project either. Until they are, `ble_gatt` is a staged file, not a
 working example — it must not be counted as one.
 
 **RAIL is further away, and for a different reason.** The blob and headers are vendored (from

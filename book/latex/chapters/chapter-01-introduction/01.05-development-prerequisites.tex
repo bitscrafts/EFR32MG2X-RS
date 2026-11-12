@@ -114,16 +114,17 @@ python3 scripts/elf-load-range.py target/thumbv8m.main-none-eabihf/release/examp
 # load_min=0x08006000 load_max=0x08006813 size=2068 segments=3
 
 # 2. dry run: prints the plan and refuses anything with load_min < 0x08006000
-bash scripts/flash-lnx.sh "$ELF"
+bash scripts/flash.sh "$ELF"
 
 # 3. write, then verify by reading the flash back
-bash scripts/flash-lnx.sh "$ELF" --confirm
+bash scripts/flash.sh "$ELF" --confirm
 \end{minted}
 
-The board hangs off a separate host (\codeinline{lnx}) reachable over SSH, which is why
-the script copies the ELF over and drives the programmer there. If your board is on the
-machine you build on, the same script works locally — the guards, not the transport, are
-the point.
+The script assumes the board may hang off a \emph{different} machine from the one you
+build on, reachable over SSH, and it takes that machine from \codeinline{FLASH_HOST}
+(\codeinline{FLASH_USER} alongside it). If your board is plugged into the machine you build
+on, leave both alone and it drives the programmer locally — the guards, not the transport,
+are the point.
 
 \begin{quote}
 \textbf{Measured caveat.} \codeinline{probe-rs} works for the first attach and then

@@ -24,7 +24,7 @@ Core guides for getting up and running with the EFR32MG24 hardware and firmware.
 - [Getting Started README](01-getting-started/README.md) - Start here
 
 **Flashing Procedures:**
-- [Build here, flash on lnx](01-getting-started/FLASH-ON-LNX.md) - The current workflow, the guards, and what is not yet verified
+- [Build here, flash where the probe is](01-getting-started/FLASHING.md) - The current workflow, the guards, and what is not yet verified
 - [Quick Flash Guide](01-getting-started/QUICK_FLASH_GUIDE.md) - Fast reference for common flashing operations
 - [Comprehensive Flashing Guide](01-getting-started/COMPREHENSIVE_FLASHING_GUIDE.md) - Complete flashing documentation
 - [Commander Flash Procedure](01-getting-started/COMMANDER_FLASH_PROCEDURE.md) - Using Simplicity Commander

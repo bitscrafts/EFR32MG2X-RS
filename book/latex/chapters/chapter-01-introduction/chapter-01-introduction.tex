@@ -57,6 +57,11 @@ This chapter introduces embedded Rust development and establishes the foundation
 % ============================================================================
 \input{chapters/chapter-01-introduction/01.08-layer-boundaries}
 
+% ============================================================================
+% SECTION 01.09: The Silicon Labs Toolchain, From the Outside
+% ============================================================================
+\input{chapters/chapter-01-introduction/01.09-silicon-labs-toolchain}
+
 \clearpage
 
 % ============================================================================
@@ -72,5 +77,6 @@ This chapter introduces embedded Rust development and establishes the foundation
     \item All necessary tools (rustup, probe-rs, cargo-binutils) are available cross-platform
     \item Our minimal program compiles to just 80 bytes in release mode
     \item A layer boundary is invisible to the compiler; it holds only when a check fails the build
+    \item The vendor surface splits into data you need, one file you cannot write yourself, and conveniences that fight your safety rules
 \end{keytakeaways}
 

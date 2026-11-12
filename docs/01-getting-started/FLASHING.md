@@ -1,4 +1,4 @@
-# Building here, flashing on lnx
+# Building here, flashing where the probe is
 
 **Date**: 2026-11-10
 **Scope**: how firmware gets built and written to the XIAO MG24 from this
@@ -11,10 +11,10 @@ workspace, and what is and is not verified about it.
 | where | what |
 |---|---|
 | this container (`/projects/efr32mg24-rs`) | source, cargo build, tests, ELF inspection |
-| `lnx` (10.10.10.217, user `mvcorrea`) | the board is plugged in here; `probe-rs` lives here |
+| the flash host (`$FLASH_HOST`, `$FLASH_USER`) | the board is plugged in here; `probe-rs` lives here |
 | board | XIAO MG24 Sense, EFR32MG24B220F1536IM48-B, CMSIS-DAP on the onboard SAMD11 |
 
-Tooling measured on `lnx` on 2026-11-10:
+Tooling measured on the flash host on 2026-11-10:
 
 ```
 probe-rs 0.32.0 (git commit: 48f5e4d)      /usr/local/bin/probe-rs
@@ -29,7 +29,7 @@ The probe node is `root:root 0664`, so `probe-rs` must run under `sudo -n`;
 without it the device is listed as `(inaccessible)`. The chip name to pass is
 `EFR32MG24B220F1536IM48` — `probe-rs 0.32` lists it under `EFR32MG24 Series`.
 
-Rust and cargo are **not** installed on lnx, so a build there is not an option:
+Rust and cargo are **not** installed on that host, so building there is not an option:
 images are built in this container and copied over.
 
 ---
@@ -41,18 +41,18 @@ images are built in this container and copied over.
 cargo build --release -p efr32mg24-pac --example blink_xiao --features rt
 
 # 2. dry run: address range + probe check, nothing written
-scripts/flash-lnx.sh \
+scripts/flash.sh \
   /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/blink_xiao
 
 # 3. write, with the guards satisfied
-scripts/flash-lnx.sh \
+scripts/flash.sh \
   /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/blink_xiao --confirm
 
 # 4. start the image only when you decide to
-scripts/flash-lnx.sh <same elf> --confirm --run
+scripts/flash.sh <same elf> --confirm --run
 ```
 
-`scripts/flash-lnx.sh` refuses to write when the image would touch
+`scripts/flash.sh` refuses to write when the image would touch
 `0x08000000-0x08005FFF` (the 24 KiB Gecko bootloader), when more than one probe
 is visible, or when the ELF cannot be parsed. After writing it runs
 `probe-rs verify`, which reads the flash back — the write is only reported as
@@ -96,7 +96,7 @@ load_min=0x08006000 load_max=0x080062B7 size=696 segments=3
 ```
 
 Three segments, all inside the application region. The guard in
-`flash-lnx.sh` passes it, and refuses a control image whose `p_paddr` was
+`flash.sh` passes it, and refuses a control image whose `p_paddr` was
 patched back to `0x08000000` (exit 3).
 
 Any `.hex` file produced elsewhere is unaffected by this change and still needs
@@ -122,7 +122,7 @@ clock path, not from the PAC path.
 
 ### 2026-11-10: the blink was verified without eyes
 
-`scripts/read-pin-lnx.sh 0x5003C040 7 8` samples PORTA_DOUT bit 7 over SWD,
+`scripts/read-pin.sh 0x5003C040 7 8` samples PORTA_DOUT bit 7 over SWD,
 halting and resuming the core between samples. Result:
 
 ```
@@ -167,7 +167,7 @@ pulses, then a pause). Every step below is a measurement.
 
 ```
 guards        load_min=0x08006000 load_max=0x08006517 size=1304, 3 segments
-probe         exactly 1 CMSIS-DAP on lnx
+probe         exactly 1 CMSIS-DAP on the flash host
 write         probe-rs download   Finished in 0.49s
 read-back     probe-rs verify     Verification successful
 ```

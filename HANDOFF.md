@@ -77,7 +77,7 @@ this one (and how rp-hal, nrf-hal, stm32f4xx-hal and esp-hal each do it differen
    `.tflite` into register programs. `pac_mvp_add` builds and flashes but does not
    execute yet; next step is a known-good SDK program as an oracle
    (`docs/04-reference/MVP-NOTES.md`).
-6. **Flash only through `scripts/flash-lnx.sh`** (dry-run by default, refuses
+6. **Flash only through `scripts/flash.sh`** (dry-run by default, refuses
    `load_min < 0x08006000`, verifies by read-back). The bootloader at
    `0x08000000` has been intact after every flash.
 

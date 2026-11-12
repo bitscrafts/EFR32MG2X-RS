@@ -11,7 +11,7 @@
 #
 # What it deliberately does not do:
 #
-#   - it does not touch hardware. Flashing belongs to scripts/flash-lnx.sh, which refuses
+#   - it does not touch hardware. Flashing belongs to scripts/flash.sh, which refuses
 #     an image that would overwrite the bootloader.
 #   - it does not build the Bluetooth sys crate. That crate has 17 errors from its own
 #     bindgen output (`E0609 no field ... &__BindgenUnionField`) and the headers it needs

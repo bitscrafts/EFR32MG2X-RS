@@ -5,7 +5,7 @@
 # duration of the read.
 #
 # Uses OpenOCD rather than probe-rs: probe-rs 0.32 can wedge its own CMSIS-DAP
-# session (see docs/01-getting-started/FLASH-ON-LNX.md), while OpenOCD keeps
+# session (see docs/01-getting-started/FLASHING.md), while OpenOCD keeps
 # working against the same probe.
 #
 # TORN RECORDS: the halt can land in the middle of a write. Images built after

@@ -1,0 +1,158 @@
+\section{The Silicon Labs Toolchain, From the Outside}
+\label{sec:vendor-toolchain}
+
+Everything in this book is built with open tools: \codeinline{cargo}, \codeinline{rustc},
+\codeinline{probe-rs}, \codeinline{openocd}, \codeinline{llvm-objdump}. And yet every binary in it
+would be impossible without a vendor: the register definitions come from Silicon Labs' SVD, and the
+radio stacks are their binary blobs. The vendor's tools, therefore, are not optional — but most of
+them are not needed either, and knowing which is which saves weeks.
+
+This section is about that boundary: what Silicon Labs ships, what each piece is actually for, and
+what this project measured about the three that touch a Rust workflow.
+
+\subsection{The Pieces, and What They Are For}
+
+\begin{table}[htbp]
+    \centering
+    \footnotesize
+    \begin{tabular}{@{}p{0.24\textwidth}p{0.36\textwidth}p{0.32\textwidth}@{}}
+        \toprule
+        \textbf{Piece} & \textbf{What it is} & \textbf{Does a Rust path need it?} \\
+        \midrule
+        Simplicity Studio 5 & IDE, part database, board files, configurators
+            & No for building; \textbf{yes} for the Radio Configurator \\
+        Gecko SDK (now Simplicity SDK) & headers, emlib C sources, prebuilt stack libraries
+            & \textbf{Yes}: SVD, and the blobs \\
+        Simplicity Commander & vendor CLI for flashing, locking, reading flash
+            & No, and it is actively dangerous here (see below) \\
+        SEGGER J-Link & external debug probe, licensed
+            & No: the board has its own debugger \\
+        CMSIS-DAP on the board & the SAMD11 chip that \emph{is} the debugger
+            & \textbf{Yes}, via \codeinline{probe-rs} or \codeinline{openocd} \\
+        Gecko Bootloader & the factory image at the base of flash
+            & \textbf{Yes}, and it constrains every linker script \\
+        AppLoader UART API & OTA over a serial line
+            & Only for OTA; it is a protocol, not a tool \\
+        Radio stack blobs & \codeinline{libbluetooth_*}, \codeinline{librail_*}
+            & \textbf{Yes}, under MSLA licensing \\
+        \bottomrule
+    \end{tabular}
+    \caption{The vendor surface. Two things are unavoidable — the SVD and the radio blobs — and
+    everything else is a convenience or a hazard.}
+    \label{tab:vendor-pieces}
+\end{table}
+
+\subsection{JTAG, SWD, and the Debugger Already on the Board}
+
+There are three ways to reach a Cortex-M core, and the naming confuses two of them:
+
+\begin{itemize}
+    \item \textbf{JTAG} — the five-wire standard (TCK, TMS, TDI, TDO, nTRST). Everything supports it,
+          nothing needs it on a modern single core.
+    \item \textbf{SWD} — two wires (SWCLK, SWDIO). It is what the EFR32MG24 uses, and what every
+          board-level debug connector exposes.
+    \item \textbf{cJTAG} — two-wire \emph{JTAG}, a different protocol that happens to use two pins.
+          Some Silabs documentation mentions it; it is not what \codeinline{probe-rs} speaks.
+\end{itemize}
+
+The XIAO MG24 Sense has no debug header. It has a second microcontroller — a SAMD11 — wired between
+the USB connector and the EFR32's SWD pins, and that chip implements the CMSIS-DAP protocol
+(USB \codeinline{2886:0062}). Two consequences, both measured:
+
+\begin{itemize}
+    \item \codeinline{probe-rs} sees the EFR32 through that bridge and can program it. So can
+          \codeinline{openocd} with \codeinline{interface/cmsis-dap.cfg}. Neither needs a J-Link.
+    \item The bridge is \emph{flaky} in a specific way: the first attach works, and a later one dies
+          with \codeinline{Command ID in response (0x14) does not match sent command ID}. A USB reset
+          does not clear it; unplugging the cable does. That is a fact about the SAMD11, not about
+          your program, and it will waste an afternoon if you assume otherwise.
+\end{itemize}
+
+\subsection{The Bootloader Is Not Optional, and It Is Why Linker Scripts Matter}
+
+Every XIAO MG24 Sense leaves the factory with a Gecko Bootloader at the base of flash. It occupies
+the first 24 KiB, and on this part the application therefore starts at \textbf{0x08006000}, not at
+\codeinline{0x08000000}.
+
+That single fact decides the linker script, and getting it wrong does not produce an error message —
+it produces a board that no longer boots, because the image was written over the bootloader. The
+symptom is subtle enough to be worth stating in full: the write succeeds, the read-back matches, and
+the board is silent.
+
+Hence the two requirements this project imposes on itself, both mechanical:
+
+\begin{minted}{bash}
+# 1. never let the linker put anything below the bootloader
+FLASH (rx) : ORIGIN = 0x08006000, LENGTH = 1536K - 24K
+
+# 2. refuse to flash an image that would
+python3 scripts/elf-load-range.py "$ELF"     # load_min must be >= 0x08006000
+\end{minted}
+
+\subsection{Simplicity Commander: Convenient, and the Wrong Tool Here}
+
+\codeinline{commander} is the vendor's CLI: it flashes, reads flash, locks and unlocks parts, and
+writes the bootloader. It is well documented and it does not check where your image says it goes. A
+\codeinline{commander flash image.hex} writes whatever the hex file describes — including, if the
+linker script is wrong, 0x08000000.
+
+For a workflow that must not brick a board, that is the wrong property. The alternative this project
+uses is a script that (1) inspects the ELF's load range, (2) refuses anything starting below
+0x08006000, (3) writes with \codeinline{probe-rs download}, and (4) verifies with
+\codeinline{probe-rs verify}. The guard is the point; the tool is replaceable.
+
+\subsection{The Radio Stack: Two Licences in One Directory}
+
+This is the part of the vendor surface that a Rust project cannot avoid and cannot reimplement.
+
+\begin{itemize}
+    \item \textbf{Headers and emlib sources} are Zlib licensed: usable, redistributable, and
+          readable. \codeinline{sl_bt_api.h} is where the BGAPI command set is defined, and
+          \codeinline{rail.h} is where RAIL is.
+    \item \textbf{The stacks themselves} are binary: \codeinline{libbluetooth_host},
+          \codeinline{libbluetooth_controller}, \codeinline{libbgcommon} for Bluetooth, and
+          \codeinline{librail} for the proprietary/802.15.4 side. They are MSLA licensed, which is
+          why they are not in this book's repository and why a clean checkout does not link.
+\end{itemize}
+
+Two traps follow from that split, and both cost real time in this project:
+
+\textbf{The header and the blob must be the same SDK version.} When they are not, the blob exports
+symbols the bindings do not declare — \codeinline{sl_bt_advertiser_create_set} was in the blob and
+absent from the generated bindings — and the failure looks like a typo in your code. It is not.
+
+\textbf{A blob references code that is not in the blob.} The Bluetooth stack calls the CMSIS
+\codeinline{CORE_*} helpers; RAIL calls four emlib functions
+(\codeinline{CMU_ClockEnable}, \codeinline{EMU_DCDCSetPFMXTimeoutMaxCtrl},
+\codeinline{SYSTEM_ChipRevisionGet}, \codeinline{SystemSYSCLKGet}). The application is expected to
+provide them, because in a vendor project the linker pulls them from emlib. In a Rust project they
+have to be provided deliberately — and the CMSIS ones must be provided \emph{once}, for both stacks,
+because two definitions of \codeinline{CORE_EnterCritical} either collide or, worse, disagree about
+which interrupt mask they set.
+
+\subsection{The Radio Configurator, and Why RAIL Needs a Generated File}
+
+RAIL is a library, not a radio. Before it can transmit it needs a \emph{radio configuration}:
+channel numbers and their modem settings, the PA and front-end tables for this board's matching
+network, and the calibration data for the crystals actually fitted. Nothing in the header contains
+those numbers, and no amount of reading the reference manual produces them.
+
+They are generated. The Radio Configurator inside Simplicity Studio emits \codeinline{rail_config.c}
+from a description of the board and the desired protocol, and that file is the difference between
+"the library initialised" and "a packet left the antenna". This is the one place where the vendor
+IDE is genuinely required, and it is worth saying plainly: a Rust project can avoid Studio for
+editing, building, flashing and debugging, and cannot avoid it for radio.
+
+\subsection{What To Take Away}
+
+\begin{itemize}
+    \item The vendor tools split into: \emph{data you need} (SVD, headers, emlib, blobs), \emph{a
+          file you cannot write yourself} (the radio configuration), and \emph{conveniences that
+          fight your safety rules} (Commander).
+    \item The board's own debugger is a CMSIS-DAP bridge; SWD is the two-wire protocol; J-Link is
+          unnecessary, and the bridge needs a physical replug when it desynchronises.
+    \item The bootloader owns the bottom of flash. A linker script that ignores it bricks the board
+          silently, so the guard belongs in a script that runs before the write.
+    \item Zlib headers plus MSLA blobs is a normal arrangement, and it has two failure modes worth
+          remembering: version mismatch, and symbols the blob expects the application to supply.
+\end{itemize}

@@ -1,20 +1,20 @@
 # scripts/
 
 Every script in this directory, what it does, what it touches, and whether it
-still works on the current dev machine (the Linux container on `lnx`).
+still works on the current dev machine (the Linux dev container).
 
 Status legend:
 
 - **current** — works here, part of the active workflow.
 - **macOS only** — depends on the bundled Mach-O `openocd` binary or on
-  `~/Library/Arduino15`; it cannot run in the container and does not run on lnx.
+  `~/Library/Arduino15`; it cannot run in the container and does not run here.
 - **safety** — a guard; it never writes to the board on its own.
 
 | script | kind | status |
 |---|---|---|
 | `build-pac-examples.sh` | build matrix | current |
 | `build-container.sh` | container build | current (podman) |
-| `flash-lnx.sh` | flash (guarded) | current |
+| `flash.sh` | flash (guarded) | current |
 | `gate.sh` | gate (no hardware) | current |
 | `read-fall-log.sh` | read / decode (SWD) | current |
 | `elf-load-range.py` | safety / inspection | current |
@@ -22,9 +22,9 @@ Status legend:
 | `inventory-pac-examples.py` | safety / inspection | current |
 | `build-crates.sh` | build matrix (workspace) | current |
 | `openocd-mg24-mini.cfg` | SWD read path (no flash driver) | current |
-| `read-pin-lnx.sh` | verification: pin state over SWD | current |
+| `read-pin.sh` | verification: pin state over SWD | current |
 | `read-mailbox.sh` | verification: RAM mailbox over SWD | current |
-| `dump-flash-lnx.sh` | backup: flash dump over SWD | current |
+| `dump-flash.sh` | backup: flash dump over SWD | current |
 | `repo-tidy-pac-artifacts.sh` | repo hygiene: move artefacts out | current |
 | `repo-tidy-pac-examples.sh` | repo hygiene: retire untested examples | current |
 | `erase_and_flash.sh` | flash | macOS only (legacy) |
@@ -76,10 +76,10 @@ stronger.
 
 ## Flash
 
-### `flash-lnx.sh <elf> --confirm [--run]`
+### `flash.sh <elf> --confirm [--run]`
 
 The only supported way to write an image to the board. Builds happen here,
-flashing happens on `lnx` (host `10.10.10.217`, user `mvcorrea`) because that
+flashing happens on the host with the probe (`$FLASH_HOST`, `$FLASH_USER`) because that
 is where the board is plugged in.
 
 Guards, all fail-safe (each one refuses rather than proceeding):
@@ -90,7 +90,7 @@ Guards, all fail-safe (each one refuses rather than proceeding):
 3. `load_min >= 0x08006000` — anything lower would overwrite the Gecko
    bootloader at `0x08000000-0x08005FFF`;
 4. `load_max < 0x08180000` — the end of the 1512 KiB application region;
-5. exactly **one** CMSIS-DAP probe must be visible on lnx;
+5. exactly **one** CMSIS-DAP probe must be visible on the target host;
 6. after writing, `probe-rs verify` reads the flash back and compares — a
    write is only reported as done when the comparison succeeds.
 
@@ -99,9 +99,9 @@ decides when the new image starts.
 
 ```bash
 cargo build --release -p efr32mg24-pac --example blink_xiao --features rt
-scripts/flash-lnx.sh \
+scripts/flash.sh \
   /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/blink_xiao   # dry run
-scripts/flash-lnx.sh \
+scripts/flash.sh \
   /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/blink_xiao --confirm
 ```
 
@@ -118,12 +118,12 @@ and programs `blink_bare_patched.hex` from the repository root after erasing
 
 All four drive `crates/efr32mg24-bootloader/openocd/bin/openocd`, which is a
 **Mach-O x86_64 macOS binary** — it cannot execute in this container or on
-lnx. They program one or both of `bootloader.hex` and `test-app.hex` /
+that host. They program one or both of `bootloader.hex` and `test-app.hex` /
 `arduino_blink.hex` through `interface/cmsis-dap.cfg` +
 `target/efm32s2_g23.cfg`, then `reset run`.
 
 Kept as the record of how the Gecko bootloader was installed. Do not use them
-as-is on Linux; install a Linux openocd or use `flash-lnx.sh`.
+as-is on Linux; install a Linux openocd or use `flash.sh`.
 
 ### `flash-mass-erase.sh` (macOS only, destructive)
 
@@ -139,7 +139,7 @@ failure between erase and program leaves a blank chip.
 ### `elf-load-range.py <elf>`
 
 Prints `load_min`, `load_max`, total size and one line per `PT_LOAD`. This is
-the check `flash-lnx.sh` runs before touching the board. Exit codes: `0` ok,
+the check `flash.sh` runs before touching the board. Exit codes: `0` ok,
 `2` not a supported ELF, `3` no loadable segments.
 
 This script is why the 2026-11-10 defect was found: every image built before
@@ -170,7 +170,7 @@ documents the incident, not a register write.
 
 ---
 
-### `read-pin-lnx.sh [reg] [bit] [samples]`
+### `read-pin.sh [reg] [bit] [samples]`
 
 Samples a GPIO port DOUT register over SWD (`halt`, `mdw`, `resume` per
 sample) and reports one bit per sample plus a verdict. This is how "the LED
@@ -192,7 +192,7 @@ because probe-rs 0.32 can wedge its own CMSIS-DAP session (`Command ID in
 response (0x14) does not match sent command ID`) while OpenOCD still talks to
 the same probe. This is the read path that survives that wedge.
 
-### `dump-flash-lnx.sh <out.bin> [chunk] [base] [size]`
+### `dump-flash.sh <out.bin> [chunk] [base] [size]`
 
 Chunked flash dump for the original-image backup, with per-chunk retry: a
 single 1.5 MiB `probe-rs read` wedges this CMSIS-DAP, hence the chunking.

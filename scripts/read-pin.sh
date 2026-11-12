@@ -10,7 +10,7 @@
 # SWD turns it into data: if the bit takes both values across samples, the
 # firmware is executing the toggle loop.
 #
-# Usage: read-pin-lnx.sh [reg] [bit] [samples] [host] [user]
+# Usage: read-pin.sh [reg] [bit] [samples] [host] [user]
 #   reg     default 0x5003C040 (GPIO non-secure alias, PORTA_DOUT)
 #   bit     default 7 (PA7 user LED)
 set -uo pipefail
