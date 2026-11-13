@@ -107,6 +107,10 @@ static LINK_LAYER_CALLBACKS: AtomicBool = AtomicBool::new(false);
 static STACK_CALLBACKS: AtomicBool = AtomicBool::new(false);
 
 extern "C" fn on_link_layer_wakeup() {
+    // SCB->ICSR.PENDSVSET: the link layer is serviced by the `PendSV` handler, as in the vendor's bare-metal glue
+    // (`sli_btctrl_task_default_callback`). Servicing it from the application's main loop instead is far too late
+    // for the scheduler, which makes its transmit decisions in this context, tens of microseconds apart.
+    unsafe { core::ptr::write_volatile(0xE000_ED04 as *mut u32, 1 << 28) };
     LINK_LAYER_WAITING.store(true, Ordering::Release);
     LINK_LAYER_CALLBACKS.store(true, Ordering::Release);
 }
@@ -131,11 +135,15 @@ extern "C" fn on_stack_wakeup() {
 pub unsafe extern "C" fn sli_btctrl_events_init() {
     // SCB->ICSR, PENDSVCLR (bit 27).
     core::ptr::write_volatile(0xE000_ED04 as *mut u32, 1 << 27);
+    // PendSV at the lowest priority (SCB->SHPR3 byte 0xE000_ED22; this part implements 3 priority bits), so it
+    // runs after every radio interrupt has returned instead of preempting them.
+    core::ptr::write_volatile(0xE000_ED22 as *mut u8, 0xE0);
 }
 
 extern "C" {
-    /// The controller initialisation the SDK generates into the application (see `vendor/bt_stack/sl_bt_controller_init.c`).
-    fn sl_bt_controller_init();
+    /// Loads the PA's dBm-to-raw curves into RAIL (and enables PA calibration when configured). Application code in the
+    /// SDK (`sl_system_init` runs it); the Bluetooth blobs only *use* the curves.
+    fn sl_rail_util_pa_init();
     /// The link-layer servicing function the vendor's own `linklayer_thread` calls.
     fn sl_bt_priority_handle();
     /// The host's own processing: GAP/GATT state and its software timers. The vendor's `sl_bt_step` is
@@ -182,17 +190,9 @@ pub fn link_layer_services() -> u32 {
 /// One call performs one unit of link-layer work if the host asked for it. Events are *not* consumed here: the
 /// application pops them with `sl_bt_pop_event`, which is where it wants them anyway.
 pub fn pump() {
-    if LINK_LAYER_WAITING.swap(false, Ordering::AcqRel) {
-        LINK_LAYER_SERVICES.fetch_add(1, Ordering::Relaxed);
-        unsafe { sl_bt_priority_handle() };
-    }
-    // **The link layer is also asked directly.** Measured: with the advertising commands all answering 0 and the link
-    // layer serviced only when `PendSV` happens to fire, the count stood at 21 after two seconds (about the poll rate,
-    // not the advertising rate) and nothing was transmitted. The link layer is the only thing that can start a radio
-    // event, so it is called here too; if it has nothing to do it returns immediately, and the count says whether it
-    // did anything.
-    LINK_LAYER_SERVICES.fetch_add(1, Ordering::Relaxed);
-    unsafe { sl_bt_priority_handle() };
+    // The link layer is *not* serviced here: `PendSV` does it, raised by the host's scheduler callback. A second
+    // caller from thread context would run `BTLE_LL_Process` re-entrantly with the exception.
+    LINK_LAYER_WAITING.store(false, Ordering::Release);
     // **The host's turn.** Measured: with only the link layer serviced, `sli_bt_system_start_bluetooth` returns 0 and
     // the event queue is still empty (`sl_bt_pop_event` = 45 = `SL_STATUS_NOT_FOUND`), so `system_boot` -- which the
     // start enqueues -- is only delivered once the host runs.
@@ -217,6 +217,15 @@ pub fn adaptation_stats() -> (bool, bool, bool) {
 // controller builds its own `RAIL_Config_t` in `.bss.railConfig`, with its own event handler, and calls
 // `RAIL_Init` itself. Two callers of a function documented to work "only once per protocol" is the defect that
 // produced a NULL handle and a fault at `[NULL + 0x138]`.
+
+// **No `RAILCb_PaAutoModeDecision` here, deliberately.** An earlier version defined one so that `sl_rail_util_pa_init`
+// would link, with the signature `fn(*mut c_void)` -- one argument and no return. The real callback, from
+// `rail.h:3024` and implemented in `vendor/pa_auto_mode/pa_auto_mode.c`, takes four arguments and returns
+// `RAIL_Status_t`, and it is exactly the function that fills in `*power` and `*mode`. Because it is declared `__WEAK`
+// there, a strong definition in the application silently replaces it: measured with `arm-none-eabi-nm -S` on the
+// image, the symbol was six bytes (`bx lr`) instead of the vendor's implementation. A caller that passes four
+// arguments and reads a status back from a function that writes neither output parameter is a power-amplifier
+// decision that never happens -- and therefore a transmitter with no configured power mode.
 
 /// The one host configuration this program will ever use.
 static mut CONFIGURATION: Configuration = default_configuration();
@@ -283,7 +292,7 @@ pub unsafe fn start(config: Configuration) -> u32 {
 
     // **The crystal first -- before anything that touches the radio.**
     //
-    // Measured, and it cost a flash cycle to learn here: `sl_bt_controller_init()` below initialises the link layer,
+    // Measured, and it cost a flash cycle to learn here: the link layer initialises RAIL (during the start below),
     // which initialises RAIL, which compares the channel table's crystal frequency against the one the chip reports.
     // With the HFXO still off that reading is zero and RAIL asserts `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` (code 66),
     // recorded at `0x2003_F500`. This is the same assert that stalled the very first RAIL experiments, in a new place:
@@ -294,12 +303,17 @@ pub unsafe fn start(config: Configuration) -> u32 {
         trace(0, 1);
     }
 
-    // **The controller's link layer, before the host is initialised.** This is the application-provided
-    // `sl_bt_controller_init()` the blob calls; the SDK generates it into the project. Without it the link layer has
-    // no advertising instances and no scanner, and the failure is silent: every command answers 0 and nothing is ever
-    // transmitted. Measured on this board before it existed -- `sl_btctrl_init_mem`, `init_ll` and `init_basic` were
-    // not in the image at all.
-    sl_bt_controller_init();
+    // **No `sl_bt_controller_init()` here, and that is measured.** The SDK's generated controller initialiser
+    // (`sl_btctrl_init_mem` / `sl_btctrl_init_ll` / `sl_btctrl_init_basic`) belongs to the NCP/HCI build, where there is
+    // no host. In this combined build `sli_bt_start_stack` does the same work itself: it re-initialises buffer pool 0
+    // and the buffer accounting (`bgbuf_init`), runs `BTLE_LL_Init` through `bg_radio_init`, and allocates the
+    // connection/advertiser/accept-list memory through `ll_initAllocMem`; `sli_bt_init_controller_features` calls
+    // `sl_btctrl_init_adv` / `_scan` / `_conn` according to the component catalogue.
+    //
+    // Running the controller initialiser first made the host's later `BTLE_LL_Init` call `ll_hciInit` a second time.
+    // That frees the first call's two HCI buffers into the *re-initialised* pool, which underflows the type-2 buffer
+    // count (zeroed by the second `bgbuf_init`), so every later type-2 `bgbuf_alloc` returned NULL and
+    // `ll_hciGetSharedCommand()` was NULL -- the fault at address 5 in `hci_command_init_shared`.
 
     // Four measurements, in the order the vendor's own initialiser puts them, with a trace word per step so that a
     // failure names itself instead of hiding behind a hang.
@@ -327,6 +341,15 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // `sl_rail_util_pa_init()` was tried here and is not the missing piece: it pulls `RAILCb_PaAutoModeDecision`,
     // which the PA component expects the application to define, and the radio bring-up fails identically without it.
     // Left out rather than half-wired.
+
+    // **The PA curves, before the controller configures power.** Measured earlier on this board with plain RAIL:
+    // without `sl_rail_util_pa_init()` the dBm-to-raw conversion finds no curve and returns "invalid", so the modem
+    // completes every packet (`RAIL_EVENT_TX_PACKET_SENT` fires) while the amplifier is given no level and nothing
+    // radiates. The Bluetooth controller calls `RAIL_ConfigTxPower` itself but never loads the curves; the vendor
+    // application does that from `sl_system_init`. It needs no RAIL handle, so it can run before the controller exists.
+    sl_rail_util_pa_init();
+
+    sli_btctrl_events_init();
 
     trace(2, 0);
     trace(3, 0);

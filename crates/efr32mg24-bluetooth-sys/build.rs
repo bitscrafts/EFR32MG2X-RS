@@ -121,10 +121,6 @@ fn main() {
                     // `sl_bt_advertiser_create_set` answers `SL_STATUS_NOT_SUPPORTED` (0x000F) at run time because
                     // the class was never registered.
                     .file("vendor/bt_stack/sli_bt_advertiser_config.c")
-                    // The controller's link-layer initialisation. The blob *calls* `sl_bt_controller_init`
-                    // expecting the application to define it; when nothing did, the linker discarded the entire
-                    // object and the firmware came up with no advertising instances at all. See the file.
-                    .file("vendor/bt_stack/sl_bt_controller_init.c")
                     .include("vendor/bt_stack")
                     .include("vendor/bt_stack/include")
                     .include("vendor/bluetooth")

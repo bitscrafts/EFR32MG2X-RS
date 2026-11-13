@@ -8,6 +8,18 @@ The radio works, the host initialises and **answers BGAPI commands** (`sl_bt_sys
 event queue stays empty, so no example advertises through the stack yet. The radio has been proven separately by a
 pure-RAIL advertisement that three independent receivers decoded.
 
+## Update 2026-11-13 (late): the HCI NULL is closed; the beacon is still not heard
+
+| Claim | Evidence |
+|---|---|
+| `ble_beacon` no longer faults; `ll_hci.sharedCmd` is set | mailbox `status=PASS`; `mdw ll_hci` shows the pointer (was 0) |
+| Cause of the old NULL: `ll_hciInit` ran twice | breakpoints on `ll_hciInit` and after each `bgbuf_alloc`: the first call allocates, the second (inside `sli_bt_start_stack`) returns NULL because the re-initialised pool's type-2 count underflowed when the first call's buffers were freed |
+| Fix | the application no longer runs the NCP-style controller initialiser; the host start does that work itself |
+| The radio, PA and PHY work on the controller's own RAIL handle | a hand-driven `RAIL_StartTx`/`RAIL_StartScheduledTx` loop on that handle is decoded by btmon at -67..-75 dBm |
+| The link layer's own advertising is **not** heard | `ble_beacon` (every command 0); a 100 % duty host scan sees nothing |
+
+Open: why the link layer's transmissions do not radiate while the same handle driven by hand does.
+
 ## What is proven, and how
 
 | Claim | Evidence |
