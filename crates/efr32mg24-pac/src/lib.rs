@@ -12,52 +12,80 @@ use generic::*;
 pub mod generic;
 #[cfg(feature = "rt")]
 extern "C" {
-    fn SMU_SECURE();
-    fn SMU_S_PRIVILEGED();
-    fn EMU();
-    fn TIMER0();
-    fn TIMER1();
-    fn TIMER2();
-    fn TIMER3();
-    fn TIMER4();
-    fn USART0_RX();
-    fn USART0_TX();
-    fn EUSART0_RX();
-    fn EUSART0_TX();
-    fn EUSART1_RX();
-    fn EUSART1_TX();
-    fn ICACHE0();
-    fn BURTC();
-    fn LETIMER0();
-    fn SYSCFG();
-    fn LDMA();
-    fn LFXO();
-    fn ULFRCO();
-    fn GPIO_ODD();
-    fn GPIO_EVEN();
-    fn I2C0();
-    fn I2C1();
-    fn EMUDG();
-    fn ACMP0();
-    fn ACMP1();
-    fn WDOG0();
-    fn WDOG1();
-    fn HFXO0();
-    fn HFRCO0();
-    fn HFRCOEM23();
-    fn CMU();
-    fn AES();
-    fn IADC();
-    fn MSC();
-    fn DPLL0();
-    fn PCNT0();
-    fn SW0();
-    fn SW1();
-    fn SW2();
-    fn SW3();
-    fn SEMBRX();
-    fn SEMBTX();
-    fn KEYSCAN();
+    fn ACMP0_IRQHandler();
+    fn ACMP1_IRQHandler();
+    fn AES_IRQHandler();
+    fn AGC_IRQHandler();
+    fn AHB2AHB0_IRQHandler();
+    fn AHB2AHB1_IRQHandler();
+    fn BUFC_IRQHandler();
+    fn BURTC_IRQHandler();
+    fn CMU_IRQHandler();
+    fn DCDC_IRQHandler();
+    fn DPLL0_IRQHandler();
+    fn EMUDG_IRQHandler();
+    fn EMUEFP_IRQHandler();
+    fn EMU_IRQHandler();
+    fn EUSART0_RX_IRQHandler();
+    fn EUSART0_TX_IRQHandler();
+    fn EUSART1_RX_IRQHandler();
+    fn EUSART1_TX_IRQHandler();
+    fn FPUEXH_IRQHandler();
+    fn FRC_IRQHandler();
+    fn FRC_PRI_IRQHandler();
+    fn GPIO_EVEN_IRQHandler();
+    fn GPIO_ODD_IRQHandler();
+    fn HFRCO0_IRQHandler();
+    fn HFRCOEM23_IRQHandler();
+    fn HFXO0_IRQHandler();
+    fn HOSTMAILBOX_IRQHandler();
+    fn I2C0_IRQHandler();
+    fn I2C1_IRQHandler();
+    fn IADC_IRQHandler();
+    fn ICACHE0_IRQHandler();
+    fn KERNEL0_IRQHandler();
+    fn KERNEL1_IRQHandler();
+    fn KEYSCAN_IRQHandler();
+    fn LDMA_IRQHandler();
+    fn LETIMER0_IRQHandler();
+    fn LFRCO_IRQHandler();
+    fn LFXO_IRQHandler();
+    fn M33CTI0_IRQHandler();
+    fn M33CTI1_IRQHandler();
+    fn MODEM_IRQHandler();
+    fn MPAHBRAM_IRQHandler();
+    fn MSC_IRQHandler();
+    fn PCNT0_IRQHandler();
+    fn PROTIMER_IRQHandler();
+    fn RAC_RSM_IRQHandler();
+    fn RAC_SEQ_IRQHandler();
+    fn RFECA0_IRQHandler();
+    fn RFECA1_IRQHandler();
+    fn SEMBRX_IRQHandler();
+    fn SEMBTX_IRQHandler();
+    fn SMU_NS_PRIVILEGED_IRQHandler();
+    fn SMU_SECURE_IRQHandler();
+    fn SMU_S_PRIVILEGED_IRQHandler();
+    fn SW0_IRQHandler();
+    fn SW1_IRQHandler();
+    fn SW2_IRQHandler();
+    fn SW3_IRQHandler();
+    fn SYNTH_IRQHandler();
+    fn SYSCFG_IRQHandler();
+    fn SYSRTC_APP_IRQHandler();
+    fn SYSRTC_SEQ_IRQHandler();
+    fn TIMER0_IRQHandler();
+    fn TIMER1_IRQHandler();
+    fn TIMER2_IRQHandler();
+    fn TIMER3_IRQHandler();
+    fn TIMER4_IRQHandler();
+    fn ULFRCO_IRQHandler();
+    fn USART0_RX_IRQHandler();
+    fn USART0_TX_IRQHandler();
+    fn VDAC0_IRQHandler();
+    fn VDAC1_IRQHandler();
+    fn WDOG0_IRQHandler();
+    fn WDOG1_IRQHandler();
 }
 #[doc(hidden)]
 #[repr(C)]
@@ -69,97 +97,231 @@ pub union Vector {
 #[doc(hidden)]
 #[link_section = ".vector_table.interrupts"]
 #[no_mangle]
-pub static __INTERRUPTS: [Vector; 70] = [
+pub static __INTERRUPTS: [Vector; 76] = [
     Vector {
-        _handler: SMU_SECURE,
+        _handler: SMU_SECURE_IRQHandler,
     },
     Vector {
-        _handler: SMU_S_PRIVILEGED,
-    },
-    Vector { _reserved: 0 },
-    Vector { _handler: EMU },
-    Vector { _handler: TIMER0 },
-    Vector { _handler: TIMER1 },
-    Vector { _handler: TIMER2 },
-    Vector { _handler: TIMER3 },
-    Vector { _handler: TIMER4 },
-    Vector {
-        _handler: USART0_RX,
+        _handler: SMU_S_PRIVILEGED_IRQHandler,
     },
     Vector {
-        _handler: USART0_TX,
+        _handler: SMU_NS_PRIVILEGED_IRQHandler,
     },
     Vector {
-        _handler: EUSART0_RX,
+        _handler: EMU_IRQHandler,
     },
     Vector {
-        _handler: EUSART0_TX,
+        _handler: TIMER0_IRQHandler,
     },
     Vector {
-        _handler: EUSART1_RX,
+        _handler: TIMER1_IRQHandler,
     },
     Vector {
-        _handler: EUSART1_TX,
+        _handler: TIMER2_IRQHandler,
     },
-    Vector { _reserved: 0 },
-    Vector { _handler: ICACHE0 },
-    Vector { _handler: BURTC },
-    Vector { _handler: LETIMER0 },
-    Vector { _handler: SYSCFG },
-    Vector { _reserved: 0 },
-    Vector { _handler: LDMA },
-    Vector { _handler: LFXO },
-    Vector { _reserved: 0 },
-    Vector { _handler: ULFRCO },
-    Vector { _handler: GPIO_ODD },
     Vector {
-        _handler: GPIO_EVEN,
+        _handler: TIMER3_IRQHandler,
     },
-    Vector { _handler: I2C0 },
-    Vector { _handler: I2C1 },
-    Vector { _handler: EMUDG },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _handler: ACMP0 },
-    Vector { _handler: ACMP1 },
-    Vector { _handler: WDOG0 },
-    Vector { _handler: WDOG1 },
-    Vector { _handler: HFXO0 },
-    Vector { _handler: HFRCO0 },
     Vector {
-        _handler: HFRCOEM23,
+        _handler: TIMER4_IRQHandler,
     },
-    Vector { _handler: CMU },
-    Vector { _handler: AES },
-    Vector { _handler: IADC },
-    Vector { _handler: MSC },
-    Vector { _handler: DPLL0 },
+    Vector {
+        _handler: USART0_RX_IRQHandler,
+    },
+    Vector {
+        _handler: USART0_TX_IRQHandler,
+    },
+    Vector {
+        _handler: EUSART0_RX_IRQHandler,
+    },
+    Vector {
+        _handler: EUSART0_TX_IRQHandler,
+    },
+    Vector {
+        _handler: EUSART1_RX_IRQHandler,
+    },
+    Vector {
+        _handler: EUSART1_TX_IRQHandler,
+    },
     Vector { _reserved: 0 },
+    Vector {
+        _handler: ICACHE0_IRQHandler,
+    },
+    Vector {
+        _handler: BURTC_IRQHandler,
+    },
+    Vector {
+        _handler: LETIMER0_IRQHandler,
+    },
+    Vector {
+        _handler: SYSCFG_IRQHandler,
+    },
+    Vector {
+        _handler: MPAHBRAM_IRQHandler,
+    },
+    Vector {
+        _handler: LDMA_IRQHandler,
+    },
+    Vector {
+        _handler: LFXO_IRQHandler,
+    },
+    Vector {
+        _handler: LFRCO_IRQHandler,
+    },
+    Vector {
+        _handler: ULFRCO_IRQHandler,
+    },
+    Vector {
+        _handler: GPIO_ODD_IRQHandler,
+    },
+    Vector {
+        _handler: GPIO_EVEN_IRQHandler,
+    },
+    Vector {
+        _handler: I2C0_IRQHandler,
+    },
+    Vector {
+        _handler: I2C1_IRQHandler,
+    },
+    Vector {
+        _handler: EMUDG_IRQHandler,
+    },
+    Vector {
+        _handler: AGC_IRQHandler,
+    },
+    Vector {
+        _handler: BUFC_IRQHandler,
+    },
+    Vector {
+        _handler: FRC_PRI_IRQHandler,
+    },
+    Vector {
+        _handler: FRC_IRQHandler,
+    },
+    Vector {
+        _handler: MODEM_IRQHandler,
+    },
+    Vector {
+        _handler: PROTIMER_IRQHandler,
+    },
+    Vector {
+        _handler: RAC_RSM_IRQHandler,
+    },
+    Vector {
+        _handler: RAC_SEQ_IRQHandler,
+    },
+    Vector {
+        _handler: HOSTMAILBOX_IRQHandler,
+    },
+    Vector {
+        _handler: SYNTH_IRQHandler,
+    },
+    Vector {
+        _handler: ACMP0_IRQHandler,
+    },
+    Vector {
+        _handler: ACMP1_IRQHandler,
+    },
+    Vector {
+        _handler: WDOG0_IRQHandler,
+    },
+    Vector {
+        _handler: WDOG1_IRQHandler,
+    },
+    Vector {
+        _handler: HFXO0_IRQHandler,
+    },
+    Vector {
+        _handler: HFRCO0_IRQHandler,
+    },
+    Vector {
+        _handler: HFRCOEM23_IRQHandler,
+    },
+    Vector {
+        _handler: CMU_IRQHandler,
+    },
+    Vector {
+        _handler: AES_IRQHandler,
+    },
+    Vector {
+        _handler: IADC_IRQHandler,
+    },
+    Vector {
+        _handler: MSC_IRQHandler,
+    },
+    Vector {
+        _handler: DPLL0_IRQHandler,
+    },
+    Vector {
+        _handler: EMUEFP_IRQHandler,
+    },
+    Vector {
+        _handler: DCDC_IRQHandler,
+    },
+    Vector {
+        _handler: PCNT0_IRQHandler,
+    },
+    Vector {
+        _handler: SW0_IRQHandler,
+    },
+    Vector {
+        _handler: SW1_IRQHandler,
+    },
+    Vector {
+        _handler: SW2_IRQHandler,
+    },
+    Vector {
+        _handler: SW3_IRQHandler,
+    },
+    Vector {
+        _handler: KERNEL0_IRQHandler,
+    },
+    Vector {
+        _handler: KERNEL1_IRQHandler,
+    },
+    Vector {
+        _handler: M33CTI0_IRQHandler,
+    },
+    Vector {
+        _handler: M33CTI1_IRQHandler,
+    },
+    Vector {
+        _handler: FPUEXH_IRQHandler,
+    },
     Vector { _reserved: 0 },
-    Vector { _handler: PCNT0 },
-    Vector { _handler: SW0 },
-    Vector { _handler: SW1 },
-    Vector { _handler: SW2 },
-    Vector { _handler: SW3 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _handler: SEMBRX },
-    Vector { _handler: SEMBTX },
-    Vector { _reserved: 0 },
-    Vector { _reserved: 0 },
-    Vector { _handler: KEYSCAN },
+    Vector {
+        _handler: SEMBRX_IRQHandler,
+    },
+    Vector {
+        _handler: SEMBTX_IRQHandler,
+    },
+    Vector {
+        _handler: SYSRTC_APP_IRQHandler,
+    },
+    Vector {
+        _handler: SYSRTC_SEQ_IRQHandler,
+    },
+    Vector {
+        _handler: KEYSCAN_IRQHandler,
+    },
+    Vector {
+        _handler: RFECA0_IRQHandler,
+    },
+    Vector {
+        _handler: RFECA1_IRQHandler,
+    },
+    Vector {
+        _handler: VDAC0_IRQHandler,
+    },
+    Vector {
+        _handler: VDAC1_IRQHandler,
+    },
+    Vector {
+        _handler: AHB2AHB0_IRQHandler,
+    },
+    Vector {
+        _handler: AHB2AHB1_IRQHandler,
+    },
 ];
 #[doc = r"Enumeration of all the interrupts."]
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -169,6 +331,8 @@ pub enum Interrupt {
     SMU_SECURE = 0,
     #[doc = "1 - SMU_S_PRIVILEGED"]
     SMU_S_PRIVILEGED = 1,
+    #[doc = "2 - SMU_NS_PRIVILEGED"]
+    SMU_NS_PRIVILEGED = 2,
     #[doc = "3 - EMU"]
     EMU = 3,
     #[doc = "4 - TIMER0"]
@@ -201,10 +365,14 @@ pub enum Interrupt {
     LETIMER0 = 18,
     #[doc = "19 - SYSCFG"]
     SYSCFG = 19,
+    #[doc = "20 - MPAHBRAM"]
+    MPAHBRAM = 20,
     #[doc = "21 - LDMA"]
     LDMA = 21,
     #[doc = "22 - LFXO"]
     LFXO = 22,
+    #[doc = "23 - LFRCO"]
+    LFRCO = 23,
     #[doc = "24 - ULFRCO"]
     ULFRCO = 24,
     #[doc = "25 - GPIO_ODD"]
@@ -217,6 +385,26 @@ pub enum Interrupt {
     I2C1 = 28,
     #[doc = "29 - EMUDG"]
     EMUDG = 29,
+    #[doc = "30 - AGC"]
+    AGC = 30,
+    #[doc = "31 - BUFC"]
+    BUFC = 31,
+    #[doc = "32 - FRC_PRI"]
+    FRC_PRI = 32,
+    #[doc = "33 - FRC"]
+    FRC = 33,
+    #[doc = "34 - MODEM"]
+    MODEM = 34,
+    #[doc = "35 - PROTIMER"]
+    PROTIMER = 35,
+    #[doc = "36 - RAC_RSM"]
+    RAC_RSM = 36,
+    #[doc = "37 - RAC_SEQ"]
+    RAC_SEQ = 37,
+    #[doc = "38 - HOSTMAILBOX"]
+    HOSTMAILBOX = 38,
+    #[doc = "39 - SYNTH"]
+    SYNTH = 39,
     #[doc = "40 - ACMP0"]
     ACMP0 = 40,
     #[doc = "41 - ACMP1"]
@@ -241,6 +429,10 @@ pub enum Interrupt {
     MSC = 50,
     #[doc = "51 - DPLL0"]
     DPLL0 = 51,
+    #[doc = "52 - EMUEFP"]
+    EMUEFP = 52,
+    #[doc = "53 - DCDC"]
+    DCDC = 53,
     #[doc = "54 - PCNT0"]
     PCNT0 = 54,
     #[doc = "55 - SW0"]
@@ -251,12 +443,38 @@ pub enum Interrupt {
     SW2 = 57,
     #[doc = "58 - SW3"]
     SW3 = 58,
+    #[doc = "59 - KERNEL0"]
+    KERNEL0 = 59,
+    #[doc = "60 - KERNEL1"]
+    KERNEL1 = 60,
+    #[doc = "61 - M33CTI0"]
+    M33CTI0 = 61,
+    #[doc = "62 - M33CTI1"]
+    M33CTI1 = 62,
+    #[doc = "63 - FPUEXH"]
+    FPUEXH = 63,
     #[doc = "65 - SEMBRX"]
     SEMBRX = 65,
     #[doc = "66 - SEMBTX"]
     SEMBTX = 66,
+    #[doc = "67 - SYSRTC_APP"]
+    SYSRTC_APP = 67,
+    #[doc = "68 - SYSRTC_SEQ"]
+    SYSRTC_SEQ = 68,
     #[doc = "69 - KEYSCAN"]
     KEYSCAN = 69,
+    #[doc = "70 - RFECA0"]
+    RFECA0 = 70,
+    #[doc = "71 - RFECA1"]
+    RFECA1 = 71,
+    #[doc = "72 - VDAC0"]
+    VDAC0 = 72,
+    #[doc = "73 - VDAC1"]
+    VDAC1 = 73,
+    #[doc = "74 - AHB2AHB0"]
+    AHB2AHB0 = 74,
+    #[doc = "75 - AHB2AHB1"]
+    AHB2AHB1 = 75,
 }
 unsafe impl cortex_m::interrupt::InterruptNumber for Interrupt {
     #[inline(always)]

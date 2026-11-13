@@ -1,310 +1,327 @@
-//! Make the board advertise "xiao-mg24", with RAIL and no Bluetooth stack.
+//! Make the board advertise `xiao-mg24` with RAIL, following the sequence the vendor documents.
 //!
-//! The receive example proved the channel configuration is accepted and the radio reaches RX. This one
-//! uses the same configuration to transmit an advertising PDU, which is the actual deliverable: a name a
-//! phone can see.
+//! `rail_ble.h` carries a worked example, and it is the authority for this file. Two calls from it were
+//! missing here, and between them they explain every measurement that failed before this:
 //!
-//! ## What the radio builds and what we build
-//!
-//! RAIL's BLE PHY configuration supplies the preamble, the advertising access address (0x8E89BED6), the
-//! CRC initialisation and the whitening. The application supplies the **PDU**: the advertiser address
-//! followed by the advertising data. So the frame written here is:
-//!
-//! ```text
-//! AdvA (6 bytes)  |  AD structures
+//! ```c
+//! gRailHandle = RAIL_Init(&railCfg, NULL);
+//! RAIL_BLE_Init(gRailHandle);                   // loads the BLE radio configuration
+//! RAIL_BLE_ConfigPhy1MbpsViterbi(gRailHandle);  // Viterbi is what this part supports
+//! RAIL_BLE_ConfigChannelRadioParams(gRailHandle, 0x555555, 0x8E89BED6, 37, false);
+//! RAIL_StartRx(gRailHandle, 0, NULL);           // physical 0 is logical 37
 //! ```
 //!
-//! and the AD structures are the same shape `scripts/host-advertise.sh` writes:
+//! Without `RAIL_BLE_Init` the radio has no BLE protocol state at all: `RAIL_StartTx` returns success,
+//! the radio enters TX and never leaves it (`rs=4`), and the board looks silent while the API reports
+//! nothing wrong. Without `RAIL_BLE_ConfigChannelRadioParams` there is no CRC init and no advertising
+//! access address, so even a transmission that completed would not be a BLE packet.
+//!
+//! There is no hand-built channel configuration here either. `RAIL_BLE_Init` loads the vendor's own,
+//! which is the piece a hand-built one could never supply: the modem register tables.
+//!
+//! The frame is a legacy advertising PDU:
 //!
 //! ```text
-//! 02 01 06                  flags: LE general discoverable, BR/EDR not supported
-//! 0A 09 "xiao-mg24"         complete local name
+//! 40 14 | E0 3E 13 FE FF 75 | 02 01 06 | 0A 09 "xiao-mg24"
+//! ^^^^^   ^^^^^^^^^^^^^^^^^^   ^^^^^^^^   ^^^^^^^^^^^^^^^^^^^
+//! header  AdvA, static random  flags      complete local name (9 bytes)
 //! ```
 //!
-//! ## The clock, which was the whole problem
-//!
-//! `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` (66) came from the radio being clocked by the internal HFRCO at
-//! 19 MHz while the configuration expects 39 MHz. Starting the crystal was not enough — an oscillator
-//! nothing selects clocks nothing — so this example starts it *and* selects it, then reports the radio
-//! clock RAIL actually sees. If that number is not 39000 kHz, the transmission is not on the frequency
-//! the receiver expects and nothing else in this file can fix that.
+//! Header byte 0 is PDU type 0 (ADV_IND) with TxAdd set, because the address is random; byte 1 is the
+//! payload length: 6 bytes of address + 14 bytes of advertising data = 20.
 
 #![no_std]
 #![no_main]
 
 use core::ptr;
 
-use efr32mg24_hal::entry;
-use efr32mg24_hal::prelude::*;
-use efr32mg24_rail_sys as rail;
-use panic_halt as _;
+mod mailbox {
+    //! A record the host reads over SWD while the core runs. The radio cannot print, and a serial port
+    //! would be a second thing to be wrong: the mailbox is one word-magic and a length, nothing else.
+    use core::ptr;
 
-#[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
-mod mailbox;
+    pub const ADDR: usize = 0x2003_F000;
+    const MAGIC: u32 = 0x4D42_4F58; // "MBOX"
 
-use mailbox::Status;
+    #[derive(Clone, Copy)]
+    pub enum Status {
+        Info = 0,
+        Pass = 1,
+        Fail = 2,
+    }
 
-extern "C" {
-    static RAIL_BLE_Phy1Mbps: *const rail::RAIL_ChannelConfig_t;
-    static RAIL_BLE_Phy1MbpsViterbi: *const rail::RAIL_ChannelConfig_t;
+    /// Publish a message. The magic is cleared first and set last, so a reader never sees a torn record.
+    pub fn write(status: Status, bytes: &[u8]) {
+        let len = bytes.len().min(200);
+        unsafe {
+            let base = ADDR as *mut u32;
+            ptr::write_volatile(base, 0);
+            let seq = ptr::read_volatile(base.add(1)).wrapping_add(1);
+            ptr::write_volatile(base.add(1), seq);
+            ptr::write_volatile(base.add(2), status as u32);
+            ptr::write_volatile(base.add(3), len as u32);
+            for (i, b) in bytes[..len].iter().enumerate() {
+                ptr::write_volatile((ADDR as *mut u8).add(16 + i), *b);
+            }
+            ptr::write_volatile(base, MAGIC);
+        }
+    }
+
+    /// Append a byte string, refusing to overflow the record.
+    pub fn push(dst: &mut [u8], mut at: usize, s: &[u8]) -> usize {
+        for &b in s {
+            if at < dst.len() {
+                dst[at] = b;
+                at += 1;
+            }
+        }
+        at
+    }
+
+    /// Append a decimal number without `format!`.
+    pub fn push_dec(dst: &mut [u8], mut at: usize, mut v: u32) -> usize {
+        let mut buf = [0u8; 10];
+        let mut n = 0;
+        if v == 0 {
+            return push(dst, at, b"0");
+        }
+        while v > 0 {
+            buf[n] = b'0' + (v % 10) as u8;
+            v /= 10;
+            n += 1;
+        }
+        while n > 0 {
+            n -= 1;
+            at = push(dst, at, &buf[n..n + 1]);
+        }
+        at
+    }
 }
 
-const NAME: &[u8] = b"xiao-mg24";
-const RAIL_RF_STATE_TX: u32 = 0x02;
-const STATUS_OK: u32 = 0;
+use efr32mg24_hal::prelude::*;
+use efr32mg24_rail_sys as rail;
+use mailbox::Status;
+use panic_halt as _;
 
+const STATUS_OK: u32 = 0;
+const RAIL_RF_STATE_TX: u32 = 0x04;
+
+/// RAIL calls this when an internal assertion fails. Its weak default spins with no information; this
+/// one puts the assertion code in the mailbox, which is how `assert=65` and `assert=66` were found.
 #[no_mangle]
 pub extern "C" fn RAILCb_AssertFailed(
     _rail_handle: rail::RAIL_Handle_t,
     error_code: rail::RAIL_AssertErrorCodes_t,
 ) -> ! {
-    let mut msg = [0u8; 40];
+    let mut m = [0u8; 32];
     let mut at = 0;
-    mailbox::push(&mut msg, &mut at, b"tx: assert=");
-    at = push_dec(&mut msg, at, error_code as u32);
-    mailbox::write(Status::Fail, &msg[..at]);
+    at = mailbox::push(&mut m, at, b"tx: assert=");
+    at = mailbox::push_dec(&mut m, at, error_code as u32);
+    mailbox::write(Status::Fail, &m[..at]);
     loop {
         core::hint::spin_loop();
     }
 }
 
-#[entry]
-fn main() -> ! {
-    let board = efr32mg24_hal::board::Board::take().expect("board");
-    let mut delay = board.delay();
+/// RAIL's power-amplifier callback. The Bluetooth stack provides its own policy; a beacon does not need
+/// one, but the symbol has to exist or the link fails.
+#[no_mangle]
+pub extern "C" fn RAILCb_PaAutoModeDecision(_handle: rail::RAIL_Handle_t) {}
 
-    mailbox::write(Status::Info, b"tx: entered main");
-
-    // ---------------------------------------------------------------- crystal, selected
-    if !unsafe { efr32mg24_emlib_sys::emlib_hfxo_start() } {
-        mailbox::write(Status::Fail, b"tx: HFXO did not start");
-        stop(&mut delay);
+fn stop(delay: &mut efr32mg24_hal::delay::Delay) -> ! {
+    loop {
+        delay.delay_ms(500);
     }
-    unsafe { efr32mg24_emlib_sys::emlib_clock_select_hfxo() };
+}
 
-    // Re-arm the delay: switching SYSCLK leaves SysTick stopped, and a `Delay` created before the switch
-    // waits forever for a counter that is no longer running. Measured: the transmit loop did exactly one
-    // iteration (`iter=1`) and then hung here.
+#[no_mangle]
+pub extern "C" fn main() -> ! {
+    let mut board = efr32mg24_hal::board::Board::take().unwrap();
     let mut delay = board.delay();
 
-    // ---------------------------------------------------------------- radio
+    // The radio is clocked from the crystal, not from the internal oscillator. Starting it is not enough:
+    // it has to be selected, or RAIL keeps running from the HFRCO and refuses the BLE configuration
+    // (RAIL_ASSERT_INVALID_XTAL_FREQUENCY, measured as `radioClock=19000kHz cfg=39000kHz`).
+    unsafe {
+        efr32mg24_emlib_sys::emlib_hfxo_start();
+        efr32mg24_emlib_sys::emlib_clock_select_hfxo();
+    }
+    // Selecting SYSCLK stops SysTick, so the HAL's delay is rebuilt against the new clock. It is still
+    // calibrated for 19 MHz, which is the known delay defect: the interval below is measured on the
+    // cycle counter instead.
+    let mut delay = board.delay();
+
     let mut cfg: rail::RAIL_Config_t = unsafe { core::mem::zeroed() };
     let handle = unsafe { rail::RAIL_Init(&mut cfg, None) };
     if handle.is_null() {
-        mailbox::write(Status::Fail, b"tx: RAIL_Init null");
+        mailbox::write(Status::Fail, b"tx: RAIL_Init returned null");
         stop(&mut delay);
     }
 
-    let radio_clock_khz = unsafe { rail::RAIL_GetRadioClockFreqHz(handle) } / 1000;
-    let mut cm = [0u8; 40];
-    let mut ca = 0;
-    mailbox::push(&mut cm, &mut ca, b"tx: radioclk=");
-    ca = push_dec(&mut cm, ca, radio_clock_khz);
-    mailbox::write(Status::Info, &cm[..ca]);
+    // The documented sequence, in the documented order.
+    unsafe { rail::RAIL_BLE_Init(handle) };
+    let phy = unsafe { rail::RAIL_BLE_ConfigPhy1MbpsViterbi(handle) };
+    // CRC init and advertising access address from the specification; logical channel 37.
+    let ch = unsafe {
+        rail::RAIL_BLE_ConfigChannelRadioParams(handle, 0x0055_5555, 0x8E89_BED6, 37, false)
+    };
 
-    // Viterbi is the PHY this RAIL build supports (`rail_caps`: ble1m=0 vit=1). The air interface is
-    // the same BLE 1 Mbps either way.
-    let chan_cfg = unsafe { RAIL_BLE_Phy1MbpsViterbi };
-    let plain = unsafe { RAIL_BLE_Phy1Mbps };
-    let st = if !chan_cfg.is_null() {
-        unsafe { rail::RAIL_ConfigChannels(handle, chan_cfg, None) }
-    } else if !plain.is_null() {
-        unsafe { rail::RAIL_ConfigChannels(handle, plain, None) }
-    } else {
-        mailbox::write(Status::Fail, b"tx: no BLE phy config");
+    if phy as u32 != STATUS_OK || ch as u32 != STATUS_OK {
+        let mut m = [0u8; 48];
+        let mut at = 0;
+        at = mailbox::push(&mut m, at, b"tx: phy=");
+        at = mailbox::push_dec(&mut m, at, phy as u32);
+        at = mailbox::push(&mut m, at, b" ch=");
+        at = mailbox::push_dec(&mut m, at, ch as u32);
+        mailbox::write(Status::Fail, &m[..at]);
         stop(&mut delay);
-    };
-    if st as u32 != STATUS_OK {
-        report(&mut delay, b"tx: ConfigChannels=", st as u32);
-    }
-    let st = if chan_cfg.is_null() {
-        unsafe { rail::RAIL_BLE_ConfigPhy1Mbps(handle) }
-    } else {
-        unsafe { rail::RAIL_BLE_ConfigPhy1MbpsViterbi(handle) }
-    };
-    // Advisory only: the channel configuration already carries the PHY, so RAIL answers
-    // INVALID_STATE (2) to a redundant PHY selection. That is not a reason to stop — treating it as
-    // fatal hid the transmit path behind a status code that meant "already done".
-    if st as u32 != STATUS_OK && st as u32 != 2 {
-        report(&mut delay, b"tx: ConfigPhy=", st as u32);
     }
 
-    // ---------------------------------------------------------------- frame
-    // A test beacon has no claim to a public address; the identifier used below is derived from the
-    // device's own unique id and marked as a static random address, which is the honest choice.
-    // The frame a BLE radio transmits starts with a two-byte PDU header:
-    //
-    //   byte 0: PDU type (bits 0-3), RFU (4), ChSel (5), TxAdd (6), RxAdd (7)
-    //   byte 1: payload length
-    //
-    // The first version wrote the advertiser address first. The radio still transmitted — StartTx
-    // returned success — but the receiver read the address's first byte as a PDU type and its second as
-    // a length, so the frame was structured garbage and no scanner could show it. A successful
-    // StartTx is not a valid advertisement.
-    let mut pdu = [0u8; 48];
-    let mut n = 0;
+    // One packet per transmission, not a continuous stream. In FIFO_MODE a radio that runs out of data
+    // keeps transmitting, which is what `rs=4` measured before this was set.
+    let dc = rail::RAIL_DataConfig_t {
+        txSource: 0, // TX_PACKET_DATA
+        rxSource: 0, // RX_PACKET_DATA
+        txMethod: 0, // PACKET_MODE
+        rxMethod: 0, // PACKET_MODE
+    };
+    unsafe { rail::RAIL_ConfigData(handle, &dc) };
 
-    // ADV_IND (type 0), ChSel 0, TxAdd 1 because the address below is a static random one.
-    pdu[n] = 0x40;
-    n += 1;
-    // Length is filled in once the payload is built.
-    let length_at = n;
-    pdu[n] = 0;
-    n += 1;
+    // The power amplifier has no configuration until it is given one.
+    let pa = rail::RAIL_TxPowerConfig_t {
+        mode: rail::RAIL_TxPowerMode_t_enum_RAIL_TX_POWER_MODE_2P4_HP as u8,
+        voltage: 3300,
+        rampTime: 10,
+    };
+    let pa_st = unsafe { rail::RAIL_ConfigTxPower(handle, &pa) };
+    let dbm_st = unsafe { rail::RAIL_SetTxPowerDbm(handle, 100) };
 
-    // AdvA: six bytes from the device's unique id, with the two most significant bits set to 11 to mark
-    // it as a static random address. A test beacon has no claim to a public address.
+    // AdvA: the six bytes above the unique id, with the two most significant bits set to `11`, which is
+    // what makes it a static random address. A phone shows the packet under this address.
     let uid = unsafe { efr32mg24_emlib_sys::emlib_unique_id() };
-    for i in 0..6 {
-        pdu[n] = ((uid >> (8 * (5 - i))) & 0xFF) as u8;
-        n += 1;
+    let mut addr = [0u8; 6];
+    for (i, b) in addr.iter_mut().enumerate() {
+        *b = (uid >> (8 * (5 - i))) as u8;
     }
-    pdu[n - 1] |= 0xC0;
+    addr[0] |= 0xC0;
 
-    pdu[n] = 0x02; // AD: flags
-    pdu[n + 1] = 0x01;
-    pdu[n + 2] = 0x06; // LE general discoverable, BR/EDR not supported
+    let mut pdu = [0u8; 40];
+    let mut n = 0;
+    pdu[n] = 0x40; // ADV_IND, TxAdd=1 (random address)
+    n += 1;
+    pdu[n] = 20; // payload length: 6 address + 14 advertising data
+    n += 1;
+    pdu[n..n + 6].copy_from_slice(&addr);
+    n += 6;
+    pdu[n..n + 3].copy_from_slice(&[0x02, 0x01, 0x06]); // flags: LE general discoverable, no BR/EDR
     n += 3;
-    pdu[n] = (NAME.len() + 1) as u8; // AD: complete local name
-    pdu[n + 1] = 0x09;
+    pdu[n..n + 2].copy_from_slice(&[0x0A, 0x09]); // complete local name, 9 bytes
     n += 2;
-    pdu[n..n + NAME.len()].copy_from_slice(NAME);
-    n += NAME.len();
+    pdu[n..n + 9].copy_from_slice(b"xiao-mg24");
+    n += 9;
+    let pdu_len = n as u16;
 
-    pdu[length_at] = (n - 2) as u8; // payload length excludes the two header bytes
-    let pdu_len = n;
-
-    // TX buffer: RAIL copies from it, so it has to stay alive for as long as the radio uses it.
-    let mut tx_buf = [0u8; 64];
-    // RAIL_SetTxFifo(handle, buffer, initial length, total size): 0 bytes queued, 64 available.
-    unsafe { rail::RAIL_SetTxFifo(handle, tx_buf.as_mut_ptr(), 0, 64) };
-    let written =
-        unsafe { rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len as u16, true) };
-    if written == 0 {
-        mailbox::write(Status::Fail, b"tx: WriteTxFifo wrote 0");
-        stop(&mut delay);
+    {
+        let mut m = [0u8; 64];
+        let mut at = 0;
+        at = mailbox::push(&mut m, at, b"tx: pdu=");
+        at = mailbox::push_dec(&mut m, at, pdu_len as u32);
+        at = mailbox::push(&mut m, at, b" pa=");
+        at = mailbox::push_dec(&mut m, at, pa_st as u32);
+        at = mailbox::push(&mut m, at, b" dbm=");
+        at = mailbox::push_dec(&mut m, at, dbm_st as u32);
+        mailbox::write(Status::Info, &m[..at]);
     }
 
-    let mut m = [0u8; 48];
-    let mut a = 0;
-    mailbox::push(&mut m, &mut a, b"tx: pdu=");
-    a = push_dec(&mut m, a, pdu_len as u32);
-    mailbox::push(&mut m, &mut a, b"B clock=");
-    a = push_dec(&mut m, a, radio_clock_khz);
-    mailbox::write(Status::Info, &m[..a]);
+    // The bytes the radio was actually given, copied to a fixed address so the host can read them back
+    // off the chip. A source constant proves nothing about what reached the FIFO.
+    unsafe {
+        let dst = 0x2003_F080 as *mut u8;
+        for (i, b) in pdu[..pdu_len as usize].iter().enumerate() {
+            core::ptr::write_volatile(dst.add(i), *b);
+        }
+    }
 
-    // ---------------------------------------------------------------- transmit, repeatedly
-    // One advertisement is lost to any receiver that happens to be elsewhere, so this repeats on BLE
-    // channel 37 (the configuration's logical channel 0) every ~100 ms, which is what a real advertiser
-    // does. The mailbox is refreshed with the count so a reader can tell "transmitted 412 times" from
-    // "transmitted once and stopped".
-    // The cycle counter has to be started explicitly: `since` reads a counter that is off by default,
-    // and a wait on a stopped counter is indistinguishable from a radio that is not transmitting.
+    let mut tx_buf = [0u8; 64];
+    unsafe { rail::RAIL_SetTxFifo(handle, tx_buf.as_mut_ptr(), 0, 64) };
+    mailbox::write(Status::Info, b"tx: fifo ok");
+
     unsafe { efr32mg24_hal::dwt::start() };
 
     let mut count = 0u32;
     let mut failures = 0u32;
     let mut iterations = 0u32;
     loop {
-        // The iteration counter is written BEFORE the transmission, so a loop that stalls and a loop
-        // that transmits but is not heard look different in the mailbox. `sent=1` alone could not tell
-        // those apart.
         iterations = iterations.wrapping_add(1);
 
-        // A transmission started by RAIL is asynchronous, and with no events callback the radio is never
-        // declared done. Waiting on it (RAIL_Idle with wait=true) blocks for ever, which measured as one
-        // advertisement and then a silent board. So the abort is requested without waiting: the packet is
-        // already on its way, and the FIFO is refilled for the next one.
-        unsafe {
-            rail::RAIL_Idle(
+        // No RAIL_SetFixedLength here on purpose: in BLE the length of a packet comes from the PDU
+        // header (byte 1, 0x14), and forcing a fixed length contradicts it. Measured with it set: the
+        // radio reported every transmission complete and a scanner saw nothing, which is what a frame
+        // whose length disagrees with its own header looks like from the air.
+
+        mailbox::write(Status::Info, b"tx: writing fifo");
+        let written =
+            unsafe { rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len, true) };
+        {
+            let mut wm = [0u8; 32];
+            let mut wa = 0;
+            wa = mailbox::push(&mut wm, wa, b"tx: w=");
+            wa = mailbox::push_dec(&mut wm, wa, written as u32);
+            wa = mailbox::push(&mut wm, wa, b" st=");
+            wa = mailbox::push_dec(&mut wm, wa, unsafe { rail::RAIL_GetRadioState(handle) }
+                as u32);
+            wa = mailbox::push(&mut wm, wa, b" ho=");
+            wa = mailbox::push_dec(
+                &mut wm,
+                wa,
+                unsafe { rail::RAIL_IsTxHoldOffEnabled(handle) } as u32,
+            );
+            mailbox::write(Status::Info, &wm[..wa]);
+        }
+        // A real advertiser rotates the three advertising channels (physical 0..2 are logical 37..39),
+        // so a scanner listening on any of them sees the device. One fixed channel is invisible to a
+        // scanner whose window is on another.
+        let st = unsafe {
+            rail::RAIL_StartTx(
                 handle,
-                rail::RAIL_IdleMode_t_enum_RAIL_IDLE_ABORT as u8,
-                false,
+                (iterations % 3) as u16,
+                rail::RAIL_TX_OPTIONS_DEFAULT,
+                ptr::null(),
             )
         };
+        if st as u32 == STATUS_OK && written == pdu_len {
+            count = count.wrapping_add(1);
+        } else {
+            failures = failures.wrapping_add(1);
+        }
 
-        // In dynamic FIFO mode RAIL does not know how many bytes are one packet, so a transmission never
-        // completes: measured as the radio sitting in TX (state 4) with the board silent. The packet
-        // length is what closes it.
-        unsafe { rail::RAIL_SetFixedLength(handle, pdu_len as u16) };
-
-        let written = unsafe {
-            rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len as u16, true)
-        };
-        let st =
-            unsafe { rail::RAIL_StartTx(handle, 0, rail::RAIL_TX_OPTIONS_DEFAULT, ptr::null()) };
-        // Does the radio leave TX on its own? The blocked loop left this unanswered, so it is measured:
-        // a bounded poll, because an unbounded one is how the loop died last time.
         let mut rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
         let tw = efr32mg24_hal::dwt::cycles();
         while (rs & RAIL_RF_STATE_TX) != 0 && efr32mg24_hal::dwt::since(tw) < 39_000 * 20 {
             rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
         }
 
-        if st as u32 == STATUS_OK && written == pdu_len as u16 {
-            count = count.wrapping_add(1);
-        } else {
-            failures = failures.wrapping_add(1);
-        }
+        mailbox::write(Status::Info, b"tx: polled");
 
         let mut tm = [0u8; 64];
         let mut ta = 0;
-        mailbox::push(&mut tm, &mut ta, b"tx: iter=");
-        ta = push_dec(&mut tm, ta, iterations);
-        mailbox::push(&mut tm, &mut ta, b" sent=");
-        ta = push_dec(&mut tm, ta, count);
-        mailbox::push(&mut tm, &mut ta, b" fail=");
-        ta = push_dec(&mut tm, ta, failures);
-        mailbox::push(&mut tm, &mut ta, b" st=");
-        ta = push_dec(&mut tm, ta, st as u32);
-        mailbox::push(&mut tm, &mut ta, b" rs=");
-        ta = push_dec(&mut tm, ta, rs);
+        ta = mailbox::push(&mut tm, ta, b"tx: iter=");
+        ta = mailbox::push_dec(&mut tm, ta, iterations);
+        ta = mailbox::push(&mut tm, ta, b" sent=");
+        ta = mailbox::push_dec(&mut tm, ta, count);
+        ta = mailbox::push(&mut tm, ta, b" fail=");
+        ta = mailbox::push_dec(&mut tm, ta, failures);
+        ta = mailbox::push(&mut tm, ta, b" st=");
+        ta = mailbox::push_dec(&mut tm, ta, st as u32);
+        ta = mailbox::push(&mut tm, ta, b" rs=");
+        ta = mailbox::push_dec(&mut tm, ta, rs);
         mailbox::write(Status::Pass, &tm[..ta]);
 
-        // The HAL's `Delay` cannot be used after the clock switch: it waits on SysTick, which stops when
-        // SYSCLK is re-selected, and a wait that never comes is indistinguishable from a radio that is
-        // not transmitting. The cycle counter is independent of that, so the interval is measured against
-        // it: 39 000 cycles per millisecond at the crystal's rate.
+        // 100 ms at the crystal's rate, on the cycle counter, because the HAL delay is calibrated for a
+        // clock that is no longer the system clock.
         let t0 = efr32mg24_hal::dwt::cycles();
-        let want = 39_000u32 * 100; // 100 ms
-        while efr32mg24_hal::dwt::since(t0) < want {
+        while efr32mg24_hal::dwt::since(t0) < 39_000 * 100 {
             core::hint::spin_loop();
         }
     }
-}
-
-fn stop(delay: &mut efr32mg24_hal::delay::Delay) -> ! {
-    loop {
-        delay.delay_ms(1000);
-    }
-}
-
-fn report(delay: &mut efr32mg24_hal::delay::Delay, prefix: &[u8], value: u32) {
-    let mut msg = [0u8; 48];
-    let mut at = 0;
-    mailbox::push(&mut msg, &mut at, prefix);
-    at = push_dec(&mut msg, at, value);
-    mailbox::write(Status::Fail, &msg[..at]);
-    let _ = delay;
-    stop(delay);
-}
-
-fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
-    if value == 0 {
-        out[at] = b'0';
-        return at + 1;
-    }
-    let mut digits = [0u8; 10];
-    let mut n = 0;
-    while value > 0 && n < 10 {
-        digits[n] = b'0' + (value % 10) as u8;
-        value /= 10;
-        n += 1;
-    }
-    while n > 0 {
-        n -= 1;
-        out[at] = digits[n];
-        at += 1;
-    }
-    at
 }

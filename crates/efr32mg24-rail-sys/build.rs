@@ -57,7 +57,11 @@ fn main() {
 
             // Link the RAIL binary blob
             println!("cargo:rustc-link-search=native={}", blob_dir.display());
-            println!("cargo:rustc-link-lib=static=rail_efr32xg24_gcc_release");
+            // whole-archive: the interrupt handlers live in blob objects that nothing references by name
+            // once device.x provides weak aliases, and an archive member is only pulled in for an
+            // undefined symbol. Without this the radio interrupt lands in DefaultHandler and the
+            // transmitter stalls inside the handler, measured as pc in DefaultHandler_.
+            println!("cargo:rustc-link-lib=static:+whole-archive=rail_efr32xg24_gcc_release");
             println!("cargo:blob-dir={}", blob_dir.display());
             println!(
                 "cargo:warning=Linking RAIL blob from {}",
