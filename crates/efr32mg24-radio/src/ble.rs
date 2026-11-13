@@ -32,3 +32,18 @@ pub const LEGACY_ADV_MTU: usize = 31;
 
 /// The ATT MTU this stack negotiates by default.
 pub const DEFAULT_ATT_MTU: u16 = 247;
+
+/// **The handler the vendor's bare-metal design requires, in the library so every example has it.**
+///
+/// Without a kernel, the host asks for link-layer work by setting `PENDSVSET`; `sl_bluetooth.c.jinja` defines
+/// `PendSV_Handler()` as `sl_bt_priority_handle()` for exactly that reason. Measured on this board: with the start
+/// finally succeeding and no handler defined, the firmware sat in `DefaultHandler_` with `ICSR.VECTACTIVE = 14` —
+/// no fault, no status, the "hang" this project chased for hours.
+///
+/// It lives here rather than in each example because it is a property of using the stack, not of a program:
+/// an example that forgot it would hang in a way that looks like a radio failure.
+#[cfg(feature = "stack")]
+#[cortex_m_rt::exception]
+fn PendSV() {
+    efr32mg24_bluetooth_sys::stack_init::service_link_layer();
+}

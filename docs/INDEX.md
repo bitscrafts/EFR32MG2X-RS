@@ -276,3 +276,4 @@ See [LICENSE](../LICENSE) file for details.
 - [Bluetooth integration: the symbol ledger](03-development/BLE-INTEGRATION.md)
 - [The compare channel works, and three registers were wrong](04-reference/SYSRTC-COMPARE-WORKS.md)
 - [Bluetooth: the state, measured](04-reference/BLE-STATUS.md)
+| [BLE-REA-FINDINGS.md](04-reference/BLE-REA-FINDINGS.md) | What the vendor blobs do, from decompilation (no vendor code) |

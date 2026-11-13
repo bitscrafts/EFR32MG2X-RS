@@ -96,11 +96,17 @@ impl Bluetooth {
         delay.delay_ms(100);
         let mut waited_ms = 0u32;
         loop {
+            // **The host has to be run, or this loop can never end.** `system_boot` is queued during the start but
+            // only delivered once the host processes its own events; polling `sl_bt_pop_event` without `sl_bt_run`
+            // waits out the full two seconds and reports "boot event never arrived", which reads like a radio problem
+            // and is not one. Measured on the board.
+            crate::stack_init::pump();
             let mut evt = core::mem::MaybeUninit::<bt::sl_bt_msg_t>::uninit();
             let popped = unsafe { bt::sl_bt_pop_event(evt.as_mut_ptr()) };
             if popped == 0 {
                 let evt = unsafe { evt.assume_init() };
-                if evt.header == bt::sl_bt_evt_system_boot_id {
+                // `SL_BGAPI_MSG_ID` masks with 0xffff00f8; the id is not the whole header.
+                if evt.header & 0xffff_00f8 == bt::sl_bt_evt_system_boot_id {
                     break;
                 }
             }
@@ -728,6 +734,9 @@ impl Bluetooth {
         // the poll here rather than in each example means no example can forget it -- and an example that forgot
         // it looks exactly like a stack that never advances, which is the most expensive bug shape in this tree.
         crate::sleeptimer::poll();
+        // ...and the host itself. `sl_bt_run` is what makes BGAPI commands progress and events appear; without it
+        // `poll_event` answers "no event" forever while the stack is perfectly healthy.
+        crate::stack_init::pump();
 
         // Allocate event structure (256 bytes on stack)
         let mut evt = core::mem::MaybeUninit::<bt::sl_bt_msg_t>::uninit();
