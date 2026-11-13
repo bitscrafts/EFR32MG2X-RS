@@ -60,11 +60,11 @@ mod bits {
     pub const CMD_STOP: u32 = 1 << 1;
     /// `SYSRTC_GRP0_CTRL.CMP0EN`.
     pub const CTRL_CMP0EN: u32 = 1 << 0;
-    /// `SYSRTC_GRP0_IF/IEN`, one bit per channel, **shifted by one against every header**. Measured on the board:
-    /// a compare on channel 0 sets bit 1 (0x22 read back, with the group-level mirror also set) exactly one count
-    /// after the programmed value, and a compare on channel 1 sets bit 2 (0x44). With only CMP0 enabled the flag
-    /// appeared in bit 1 and never in bit 0 — so the per-channel flag is bit `1 + n`, and the headers are off by
-    /// one here just as they are for the group's base offset.
+    /// `SYSRTC_GRP0_IF` bits, from `efr32mg24_sysrtc.h`: `OVF` = bit 0, `CMP0` = **bit 1**, `CMP1` = bit 2,
+    /// `CAP0` = bit 3. The first version of this module tested bit 0 and concluded the compare never fired; a
+    /// probe then read `0x22` one count after the deadline on channel 0 and `0x44` on channel 1, which is exactly
+    /// what this header describes. **The header was right and the code was wrong** -- recorded because the
+    /// opposite claim was written here first.
     pub const GRP0_CMP0: u32 = 1 << 1;
     /// Compare channel 1's flag, same shift.
     pub const GRP0_CMP1: u32 = 1 << 2;

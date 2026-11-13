@@ -28,11 +28,17 @@ const R_GRP0_IF: usize = 0x60;
 const R_GRP0_IEN: usize = 0x64;
 const R_GRP0_CMP0: usize = 0x6C;
 const IF_CLEAR_ALIAS: usize = 0x2000;
-/// `SYSRTC_GRP0_IEN` bit for compare channel 0, measured (bit 1).
+/// `SYSRTC_GRP0_IEN` bit for compare channel 0: bit 1, which is what `efr32mg24_sysrtc.h` calls
+/// `SYSRTC_GRP0_IF_CMP0`. Measured too — `0x22` one count after the deadline, `0x44` on channel 1 — and the two
+/// agree, so this is the header being read correctly rather than a header being wrong.
 const IEN_CMP0: u32 = 1 << 1;
 /// `SYSRTC_APP` in the PAC's interrupt list. IRQ 67 lives in `ISER2` (64..95), bit 3 — the first attempt used
 /// `ISER1` and the compiler refused the shift by 35, which is the least destructive way to learn it.
 const SYSRTC_APP_IRQ: u32 = 67;
+// `SYSRTC_SEQ` is IRQ 68, and it is deliberately **not** enabled here: measured, the group block at 0x60 raises
+// that line (`NVIC_ISPR2` read 0x10 with only IRQ 67 enabled), and the RAIL blob owns its handler -- pointing a
+// second handler at it fails the link with `duplicate symbol: SYSRTC_SEQ_IRQHandler`. See
+// `docs/04-reference/SYSRTC-COMPARE-WORKS.md`.
 /// `NVIC_ISER2`, `0xE000_E100 + 4 * (67 / 32)`.
 const NVIC_ISER2: usize = 0xE000_E108;
 
@@ -53,6 +59,8 @@ unsafe fn arm(next: u32) {
     core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IEN) as *mut u32, IEN_CMP0);
 
     if !core::ptr::read_volatile(core::ptr::addr_of!(IRQ_ENABLED)) {
+        // Only the application line. The sequencer line is RAIL's, and enabling it here would land its events on
+        // this handler while RAIL expects them on its own.
         core::ptr::write_volatile(NVIC_ISER2 as *mut u32, 1u32 << (SYSRTC_APP_IRQ % 32));
         core::ptr::write_volatile(core::ptr::addr_of_mut!(IRQ_ENABLED), true);
     }
@@ -87,6 +95,13 @@ fn earliest() -> Option<u32> {
 pub extern "C" fn SYSRTC_APP_IRQHandler() {
     crate::sleeptimer::on_compare_interrupt();
 }
+
+// There is deliberately **no** `SYSRTC_SEQ_IRQHandler` here. The linker refused the duplicate: the RAIL blob
+// defines it. That is the whole answer to the interrupt question -- with IRQ 67 enabled and the compare
+// programmed, `NVIC_ISPR2` read `0x10`, IRQ 68 pending, because **group 0 belongs to the sequencer line that
+// RAIL owns**. A timer in the application's name must use a different group; taking group 0 would mean
+// competing with RAIL for its own interrupt, and the duplicate-symbol error is this project being told so by the
+// tool instead of by a hang six months from now.
 
 /// Clear the flag first, then run what is due and re-arm: clearing first means a callback that takes longer than
 /// the next deadline still gets its own interrupt instead of finding a stuck flag.
@@ -220,6 +235,18 @@ pub unsafe extern "C" fn sl_sleeptimer_restart_timer(
         flags,
         active: true,
     };
+
+    // **Arm here, not only at the end of `poll()`.** Arming when the timer is scheduled is what makes the timer
+    // work during a blocking call: if the interrupt were only programmed by `poll()`, then any code path that
+    // schedules a timer and then blocks -- exactly what `sli_bt_init_stack` does -- would wait for a deadline
+    // nothing was ever told about. Measured: a timer scheduled for 50 ms and waited on for 200 ms produced zero
+    // callbacks and zero interrupts until this line existed.
+    if let Some(next) = earliest() {
+        arm(next);
+    }
+    if let Some(next) = earliest() {
+        unsafe { arm(next) };
+    }
     SL_STATUS_OK
 }
 
