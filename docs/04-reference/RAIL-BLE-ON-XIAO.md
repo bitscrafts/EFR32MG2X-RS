@@ -318,3 +318,77 @@ read-back.
 
 The next measurement is therefore not another guess: read `RAIL_GetPaPowerMode()` / the PA status register
 after `RAIL_ConfigTxPower`, and compare with what `pa_conversions_efr32.c` believes it configured.
+## IT ADVERTISES (2026-11-13)
+
+```
+$ sudo bash scripts/ble-scan-raw.sh 16          # 100% duty cycle, raw HCI, btmon capture
+=== advertising reports, by address:
+      9 Address: 55:44:33:22:11:00
+=== detail of one report:
+        Address: 55:44:33:22:11:00 (OUI 55-44-33)
+        Data length: 14
+        Flags: 0x06
+          LE General Discoverable Mode
+          BR/EDR Not Supported
+        Name (complete): xiao-mg24
+        RSSI: -83 dBm
+```
+
+The board advertises `xiao-mg24` on all three advertising channels, heard by the host's adapter at -83 dBm.
+Mailbox: `read_dbm=99` (10 dBm asked, 99 returned by the curve), raw PA level `0x24`.
+
+### The two defects that were actually in the way
+
+**1. The PA conversion was never initialised.** `RAIL_SetTxPowerDbm(100)` returned success and
+`RAIL_GetTxPowerDbm()` read back **-32768** (`RAIL_TX_POWER_DBM_INVALID`) with raw level 0, in every PA mode
+and both before and after a transmission. `pa_conversions_efr32.c` says why, in its own comment: the
+dBm-to-raw conversion needs `RAIL_InitTxPowerCurves` to have loaded the curves, and without it the conversion
+returns 255, "invalid". The vendor's entry point for that is one call:
+
+```c
+sl_rail_util_pa_init();   // loads the curves, and enables PA calibration if configured
+```
+
+A modem with no valid PA level completes every packet happily — which is exactly what
+`RAIL_EVENT_TX_PACKET_SENT` was counting all along — and radiates nothing. That is why every link in the
+chain reported success while no receiver heard anything, and it is the single most expensive wrong turn of
+this bring-up: the API's own success was the lie.
+
+**2. The PAC had no radio interrupts** (fixed earlier): `HardFault`, `CFSR=0x00000100`, at `RAIL_StartTx`,
+because the vector table held zeroes for AGC/BUFC/FRC_PRI/FRC/MODEM/PROTIMER/RAC_*/SYNTH/RFECA*. Fixed by
+declaring all 74 device interrupts, using the vendor's `<NAME>_IRQHandler` spelling, and linking the RAIL blob
+`+whole-archive` so its strong handlers win over the weak aliases.
+
+### The working sequence (this is what the example now does)
+
+```c
+emlib_hfxo_start(); emlib_clock_select_hfxo();       // crystal started AND selected: without the second,
+                                                     // RAIL keeps running from HFRCO (19 MHz) and refuses
+                                                     // the BLE configuration (assert 66)
+RAIL_Init(&cfg, NULL);                               // with an events callback
+RAIL_BLE_Init(handle);                               // loads the BLE radio configuration
+RAIL_BLE_ConfigPhy1MbpsViterbi(handle);              // only the Viterbi 1M config exists on this part
+sl_rail_util_pa_init();                              // <-- the PA curves; without this: silent
+RAIL_ConfigTxPower(handle, sl_rail_util_pa_get_tx_power_config_2p4ghz());
+RAIL_SetTxPowerDbm(handle, 100);                     // 10 dBm
+RAIL_ConfigData(&packet_mode); RAIL_SetTxFifo(...);
+loop:
+  channel = 37 + (n % 3);
+  RAIL_BLE_ConfigChannelRadioParams(handle, 0x555555, 0x8E89BED6, channel, false);  // whitening seed = channel
+  RAIL_PrepareChannel(handle, channel);
+  RAIL_WriteTxFifo(full PDU including its 2-byte header);
+  RAIL_StartTx(handle, channel, RAIL_TX_OPTIONS_DEFAULT, NULL);
+```
+
+PDU on air: `00 14 | 00 11 22 33 44 55 | 02 01 06 | 0A 09 "xiao-mg24"` — a public address with a fixed value,
+chosen for bring-up because it can be searched for by hand; a static random address derived from the chip UID
+works the same way.
+
+### Verification commands
+
+```bash
+ELF=/projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/rail_ble_tx
+python3 scripts/elf-load-range.py $ELF            # must stay above 0x08006000
+bash scripts/flash.sh $ELF --confirm --run
+bash scripts/ble-scan-raw.sh 16                   # on the host: expects Name (complete): xiao-mg24
+```

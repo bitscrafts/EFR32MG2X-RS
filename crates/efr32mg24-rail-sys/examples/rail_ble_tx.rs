@@ -136,6 +136,16 @@ unsafe extern "C" fn on_rail_event(_handle: rail::RAIL_Handle_t, events: rail::R
     }
 }
 
+extern "C" {
+    /// Loads the PA power curves into RAIL (`RAIL_InitTxPowerCurvesAlt`) and optionally enables PA
+    /// calibration. Documented inside pa_conversions_efr32.c: without this call the dBm-to-raw conversion
+    /// finds no curve and returns 255, "invalid", so the amplifier never gets a level -- while every
+    /// transmission still completes at the modem.
+    fn sl_rail_util_pa_init();
+    /// The vendor's own 2.4 GHz PA configuration for this chip family (mode, voltage, ramp time).
+    fn sl_rail_util_pa_get_tx_power_config_2p4ghz() -> *mut rail::RAIL_TxPowerConfig_t;
+}
+
 /// RAIL's power-amplifier callback. The Bluetooth stack provides its own policy; a beacon does not need
 /// one, but the symbol has to exist or the link fails.
 #[no_mangle]
@@ -204,18 +214,20 @@ pub extern "C" fn main() -> ! {
     };
     unsafe { rail::RAIL_ConfigData(handle, &dc) };
 
-    // The power amplifier, with the vendor's PA conversion plugin linked in (vendor/pa2): that plugin
-    // Mode 4 is what the vendor's own xg24 PA configuration selects (SL_RAIL_UTIL_PA_SELECTION_2P4GHZ =
-    // RAIL_TX_POWER_MODE_2P4GIG_HIGHEST); the HP alias used before is a different PA entirely.
-    // supplies the dBm-to-raw mapping RAIL documents as an override. Before it existed,
-    // `RAIL_SetTxPowerDbm` returned success and `RAIL_GetTxPowerDbm` read back -32768 (RAIL's invalid
-    // power), so the PA drove nothing while every packet still completed at the modem.
-    let pa = rail::RAIL_TxPowerConfig_t {
-        mode: rail::RAIL_TxPowerMode_t_enum_RAIL_TX_POWER_MODE_2P4GIG_HIGHEST as u8,
-        voltage: 3300,
-        rampTime: 10,
+    // The power amplifier, in the order the vendor's own plugin expects:
+    //   1. sl_rail_util_pa_init()  -- loads the PA curves into RAIL
+    //   2. the plugin's own 2.4 GHz configuration (mode HIGHEST, 3300 mV, 10 us ramp)
+    //   3. the dBm value
+    // Skipping step 1 was measured as RAIL_SetTxPowerDbm returning success and RAIL_GetTxPowerDbm reading
+    // back -32768 (invalid power) with a raw level of 0: the transmitter drives nothing and every packet
+    // still completes at the modem.
+    unsafe { sl_rail_util_pa_init() };
+    let pa_cfg = unsafe { sl_rail_util_pa_get_tx_power_config_2p4ghz() };
+    let pa_st = if pa_cfg.is_null() {
+        1
+    } else {
+        unsafe { rail::RAIL_ConfigTxPower(handle, pa_cfg) }
     };
-    let pa_st = unsafe { rail::RAIL_ConfigTxPower(handle, &pa) };
     let dbm_st = unsafe { rail::RAIL_SetTxPowerDbm(handle, 100) };
 
     // AdvA, as a PUBLIC address with a fixed value. A static random address derived from the chip's unique
@@ -320,10 +332,20 @@ pub extern "C" fn main() -> ! {
         // upwards, where no scanner listens.
         // so a scanner listening on any of them sees the device. One fixed channel is invisible to a
         // scanner whose window is on another.
-        // Prepare the channel before transmitting: RAIL tunes/calibrates the radio for it. The vendor's
-        // own init calls this (sl_rail_prepare_channel in the RAIL 3 API), and without it the modem
-        // completes a packet while the PA is not driven on that frequency.
-        let prep = unsafe { rail::RAIL_PrepareChannel(handle, 37) };
+        // A real advertiser walks the three advertising channels (37, 38, 39 = 2402, 2426, 2480 MHz) so a
+        // scanner finds it whichever one its window is on. The radio parameters carry the whitening seed,
+        // which is the channel number, so they are re-applied per channel.
+        let channel = 37u16 + (iterations % 3) as u16;
+        unsafe {
+            rail::RAIL_BLE_ConfigChannelRadioParams(
+                handle,
+                0x0055_5555,
+                0x8E89_BED6,
+                channel,
+                false,
+            )
+        };
+        let prep = unsafe { rail::RAIL_PrepareChannel(handle, channel) };
 
         let st = unsafe {
             rail::RAIL_StartTx(
@@ -337,6 +359,18 @@ pub extern "C" fn main() -> ! {
             count = count.wrapping_add(1);
         } else {
             failures = failures.wrapping_add(1);
+        }
+
+        // Is the power read-back valid only once the radio has transmitted?
+        unsafe {
+            core::ptr::write_volatile(
+                0x2003_F14C as *mut u32,
+                rail::RAIL_GetTxPowerDbm(handle) as u32,
+            );
+            core::ptr::write_volatile(
+                0x2003_F150 as *mut u32,
+                rail::RAIL_GetTxPower(handle) as u32,
+            );
         }
 
         let mut rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
