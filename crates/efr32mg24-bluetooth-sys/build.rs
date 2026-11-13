@@ -111,8 +111,13 @@ fn main() {
             //
             // Repeating the two directives here places them again AFTER these blobs, which is what the
             // link needs. The paths come from the environment of the dependencies' build scripts.
+            // **The RAIL blob is deliberately NOT repeated here.** `efr32mg24-rail-sys` links it with
+            // `+whole-archive`, so every member is already in the image and no ordering problem can exist for it;
+            // repeating it made the linker see the same objects twice and stop with
+            // `duplicate symbol: RAILINT_a4513097...` defined at `rail_rf_hal.c`. What does need repeating is
+            // emlib and the PA curves, which are ordinary archives that only satisfy symbols still undefined when
+            // the linker reaches them.
             for (dir_var, lib) in [
-                ("DEP_EFR32MG24_RAIL_BLOB_DIR", "rail_efr32xg24_gcc_release"),
                 ("DEP_EMLIB_MIN_LIB_DIR", "emlib_min"),
                 // The PA curves (sl_rail_util_pa_get_tx_power_config_2p4ghz) live in rail-sys's own archive.
                 ("DEP_EFR32MG24_RAIL_LIB_DIR", "rail_pa"),

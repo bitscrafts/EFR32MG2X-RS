@@ -153,10 +153,12 @@ fn main() -> ! {
     // interrupt path differ, so the loop calls both.
     delay.delay_ms(100);
     let mut events = 0u32;
+    let mut last_pop = 0u32;
     for _ in 0..200 {
         sleeptimer::poll();
         let mut evt = core::mem::MaybeUninit::<efr32mg24_bluetooth_sys::ffi::sl_bt_msg_t>::uninit();
         let popped = unsafe { efr32mg24_bluetooth_sys::ffi::sl_bt_pop_event(evt.as_mut_ptr()) };
+        last_pop = popped as u32;
         if popped == 0 {
             events += 1;
         }
@@ -181,6 +183,8 @@ fn main() -> ! {
     n = push_dec(&mut m, n, sleeptimer::irq_stats());
     n = label(&mut m, n, b" evt=");
     n = push_dec(&mut m, n, events);
+    n = label(&mut m, n, b" pop=");
+    n = push_dec(&mut m, n, last_pop);
     let (used, fails, viol) = efr32mg24_bluetooth_sys::heap::stats();
     n = label(&mut m, n, b" heap=");
     n = push_dec(&mut m, n, used as u32);
