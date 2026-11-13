@@ -197,6 +197,10 @@ fn main() -> ! {
     // channel 37 (the configuration's logical channel 0) every ~100 ms, which is what a real advertiser
     // does. The mailbox is refreshed with the count so a reader can tell "transmitted 412 times" from
     // "transmitted once and stopped".
+    // The cycle counter has to be started explicitly: `since` reads a counter that is off by default,
+    // and a wait on a stopped counter is indistinguishable from a radio that is not transmitting.
+    unsafe { efr32mg24_hal::dwt::start() };
+
     let mut count = 0u32;
     let mut failures = 0u32;
     let mut iterations = 0u32;
@@ -205,6 +209,17 @@ fn main() -> ! {
         // that transmits but is not heard look different in the mailbox. `sent=1` alone could not tell
         // those apart.
         iterations = iterations.wrapping_add(1);
+
+        // A transmission started by RAIL is asynchronous. With no events callback the radio is never
+        // declared done, so the next FIFO write waits on a busy radio for ever: measured as one
+        // advertisement and then a silent board, which looks exactly like a radio that does not work.
+        unsafe {
+            rail::RAIL_Idle(
+                handle,
+                rail::RAIL_IdleMode_t_enum_RAIL_IDLE_FORCE_SHUTDOWN_CLEAR_FLAGS as u8,
+                true,
+            )
+        };
 
         let written = unsafe {
             rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len as u16, true)

@@ -196,3 +196,36 @@ verification that remains is external and cheap:
 - point nRF Connect at the board and confirm the name appears;
 - if it does not, the next suspects are in order: the advertising channel actually used (logical 0 vs the
   three channels a real advertiser hops), the static-random address format, and the interval.
+## The beacon transmits once, and the radio never says it is done (2026-11-12, final state of this path)
+
+Measured, in order, each one a correction of the previous belief:
+
+```
+tx: radioclk=39000kHz           the crystal is now the radio clock; assert 66 gone
+tx: pdu=20B clock=39000         40 14 | 6-byte address | 02 01 06 | 0A 09 "xiao-mg24"
+tx: sent=1 fail=0 st=0          RAIL_StartTx returned NO_ERROR
+tx: iter=1 sent=1 fail=0 st=0   and the loop never came back round
+```
+
+Three attempts at the loop, each one a defect of mine first and a finding second:
+
+1. **`delay.delay_ms(100)` after the clock switch.** Changing SYSCLK stops SysTick, so the HAL's
+   `Delay` waits for a wrap that never comes. Re-arming it after the switch did not help either.
+2. **`dwt::since(t0)` without `dwt::start()`.** The cycle counter is off by default, so `since` reads
+   zero for ever: a wait that cannot complete, in the shape of a wait that looks correct.
+3. **`RAIL_Idle(..., wait=true)` before refilling the FIFO.** With no `eventsCallback` configured the
+   radio is never declared done, so the idle call waits on a transmitter that stays busy.
+
+So the last state is honest and precise: **one advertisement leaves the board, and RAIL never reports
+its completion.** Making the beacon repeat needs RAIL's event/callback machinery (`RAIL_ConfigEvents`
+plus a `RAILCb_TxPacketSent`), which is a further step — and it is a step worth taking only if the
+goal is a beacon, because:
+
+**RAIL cannot deliver GATT.** It is a link layer: it transmits and receives PDUs. Services,
+characteristics, subscriptions and notifications are host-stack work. The board's only host stack is
+Silicon Labs' Bluetooth stack, and that is where the GATT milestone has to be won.
+
+Also unresolved and *not* claimed: no independent observer has confirmed any of these transmissions.
+The host's `bluetoothctl scan` returned no device list even while the host itself was advertising, so
+that instrument is unverified and proves nothing in either direction. The phone is the only trusted
+observer available, and it saw `lnx-ble` but never `xiao-mg24`.
