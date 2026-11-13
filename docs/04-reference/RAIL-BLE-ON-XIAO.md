@@ -392,3 +392,48 @@ python3 scripts/elf-load-range.py $ELF            # must stay above 0x08006000
 bash scripts/flash.sh $ELF --confirm --run
 bash scripts/ble-scan-raw.sh 16                   # on the host: expects Name (complete): xiao-mg24
 ```
+
+## Verified by two stacks, not one capture (2026-11-13)
+
+The raw HCI capture proves the controller received something. It does not prove a host stack accepts it, and
+"a phone will see it" is a claim about a stack. So the same advertisement was put through BlueZ:
+
+```
+$ bash scripts/ble-scan-bluez.sh
+Device C0:DE:00:00:00:01 xiao-mg24
+	Name: xiao-mg24
+	Alias: xiao-mg24
+	RSSI: 0xffffffb7 (-73)
+```
+
+and the full decode from the capture, for the record:
+
+```
+Event type: Connectable undirected - ADV_IND (0x00)
+Address type: Random (0x01)   Address: C0:DE:00:00:00:01 (Static)
+Data length: 14
+Flags: 0x06   LE General Discoverable Mode | BR/EDR Not Supported
+Name (complete): xiao-mg24
+RSSI: -73 dBm
+```
+
+A connection attempt says something about the next phase:
+
+```
+$ bluetoothctl connect C0:DE:00:00:00:01
+hci0 C0:DE:00:00:00:01 type LE Random connected eir_len 14
+[CHG] Device C0:DE:00:00:00:01 Connected: yes
+hci0 C0:DE:00:00:00:01 type LE Random disconnected with reason 0
+Failed to connect: org.bluez.Error.Failed le-connection-abort-by-local
+```
+
+The advertisement is connectable and the link-layer connection is established, then dropped because this
+firmware has no link layer to service it: it advertises and never listens. That is the boundary of the RAIL
+path, and the reason GATT needs the Bluetooth stack rather than more RAIL work.
+
+### What is left, and it is not the radio
+
+With the controller decoding the packet, BlueZ keeping it, and the connection procedure completing, the
+radio, the crystal, the amplifier, the frame and the channel map are all measured. A phone that still shows
+nothing is a phone-side question: on Android, Bluetooth LE scanning returns **no results at all** unless
+Location Services are on, and the scan permission ("Nearby devices") must be granted to the app.
