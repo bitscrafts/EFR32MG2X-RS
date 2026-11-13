@@ -147,3 +147,18 @@ The decompiler names the registers itself: `0x500a8060` and `0x500a8064`. That i
 and the silicon still disagree, believe the silicon and write down both numbers. Two of these three
 corrections came from disassembly, and one of them (the group block) explained why a compare channel that
 looked configured had never been configured at all.
+
+## Where the output goes: not in this repository
+
+**Decompiled output is never committed** (user directive, 2026-11-13: *"nao quer o codigo descompilado no
+repo!"*). Two reasons, and the first one is reason enough:
+
+- the blobs are MSLA-licensed binaries; a repo containing their reconstructed code is a licensing problem
+  whatever its intent, and this repository is public;
+- a decompiler's output is not a source of truth to be copied around — it is evidence to be read once and
+  then expressed as a *finding* (an offset, a sequence, a contract) in prose or in our own Rust.
+
+So the workflow is: run REA against the ELF, read the pseudocode, and write **what it establishes** into a
+document like this one. The raw output stays outside the tree — `/projects/_tmp/efr32mg24-rs/` while it is
+being read, and nothing of it afterwards. What this file keeps is the conclusion, which is the part that is
+ours and the part the next person needs.
