@@ -92,22 +92,58 @@ fn main() -> ! {
     at2 = push_dec(&mut msg2, at2, plain_xtal);
     mailbox::write(Status::Info, &msg2[..at2]);
 
-    // Does the crystal start at all? RAIL's assertion about crystal frequency is only meaningful if we
-    // know which side is wrong.
+    // What the radio clock actually is, as RAIL sees it.
+    //
+    // The first measurement asked `CMU_ClockFreqGet(cmuClock_HFXO)`, which returns 0 on this part —
+    // emlib's switch has no case for that clock id, so the zero said nothing about the crystal. RAIL's
+    // own answer is the one that matters, because RAIL is what asserts
+    // RAIL_ASSERT_INVALID_XTAL_FREQUENCY when it disagrees with a channel configuration.
+    let radio_clock_hz = unsafe { rail::RAIL_GetRadioClockFreqHz(handle) };
     let hfxo_started = unsafe { efr32mg24_emlib_sys::emlib_hfxo_start() };
-    let hfxo_hz = unsafe { efr32mg24_emlib_sys::emlib_hfxo_freq() };
-    let sys_hz = unsafe { efr32mg24_emlib_sys::emlib_sysclk_hz() };
 
-    let mut mx = [0u8; 64];
+    let mut mx = [0u8; 72];
     let mut ax = 0;
-    mailbox::push(&mut mx, &mut ax, b"hfxo started=");
+    mailbox::push(&mut mx, &mut ax, b"radioClock=");
+    ax = push_dec(&mut mx, ax, radio_clock_hz / 1000);
+    mailbox::push(&mut mx, &mut ax, b"kHz cfg=");
+    let cfg_xtal = unsafe {
+        if ble_1m_vit {
+            (*RAIL_BLE_Phy1MbpsViterbi).xtalFrequencyHz
+        } else {
+            0
+        }
+    };
+    ax = push_dec(&mut mx, ax, cfg_xtal / 1000);
+    mailbox::push(&mut mx, &mut ax, b"kHz hfxo_rdy=");
     ax = push_bit(&mut mx, ax, hfxo_started);
-    mailbox::push(&mut mx, &mut ax, b" hfxo=");
-    ax = push_dec(&mut mx, ax, hfxo_hz / 1000);
-    mailbox::push(&mut mx, &mut ax, b"kHz sys=");
-    ax = push_dec(&mut mx, ax, sys_hz / 1000);
-    mailbox::push(&mut mx, &mut ax, b"kHz");
     mailbox::write(Status::Info, &mx[..ax]);
+
+    // What channels does the vendor configuration actually expose? Listening on "37" is only right if
+    // this table numbers the advertising channels 37/38/39; RAIL's logical numbering is not guaranteed to
+    // match the Bluetooth channel index.
+    let mut mc = [0u8; 96];
+    let mut ac = 0;
+    unsafe {
+        if !RAIL_BLE_Phy1MbpsViterbi.is_null() {
+            let cfg = &*RAIL_BLE_Phy1MbpsViterbi;
+            let n = core::cmp::min(cfg.length, 4) as usize;
+            for i in 0..n {
+                let e = &*cfg.configs.add(i);
+                mailbox::push(&mut mc, &mut ac, b"e");
+                ac = push_dec(&mut mc, ac, i as u32);
+                mailbox::push(&mut mc, &mut ac, b" base=");
+                ac = push_dec(&mut mc, ac, e.baseFrequency / 1_000_000);
+                mailbox::push(&mut mc, &mut ac, b"MHz sp=");
+                ac = push_dec(&mut mc, ac, e.channelSpacing / 1_000);
+                mailbox::push(&mut mc, &mut ac, b"k ch=");
+                ac = push_dec(&mut mc, ac, e.channelNumberStart as u32);
+                mailbox::push(&mut mc, &mut ac, b"-");
+                ac = push_dec(&mut mc, ac, e.channelNumberEnd as u32);
+                mailbox::push(&mut mc, &mut ac, b" ");
+            }
+        }
+    }
+    mailbox::write(Status::Info, &mc[..ac]);
 
     loop {
         delay.delay_ms(1000);

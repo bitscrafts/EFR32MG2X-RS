@@ -57,13 +57,9 @@ fn main() -> ! {
         mailbox::write(Status::Fail, b"rx: HFXO did not start");
         stop(&mut delay);
     }
-    let hfxo_hz = unsafe { efr32mg24_emlib_sys::emlib_hfxo_freq() };
-    let mut m = [0u8; 48];
-    let mut a = 0;
-    mailbox::push(&mut m, &mut a, b"rx: hfxo=");
-    a = push_dec(&mut m, a, hfxo_hz / 1000);
-    mailbox::push(&mut m, &mut a, b"kHz");
-    mailbox::write(Status::Info, &m[..a]);
+    // Starting the crystal is not using it: RAIL reported its radio clock as 19 MHz (the HFRCO) while
+    // the BLE configuration expects 39 MHz, which is exactly RAIL_ASSERT_INVALID_XTAL_FREQUENCY.
+    unsafe { efr32mg24_emlib_sys::emlib_clock_select_hfxo() };
 
     // ---------------------------------------------------------------- radio
     let mut cfg: rail::RAIL_Config_t = unsafe { core::mem::zeroed() };
@@ -72,6 +68,14 @@ fn main() -> ! {
         mailbox::write(Status::Fail, b"rx: RAIL_Init returned null");
         stop(&mut delay);
     }
+
+    let radio_clock_khz = unsafe { rail::RAIL_GetRadioClockFreqHz(handle) } / 1000;
+    let mut m = [0u8; 48];
+    let mut a = 0;
+    mailbox::push(&mut m, &mut a, b"rx: radioclk=");
+    a = push_dec(&mut m, a, radio_clock_khz);
+    mailbox::push(&mut m, &mut a, b"kHz");
+    mailbox::write(Status::Info, &m[..a]);
 
     // The RAIL library ships the whole channel configuration for BLE 1 Mbps — frequencies, channel
     // numbering, CRC init, whitening and the modem registers — as `RAIL_BLE_Phy1Mbps`. A first version
@@ -115,19 +119,54 @@ fn main() -> ! {
     let mut rx_size: u16 = 512;
     unsafe { rail::RAIL_SetRxFifo(handle, rx_buf.as_mut_ptr(), &mut rx_size) };
 
-    let st = unsafe { rail::RAIL_StartRx(handle, 37, ptr::null()) };
+    // The vendor configuration starts at 2402 MHz, which is Bluetooth advertising channel 37 — so
+    // the logical channel to listen on is 0, not 37. Listening on 37 put the radio at 2476 MHz.
+    let st = unsafe { rail::RAIL_StartRx(handle, 0, ptr::null()) };
+    // The status of StartRx is the difference between "listening and heard nothing" and "never started
+    // listening". An earlier edit dropped this check while switching PHY, and the silence that followed
+    // could not be told apart from a receiver that was not in RX at all.
     if st as u32 != STATUS_OK {
-        report_u32(&mut delay, b"rx: StartRx=", st as u32);
         stop(&mut delay);
     }
 
-    mailbox::write(Status::Info, b"rx: listening on 2402");
+    let mut lm = [0u8; 64];
+    let mut la = 0;
+    mailbox::push(&mut lm, &mut la, b"rx: listening st=");
+    la = push_dec(&mut lm, la, st as u32);
+    mailbox::push(&mut lm, &mut la, b" state=");
+    la = push_dec(&mut lm, la, unsafe { rail::RAIL_GetRadioState(handle) }
+        as u32);
+    mailbox::push(&mut lm, &mut la, b" ch0");
+    mailbox::write(Status::Info, &lm[..la]);
 
     // ---------------------------------------------------------------- receive loop
     let mut seen = 0u16;
     loop {
         let mut info: rail::RAIL_RxPacketInfo_t = unsafe { core::mem::zeroed() };
         let pkt = unsafe { rail::RAIL_GetRxPacketInfo(handle, PACKET_HANDLE_NEWEST, &mut info) };
+        // A non-null handle is not a packet. The first version reported everything RAIL handed back and
+        // produced 226 953 records of `len=0 rssi=-128`: those are the aborted and in-progress states,
+        // and a check that accepts them is a check that cannot fail. Only RAIL_RX_PACKET_READY_SUCCESS
+        // (7) means "a frame arrived and its CRC matched".
+        // RAIL 7 = READY_SUCCESS (CRC passed), 6 = READY_CRC_ERROR. The difference is the diagnosis:
+        // a CRC error means the radio is hearing energy at this frequency but the framing does not
+        // match, while silence means it is hearing nothing at all.
+        const PACKET_READY_SUCCESS: u32 = 7;
+        const PACKET_READY_CRC_ERROR: u32 = 6;
+        let status = info.packetStatus as u32;
+        if !pkt.is_null() && status == PACKET_READY_CRC_ERROR {
+            let mut em = [0u8; 40];
+            let mut ea = 0;
+            mailbox::push(&mut em, &mut ea, b"rx: crc_error len=");
+            ea = push_dec(&mut em, ea, info.packetBytes as u32);
+            mailbox::write(Status::Info, &em[..ea]);
+            let _ = unsafe { rail::RAIL_ReleaseRxPacket(handle, pkt) };
+            continue;
+        }
+        if !pkt.is_null() && status != PACKET_READY_SUCCESS {
+            let _ = unsafe { rail::RAIL_ReleaseRxPacket(handle, pkt) };
+            continue;
+        }
         if pkt.is_null() {
             // Nothing complete yet: reading RAM over SWD is slow compared with the radio, so this loop
             // is mostly this branch.

@@ -131,3 +131,68 @@ per-board data — and it is why emlib has no `HFXO_FREQ` anywhere in the header
 `xiao-mg24` advertising is **not** done, and nothing has been transmitted by the board. What exists:
 nine examples, one of them (`rail_ble_rx`) that compiles and runs to the point of the radio refusing
 its configuration for a reason that is now named exactly.
+## Breakthrough: the clock was the whole of assert 66 (2026-11-12, later)
+
+The chain, each step measured:
+
+```
+RAIL_GetRadioClockFreqHz()  ->  19000 kHz     radio clocked from the internal HFRCO
+config xtalFrequencyHz      ->  39000 kHz     what the BLE configuration expects
+                              -----------
+RAIL_ASSERT_INVALID_XTAL_FREQUENCY (66)
+```
+
+Starting the crystal was necessary and **not sufficient**: an oscillator that nothing selects clocks
+nothing. Two calls, both now measured on the board:
+
+1. `HFXO0->CTRL |= HFXO_CTRL_FORCEEN` — starts it (`STATUS.RDY` comes up).
+2. `CMU_ClockSelectSet(cmuClock_SYSCLK, cmuSelect_HFXO)` — makes it the high-frequency clock.
+
+After both, **the assertion is gone**: `RAIL_ConfigChannels` accepts the vendor BLE configuration and the
+receive example reaches `RAIL_StartRx` with `st=0 state=2` (state 2 = RX).
+
+Two measurements were wrong before they were right, and both are the same lesson:
+
+- `CMU_ClockFreqGet(cmuClock_HFXO)` returns **0** on this part — emlib's switch has no case for that
+  clock id. The zero looked like "crystal not running" and said nothing about the crystal.
+- The vendor channel configuration numbers its channels from 2402 MHz, which is *Bluetooth* channel 37.
+  Listening on logical channel 37 put the radio at 2476 MHz. The logical channel is **0**.
+
+## The transmit path runs
+
+`rail_ble_tx` builds an advertising PDU (advertiser address + `02 01 06` flags + `0A 09 "xiao-mg24"`),
+writes it to the TX FIFO and calls `RAIL_StartTx` on logical channel 0:
+
+```
+tx: radioclk=39000kHz      (the clock RAIL now sees)
+tx: pdu=20B clock=39000
+tx: sent=1 fail=0 st=0     (StartTx returned NO_ERROR)
+```
+
+So the board **does transmit**, through RAIL, with no Bluetooth stack, no PSA and no nvm3 — which was the
+point of the exercise.
+
+## What is not yet proven, and the honest reasons
+
+1. **No independent observer has seen it.** The host's `bluetoothctl scan` produced no device list at all
+   in every attempt, including while the host itself was advertising — so that observer is unverified and
+   cannot be used to claim success. The phone (nRF Connect) is the instrument that works; it stays a
+   two-second check when someone is in the room.
+2. **The advertising rate is far below 100 ms.** The mailbox showed `sent=1` after roughly three seconds,
+   so the loop is not turning over as written. The likely reason is already known and already documented
+   (`DELAY-CLOCK-DEFECT.md`): `Delay` is calibrated for a 19 MHz HFRCO assumption that is itself ~2.3x
+   wrong, and switching SYSCLK to the 39 MHz crystal changes the tick rate under it. A beacon whose
+   interval is off by a factor is still a beacon, but it is not a 100 ms advertiser and the number should
+   not be claimed.
+3. **One advertisement in the air, not a stream.** The FIFO is consumed per transmission, so the frame is
+   now rewritten every iteration; whether the radio keeps the same advertiser address across transmissions
+   has not been verified on air.
+
+## Where this leaves the ask
+
+`xiao-mg24` advertising exists in firmware and `RAIL_StartTx` returns success on the board. The
+verification that remains is external and cheap:
+
+- point nRF Connect at the board and confirm the name appears;
+- if it does not, the next suspects are in order: the advertising channel actually used (logical 0 vs the
+  three channels a real advertiser hops), the static-random address format, and the interval.

@@ -79,3 +79,15 @@ uint32_t emlib_hfxo_freq(void)
   /* The crystal's own frequency, not the clock the core happens to run from. */
   return CMU_ClockFreqGet(cmuClock_HFXO);
 }
+
+/* Point the high-frequency clock at the crystal.
+ *
+ * Measured before this: `RAIL_GetRadioClockFreqHz()` answered 19000 kHz — the radio was being clocked
+ * from the internal HFRCO — while the BLE channel configuration expects 39000000. That mismatch is the
+ * whole of RAIL_ASSERT_INVALID_XTAL_FREQUENCY (66). Starting the crystal was necessary and not
+ * sufficient: an oscillator that nothing selects does not clock anything.
+ */
+void emlib_clock_select_hfxo(void)
+{
+  CMU_ClockSelectSet(cmuClock_SYSCLK, cmuSelect_HFXO);
+}

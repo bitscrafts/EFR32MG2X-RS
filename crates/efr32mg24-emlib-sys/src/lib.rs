@@ -50,4 +50,6 @@ extern "C" {
     pub fn emlib_hfxo_start() -> bool;
     /// HFCLK frequency in Hz, which is what the radio derives its synthesizer timing from.
     pub fn emlib_hfxo_freq() -> u32;
+    /// Select the crystal as the high-frequency clock source. Starting it is not the same as using it.
+    pub fn emlib_clock_select_hfxo();
 }
