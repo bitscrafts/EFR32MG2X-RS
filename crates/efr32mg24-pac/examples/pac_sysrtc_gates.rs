@@ -127,6 +127,27 @@ fn main() -> ! {
     wr(CMU_NS + ALIAS_SET + CLKEN0, bits);
     unsafe { STEP = 1 };
 
+    // The LFRCO: does it run on demand, or must it be forced? Its own STATUS says which. Offset 0x04 is
+    // CTRL (FORCEEN bit 0), 0x08 is STATUS (RDY bit 0, ENS bit 16), measured with the vendor headers.
+    let lfrco = 0x5002_4000;
+    let before = rd(lfrco + 0x08);
+    wr(lfrco + 0x04, rd(lfrco + 0x04) | 1); // FORCEEN
+    let mut rdy_spins = 0u32;
+    while rd(lfrco + 0x08) & 1 == 0 && rdy_spins < 200_000 {
+        rdy_spins += 1;
+    }
+    let after = rd(lfrco + 0x08);
+    let mut lb = Buf {
+        b: [0u8; 200],
+        n: 0,
+    };
+    let _ = write!(
+        &mut lb,
+        "lfrco before={:#x} after={:#x} spins={} | ",
+        before, after, rdy_spins
+    );
+    note(core::str::from_utf8(&lb.b[..lb.n]).unwrap_or("lfrco ?"));
+
     let s = rd(CMU_S + CLKEN0);
     let ns = rd(CMU_NS + CLKEN0);
     let mut d = Buf {
@@ -147,7 +168,7 @@ fn main() -> ! {
     // 2. Select LFRCO on the non-secure SYSRTC clock control, and report what it holds.
     unsafe { STEP = 2 };
     let clkctrl = CMU_NS + 0x240; // SYSRTC0CLKCTRL, offset measured with the vendor headers (the PAC says 0x1DC and is wrong)
-    wr(clkctrl, (rd(clkctrl) & !0x3) | 1);
+    wr(clkctrl, (rd(clkctrl) & !0x3) | 3); // CLKSEL=ULFRCO: always on
     let back = rd(clkctrl);
     let mut d = Buf {
         b: [0u8; 200],
@@ -159,9 +180,11 @@ fn main() -> ! {
     // 3. Configured, then the write that has been faulting.
     unsafe { STEP = 3 };
     wr(RTC_NS + 0x0C, 0);
-    wr(RTC_NS + 0x48, 0x1);
-    wr(RTC_NS + 0x44, 0);
-    wr(RTC_NS + 0x40, 0x7);
+    // The group block at the offsets the RAIL blob itself uses (SYSRTC_SEQ_IRQHandler reads GRP0_IF at +0x60
+    // and GRP0_IEN at +0x64), not the 0x40..0x4C the headers describe.
+    wr(RTC_NS + 0x68, 0x1); // GRP0_CTRL: compare 0 enable
+    wr(RTC_NS + 0x64, 0); // GRP0_IEN: none yet
+    wr(RTC_NS + 0x60, 0x7); // GRP0_IF: clear all
     note("configured | ");
 
     unsafe { STEP = 4 };

@@ -268,3 +268,6 @@ See [LICENSE](../LICENSE) file for details.
 - [What is still C, and what it costs to be Rust](04-reference/PURE-RUST-PATH.md)
 - [One radio, three protocols](04-reference/RADIO-PROTOCOLS.md)
 - [SYSRTC: the counter does not start, and what the measurements rule out](04-reference/SYSRTC-DEFECT.md)
+
+| [`docs/04-reference/SYSRTC-OPUS-REVIEW.md`](docs/04-reference/SYSRTC-OPUS-REVIEW.md) | Review report (SYSRTC-OPUS-REVIEW) |
+- [SYSRTC, for the three protocols that will share it](04-reference/SYSRTC-FOR-THREE-PROTOCOLS.md)
