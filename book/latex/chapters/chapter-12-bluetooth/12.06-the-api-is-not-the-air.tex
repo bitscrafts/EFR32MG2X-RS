@@ -1,0 +1,156 @@
+\section{The API Is Not the Air}
+\label{sec:ble-api-not-air}
+
+This section could not have been written before the board was flashing, because everything in it is a
+measurement that contradicts a success message. It is the part of Bluetooth bring-up that no header
+documents, because the header is describing the API and the failure is between the API and the antenna.
+
+\subsection{Four Successes, One Silence}
+
+The first working attempt reported, on every link of the chain, that it was fine:
+
+\begin{minted}{text}
+RAIL_Init                 handle returned
+RAIL_BLE_Init             void
+RAIL_BLE_ConfigPhy1Mbps   status 0
+RAIL_ConfigTxPower        status 0
+RAIL_SetTxPowerDbm(100)   status 0
+RAIL_StartTx              status 0
+RAIL_EVENT_TX_PACKET_SENT 39529 times   <- counted in the radio's own interrupt
+\end{minted}
+
+and no receiver heard anything. The counter in the last line is the one that makes this worth writing
+down: it is not the program counting its own calls, it is the radio's interrupt handler reporting that
+the modem completed a packet. The packet was built correctly too, and read back off the chip as
+
+\begin{minted}{text}
+00 14 | 00 11 22 33 44 55 | 02 01 06 | 0A 09 "xiao-mg24"
+\end{minted}
+
+which is a well-formed \codeinline{ADV\_IND}: public address, general-discoverable flags, complete local
+name. A scanner at one hundred percent duty cycle heard four other advertisers in the same room, up to
+262 reports each, and this board zero times.
+
+The API was not lying about what it was asked. It was reporting completion of a transmission that had
+no power behind it.
+
+\subsection{The Crystal Has To Be Selected, Not Merely Started}
+
+The radio is clocked from the 39 MHz crystal. Starting it is half the job:
+
+\begin{minted}{c}
+HFXO0->CTRL |= HFXO_CTRL_FORCEEN;                       /* the oscillator runs */
+CMU_ClockSelectSet(cmuClock_SYSCLK, cmuSelect_HFXO);   /* and now it is the clock */
+\end{minted}
+
+With only the first line, \codeinline{RAIL\_GetRadioClockFreqHz()} reports 19000 kHz --- the internal
+oscillator --- and the BLE channel configuration is refused with
+\codeinline{RAIL\_ASSERT\_INVALID\_XTAL\_FREQUENCY}. That assert is not a complaint about the crystal; it
+is the library saying that the frequency it was given and the frequency it is running at are different
+numbers, and it is right.
+
+Two smaller traps live in the same paragraph. \codeinline{CMU\_OscillatorEnable} in this emlib is
+documented as a dummy function kept for backward compatibility: it compiles, it is callable, and it
+does nothing. And \codeinline{CMU\_ClockFreqGet(cmuClock\_HFXO)} returns zero because the function's
+switch has no case for that clock, so a zero there says nothing at all about the oscillator.
+
+\subsection{The Amplifier Needs Its Curves, and the Call Is One Line}
+
+The gap between the modem and the antenna was a missing initialisation, and the library documents it in
+a comment inside its own conversion function: without \codeinline{RAIL\_InitTxPowerCurves} the
+dBm-to-raw conversion finds no curve and returns 255, its ``invalid'' value. Silicon Labs' entry point
+for that is one call:
+
+\begin{minted}{c}
+sl_rail_util_pa_init();                  /* loads the PA curves into RAIL */
+RAIL_ConfigTxPower(handle, sl_rail_util_pa_get_tx_power_config_2p4ghz());
+RAIL_SetTxPowerDbm(handle, 100);
+\end{minted}
+
+The measurement that identifies this failure is a read-back, not a status:
+
+\begin{minted}{text}
+                            before                      after sl_rail_util_pa_init()
+RAIL_SetTxPowerDbm(100)     0 (success)                 0 (success)
+RAIL_GetTxPowerDbm()        -32768  (invalid power)     99   (10 dBm)
+RAIL_GetTxPower()           0       (no level)          0x24
+\end{minted}
+
+A radio with no valid amplifier level completes every packet it is asked to send. The success in the
+first row is true and worthless; the two read-backs are the only rows that describe the air.
+
+\subsection{The Vector Table Had No Radio In It}
+
+Before any of that could be measured, the first transmission faulted: \codeinline{HardFault},
+\codeinline{CFSR=0x00000100} (imprecise bus error), at \codeinline{RAIL\_StartTx}. The cause was in the
+PAC, not in the radio: it declared 46 of the device's 74 interrupts, and every radio one was among the
+missing --- \codeinline{AGC}, \codeinline{BUFC}, \codeinline{FRC\_PRI}, \codeinline{FRC},
+\codeinline{MODEM}, \codeinline{PROTIMER}, \codeinline{RAC\_RSM}, \codeinline{RAC\_SEQ},
+\codeinline{SYNTH}, \codeinline{RFECA0/1}. Those slots held zeroes in the vector table, so the first
+radio interrupt jumped to address zero.
+
+Two further layers hide the same defect, and both were measured:
+
+\begin{itemize}
+    \item The vendor names its handlers \codeinline{<NAME>\_IRQHandler}. A vector entry saying
+          \codeinline{FRC} falls short of the blob's \codeinline{FRC\_IRQHandler} by the suffix.
+    \item A \codeinline{PROVIDE(FRC = DefaultHandler)} \emph{satisfies} the vector's reference, so the
+          linker never pulls the archive member that defines the real handler. With the aliases in
+          place the program halted inside \codeinline{DefaultHandler}. Linking the RAIL blob with
+          \codeinline{+whole-archive} keeps both: a PAC example with no radio still links, and a binary
+          with the radio gets RAIL's handlers.
+\end{itemize}
+
+\subsection{The Instrument Matters More Than the Hypothesis}
+
+Two instruments were needed and neither was the obvious one.
+
+\codeinline{hcitool lescan} and \codeinline{bluetoothctl} printed nothing on this host's adapter,
+including while the host itself was advertising, so both would have been read as ``nothing on air''.
+The scan that works is set up through raw HCI with the window equal to the interval --- one hundred
+percent duty cycle --- and the reports are read back out of a \codeinline{btmon} capture, which sees
+other advertisers the command-line tools never printed.
+
+\codeinline{RAIL\_GetRadioState} returning idle after each transmission proves only that the state
+machine moved. The value that identified the fault was the power read-back; the value that proved the
+modem was working all along was the send-complete event, counted in an interrupt.
+
+\subsection{What the Working Sequence Is}
+
+\begin{minted}{c}
+emlib_hfxo_start(); emlib_clock_select_hfxo();
+RAIL_Init(&cfg, NULL);                        /* with an events callback */
+RAIL_BLE_Init(handle);
+RAIL_BLE_ConfigPhy1MbpsViterbi(handle);       /* only the Viterbi 1M config exists here */
+sl_rail_util_pa_init();                       /* the PA curves: without this, silence */
+RAIL_ConfigTxPower(handle, sl_rail_util_pa_get_tx_power_config_2p4ghz());
+RAIL_SetTxPowerDbm(handle, 100);
+RAIL_ConfigData(&packetMode); RAIL_SetTxFifo(txBuf, 0, 64);
+for (;;) {
+  channel = 37 + (n % 3);                     /* the three advertising channels */
+  RAIL_BLE_ConfigChannelRadioParams(handle, 0x555555, 0x8E89BED6, channel, false);
+  RAIL_PrepareChannel(handle, channel);
+  RAIL_WriteTxFifo(pdu, pduLen, true);        /* the full PDU, header included */
+  RAIL_StartTx(handle, channel, RAIL_TX_OPTIONS_DEFAULT, NULL);
+}
+\end{minted}
+
+The radio parameters are re-applied per channel because the whitening seed is the channel number.
+\end{document} is not needed; the loop is the whole application.
+
+With that sequence the board advertises, and the proof is a capture from another machine:
+
+\begin{minted}{text}
+Address: 55:44:33:22:11:00 (OUI 55-44-33)
+Flags: 0x06   LE General Discoverable Mode, BR/EDR Not Supported
+Name (complete): xiao-mg24
+RSSI: -83 dBm
+\end{minted}
+
+\subsection{The Rule This Chapter Adds to the Book}
+
+A radio that reports success is not a radio that radiates. Every link in this chain --- the channel
+configuration, the transmission, the modem, the interrupt count --- can be green while the antenna is
+silent, and the only measurement that distinguishes them is one taken \emph{outside the chip}: a
+receiver, and a read-back of the amplifier's own idea of its power. The build was correct for a long
+time before it was true.

@@ -228,7 +228,9 @@ pub extern "C" fn main() -> ! {
     } else {
         unsafe { rail::RAIL_ConfigTxPower(handle, pa_cfg) }
     };
-    let dbm_st = unsafe { rail::RAIL_SetTxPowerDbm(handle, 100) };
+    // 20 dBm: the highest this PA supports (the xg24 HIGHEST mode). 10 dBm measured -83 dBm at the
+    // scanning host, which is a weak advertisement for a phone to catch reliably.
+    let dbm_st = unsafe { rail::RAIL_SetTxPowerDbm(handle, 200) };
 
     // AdvA, as a PUBLIC address with a fixed value. A static random address derived from the chip's unique
     // id is fine on air, but it changes meaning with every board and cannot be searched for by hand: for
@@ -303,106 +305,57 @@ pub extern "C" fn main() -> ! {
     loop {
         iterations = iterations.wrapping_add(1);
 
-        // No RAIL_SetFixedLength here on purpose: in BLE the length of a packet comes from the PDU
-        // header (byte 1, 0x14), and forcing a fixed length contradicts it. Measured with it set: the
-        // radio reported every transmission complete and a scanner saw nothing, which is what a frame
-        // whose length disagrees with its own header looks like from the air.
+        // A real advertiser sends on the three advertising channels in turn, back to back, and then
+        // waits. One channel per 100 ms round -- the earlier shape -- gives each channel a packet only
+        // every 300 ms, which a phone's scan window can miss for a long time. The radio parameters are
+        // re-applied per channel because the whitening seed is the channel number.
+        for channel in [37u16, 38, 39] {
+            unsafe {
+                rail::RAIL_BLE_ConfigChannelRadioParams(
+                    handle,
+                    0x0055_5555,
+                    0x8E89_BED6,
+                    channel,
+                    false,
+                )
+            };
+            let prep = unsafe { rail::RAIL_PrepareChannel(handle, channel) };
 
-        mailbox::write(Status::Info, b"tx: writing fifo");
-        let written =
-            unsafe { rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len, true) };
-        {
-            let mut wm = [0u8; 32];
-            let mut wa = 0;
-            wa = mailbox::push(&mut wm, wa, b"tx: w=");
-            wa = mailbox::push_dec(&mut wm, wa, written as u32);
-            wa = mailbox::push(&mut wm, wa, b" st=");
-            wa = mailbox::push_dec(&mut wm, wa, unsafe { rail::RAIL_GetRadioState(handle) }
-                as u32);
-            wa = mailbox::push(&mut wm, wa, b" ho=");
-            wa = mailbox::push_dec(
-                &mut wm,
-                wa,
-                unsafe { rail::RAIL_IsTxHoldOffEnabled(handle) } as u32,
-            );
-            mailbox::write(Status::Info, &wm[..wa]);
+            let written =
+                unsafe { rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len, true) };
+
+            // No RAIL_SetFixedLength here: in BLE the length comes from the PDU header (byte 1, 0x14),
+            // and forcing a fixed length contradicts it.
+            let st = unsafe {
+                rail::RAIL_StartTx(handle, channel, rail::RAIL_TX_OPTIONS_DEFAULT, ptr::null())
+            };
+
+            if st as u32 == STATUS_OK && written == pdu_len {
+                count = count.wrapping_add(1);
+            } else {
+                failures = failures.wrapping_add(1);
+            }
+            if prep as u32 != STATUS_OK {
+                failures = failures.wrapping_add(1);
+            }
         }
-        // A real advertiser rotates the three advertising channels. The BLE configuration numbers them
-        // 37..39 (the logical channel numbers of the specification); 0..2 would be DATA channels, 2404 MHz
-        // upwards, where no scanner listens.
-        // so a scanner listening on any of them sees the device. One fixed channel is invisible to a
-        // scanner whose window is on another.
-        // A real advertiser walks the three advertising channels (37, 38, 39 = 2402, 2426, 2480 MHz) so a
-        // scanner finds it whichever one its window is on. The radio parameters carry the whitening seed,
-        // which is the channel number, so they are re-applied per channel.
-        let channel = 37u16 + (iterations % 3) as u16;
-        unsafe {
-            rail::RAIL_BLE_ConfigChannelRadioParams(
-                handle,
-                0x0055_5555,
-                0x8E89_BED6,
-                channel,
-                false,
-            )
-        };
-        let prep = unsafe { rail::RAIL_PrepareChannel(handle, channel) };
-
-        let st = unsafe {
-            rail::RAIL_StartTx(
-                handle,
-                (iterations % 3) as u16,
-                rail::RAIL_TX_OPTIONS_DEFAULT,
-                ptr::null(),
-            )
-        };
-        if st as u32 == STATUS_OK && written == pdu_len {
-            count = count.wrapping_add(1);
-        } else {
-            failures = failures.wrapping_add(1);
-        }
-
-        // Is the power read-back valid only once the radio has transmitted?
-        unsafe {
-            core::ptr::write_volatile(
-                0x2003_F14C as *mut u32,
-                rail::RAIL_GetTxPowerDbm(handle) as u32,
-            );
-            core::ptr::write_volatile(
-                0x2003_F150 as *mut u32,
-                rail::RAIL_GetTxPower(handle) as u32,
-            );
-        }
-
-        let mut rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
-        let tw = efr32mg24_hal::dwt::cycles();
-        while (rs & RAIL_RF_STATE_TX) != 0 && efr32mg24_hal::dwt::since(tw) < 39_000 * 20 {
-            rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
-        }
-
-        mailbox::write(Status::Info, b"tx: polled");
 
         let mut tm = [0u8; 64];
         let mut ta = 0;
-        ta = mailbox::push(&mut tm, ta, b"tx: iter=");
+        ta = mailbox::push(&mut tm, ta, b"tx: rounds=");
         ta = mailbox::push_dec(&mut tm, ta, iterations);
         ta = mailbox::push(&mut tm, ta, b" sent=");
         ta = mailbox::push_dec(&mut tm, ta, count);
         ta = mailbox::push(&mut tm, ta, b" fail=");
         ta = mailbox::push_dec(&mut tm, ta, failures);
-        ta = mailbox::push(&mut tm, ta, b" pr=");
-        ta = mailbox::push_dec(&mut tm, ta, prep as u32);
         ta = mailbox::push(&mut tm, ta, b" hw=");
         ta = mailbox::push_dec(&mut tm, ta, unsafe { TX_PACKET_SENT });
-        ta = mailbox::push(&mut tm, ta, b" st=");
-        ta = mailbox::push_dec(&mut tm, ta, st as u32);
-        ta = mailbox::push(&mut tm, ta, b" rs=");
-        ta = mailbox::push_dec(&mut tm, ta, rs);
         mailbox::write(Status::Pass, &tm[..ta]);
 
-        // 100 ms at the crystal's rate, on the cycle counter, because the HAL delay is calibrated for a
-        // clock that is no longer the system clock.
+        // 30 ms at the crystal's rate, measured on the cycle counter because the HAL's Delay is
+        // calibrated for a clock that is no longer the system clock.
         let t0 = efr32mg24_hal::dwt::cycles();
-        while efr32mg24_hal::dwt::since(t0) < 39_000 * 100 {
+        while efr32mg24_hal::dwt::since(t0) < 39_000 * 30 {
             core::hint::spin_loop();
         }
     }
