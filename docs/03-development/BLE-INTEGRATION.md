@@ -36,10 +36,31 @@ Everything below is now about booting, not linking.
 | 4 KiB | `sli_bt_init_stack` returns `0x001A` | `SL_STATUS_NO_MORE_RESOURCE`: an allocation failed. The stack's object allocations come through `sl_malloc`, which is separate from `max_buffer_memory`. |
 | 16 KiB | no return; the mailbox is never written, PC sits inside the firmware | The init gets further and then waits. A blocking init cannot serve a **polled** timer, and this project's timer is polled because the SYSRTC compare channel does not set `GRP0_IF`. |
 
-So the next defect to fix is the compare channel, and it is the same one `SYSRTC-FOR-THREE-PROTOCOLS.md` records:
-the counter runs at 32 968 Hz, the flag stays clear when the counter passes a programmed deadline. Until it fires,
-any stack path that needs a timer callback during initialisation will stall, and raising the heap only moves the
-stall later.
+### The boot failure, named
+
+`RAILCb_AssertFailed` is a **weak** symbol in the RAIL blob whose default is an infinite loop, so the stack's
+initialisation looked like a hang: no mailbox write, no fault, and the program counter sitting inside
+`RAILCb_AssertFailed`. It was not waiting. It had asserted.
+
+With a real callback installed (`bluetooth-sys/src/rail_assert.rs`), the code is recorded at `0x2003_F500`:
+
+```
+0x2003f500: 41535254 00000042 20005290 00000001     "ASRT"  code=0x42  handle  count=1
+```
+
+**`0x42` = 66 = `RAIL_ASSERT_INVALID_XTAL_FREQUENCY`** (`rail_assert_error_codes.h`). The crystal frequency the
+stack hands RAIL is not 39 MHz — this board's HFXO — so RAIL refuses the channel configuration.
+
+Where that frequency lives: `RAIL_ChannelConfig_t.xtalFrequencyHz` (`rail_types.h:2324`), which is exactly the
+generated data `docs/04-reference/MODEM-CONFIG.md` records as the one artifact only the Radio Configurator
+produces. The stack builds its own config at runtime into `.bss.railConfig`; there is no external symbol to
+override (checked with `nm -a` over all three blobs for anything named channel/rail/xtal), so the next step is to
+disassemble the call to `RAIL_ConfigChannels` inside `sli_bt_init_stack` and see what it passes.
+
+The timer and its interrupt were then fixed and are no longer a suspect: the compare fires one count after the
+deadline, group 0 (`0x40`) is the application's group, and a scheduled timer now runs its callback from
+`SYSRTC_APP_IRQHandler` — measured, `a=1 b=1` in `ble_boot_probe`. What remains between this firmware and a booting
+stack is the crystal frequency above.
 
 The 16 KiB arena stays: it is what showed the difference. `heap::stats()` reports `(in_use, failures, violations)`
 and the boot example prints all three plus the largest free block, because "out of memory" and "the arena was

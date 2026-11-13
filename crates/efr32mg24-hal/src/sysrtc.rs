@@ -42,12 +42,15 @@ mod off {
     pub const EN_SET: usize = 0x1004;
     /// `SYSRTC_EN_CLR`, the write-1-to-clear alias. Disabling must use this; writing 0 to `EN_SET` does nothing.
     pub const EN_CLR: usize = 0x2004;
-    /// The group block, at the offsets the RAIL blob uses (`SYSRTC_SEQ_IRQHandler` reads `+0x60` and `+0x64`).
+    /// **Group 0, at the offsets the vendor header gives.** Group 1 (`0x60`) is what the RAIL blob drives, and its
+    /// events arrive on IRQ 68, whose handler RAIL defines — an application timer in that group takes RAIL's
+    /// interrupt. Measured: group 0 accepts writes at these offsets and its compare flag (bit 1) sets exactly one
+    /// count after the deadline.
     /// Every SDK header puts these at 0x40 and is wrong for this silicon.
-    pub const GRP0_IF: usize = 0x60;
-    pub const GRP0_IEN: usize = 0x64;
-    pub const GRP0_CTRL: usize = 0x68;
-    pub const GRP0_CMP0VALUE: usize = 0x6C;
+    pub const GRP0_IF: usize = 0x40;
+    pub const GRP0_IEN: usize = 0x44;
+    pub const GRP0_CTRL: usize = 0x48;
+    pub const GRP0_CMP0VALUE: usize = 0x4C;
 }
 
 mod bits {

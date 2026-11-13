@@ -67,6 +67,8 @@ pub mod crypto;
 pub mod heap;
 /// PSA Crypto: key slots and CMAC, which is all the host stack asks of it.
 pub mod psa;
+/// RAIL's assertion callback: a failure that reports instead of looping.
+pub mod rail_assert;
 /// The timer the stack schedules its events on, in Rust and polled.
 pub mod sleeptimer;
 mod support;

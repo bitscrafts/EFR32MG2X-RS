@@ -24,16 +24,23 @@ const SYSRTC_CNT: usize = 0x500A_8018;
 /// `docs/04-reference/SYSRTC-COMPARE-WORKS.md`). The per-channel flag is **bit 1** for channel 0, not bit 0, and a
 /// flag is cleared by writing it to the `+0x2000` alias rather than by storing zero.
 const SYSRTC_BASE: usize = 0x500A_8000;
-const R_GRP0_IF: usize = 0x60;
-const R_GRP0_IEN: usize = 0x64;
-const R_GRP0_CMP0: usize = 0x6C;
+/// **Group 0, at `0x40`** — the offsets the vendor header gives, and the group an application may own.
+///
+/// Measured, after two wrong turns: writes to `0x48` and `0x4C` stick, a compare at `0x4C` sets bit 1 of `0x40`
+/// exactly one count after the deadline, and this group raises **no** pending interrupt while `IEN` is off — so it
+/// is idle unless we use it. The block at `0x60` is group **1**, and its events arrive on IRQ 68, whose handler the
+/// RAIL blob defines (the link refuses a duplicate). The earlier note that "writes at 0x40 were silently lost" was
+/// wrong: those writes worked, and the flag was being read from bit 0 (`OVF`) instead of bit 1 (`CMP0`).
+const R_GRP0_IF: usize = 0x40;
+const R_GRP0_IEN: usize = 0x44;
+const R_GRP0_CMP0: usize = 0x4C;
+/// Write-1-to-clear alias page: `+0x2000`.
 const IF_CLEAR_ALIAS: usize = 0x2000;
 /// `SYSRTC_GRP0_IEN` bit for compare channel 0: bit 1, which is what `efr32mg24_sysrtc.h` calls
 /// `SYSRTC_GRP0_IF_CMP0`. Measured too — `0x22` one count after the deadline, `0x44` on channel 1 — and the two
 /// agree, so this is the header being read correctly rather than a header being wrong.
 const IEN_CMP0: u32 = 1 << 1;
-/// `SYSRTC_APP` in the PAC's interrupt list. IRQ 67 lives in `ISER2` (64..95), bit 3 — the first attempt used
-/// `ISER1` and the compiler refused the shift by 35, which is the least destructive way to learn it.
+/// `SYSRTC_APP`: the line group 0 raises. IRQ 67 lives in `ISER2` (64..95), bit 3.
 const SYSRTC_APP_IRQ: u32 = 67;
 // `SYSRTC_SEQ` is IRQ 68, and it is deliberately **not** enabled here: measured, the group block at 0x60 raises
 // that line (`NVIC_ISPR2` read 0x10 with only IRQ 67 enabled), and the RAIL blob owns its handler -- pointing a
