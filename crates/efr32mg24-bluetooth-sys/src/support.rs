@@ -78,7 +78,8 @@ pub unsafe extern "C" fn sli_aes_crypt_ctr_radio(
 ) -> u32 {
     const SL_STATUS_OK: u32 = 0;
     const SL_STATUS_INVALID_PARAMETER: u32 = 0x21;
-    const SL_STATUS_NOT_SUPPORTED: u32 = 0x0E;
+    // `sl_status.h` says 0x000F; 0x000E is SL_STATUS_NOT_AVAILABLE. Found by review of this tree.
+    const SL_STATUS_NOT_SUPPORTED: u32 = 0x0F;
 
     if key.is_null() || input.is_null() || iv_in.is_null() || iv_out.is_null() || output.is_null() {
         return SL_STATUS_INVALID_PARAMETER;

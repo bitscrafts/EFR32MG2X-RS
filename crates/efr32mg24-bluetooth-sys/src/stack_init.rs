@@ -230,9 +230,10 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // first makes the controller store a NULL handle -- and the very next `RAIL_ConfigEvents` faults reading
     // `[NULL + 0x138]`, which is exactly the fault this module kept producing.
     //
-    // So the application does not call `RAIL_Init` and does not configure channels. Whatever RAIL needs, the
-    // controller brings with it: the blobs were built for this exact part, and the crystal frequency travels inside
-    // the chip-specific configuration they carry.
+    // So the application does not call `RAIL_Init` and does not configure channels. (An earlier version of this
+    // comment claimed "the crystal frequency travels inside the chip-specific configuration they carry"; that was
+    // not measured, and the controller's PHY functions pass library-internal configs instead -- see the review in
+    // docs/04-reference/BLE-OPUS-REVIEW.md. That claim is removed rather than repeated.)
     // `sl_rail_util_pa_init()` was tried here and is not the missing piece: it pulls `RAILCb_PaAutoModeDecision`,
     // which the PA component expects the application to define, and the radio bring-up fails identically without it.
     // Left out rather than half-wired.
@@ -256,8 +257,34 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // to start the host, and the BGAPI command `sl_bt_system_start_bluetooth` is a different thing entirely: it
     // exists only in on-demand-start builds and answers `SL_STATUS_NOT_AVAILABLE` here, which is correct.
     trace(6, 0xFFFF_FFFF);
+    // **Three questions answered by one flash, because the low byte cannot tell them apart.**
+    //
+    // `bg_radio_init` computes `BTLE_LL_Init() & 0xFF` and replaces non-zero with the fixed `0x040C`, so the status
+    // that reaches us has lost the detail. Both candidates inside the controller end in `0x07`:
+    //   * `ll_radioInit` returns **7** when `RAIL_SetTxFifo` is not 512;
+    //   * `ll_randomInit` -> `bg_random_get_data` -> a refused `psa_generate_random` becomes **0x0407**
+    //     (`SL_STATUS_BT_CRYPTO`), whose low byte is also 7.
+    //
+    // So: count the RNG requests the host made during this call, and read the two globals the controller fills --
+    // `ll_radio + 0x28` is its RAIL handle, `ll_radio_pa + 20` is `0xFFFF` only if the PA stage succeeded.
+    let rng_before = crate::psa::stats().2;
     let started = sli_bt_system_start_bluetooth();
     trace(7, started);
+    unsafe {
+        extern "C" {
+            static ll_radio: [u32; 16];
+            static ll_radio_pa: [u16; 12];
+        }
+        trace(1, crate::psa::stats().2.wrapping_sub(rng_before));
+        trace(
+            2,
+            core::ptr::read_volatile(core::ptr::addr_of!(ll_radio[10])),
+        );
+        trace(
+            3,
+            core::ptr::read_volatile(core::ptr::addr_of!(ll_radio_pa[10])) as u32,
+        );
+    }
     started
 }
 
