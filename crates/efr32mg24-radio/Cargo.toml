@@ -36,6 +36,10 @@ rail = []
 # list of psa_* symbols, which is the honest state. See docs/04-reference/RADIO-NOTES.md.
 gatt = []
 
+# Counting wrappers around the RAIL calls the link layer makes (see src/diag.rs). Off by default: the
+# wrappers add microseconds per call to a scheduler that is being measured.
+diag = []
+
 [[example]]
 name = "ble_beacon"
 required-features = ["ble", "stack"]
@@ -51,3 +55,7 @@ required-features = ["ble", "stack"]
 [[example]]
 name = "ble_gatt"
 required-features = ["ble", "gatt", "stack"]
+
+[[example]]
+name = "ble_diag"
+required-features = ["ble", "stack", "diag"]

@@ -36,6 +36,8 @@
 //! ```
 
 pub mod ble;
+#[cfg(feature = "diag")]
+pub mod diag;
 #[cfg(feature = "ble")]
 pub mod fault;
 

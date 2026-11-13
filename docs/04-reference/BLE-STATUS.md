@@ -8,6 +8,24 @@ The radio works, the host initialises and **answers BGAPI commands** (`sl_bt_sys
 event queue stays empty, so no example advertises through the stack yet. The radio has been proven separately by a
 pure-RAIL advertisement that three independent receivers decoded.
 
+## Update 2026-11-13 (round 2): the link layer's advertising is on the air
+
+`ble_beacon` is heard by the host adapter: address `E4:0A:75:13:3E:E0`, `Name (complete): xiao-mg24`, flags 0x06, 14
+bytes of data, about -83 dBm. The capture was valid in the same window (foreign devices at -57 dBm in it).
+
+| Claim | Evidence |
+|---|---|
+| The image was the problem, not the radio, the PA or the scheduler | the same link layer, unchanged, is heard once the stack no longer owns the SWD mailbox page |
+| Cause | `memory.x` gave the HAL 256 KB of RAM, so `_stack_start = 0x20040000` and frames reached `0x2003F5AC`; the mailbox (`0x2003F000`) and trace words sit in that page. RAM is now 252 KB, `_stack_start = 0x2003F000` |
+| Scheduler is healthy | `diag` build, counters read without halting: 114 scheduled transmits in 12 s (9.5/s), two more `RAIL_StartTx` per event, every status 0, lead 99-109 ms before each transmit, cadence 100 ms |
+| The default scheduler callback is the one in use | `ll_task_callback = ll_task_default_callback`, which writes `PENDSVSET`; the Rust `default_configuration()` is dead code, because `sl_bt_stack_init()` passes the vendor's own config |
+| Not the time source, not buffers | exec timing reads `RAIL_GetTime`, not DWT; pool 0 stays at 32 free of 37 |
+| Advertising data defect | `sl_bt_advertiser_general_discoverable` made the stack build its own PDU (flags only, 3 bytes); `start_advertising` / `start_connectable` now use `sl_bt_advertiser_user_data` |
+| `ble_advertise_custom` PASS | manufacturer data 0x02E5 on air with the uptime counter advancing; the example had two defects of its own (a 5-byte copy into a 4-byte slice, which panicked, and `set_manufacturer_data` appending instead of replacing) |
+| `ble_scanner` | NOT working: starts (`scan: after new`) but no advertisement is reported, with neighbours at -57 dBm. Tried: `SL_CATALOG_BLUETOOTH_FEATURE_SCANNER_PRESENT` plus mapping `scanner_scan_report`; no effect measured, so neither change is kept |
+
+Still weak: -83 dBm for a board next to the host; the same level the RAIL-only test showed.
+
 ## Update 2026-11-13 (late): the HCI NULL is closed; the beacon is still not heard
 
 | Claim | Evidence |
@@ -91,6 +109,7 @@ produced two false readings before the slots were cleared at boot.
 - **Proven on the board:** `rail_ble_tx` (advertising, three receivers), `rail_caps` (PHY capabilities),
   `ble_boot_probe` (bring-up trace, timer by interrupt, the named assertion), `rail_ble_config_probe` (the table).
 - **Diagnostic:** `rail_ble_rx` (builds; reception not measured), `bt_version` (builds; needs a running host).
-- **Blocked on the event queue:** `ble_beacon`, `ble_advertise_custom`, `ble_scanner`, `ble_gatt`,
+- **Proven on air since round 2:** `ble_beacon`, `ble_advertise_custom`.
+- **Blocked on the event queue:** `ble_scanner` (see round 2), `ble_gatt`,
   `module_ble_beacon`, `module_ble_motion`, `module_ble_fall`, `base_ble_env`. They build, flash, and stop for the
   same reason: the host runs but no `system_boot` reaches the application.
