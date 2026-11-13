@@ -75,6 +75,23 @@ AGENTS_FILE="${AGENTS_FILE:-}"
 #   AUTOCOMPACT=auto     let Claude Code decide (default)
 #   AUTOCOMPACT=120000   force a window, e.g. a quarter of a 1M-context model, which keeps recent work verbatim
 #   AUTOCOMPACT=0        pass nothing, i.e. leave whatever the session already had
+#
+# **You can also compact by hand, before spending anything, and it works in `-p`.** Measured 2026-11-13 on a scratch
+# session: `claude -p "/compact" --resume <sid>` returned `subtype: success` for $0.086 and wrote a
+# "This session is being continued from a previous conversation" message of 3489 characters in place of the history --
+# the request carried the extract, not the log. The transcript file on disk *grows* while this happens, because it is
+# an append-only log; that is not evidence of failure, and judging compaction by file size is the wrong instrument.
+#
+#   bash scripts/run-claude-finish.sh <brief> --resume <sid>     # AUTOCOMPACT=120000 to force a window
+#
+# and if the session is already large:
+#
+#   claude -p "/compact" --resume <sid>                          # one call, then continue normally
+#
+# The trade is the same one compaction always makes: the extract keeps intent, measured facts, the list of things
+# ruled out and the next step, and loses the raw tool output. A hand-written extract (this project's HANDOFF) is
+# cheaper still, but whoever writes it decides what mattered -- and the model's own summary has the advantage of
+# having seen everything, including what turned out not to matter.
 AUTOCOMPACT="${AUTOCOMPACT:-auto}"
 FORK="${FORK:-0}"
 
