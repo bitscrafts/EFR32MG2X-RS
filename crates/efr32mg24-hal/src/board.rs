@@ -36,6 +36,14 @@ impl Board {
         Some(Self { dp, _cp: cp })
     }
 
+    /// The tick timer, shared by every protocol stack that may run on this radio.
+    ///
+    /// SYSRTC is one peripheral, so it is handed out here rather than taken by a stack: a second consumer
+    /// (Zigbee, Thread, or the application's own scheduler) shares this counter instead of starting another.
+    pub fn sysrtc(&self) -> crate::sysrtc::Sysrtc {
+        crate::sysrtc::Sysrtc::take(&self.dp.cmu_s, &self.dp.sysrtc0_s)
+    }
+
     /// A millisecond delay on SysTick.
     ///
     /// The board owns the core peripherals, so no caller has to reach for

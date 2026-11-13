@@ -125,6 +125,7 @@ pub mod pwm;
 pub mod rtc;
 pub mod sensors;
 pub mod spi;
+pub mod sysrtc;
 pub mod timer;
 pub mod usart;
 pub mod wdog;
