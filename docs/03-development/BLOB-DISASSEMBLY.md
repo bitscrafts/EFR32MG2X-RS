@@ -28,21 +28,15 @@ Two habits make this productive:
 - **Read 30 lines before a hit, not the hit alone.** A single `str r2, [r3, #96]` means nothing; the
   surrounding `ldr`s show which registers are read together, which is how the layout was established.
 
-What this produced for SYSRTC (and what nothing else had told us):
+What this produced for SYSRTC, expressed as the finding rather than as the vendor's bytes:
 
-```
-Disassembly of section .text.SYSRTC_SEQ_IRQHandler:
-   0: ldr r3, [pc, #12]      @ 0x500a8000
-   2: ldr r2, [r3, #96]      @ +0x60  GRP0_IF
-   4: ldr r1, [r3, #100]     @ +0x64  GRP0_IEN
-   6: add.w r3, r3, #8192    @ +0x2000 = the CLR alias page
-   a: ands r2, r1
-   c: str r2, [r3, #96]      @ GRP0_IF_CLR
-   e: bx lr
-```
+The handler for the module's sequencer interrupt takes **one** base pointer from a literal pool and, through it,
+reads the group status at **+0x60** and the group interrupt enable at **+0x64**, ANDs the two, and writes the result
+back at the **same offsets through the +0x2000 page** — the write-1-to-clear alias. Three facts follow, and none of
+them is in a header: the group block sits at +0x60 (every header says +0x40), the clear alias is a page offset
+rather than a register, and the handler clears only the channels that are enabled.
 
-and, in `RTCCSYNC_GetRtccCount`, `ldr r0, [r3, #24]` — a plain read of `CNT` at **+0x18**, which is the offset
-we use and confirms it.
+and, in `RTCCSYNC_GetRtccCount`, a plain read of `CNT` at **+0x18**, which is the offset we use and confirms it.
 
 ## Level 2 — REA + Ghidra, for pseudocode and cross-references
 
@@ -118,19 +112,12 @@ Ghidra analyses the whole image on first use (a few minutes for a 70 KB ARM ELF)
 serves queries. The output is a markdown envelope: `evidence_id`, `subject.digest`, `provider`, then the
 pseudocode under `normalized_result`, with `authority: shipped-artifact` and `confidence: observed`.
 
-What it returned for the same function the objdump showed, and why this level is worth installing:
-
-```c
-void SYSRTC_SEQ_IRQHandler(void)
-{
-  _DAT_500aa060 = _DAT_500a8060 & _DAT_500a8064;   /* GRP0_IF_CLR = GRP0_IF & GRP0_IEN */
-  return;
-}
-```
-
-The decompiler names the registers itself: `0x500a8060` and `0x500a8064`. That is the group interrupt block at
-**+0x60/+0x64**, while every header in the SDK (both the gecko_sdk v4.4.5 and the newer simplicity_sdk) puts
-`GRP0_IF` at **+0x40** and `GRP0_IEN` at **+0x44**.
+What it returned for the same function the objdump showed, described rather than reproduced: the decompiler names
+the two addresses itself — `0x500a8060` and `0x500a8064` — and the body is one masked read of the group status, one
+write through the clear alias, and a return. That is the group interrupt block at **+0x60/+0x64**, while every header
+in the SDK (both the gecko_sdk v4.4.5 and the newer simplicity_sdk) puts `GRP0_IF` at **+0x40** and `GRP0_IEN` at
+**+0x44**. The decompiler's value here is confirmation, not detail: it independently reproduces the offsets the
+listing gave.
 
 ## The offsets, and the rule
 
@@ -159,6 +146,10 @@ repo!"*). Two reasons, and the first one is reason enough:
   then expressed as a *finding* (an offset, a sequence, a contract) in prose or in our own Rust.
 
 So the workflow is: run REA against the ELF, read the pseudocode, and write **what it establishes** into a
-document like this one. The raw output stays outside the tree — `/projects/_tmp/efr32mg24-rs/` while it is
+document like this one. This document was itself in breach of that rule until 2026-11-13 — it carried a short
+objdump excerpt and a decompiled function body while thirty lines below it said not to. Both were replaced by the
+finding in prose, and the version with the vendor's bytes was moved to
+`/projects/_tmp/efr32mg24-rs/private-docs/BLOB-DISASSEMBLY.with-vendor-output.md`, outside the tree. A rule that is
+written in the middle of a document does not stop the top of the same document from breaking it. The raw output stays outside the tree — `/projects/_tmp/efr32mg24-rs/` while it is
 being read, and nothing of it afterwards. What this file keeps is the conclusion, which is the part that is
 ours and the part the next person needs.
