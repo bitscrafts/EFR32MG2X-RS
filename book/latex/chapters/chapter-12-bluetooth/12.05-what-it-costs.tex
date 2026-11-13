@@ -63,10 +63,31 @@ link tells you whether it has.
 \begin{minted}{text}
 bindings compile                    yes, with three documented workarounds
 beacon links                        yes
-beacon flashed and seen by a phone  not yet -- the next measurement
-GATT links                          no, PSA crypto missing
+advertising through RAIL            yes -- seen by a phone, by BlueZ, and by a connection attempt
+connection                          established at the link layer, dropped: no link layer in this firmware
+GATT links                          no: four service symbols still missing (below)
 RAIL links for version only         yes; RAIL_Init needs emlib sources
 \end{minted}
+
+The RAIL path now advertises, and \codeinline{scripts/ble-scan-bluez.sh} is the check that says so at
+stack level rather than in a capture. GATT stays out of reach for a different reason than the rest of
+this chapter, and section \ref{sec:ble-api-not-air} records what it cost to learn the difference.
+
+\subsection{The Four Symbols Between Here and GATT}
+
+Measured by linking, then by reading the call sites in the blobs:
+
+\begin{minted}{text}
+sli_psa_context_get_size     r0 = 6|3|0 (context type) -> size passed to bg_zalloc
+sli_aes_crypt_ctr_radio      (dst, 128, src, key, arg5, arg6) -- six arguments
+sl_sleeptimer_restart_timer  vendored source, needs the SYSRTC interrupt wired
+nvm3_open                    vendored source, needs a reserved flash region and nvm3_default_common_linker
+\end{minted}
+
+None of them is honestly replaceable by a stub: the first returns an allocation size, so a wrong number
+corrupts the heap rather than failing; the second produces the access addresses, so a zero stub makes
+every connection predictable; the third drives the stack's timers; the fourth is the persistence the
+bonding database sits on.
 
 Stating that plainly is the point. A chapter that claimed the last four were done would be worse than
 no chapter, because the next person would trust it.

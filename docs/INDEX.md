@@ -263,3 +263,5 @@ See [LICENSE](../LICENSE) file for details.
 - [Identifiers of every device](04-reference/DEVICE-IDENTIFIERS.md) -- USB, serial, silicon unique id, with provenance.
 - [HOST RULE: the radio carries the network](04-reference/HOST-RADIO-SAFETY.md) -- Wi-Fi and Bluetooth are one dongle; what is forbidden.
 - [BLE through RAIL on the XIAO](04-reference/RAIL-BLE-ON-XIAO.md) -- caps, both assertions, and the HFXO no-op trap.
+- [The path to GATT](04-reference/GATT-PATH.md) -- the four symbols left, two of them not obtainable from public sources.
+- [HOST RULE: the radio carries the network](04-reference/HOST-RADIO-SAFETY.md)

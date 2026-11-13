@@ -27,6 +27,7 @@ not work yet are marked as such.
 \input{chapters/chapter-12-bluetooth/12.03-the-symbols-nobody-provides}
 \input{chapters/chapter-12-bluetooth/12.04-beacon-and-gatt}
 \input{chapters/chapter-12-bluetooth/12.05-what-it-costs}
+\input{chapters/chapter-12-bluetooth/12.06-the-api-is-not-the-air}
 
 \clearpage
 
@@ -41,4 +42,8 @@ not work yet are marked as such.
           and a builder that refuses an oversized payload is better than one that truncates.
     \item A connectable stack pulls the bonding path, which needs a crypto library. That is a license
           and a link problem, not an API problem.
+    \item A radio can report every transmission complete and radiate nothing: the amplifier needs its
+          power curves loaded, and the API's own success says nothing about the air.
+    \item RAIL's channel argument is the physical channel, not the logical one, and the advertising
+          channels are (0,37), (12,38), (39,39).
 \end{keytakeaways}
