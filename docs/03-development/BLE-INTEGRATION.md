@@ -24,13 +24,34 @@ cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg24-radio \
 | `sli_bt_init_controller_features` | 1 | Rust transcription of the SDK dispatcher: `sl_btctrl_init_adv`, `_scan`, `_conn`, `_phy` — all four verified present in the controller blob before being called. |
 | `sli_power_manager_update_*` | 2 | Rust: counted and not acted on, because this firmware never sleeps. The counter is in `vendor_support::stats()`. |
 
+## The link is closed
+
+Measured 2026-11-13: the example builds and flashes with **zero undefined symbols** (129 KB, `load_min=0x08006000`).
+Everything below is now about booting, not linking.
+
+### Where the boot stops, and what each answer means
+
+| Heap | Result | Reading |
+|---|---|---|
+| 4 KiB | `sli_bt_init_stack` returns `0x001A` | `SL_STATUS_NO_MORE_RESOURCE`: an allocation failed. The stack's object allocations come through `sl_malloc`, which is separate from `max_buffer_memory`. |
+| 16 KiB | no return; the mailbox is never written, PC sits inside the firmware | The init gets further and then waits. A blocking init cannot serve a **polled** timer, and this project's timer is polled because the SYSRTC compare channel does not set `GRP0_IF`. |
+
+So the next defect to fix is the compare channel, and it is the same one `SYSRTC-FOR-THREE-PROTOCOLS.md` records:
+the counter runs at 32 968 Hz, the flag stays clear when the counter passes a programmed deadline. Until it fires,
+any stack path that needs a timer callback during initialisation will stall, and raising the heap only moves the
+stall later.
+
+The 16 KiB arena stays: it is what showed the difference. `heap::stats()` reports `(in_use, failures, violations)`
+and the boot example prints all three plus the largest free block, because "out of memory" and "the arena was
+overwritten" are different faults and the status code cannot tell them apart.
+
 ## Remaining, and what each really costs
 
 | Symbol | What it is | Cost / risk |
 |---|---|---|
-| `psa_crypto_init`, `psa_generate_random`, `psa_import_key`, `psa_destroy_key`, `psa_reset_key_attributes`, `psa_set_key_domain_parameters`, `psa_mac_sign_setup`/`update`/`finish`/`abort` | PSA Crypto: the API the stack's security manager uses to import its keys and compute CMAC | **Real work, and honest stubs are not acceptable**: a stub that returns success without storing a key makes the stack believe it has security it does not have. Needs a key-slot table plus AES-CMAC, both testable against RFC 4493 on the host. `psa_generate_random` must come from the TRNG, not a counter. |
-| `sli_aes_crypt_ecb_radio` | single-block AES for the link layer | Implementable with `libraries/aes-ctr-radio`'s block cipher. **The signature is inferred from the call site, not documented**: `(r0=1, r1=pointer, r2=128, r3=pointer, [sp]=pointer)`. A wrong argument order is memory corruption, so this must be validated against a BLE test vector rather than trusted. |
-| `sli_ccm_encrypt_and_tag_ble` | BLE's CCM* for encrypted packets | Same shape of problem, six arguments at the call site. CCM* is CTR + CBC-MAC with a 13-byte nonce; the algorithm is public, the ABI is not. Validate against RFC 3610 vectors. |
+| ~~PSA (10 symbols)~~ | **done, with one deliberate refusal** | Key slots and CMAC in `psa.rs`, on `aes-modes::cmac` (RFC 4493). `psa_generate_random` returns `PSA_ERROR_NOT_SUPPORTED`: no TRNG is declared for this part, and a counter is not entropy. |
+| ~~`sli_aes_crypt_ecb_radio`~~ | **done** | Signature taken from `sli_protocol_crypto.h` (not inferred): `(encrypt, key, keybits, input, output)`. Decryption is refused with `SL_STATUS_NOT_SUPPORTED` because nothing here needs it and a silent wrong answer would be worse. |
+| ~~`sli_ccm_encrypt_and_tag_ble`~~ | **done** | `(data, length, key, iv, header, tag)` from the same header. The CCM* under it is checked against RFC 3610 packet vector 1, ciphertext and tag. |
 | ~~`sl_power_manager_subscribe_em_transition_event`~~ | **done** | Recorded and never called: no transition happens in this firmware, so nothing downstream can depend on one. `vendor_support::subscriptions()` reports the count. |
 
 ## What the package does and does not contain
