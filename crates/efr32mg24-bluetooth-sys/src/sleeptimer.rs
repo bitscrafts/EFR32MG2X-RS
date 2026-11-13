@@ -40,7 +40,13 @@ struct Timer {
     data: *mut c_void,
     deadline: u32,
     period: u32,
+    /// Kept because the stack passes it and an interrupt-driven version ordering same-tick timers needs it.
+    /// A polled scheduler runs whatever is due in table order, which is why nothing reads this yet.
+    #[allow(dead_code)]
     priority: u8,
+    /// The flags word. Bit 0 (periodic) is consumed at scheduling time; the rest are single-shot options this
+    /// implementation does not need.
+    #[allow(dead_code)]
     flags: u32,
     active: bool,
 }
