@@ -81,6 +81,11 @@ fn main() -> ! {
     }
     unsafe { efr32mg24_emlib_sys::emlib_clock_select_hfxo() };
 
+    // Re-arm the delay: switching SYSCLK leaves SysTick stopped, and a `Delay` created before the switch
+    // waits forever for a counter that is no longer running. Measured: the transmit loop did exactly one
+    // iteration (`iter=1`) and then hung here.
+    let mut delay = board.delay();
+
     // ---------------------------------------------------------------- radio
     let mut cfg: rail::RAIL_Config_t = unsafe { core::mem::zeroed() };
     let handle = unsafe { rail::RAIL_Init(&mut cfg, None) };
@@ -124,27 +129,48 @@ fn main() -> ! {
     }
 
     // ---------------------------------------------------------------- frame
-    // AdvA: the six bytes above the UID's own tail, marked as a static random address by clearing the
-    // two most significant bits of the top byte. A test beacon has no claim to a public address, and
-    // claiming one would be a lie about a registered global identifier.
-    let uid = unsafe { efr32mg24_emlib_sys::emlib_unique_id() };
-    let mut pdu = [0u8; 40];
+    // A test beacon has no claim to a public address; the identifier used below is derived from the
+    // device's own unique id and marked as a static random address, which is the honest choice.
+    // The frame a BLE radio transmits starts with a two-byte PDU header:
+    //
+    //   byte 0: PDU type (bits 0-3), RFU (4), ChSel (5), TxAdd (6), RxAdd (7)
+    //   byte 1: payload length
+    //
+    // The first version wrote the advertiser address first. The radio still transmitted — StartTx
+    // returned success — but the receiver read the address's first byte as a PDU type and its second as
+    // a length, so the frame was structured garbage and no scanner could show it. A successful
+    // StartTx is not a valid advertisement.
+    let mut pdu = [0u8; 48];
     let mut n = 0;
+
+    // ADV_IND (type 0), ChSel 0, TxAdd 1 because the address below is a static random one.
+    pdu[n] = 0x40;
+    n += 1;
+    // Length is filled in once the payload is built.
+    let length_at = n;
+    pdu[n] = 0;
+    n += 1;
+
+    // AdvA: six bytes from the device's unique id, with the two most significant bits set to 11 to mark
+    // it as a static random address. A test beacon has no claim to a public address.
+    let uid = unsafe { efr32mg24_emlib_sys::emlib_unique_id() };
     for i in 0..6 {
         pdu[n] = ((uid >> (8 * (5 - i))) & 0xFF) as u8;
         n += 1;
     }
-    pdu[5] |= 0xC0; // static random address
+    pdu[n - 1] |= 0xC0;
 
-    pdu[n] = 0x02; // flags
+    pdu[n] = 0x02; // AD: flags
     pdu[n + 1] = 0x01;
-    pdu[n + 2] = 0x06;
+    pdu[n + 2] = 0x06; // LE general discoverable, BR/EDR not supported
     n += 3;
-    pdu[n] = (NAME.len() + 1) as u8; // complete local name
+    pdu[n] = (NAME.len() + 1) as u8; // AD: complete local name
     pdu[n + 1] = 0x09;
     n += 2;
     pdu[n..n + NAME.len()].copy_from_slice(NAME);
     n += NAME.len();
+
+    pdu[length_at] = (n - 2) as u8; // payload length excludes the two header bytes
     let pdu_len = n;
 
     // TX buffer: RAIL copies from it, so it has to stay alive for as long as the radio uses it.
@@ -173,11 +199,13 @@ fn main() -> ! {
     // "transmitted once and stopped".
     let mut count = 0u32;
     let mut failures = 0u32;
+    let mut iterations = 0u32;
     loop {
-        // The FIFO is consumed by the transmission, so the frame has to be written again for every
-        // advertisement. The first version wrote it once and called StartTx in a loop: it reported
-        // `sent=1` and then nothing, which a scanner cannot tell apart from a radio that is not
-        // transmitting — and is exactly what happened.
+        // The iteration counter is written BEFORE the transmission, so a loop that stalls and a loop
+        // that transmits but is not heard look different in the mailbox. `sent=1` alone could not tell
+        // those apart.
+        iterations = iterations.wrapping_add(1);
+
         let written = unsafe {
             rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len as u16, true)
         };
@@ -189,9 +217,11 @@ fn main() -> ! {
             failures = failures.wrapping_add(1);
         }
 
-        let mut tm = [0u8; 56];
+        let mut tm = [0u8; 64];
         let mut ta = 0;
-        mailbox::push(&mut tm, &mut ta, b"tx: sent=");
+        mailbox::push(&mut tm, &mut ta, b"tx: iter=");
+        ta = push_dec(&mut tm, ta, iterations);
+        mailbox::push(&mut tm, &mut ta, b" sent=");
         ta = push_dec(&mut tm, ta, count);
         mailbox::push(&mut tm, &mut ta, b" fail=");
         ta = push_dec(&mut tm, ta, failures);
@@ -199,7 +229,15 @@ fn main() -> ! {
         ta = push_dec(&mut tm, ta, st as u32);
         mailbox::write(Status::Pass, &tm[..ta]);
 
-        delay.delay_ms(100);
+        // The HAL's `Delay` cannot be used after the clock switch: it waits on SysTick, which stops when
+        // SYSCLK is re-selected, and a wait that never comes is indistinguishable from a radio that is
+        // not transmitting. The cycle counter is independent of that, so the interval is measured against
+        // it: 39 000 cycles per millisecond at the crystal's rate.
+        let t0 = efr32mg24_hal::dwt::cycles();
+        let want = 39_000u32 * 100; // 100 ms
+        while efr32mg24_hal::dwt::since(t0) < want {
+            core::hint::spin_loop();
+        }
     }
 }
 
