@@ -114,13 +114,19 @@ fn main() {
                 cc::Build::new()
                     .file("vendor/bt_stack/sl_bt_stack_init.c")
                     // The one generated object the initialiser needs; see the file's header for why it is hand-written.
-                    .file("vendor/bt_stack/sli_bt_connection_config.c")
+                    .file("config/sli_bt_connection_config.c")
                     // The same shape of generated object for the "advertiser" component: its feature
                     // instance is application code in the SDK, not something the blob exports. Measured: without
                     // it the link fails on `sli_feature_bt_advertiser_config`, and without the component entirely
                     // `sl_bt_advertiser_create_set` answers `SL_STATUS_NOT_SUPPORTED` (0x000F) at run time because
                     // the class was never registered.
                     .file("vendor/bt_stack/sli_bt_advertiser_config.c")
+                    // Our own configuration lives in `config/`, not in `vendor/`: the component catalogue and the feature
+                    // instances are this project's code and they decide which Bluetooth features exist. They used to sit in
+                    // `vendor/bt_stack/`, which `.gitignore` ignores wholesale, so a clone of this repository built a
+                    // different firmware than the tree did -- with no advertiser component, `create_set` answers
+                    // SL_STATUS_NOT_SUPPORTED.
+                    .include("config")
                     .include("vendor/bt_stack")
                     .include("vendor/bt_stack/include")
                     .include("vendor/bluetooth")
