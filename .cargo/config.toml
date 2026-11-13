@@ -16,6 +16,13 @@ rustflags = [
   # Simplicity Commander and any naive ELF loader may not, and the image then
   # overwrites the bootloader's own vector table.
   "-C", "link-arg=--nmagic",
+  # --allow-multiple-definition: the vendor's controller and host archives each contain an object defining the same
+  # `bg_pool_pools` table (272 bytes, `OBJECT`, in both -- measured with `readelf -sW` on the extracted members). They
+  # are one table compiled into both libraries, and they only collide once the controller's link-layer object is
+  # actually pulled in, which requires the application to define `sl_bt_controller_init`. Taking the first definition
+  # shares one pool, which is the vendor's design; the flag has to live here because a link argument set by a library's
+  # build script does not reach the examples that link it.
+  "-C", "link-arg=--allow-multiple-definition",
 ]
 
 # Alternative runners (uncomment as needed)

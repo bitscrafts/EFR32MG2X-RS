@@ -55,7 +55,7 @@ use efr32mg24_bluetooth_sys::blocking::BleError;
 
 #[entry]
 fn main() -> ! {
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
     let led = board.output_on(Port::A, 7, true);
 
@@ -112,7 +112,20 @@ fn main() -> ! {
         }
     };
 
-    let mut msg = [0u8; 64];
+    // Give the radio a moment to show whether it is really working, then report what the link layer did.
+    //
+    // **Why wait before reporting.** The API path answering 0 proves the host accepted the commands; it says nothing
+    // about the radio. An advertising set that is created, configured and started, with a link layer that is never
+    // serviced, produces exactly that success and no transmission -- so the report carries the service count, and a
+    // count of zero is the difference between "the stack is advertising" and "the stack accepted an instruction".
+    let mut waited = 0u32;
+    while waited < 2_000 {
+        let _ = ble.poll_event();
+        delay.delay_ms(10);
+        waited += 10;
+    }
+
+    let mut msg = [0u8; 96];
     let mut at = 0;
     msg[at..at + 4].copy_from_slice(b"adv=");
     at += 4;
@@ -125,14 +138,22 @@ fn main() -> ! {
     msg[at..at + 5].copy_from_slice(b"gatt=");
     at += 5;
     at = push_dec(&mut msg, at, u32::from(ble.is_connected()));
+    msg[at..at + 4].copy_from_slice(b" ll=");
+    at += 4;
+    at = push_dec(
+        &mut msg,
+        at,
+        efr32mg24_bluetooth_sys::stack_init::link_layer_services(),
+    );
     mailbox::write(mailbox::Status::Pass, &msg[..at]);
 
     // One blink per event: the LED is the cheapest event counter there is, and it keeps the board
     // saying "I am still in the loop" while a phone does the actual measuring.
-    let mut events = 0u32;
+    // The count is what the LED blinks: one blink per event, which is the cheapest proof the loop is alive.
+    let mut _events = 0u32;
     loop {
         if ble.poll_event().is_some() {
-            events += 1;
+            _events += 1;
             led.on();
             delay.delay_ms(20);
             led.off();

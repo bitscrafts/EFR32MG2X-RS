@@ -48,33 +48,8 @@ extern "C" fn on_tick(_data: *mut c_void) {
     }
 }
 
-/// A HardFault handler that reports instead of hanging. `cortex-m-rt`'s default is an empty loop, which is
-/// indistinguishable from a slow init; this one records the exception frame's program counter plus `CFSR` and
-/// `BFAR`, so the fault names the instruction that caused it.
-///
-/// # Safety
-///
-/// Reads the exception stack frame, which the architecture guarantees at this point, and writes a fixed RAM slot
-/// that nothing else in this example uses.
-#[no_mangle]
-pub unsafe extern "C" fn HardFault() -> ! {
-    // The handler has its own prologue, so the exception frame is not exactly at `msp`. Dump sixteen words and let
-    // the frame be recognised by its own shape (`xPSR` has bit 0 set, `pc` sits two words above it).
-    let sp = cortex_m::register::msp::read() as *const u32;
-    let slot = 0x2003_F200 as *mut u32;
-    slot.write_volatile(0xFA17_0000);
-    slot.add(1).write_volatile(sp as u32);
-    slot.add(2)
-        .write_volatile(core::ptr::read_volatile(0xE000_ED28 as *const u32)); // CFSR
-    slot.add(3)
-        .write_volatile(core::ptr::read_volatile(0xE000_ED38 as *const u32)); // BFAR
-    for i in 0..16 {
-        slot.add(4 + i).write_volatile(sp.add(i).read_volatile());
-    }
-    loop {
-        core::hint::spin_loop();
-    }
-}
+// The recording `HardFault` handler lives in the library (`efr32mg24_radio::fault`), because every example needs it
+// and an example that forgets it fails silently. Its record is the `FAULT_RECORD` static.
 
 fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
     let mut digits = [0u8; 10];
@@ -290,7 +265,7 @@ fn main() -> ! {
     let mut events = 0u32;
     let mut last_pop = 0u32;
     let mut boot_event = 0u32;
-    let mut first_header = 0u32;
+    let mut _first_header = 0u32;
     for _ in 0..300 {
         // **The missing pump.** The host asks for link-layer work through a callback; nothing happens in this build
         // unless the application answers it, and an unanswered host queues no events at all.
@@ -311,7 +286,7 @@ fn main() -> ! {
                 boot_event += 1;
             }
             if events == 1 {
-                first_header = header;
+                _first_header = header;
             }
         }
         delay.delay_ms(1);

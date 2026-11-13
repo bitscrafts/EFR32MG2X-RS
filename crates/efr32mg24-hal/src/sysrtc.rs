@@ -116,10 +116,8 @@ impl Sysrtc {
     ///
     /// Call this before starting the Bluetooth stack. A later [`Sysrtc::take`] is still correct: it sees the gates
     /// already set and a module that is not running, and configures it as it always did.
-    pub fn enable_clocks(cmu: &CmuNs) {
-        // Same coercion `take` uses: `CmuNs` is a peripheral wrapper, not a pointer.
-        let cmu_regs: &CmuBlock = cmu;
-        let cmu_base = cmu_regs as *const CmuBlock as usize;
+    pub fn enable_clocks(cmu: &CmuBlock) {
+        let cmu_base = cmu as *const CmuBlock as usize;
         let clken0 = (cmu_base + off::CMU_CLKEN0) as *mut u32;
         let gates =
             unsafe { core::ptr::read_volatile(clken0) } | bits::CLKEN0_LFRCO | bits::CLKEN0_SYSRTC0;

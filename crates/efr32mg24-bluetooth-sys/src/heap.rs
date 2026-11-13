@@ -11,9 +11,15 @@
 use bt_heap::Heap;
 use core::ffi::c_void;
 
-/// The arena. Sized from measurement of what the stack asks for during boot, rounded up generously; see the
-/// `largest_free` report in the example if a future configuration needs more.
-const ARENA_BYTES: usize = 16384;
+/// The arena.
+///
+/// Sized by measurement, twice. 16 KiB was enough for a stack that never worked: the host asks for
+/// `SL_BT_CONFIG_BUFFER_SIZE` (8192) and the controller's link layer asks for `SL_BT_CONTROLLER_BUFFER_MEMORY`
+/// (8192), and with the controller's initialisation missing, only the first of those was ever requested. Once the
+/// controller initialisation was restored, `sl_btctrl_init_mem(8192)` came first and left the host without room, so
+/// the link layer's first command buffer allocation returned NULL and `hci_command_init_shared` faulted writing to
+/// address 5 -- a fault that says "null buffer" only if you already know that is what it is.
+const ARENA_BYTES: usize = 32768;
 
 static mut ARENA: [u8; ARENA_BYTES] = [0; ARENA_BYTES];
 static mut HEAP: Option<Heap<'static>> = None;

@@ -115,6 +115,16 @@ fn main() {
                     .file("vendor/bt_stack/sl_bt_stack_init.c")
                     // The one generated object the initialiser needs; see the file's header for why it is hand-written.
                     .file("vendor/bt_stack/sli_bt_connection_config.c")
+                    // The same shape of generated object for the "advertiser" component: its feature
+                    // instance is application code in the SDK, not something the blob exports. Measured: without
+                    // it the link fails on `sli_feature_bt_advertiser_config`, and without the component entirely
+                    // `sl_bt_advertiser_create_set` answers `SL_STATUS_NOT_SUPPORTED` (0x000F) at run time because
+                    // the class was never registered.
+                    .file("vendor/bt_stack/sli_bt_advertiser_config.c")
+                    // The controller's link-layer initialisation. The blob *calls* `sl_bt_controller_init`
+                    // expecting the application to define it; when nothing did, the linker discarded the entire
+                    // object and the firmware came up with no advertising instances at all. See the file.
+                    .file("vendor/bt_stack/sl_bt_controller_init.c")
                     .include("vendor/bt_stack")
                     .include("vendor/bt_stack/include")
                     .include("vendor/bluetooth")
@@ -293,4 +303,14 @@ fn main() {
     // fails on symbols that are visibly present in the source, and the build looks stale.
     println!("cargo:rerun-if-changed=blobs/");
     println!("cargo:rerun-if-changed=vendor/");
+
+    // **Two vendor objects define the same pool table.** `sl_btctrl_linklayer.c.obj` (controller) and `bglib.c.obj`
+    // (host) each define `bg_pool_pools` -- 272 bytes, `OBJECT` type, in both archives, measured with `readelf -sW`
+    // on the extracted members. They are one table compiled into both libraries, and the pair only collides now
+    // because the controller object is finally being pulled in: it is discarded entirely unless the application
+    // defines `sl_bt_controller_init`, which is exactly the defect this crate was shipped with.
+    //
+    // Taking the first definition is what the vendor's own image does. The alternative -- renaming one copy with
+    // objcopy -- would hand the host and the controller two different pools, which is worse than a duplicate symbol.
+    println!("cargo:rustc-link-arg=--allow-multiple-definition");
 }

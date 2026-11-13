@@ -35,8 +35,9 @@
 //! }
 //! ```
 
-#[cfg(feature = "ble")]
 pub mod ble;
+#[cfg(feature = "ble")]
+pub mod fault;
 
 #[cfg(feature = "ble")]
 pub use ble::{BleError, BleEvent, Bluetooth, CharHandle, GapAdBuilder};

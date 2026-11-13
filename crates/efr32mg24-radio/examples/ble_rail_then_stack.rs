@@ -72,7 +72,7 @@ fn stage(tag: &[u8], a: u32, b: u32) {
 
 #[entry]
 fn main() -> ! {
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
     let _rtc = board.sysrtc();
 

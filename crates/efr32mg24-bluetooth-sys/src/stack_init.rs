@@ -94,7 +94,7 @@ pub struct Configuration {
 // and the link-layer thread is a loop around `sl_bt_priority_handle()` woken by the first callback. Both of those
 // functions are in the host blob (verified with `nm`), so a bare-metal build needs only the flags and a pump.
 
-use core::sync::atomic::{AtomicBool, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 /// Set by the host when the link layer wants servicing. This is `scheduler_callback` in the configuration.
 static LINK_LAYER_WAITING: AtomicBool = AtomicBool::new(false);
@@ -116,7 +116,26 @@ extern "C" fn on_stack_wakeup() {
     STACK_CALLBACKS.store(true, Ordering::Release);
 }
 
+/// Clear a pending `PendSV` before the controller relies on it.
+///
+/// The vendor's bare-metal glue (`sl_btctrl_baremetal.c`, Zlib) does `NVIC_ClearPendingIRQ(PendSV_IRQn)` and
+/// `NVIC_EnableIRQ(PendSV_IRQn)`. For a system exception the enable is a no-op, so what matters is the clear: a
+/// `PendSV` left pending from before the controller was initialised would be delivered immediately, and the handler
+/// would run against a link layer that is not ready.
+///
+/// # Safety
+///
+/// Called once, before the controller is used. It writes one System Control Block register; calling it at any other
+/// time would clear a pending `PendSV` that a real interrupt source just raised.
+#[no_mangle]
+pub unsafe extern "C" fn sli_btctrl_events_init() {
+    // SCB->ICSR, PENDSVCLR (bit 27).
+    core::ptr::write_volatile(0xE000_ED04 as *mut u32, 1 << 27);
+}
+
 extern "C" {
+    /// The controller initialisation the SDK generates into the application (see `vendor/bt_stack/sl_bt_controller_init.c`).
+    fn sl_bt_controller_init();
     /// The link-layer servicing function the vendor's own `linklayer_thread` calls.
     fn sl_bt_priority_handle();
     /// The host's own processing: GAP/GATT state and its software timers. The vendor's `sl_bt_step` is
@@ -142,7 +161,20 @@ extern "C" {
 /// `DefaultHandler` and the firmware sits there — `ICSR.VECTACTIVE = 14` with `PC` inside `DefaultHandler_`, no fault
 /// and no status, which is the "hang" this project chased for hours.
 pub fn service_link_layer() {
+    LINK_LAYER_SERVICES.fetch_add(1, Ordering::Relaxed);
     unsafe { sl_bt_priority_handle() };
+}
+
+/// How many times the link layer has been serviced since reset.
+///
+/// An advertising stack that answers every command and still transmits nothing is a stack whose link layer is never
+/// serviced; this count is what tells that apart from a radio problem. Measured on this board: the counter advances
+/// only when `PendSV` is served, which is why the handler has to exist for the stack to do anything on air.
+pub static LINK_LAYER_SERVICES: AtomicU32 = AtomicU32::new(0);
+
+/// Read [`LINK_LAYER_SERVICES`].
+pub fn link_layer_services() -> u32 {
+    LINK_LAYER_SERVICES.load(Ordering::Relaxed)
 }
 
 /// Service the host. Call this from the application's main loop, as often as it comes round.
@@ -151,8 +183,16 @@ pub fn service_link_layer() {
 /// application pops them with `sl_bt_pop_event`, which is where it wants them anyway.
 pub fn pump() {
     if LINK_LAYER_WAITING.swap(false, Ordering::AcqRel) {
+        LINK_LAYER_SERVICES.fetch_add(1, Ordering::Relaxed);
         unsafe { sl_bt_priority_handle() };
     }
+    // **The link layer is also asked directly.** Measured: with the advertising commands all answering 0 and the link
+    // layer serviced only when `PendSV` happens to fire, the count stood at 21 after two seconds (about the poll rate,
+    // not the advertising rate) and nothing was transmitted. The link layer is the only thing that can start a radio
+    // event, so it is called here too; if it has nothing to do it returns immediately, and the count says whether it
+    // did anything.
+    LINK_LAYER_SERVICES.fetch_add(1, Ordering::Relaxed);
+    unsafe { sl_bt_priority_handle() };
     // **The host's turn.** Measured: with only the link layer serviced, `sli_bt_system_start_bluetooth` returns 0 and
     // the event queue is still empty (`sl_bt_pop_event` = 45 = `SL_STATUS_NOT_FOUND`), so `system_boot` -- which the
     // start enqueues -- is only delivered once the host runs.
@@ -234,6 +274,33 @@ fn trace(slot: u32, value: u32) {
 /// Must be called once, before any other BGAPI command, with the radio's clocks available. The blobs keep the
 /// configuration pointer, so the value is given a static home and must remain the only one in use.
 pub unsafe fn start(config: Configuration) -> u32 {
+    // **A precondition of the start, not an example's business.** Measured twice: with the SYSRTC's clocks gated
+    // off, RAIL's first write to `SYSRTC->CMD` during its bring-up faults at `0x500a_8014`; with the module already
+    // running, its `CFG` write faults at `0x500a_800c`. Clocked and disabled is the only state that satisfies both.
+    //
+    // It belongs here because every caller needs it: an example that forgot it looks exactly like a radio failure.
+    efr32mg24_hal::sysrtc::Sysrtc::enable_clocks(&*efr32mg24_pac::CmuNs::ptr());
+
+    // **The crystal first -- before anything that touches the radio.**
+    //
+    // Measured, and it cost a flash cycle to learn here: `sl_bt_controller_init()` below initialises the link layer,
+    // which initialises RAIL, which compares the channel table's crystal frequency against the one the chip reports.
+    // With the HFXO still off that reading is zero and RAIL asserts `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` (code 66),
+    // recorded at `0x2003_F500`. This is the same assert that stalled the very first RAIL experiments, in a new place:
+    // the controller's initialisation now happens earlier than the stack's, so the crystal has to start earlier too.
+    {
+        efr32mg24_emlib_sys::emlib_hfxo_start();
+        efr32mg24_emlib_sys::emlib_clock_select_hfxo();
+        trace(0, 1);
+    }
+
+    // **The controller's link layer, before the host is initialised.** This is the application-provided
+    // `sl_bt_controller_init()` the blob calls; the SDK generates it into the project. Without it the link layer has
+    // no advertising instances and no scanner, and the failure is silent: every command answers 0 and nothing is ever
+    // transmitted. Measured on this board before it existed -- `sl_btctrl_init_mem`, `init_ll` and `init_basic` were
+    // not in the image at all.
+    sl_bt_controller_init();
+
     // Four measurements, in the order the vendor's own initialiser puts them, with a trace word per step so that a
     // failure names itself instead of hiding behind a hang.
     //
@@ -245,12 +312,6 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // function (verified: zero imports across all four), so somebody else has to -- and the vendor's own answer is
     // `sl_rail_util_init.c`, which does `RAIL_Init` then `RAIL_ConfigData` then `RAIL_ConfigChannels` from the
     // application, before the stack is started.
-    {
-        efr32mg24_emlib_sys::emlib_hfxo_start();
-        efr32mg24_emlib_sys::emlib_clock_select_hfxo();
-        trace(0, 1);
-    }
-
     // **The radio is the controller's, entirely.**
     //
     // Measured, after three wrong attempts of my own: the Bluetooth controller fills its own `RAIL_Config_t` in

@@ -111,7 +111,7 @@ fn push_hex_byte(out: &mut [u8], at: usize, value: u8) -> usize {
 
 #[entry]
 fn main() -> ! {
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
     let led = board.output_on(Port::A, 7, true);
 
