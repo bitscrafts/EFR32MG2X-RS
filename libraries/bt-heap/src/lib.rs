@@ -47,6 +47,9 @@ pub struct Heap<'a> {
     free: Option<usize>,
     in_use: usize,
     failures: u32,
+    /// Walks that hit a corrupt block or exceeded the step budget. Non-zero means the arena's own metadata was
+    /// damaged, which almost always means someone wrote past an allocation.
+    violations: u32,
 }
 
 impl<'a> Heap<'a> {
@@ -58,6 +61,7 @@ impl<'a> Heap<'a> {
             free: None,
             in_use: 0,
             failures: 0,
+            violations: 0,
         };
         if len >= HEADER + LINK + ALIGN {
             heap.write_size(0, len);
@@ -185,14 +189,38 @@ impl<'a> Heap<'a> {
     }
 
     /// Merge every adjacent pair of free blocks.
+    ///
+    /// **Every walk in this file is bounded.** A free list and a size word are ordinary memory: a caller that
+    /// writes one byte past an allocation can turn the list into a cycle, and an unbounded `while let Some(..)`
+    /// then spins forever. That is not hypothetical — it happened on the board, where the Bluetooth stack's
+    /// init stopped writing to the mailbox and the core sat in a loop the debugger showed inside the firmware.
+    /// A hang says nothing; a counted violation says where to look.
     fn coalesce(&mut self) {
+        let cap = self.buf.len() / (HEADER + LINK + ALIGN) + 8;
+        let mut steps = 0usize;
         let mut cur = self.free;
         while let Some(at) = cur {
+            steps += 1;
+            if steps > cap {
+                self.violations = self.violations.saturating_add(1);
+                return;
+            }
             let size = self.read_size(at);
             let next = self.read_next(at);
+            if !self.block_is_sane(at, size) {
+                self.violations = self.violations.saturating_add(1);
+                return;
+            }
             if let Some(next_at) = next {
                 if at + size == next_at {
-                    let merged = size + self.read_size(next_at);
+                    let next_size = self.read_size(next_at);
+                    let merged = size + next_size;
+                    // Guard against a zero-size neighbour, which would make the merge a no-op and the loop
+                    // spin: `at + size == next_at` stays true forever.
+                    if next_size < HEADER || !merged.is_multiple_of(ALIGN) {
+                        self.violations = self.violations.saturating_add(1);
+                        return;
+                    }
                     let after = self.read_next(next_at);
                     self.write_size(at, merged);
                     self.write_next(at, after);
@@ -204,6 +232,14 @@ impl<'a> Heap<'a> {
         }
     }
 
+    /// A block is sane when it lies inside the arena, is 8-aligned, and is at least a header long.
+    fn block_is_sane(&self, at: usize, size: usize) -> bool {
+        at.is_multiple_of(ALIGN)
+            && size >= HEADER
+            && size.is_multiple_of(ALIGN)
+            && at.saturating_add(size) <= self.buf.len()
+    }
+
     /// Bytes handed out, including headers, so the number matches the arena arithmetic.
     pub fn in_use(&self) -> usize {
         self.in_use
@@ -212,6 +248,36 @@ impl<'a> Heap<'a> {
     /// Allocations that could not be satisfied, plus pointers that were not this heap's.
     pub fn failures(&self) -> u32 {
         self.failures
+    }
+
+    /// Walks that found a corrupt block or ran past the step budget. Non-zero is the signature of an
+    /// out-of-bounds write by a caller, and it is reported instead of hanging.
+    pub fn violations(&self) -> u32 {
+        self.violations
+    }
+
+    /// Walk the free list and count blocks that fail the sanity check, without modifying anything. The entry
+    /// points call this after every operation they can, because a heap that only fails later is a heap whose
+    /// failure gets blamed on whatever ran in between.
+    pub fn check(&mut self) -> u32 {
+        let cap = self.buf.len() / (HEADER + LINK + ALIGN) + 8;
+        let mut steps = 0usize;
+        let mut bad = 0u32;
+        let mut cur = self.free;
+        while let Some(at) = cur {
+            steps += 1;
+            if steps > cap {
+                self.violations = self.violations.saturating_add(1);
+                return bad + 1;
+            }
+            let size = self.read_size(at);
+            if !self.block_is_sane(at, size) {
+                bad += 1;
+                break;
+            }
+            cur = self.read_next(at);
+        }
+        bad
     }
 
     /// The largest single payload allocation still possible.

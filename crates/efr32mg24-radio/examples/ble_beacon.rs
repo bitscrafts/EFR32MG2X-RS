@@ -51,6 +51,8 @@ fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
     at
 }
 
+use efr32mg24_bluetooth_sys::blocking::BleError;
+
 #[entry]
 fn main() -> ! {
     let mut board = Board::take().expect("peripherals taken twice");
@@ -59,11 +61,51 @@ fn main() -> ! {
 
     let mut ble = match Bluetooth::beacon(&mut delay, "xiao-mg24") {
         Ok(ble) => ble,
-        Err(_) => {
-            mailbox::write(
-                mailbox::Status::Fail,
-                b"ble: stack did not boot (HFXO? blob? heap?)",
-            );
+        Err(e) => {
+            // Which step failed, as a number. The message used to say only "did not boot", and a status code is
+            // the difference between a guess and a diagnosis: 0xB007 means the stack started but never emitted
+            // system_boot, 0xFFFF is an internal complaint, and anything else is the stack's own status from
+            // `stack_init::start` or the first BGAPI call.
+            let code: u16 = match e {
+                BleError::BgapiError(c) => c,
+                _ => 0xFFFF,
+            };
+            let (used, fails, viol) = efr32mg24_bluetooth_sys::heap::stats();
+            let largest = efr32mg24_bluetooth_sys::heap::largest_free();
+            let mut m = [0u8; 96];
+            let mut n = 0;
+            for b in b"ble: boot failed st=0x" {
+                m[n] = *b;
+                n += 1;
+            }
+            let hex = b"0123456789ABCDEF";
+            for shift in [12u32, 8, 4, 0] {
+                m[n] = hex[((code >> shift) & 0xF) as usize];
+                n += 1;
+            }
+            // Heap state on the same line. "Out of memory" and "the arena was overwritten" are different
+            // faults, and the status code alone cannot tell them apart.
+            for b in b" heap=" {
+                m[n] = *b;
+                n += 1;
+            }
+            n = push_dec(&mut m, n, used as u32);
+            for b in b"/f" {
+                m[n] = *b;
+                n += 1;
+            }
+            n = push_dec(&mut m, n, fails);
+            for b in b"/v" {
+                m[n] = *b;
+                n += 1;
+            }
+            n = push_dec(&mut m, n, viol);
+            for b in b"/free" {
+                m[n] = *b;
+                n += 1;
+            }
+            n = push_dec(&mut m, n, largest as u32);
+            mailbox::write(mailbox::Status::Fail, &m[..n]);
             loop {
                 cortex_m::asm::wfi();
             }

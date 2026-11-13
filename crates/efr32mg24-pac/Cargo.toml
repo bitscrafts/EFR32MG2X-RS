@@ -28,6 +28,7 @@ rt = ["cortex-m-rt/device"]
 critical-section = ["dep:critical-section"]
 
 [dev-dependencies]
+cortex-m-rt = { workspace = true }
 panic-halt = "0.2"
 # Provide the critical-section implementation for examples so the PAC's
 # svd2rust-generated `modify` (which uses critical_section) can link.

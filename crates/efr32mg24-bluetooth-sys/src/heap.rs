@@ -13,7 +13,7 @@ use core::ffi::c_void;
 
 /// The arena. Sized from measurement of what the stack asks for during boot, rounded up generously; see the
 /// `largest_free` report in the example if a future configuration needs more.
-const ARENA_BYTES: usize = 4096;
+const ARENA_BYTES: usize = 16384;
 
 static mut ARENA: [u8; ARENA_BYTES] = [0; ARENA_BYTES];
 static mut HEAP: Option<Heap<'static>> = None;
@@ -75,19 +75,16 @@ pub unsafe extern "C" fn sl_free(ptr: *mut c_void) {
     core::ptr::write_volatile(core::ptr::addr_of_mut!(BUSY), false);
 }
 
-/// Bytes handed out, allocation failures, and reentrant calls — the three numbers that say whether the arena is
-/// adequate, without a debugger.
+/// Bytes handed out, allocation failures, and corrupt-list violations — the three numbers that say whether the
+/// arena is adequate, without a debugger. Violations are separate from failures on purpose: a failure means the
+/// caller asked for more than is left, while a violation means someone wrote past an allocation.
 pub fn stats() -> (usize, u32, u32) {
     // SAFETY: the heap is only touched through `heap()`, which is serialised by `BUSY`; reading here is a
     // diagnostic and races only with an allocation that is in progress.
     unsafe {
         let slot = &*core::ptr::addr_of!(HEAP);
         match slot.as_ref() {
-            Some(h) => (
-                h.in_use(),
-                h.failures(),
-                core::ptr::read_volatile(core::ptr::addr_of!(CONTENTION)),
-            ),
+            Some(h) => (h.in_use(), h.failures(), h.violations()),
             None => (0, 0, 0),
         }
     }

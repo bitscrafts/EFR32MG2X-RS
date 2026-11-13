@@ -62,7 +62,11 @@
 //! - Distribution requires MSLA compliance
 
 /// The stack's allocator, over `libraries/bt-heap`.
+/// Link-layer crypto: AES-ECB and CCM*, on top of libraries/aes-modes.
+pub mod crypto;
 pub mod heap;
+/// PSA Crypto: key slots and CMAC, which is all the host stack asks of it.
+pub mod psa;
 /// The timer the stack schedules its events on, in Rust and polled.
 pub mod sleeptimer;
 mod support;

@@ -722,6 +722,13 @@ impl Bluetooth {
     ///
     /// Recommended polling interval: 1-50ms depending on application requirements.
     pub fn poll_event(&mut self) -> Option<BleEvent> {
+        // Run any expired timer callbacks **first**. The stack schedules its own work through
+        // `sl_sleeptimer_restart_timer` (retries, connection supervision, advertising refresh), and this project
+        // answers that with a polled scheduler because the SYSRTC compare interrupt does not fire yet. Putting
+        // the poll here rather than in each example means no example can forget it -- and an example that forgot
+        // it looks exactly like a stack that never advances, which is the most expensive bug shape in this tree.
+        crate::sleeptimer::poll();
+
         // Allocate event structure (256 bytes on stack)
         let mut evt = core::mem::MaybeUninit::<bt::sl_bt_msg_t>::uninit();
 

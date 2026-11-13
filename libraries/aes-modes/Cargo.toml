@@ -1,0 +1,13 @@
+[package]
+name = "aes-modes"
+version = "0.1.0"
+edition = "2021"
+description = "AES-CCM* (Bluetooth's variant) and AES-CMAC, in pure Rust, with no hardware"
+license = "MIT"
+publish = false
+
+[lib]
+name = "aes_modes"
+
+[dependencies]
+aes-ctr-radio = { path = "../aes-ctr-radio" }

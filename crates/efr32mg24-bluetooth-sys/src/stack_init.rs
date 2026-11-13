@@ -111,21 +111,22 @@ pub unsafe fn start(config: Configuration) -> u32 {
 
 /// The configuration a bare-metal advertiser needs.
 ///
-/// The numbers are the SDK's own defaults where a default exists: 4 KiB of buffer memory, no RTOS
-/// flag, four soft timers, no antenna switch and no gain trim.
+/// The numbers are the SDK's own defaults where a default exists: no RTOS flag, no antenna switch and no
+/// gain trim. Buffer memory and soft timers were raised from 4 KiB / 4 after `sli_bt_init_stack` answered
+/// `SL_STATUS_NO_MORE_RESOURCE` (0x001A) with the smaller budget -- measured, not guessed.
 #[must_use]
 pub const fn default_configuration() -> Configuration {
     Configuration {
         config_flags: 0,
         bluetooth: StackConfig {
-            max_buffer_memory: 4096,
+            max_buffer_memory: 8192,
             linklayer_config: 0,
             linklayer_priorities: core::ptr::null_mut(),
         },
         gattdb: core::ptr::null(),
         scheduler_callback: None,
         stack_schedule_callback: None,
-        max_timers: 4,
+        max_timers: 8,
         rf: RfConfig {
             tx_gain: 0,
             rx_gain: 0,
