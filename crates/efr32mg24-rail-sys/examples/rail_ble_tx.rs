@@ -50,6 +50,7 @@ extern "C" {
 }
 
 const NAME: &[u8] = b"xiao-mg24";
+const RAIL_RF_STATE_TX: u32 = 0x02;
 const STATUS_OK: u32 = 0;
 
 #[no_mangle]
@@ -210,22 +211,36 @@ fn main() -> ! {
         // those apart.
         iterations = iterations.wrapping_add(1);
 
-        // A transmission started by RAIL is asynchronous. With no events callback the radio is never
-        // declared done, so the next FIFO write waits on a busy radio for ever: measured as one
-        // advertisement and then a silent board, which looks exactly like a radio that does not work.
+        // A transmission started by RAIL is asynchronous, and with no events callback the radio is never
+        // declared done. Waiting on it (RAIL_Idle with wait=true) blocks for ever, which measured as one
+        // advertisement and then a silent board. So the abort is requested without waiting: the packet is
+        // already on its way, and the FIFO is refilled for the next one.
         unsafe {
             rail::RAIL_Idle(
                 handle,
-                rail::RAIL_IdleMode_t_enum_RAIL_IDLE_FORCE_SHUTDOWN_CLEAR_FLAGS as u8,
-                true,
+                rail::RAIL_IdleMode_t_enum_RAIL_IDLE_ABORT as u8,
+                false,
             )
         };
+
+        // In dynamic FIFO mode RAIL does not know how many bytes are one packet, so a transmission never
+        // completes: measured as the radio sitting in TX (state 4) with the board silent. The packet
+        // length is what closes it.
+        unsafe { rail::RAIL_SetFixedLength(handle, pdu_len as u16) };
 
         let written = unsafe {
             rail::RAIL_WriteTxFifo(handle, pdu.as_ptr() as *const _, pdu_len as u16, true)
         };
         let st =
             unsafe { rail::RAIL_StartTx(handle, 0, rail::RAIL_TX_OPTIONS_DEFAULT, ptr::null()) };
+        // Does the radio leave TX on its own? The blocked loop left this unanswered, so it is measured:
+        // a bounded poll, because an unbounded one is how the loop died last time.
+        let mut rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
+        let tw = efr32mg24_hal::dwt::cycles();
+        while (rs & RAIL_RF_STATE_TX) != 0 && efr32mg24_hal::dwt::since(tw) < 39_000 * 20 {
+            rs = unsafe { rail::RAIL_GetRadioState(handle) } as u32;
+        }
+
         if st as u32 == STATUS_OK && written == pdu_len as u16 {
             count = count.wrapping_add(1);
         } else {
@@ -242,6 +257,8 @@ fn main() -> ! {
         ta = push_dec(&mut tm, ta, failures);
         mailbox::push(&mut tm, &mut ta, b" st=");
         ta = push_dec(&mut tm, ta, st as u32);
+        mailbox::push(&mut tm, &mut ta, b" rs=");
+        ta = push_dec(&mut tm, ta, rs);
         mailbox::write(Status::Pass, &tm[..ta]);
 
         // The HAL's `Delay` cannot be used after the clock switch: it waits on SysTick, which stops when

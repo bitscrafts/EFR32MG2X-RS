@@ -101,6 +101,26 @@ fn main() {
             println!("cargo:rustc-link-lib=static=bluetooth_controller_efr32xg24_gcc_release");
             println!("cargo:rustc-link-lib=static=bluetooth_host_efr32xg24_gcc_release");
             println!("cargo:rustc-link-lib=static=bgcommon_efr32xg24_gcc_release");
+
+            // The vendor blobs are archives, and an archive only satisfies symbols that are already
+            // undefined when the linker reaches it. This crate depends on `efr32mg24-rail-sys` and
+            // `efr32mg24-emlib-sys`, so THEIR archives are placed before this one, and the symbols the
+            // Bluetooth blobs ask for (RAIL_ConfigAntenna, SYSTEM_GetUnique, RAIL_SetTune ...) are not
+            // undefined yet at that point: measured as twenty undefined references to functions that
+            // exist in the archives sitting right there on the command line.
+            //
+            // Repeating the two directives here places them again AFTER these blobs, which is what the
+            // link needs. The paths come from the environment of the dependencies' build scripts.
+            for (dir_var, lib) in [
+                ("DEP_EFR32MG24_RAIL_BLOB_DIR", "rail_efr32xg24_gcc_release"),
+                ("DEP_EMLIB_MIN_LIB_DIR", "emlib_min"),
+            ] {
+                if let Ok(dir) = env::var(dir_var) {
+                    println!("cargo:rustc-link-search=native={dir}");
+                    println!("cargo:rustc-link-lib=static={lib}");
+                }
+            }
+            println!("cargo:rerun-if-changed=build.rs");
         } else {
             println!(
                 "cargo:warning=Bluetooth blobs not found. This is expected during development."

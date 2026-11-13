@@ -60,4 +60,8 @@ fn main() {
         .flag_if_supported("-Wno-everything");
 
     build.compile("emlib_min");
+    // Where the archive landed, so a crate that needs the vendor library AFTER its own blob can say so.
+    // The link order matters and cannot be expressed by dependency order alone: see
+    // crates/efr32mg24-bluetooth-sys/build.rs.
+    println!("cargo:lib-dir={}", std::env::var("OUT_DIR").unwrap());
 }

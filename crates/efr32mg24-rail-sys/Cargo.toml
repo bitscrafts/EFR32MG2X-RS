@@ -10,6 +10,8 @@ readme = "README.md"
 keywords = ["efr32", "rail", "radio", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
+links = "efr32mg24_rail"
+
 [dependencies]
 # emlib supplies the CMU/EMU/SYSTEM functions the RAIL blob references.
 efr32mg24-emlib-sys = { path = "../efr32mg24-emlib-sys" }

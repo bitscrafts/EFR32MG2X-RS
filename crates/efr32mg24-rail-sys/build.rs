@@ -58,6 +58,7 @@ fn main() {
             // Link the RAIL binary blob
             println!("cargo:rustc-link-search=native={}", blob_dir.display());
             println!("cargo:rustc-link-lib=static=rail_efr32xg24_gcc_release");
+            println!("cargo:blob-dir={}", blob_dir.display());
             println!(
                 "cargo:warning=Linking RAIL blob from {}",
                 blob_path.display()
