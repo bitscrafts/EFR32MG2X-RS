@@ -42,6 +42,11 @@ extern "C" fn on_tick(_data: *mut c_void) {
 /// A HardFault handler that reports instead of hanging. `cortex-m-rt`'s default is an empty loop, which is
 /// indistinguishable from a slow init; this one records the exception frame's program counter plus `CFSR` and
 /// `BFAR`, so the fault names the instruction that caused it.
+///
+/// # Safety
+///
+/// Reads the exception stack frame, which the architecture guarantees at this point, and writes a fixed RAM slot
+/// that nothing else in this example uses.
 #[no_mangle]
 pub unsafe extern "C" fn HardFault() -> ! {
     // The handler has its own prologue, so the exception frame is not exactly at `msp`. Dump sixteen words and let
@@ -112,7 +117,7 @@ fn stage(tag: &[u8], a: u32, b: u32) {
 
 #[entry]
 fn main() -> ! {
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
 
     // Every diagnostic record survives a reset, and a stale one reads exactly like a fresh one. Clear all three
@@ -131,6 +136,24 @@ fn main() -> ! {
             assert_slot.add(i).write_volatile(0);
         }
     }
+
+    // **NVM3 on its own, before the stack.** `sli_bt_start_stack` treats a failed `nvm3_open` as fatal, so knowing
+    // whether NVM3 can open at all separates "the storage region or the flash driver is wrong" from "the stack
+    // rejected something else". `nvm3_initDefault` is the vendor's own entry point and is compiled here.
+    extern "C" {
+        fn nvm3_initDefault() -> u32;
+        fn nvm3_open(handle: *mut core::ffi::c_void, init: *const core::ffi::c_void) -> u32;
+        static nvm3_defaultHandle: *mut core::ffi::c_void;
+        static nvm3_defaultInit: *const core::ffi::c_void;
+    }
+    // The two globals the stack itself loads before calling `nvm3_open`, published so a null one is visible rather
+    // than inferred: the crash this replaced was a read at `0x138`, which is a null handle plus a field offset.
+    let (h, i) = unsafe { (nvm3_defaultHandle, nvm3_defaultInit) };
+    stage(b"nvmptrs", h as usize as u32, i as usize as u32);
+    let rc = unsafe { nvm3_open(h, i) };
+    stage(b"nvmopen", rc, 0);
+    let nvm = unsafe { nvm3_initDefault() };
+    stage(b"nvm3", nvm, 0);
 
     stage(b"boot", 0, 0);
 
@@ -204,6 +227,9 @@ fn main() -> ! {
     let mut last_pop = 0u32;
     let mut boot_event = 0u32;
     for _ in 0..300 {
+        // **The missing pump.** The host asks for link-layer work through a callback; nothing happens in this build
+        // unless the application answers it, and an unanswered host queues no events at all.
+        efr32mg24_bluetooth_sys::stack_init::pump();
         sleeptimer::poll();
         let mut evt = core::mem::MaybeUninit::<efr32mg24_bluetooth_sys::ffi::sl_bt_msg_t>::uninit();
         let popped = unsafe { efr32mg24_bluetooth_sys::ffi::sl_bt_pop_event(evt.as_mut_ptr()) };
@@ -228,6 +254,11 @@ fn main() -> ! {
     let mut n = 0;
     n = label(&mut m, n, b"boot=");
     n = push_hex(&mut m, n, boot);
+    let (ll_cb, st_cb, _) = efr32mg24_bluetooth_sys::stack_init::adaptation_stats();
+    n = label(&mut m, n, b" cb=");
+    n = push_dec(&mut m, n, ll_cb as u32);
+    n = label(&mut m, n, b"/");
+    n = push_dec(&mut m, n, st_cb as u32);
     n = label(&mut m, n, b" stcmd=");
     n = push_hex(&mut m, n, start_cmd as u32);
     n = label(&mut m, n, b" cmd=");

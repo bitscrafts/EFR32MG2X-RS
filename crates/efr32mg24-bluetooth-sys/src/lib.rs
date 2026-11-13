@@ -65,6 +65,16 @@
 /// Link-layer crypto: AES-ECB and CCM*, on top of libraries/aes-modes.
 pub mod crypto;
 pub mod heap;
+
+/// The RAIL crate, re-exported so that it is **linked**.
+///
+/// This is not decoration. `efr32mg24-rail-sys`'s build script carries the `+whole-archive` link of
+/// `librail_efr32xg24_gcc_release.a`, and rustc only replays a dependency's native link flags when that dependency
+/// is part of the final link. Bluetooth code reaches RAIL through `extern "C"` declarations, which reference no
+/// Rust item, so when this crate stopped calling `RAIL_Init` the rail-sys rlib dropped out of the link line -- and
+/// with it the radio library. The symptom was twenty "undefined symbol: RAIL_…" lines for functions that were
+/// sitting in the archive the whole time.
+pub use efr32mg24_rail_sys as rail;
 /// PSA Crypto: key slots and CMAC, which is all the host stack asks of it.
 pub mod psa;
 /// RAIL's assertion callback: a failure that reports instead of looping.

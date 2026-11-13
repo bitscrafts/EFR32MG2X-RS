@@ -141,6 +141,40 @@ fn main() {
                     .flag_if_supported("-Wno-everything")
                     .compile("bt_stack_init");
                 println!("cargo:rerun-if-changed=vendor/bt_stack/");
+
+                // **The real NVM3.** `sli_bt_start_stack` calls `nvm3_open` and returns its error if it fails -- the
+                // disassembly is `bl nvm3_open` / `bl ecode2bg` / `cmp r0,#0` / `bne`. A stub cannot stand in for
+                // it: refusal is fatal, and a false success is a null-pointer read 0x138 bytes in. These are the
+                // glue files the vendor expects the application to compile, plus the precompiled CM33 library.
+                // `nvm3_default_common_linker.c` is deliberately absent: it is an *alternative* implementation of the
+                // same default instance (storage in a `.simee` linker section), and compiling both is a duplicate
+                // symbol. The base address is supplied by `NVM3_BASE` instead.
+                // `NVM3_BASE` is set by hand so the storage lands at a fixed address the linker script keeps out of
+                // the application's way (`memory.x` reserves the last 40 KB of flash for it).
+                cc::Build::new()
+                    .file("vendor/nvm3/nvm3_default.c")
+                    .file("vendor/nvm3/nvm3_hal_flash.c")
+                    .file("vendor/nvm3/nvm3_lock.c")
+                    .include("vendor/nvm3")
+                    .include(emlib_vendor.join("common"))
+                    .include(emlib_vendor.join("emlib/inc"))
+                    .include(emlib_vendor.join("device"))
+                    .include(emlib_vendor.join("cmsis"))
+                    .define("EFR32MG24B220F1536IM48", None)
+                    .define("EFR32MG24", None)
+                    .define("NVM3_BASE", "((void *)0x08176000UL)")
+                    .define("NVM3_DEFAULT_NVM_SIZE", "40960")
+                    .flag_if_supported("-Wno-everything")
+                    .compile("nvm3_glue");
+                // Absolute: a relative link search path is resolved against whatever directory rustc happens to
+                // run in, and the failure reads "could not find native static library", which sounds like the
+                // library is missing when the path is what is wrong.
+                println!(
+                    "cargo:rustc-link-search=native={}",
+                    manifest.join("vendor/nvm3").display()
+                );
+                println!("cargo:rustc-link-lib=static=nvm3_CM33_gcc");
+                println!("cargo:rerun-if-changed=vendor/nvm3/");
             }
 
             println!("cargo:rustc-link-lib=static=bluetooth_controller_efr32xg24_gcc_release");

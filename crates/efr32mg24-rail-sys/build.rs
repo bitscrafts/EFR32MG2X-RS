@@ -168,6 +168,20 @@ fn main() {
             // (rfhal_pti.c) and a pile of `RAILINT_*` names. The data is in `vendor/ble_config/` and the intended
             // route is to emit it as Rust statics -- see docs/04-reference/MODEM-CONFIG.md. It is what fixes
             // `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` (66), which is what stops the Bluetooth stack from starting.
+            // **PA auto mode: an application-side file the controller calls into.** `ll_radio_pa.c` in the Bluetooth
+            // controller references `RAILCb_PaAutoModeDecision`, and only this plugin defines it. Without it the
+            // radio bring-up cannot choose a power amplifier and the stack reports `SL_STATUS_BT_RADIO`.
+            .file("vendor/pa_auto_mode/pa_auto_mode.c")
+            // The RAIL library already defines `RAIL_ConfigPaAutoEntry`; the plugin's own guard marks its copies weak
+            // so the library's strong definitions win and only the missing callback is supplied from here.
+            .define("RAIL_PA_AUTO_MODE_WEAK", None)
+            // ...and one function in that plugin has no weak guard: `RAIL_ConfigPaAutoEntry` is defined both there and
+            // in the RAIL library, which is a duplicate symbol. Renaming it inside this translation unit keeps the
+            // library's definition authoritative and leaves the plugin's copy unused, without editing vendor code.
+            .define(
+                "RAIL_ConfigPaAutoEntry",
+                "rail_pa_auto_entry_already_in_library",
+            )
             .file("vendor/pa2/pa_conversions_efr32.c")
             .file("vendor/pa2/pa_curves_efr32.c")
             .include("vendor/pa2")

@@ -69,18 +69,85 @@ pub struct Configuration {
     pub rf: RfConfig,
 }
 
-/// Where RAIL keeps its per-instance state.
+// ============================================================================
+// The bare-metal adaptation layer
+// ============================================================================
+//
+// **Why this exists, and why the events were missing.**
+//
+// The vendor ships two ways to run the Bluetooth host: with an RTOS, and without. The vendor blobs in this crate were
+// built with an RTOS, so the host delivers its events through two callbacks it is given at initialisation --
+// exactly the pair `SL_BT_CONFIG_DEFAULT` fills with `sli_bt_rtos_ll_callback` and `sli_bt_rtos_stack_callback`
+// when `SL_CATALOG_KERNEL_PRESENT` is defined, and with NULL when it is not.
+//
+// The RTOS side of that contract lives in `protocol/bluetooth/src/sl_bt_rtos_adaptation.c`, which is application
+// code, not part of any blob. With the callbacks left NULL -- which is what this crate did, because its
+// configuration is compiled without a kernel -- the host has no way to tell the application that work is waiting.
+// Nothing crashes: the host initialises, answers commands, and never queues a single event. That is the wall the
+// examples were stuck behind.
+//
+// The adaptation is small enough to write out. `bluetooth_thread` in that file is, in essence:
+//
+//     create the link-layer thread, create the event thread,
+//     sli_bt_system_start_bluetooth();
+//
+// and the link-layer thread is a loop around `sl_bt_priority_handle()` woken by the first callback. Both of those
+// functions are in the host blob (verified with `nm`), so a bare-metal build needs only the flags and a pump.
+
+use core::sync::atomic::{AtomicBool, Ordering};
+
+/// Set by the host when the link layer wants servicing. This is `scheduler_callback` in the configuration.
+static LINK_LAYER_WAITING: AtomicBool = AtomicBool::new(false);
+
+/// Set by the host when it has work for the application. This is `stack_schedule_callback`.
+static STACK_WAITING: AtomicBool = AtomicBool::new(false);
+
+/// How many times each callback fired. Published so a run can say whether the host ever called back at all.
+static LINK_LAYER_CALLBACKS: AtomicBool = AtomicBool::new(false);
+static STACK_CALLBACKS: AtomicBool = AtomicBool::new(false);
+
+extern "C" fn on_link_layer_wakeup() {
+    LINK_LAYER_WAITING.store(true, Ordering::Release);
+    LINK_LAYER_CALLBACKS.store(true, Ordering::Release);
+}
+
+extern "C" fn on_stack_wakeup() {
+    STACK_WAITING.store(true, Ordering::Release);
+    STACK_CALLBACKS.store(true, Ordering::Release);
+}
+
+extern "C" {
+    /// The link-layer servicing function the vendor's own `linklayer_thread` calls.
+    fn sl_bt_priority_handle();
+    /// The host's *internal* start. Not the BGAPI `sl_bt_system_start_bluetooth`, which answers
+    /// `SL_STATUS_NOT_AVAILABLE` without the on-demand-start component: this is the one the vendor's
+    /// `bluetooth_thread` calls when it starts the stack, and it is what generates `system_boot`.
+    fn sli_bt_system_start_bluetooth() -> u32;
+}
+
+/// Service the host. Call this from the application's main loop, as often as it comes round.
 ///
-/// `RAIL_Init` is documented to cache the pointer for the lifetime of the application, so this lives in a static
-/// rather than in a stack slot. Zero, with a null scheduler and buffer, is the documented "no dynamic memory"
-/// configuration.
-static mut RAIL_CONFIGURATION: efr32mg24_rail_sys::RAIL_Config_t =
-    efr32mg24_rail_sys::RAIL_Config_t {
-        eventsCallback: None,
-        protocol: core::ptr::null_mut(),
-        scheduler: core::ptr::null_mut(),
-        buffer: [0u8; 1],
-    };
+/// One call performs one unit of link-layer work if the host asked for it. Events are *not* consumed here: the
+/// application pops them with `sl_bt_pop_event`, which is where it wants them anyway.
+pub fn pump() {
+    if LINK_LAYER_WAITING.swap(false, Ordering::AcqRel) {
+        unsafe { sl_bt_priority_handle() };
+    }
+}
+
+/// What the host has asked for since boot, for diagnostics: `(link_layer_callbacks, stack_callbacks, link_layer_pending)`.
+pub fn adaptation_stats() -> (bool, bool, bool) {
+    (
+        LINK_LAYER_CALLBACKS.load(Ordering::Acquire),
+        STACK_CALLBACKS.load(Ordering::Acquire),
+        LINK_LAYER_WAITING.load(Ordering::Acquire),
+    )
+}
+
+// The RAIL configuration structure that used to live here is gone with the application's own `RAIL_Init`: the
+// controller builds its own `RAIL_Config_t` in `.bss.railConfig`, with its own event handler, and calls
+// `RAIL_Init` itself. Two callers of a function documented to work "only once per protocol" is the defect that
+// produced a NULL handle and a fault at `[NULL + 0x138]`.
 
 /// The one host configuration this program will ever use.
 static mut CONFIGURATION: Configuration = default_configuration();
@@ -155,23 +222,23 @@ pub unsafe fn start(config: Configuration) -> u32 {
         trace(0, 1);
     }
 
-    // The instance. `RAIL_Init` is documented to work "only once per protocol" and to return NULL if called again,
-    // so this crate must be the one caller and must keep the handle.
-    let rail_config: *mut efr32mg24_rail_sys::RAIL_Config_t =
-        core::ptr::addr_of_mut!(RAIL_CONFIGURATION);
-    let handle = efr32mg24_rail_sys::RAIL_Init(rail_config, None);
-    trace(1, handle as usize as u32);
-    if handle.is_null() {
-        return 0x0021; // SL_STATUS_INVALID_PARAMETER: no RAIL instance
-    }
+    // **The radio is the controller's, entirely.**
+    //
+    // Measured, after three wrong attempts of my own: the Bluetooth controller fills its own `RAIL_Config_t` in
+    // `.bss.railConfig` (including `eventsCallback = ll_radioRailEventHandler`) and calls `RAIL_Init` itself inside
+    // `ll_radioInit`. `RAIL_Init` is documented to "return NULL if called again", so an application that calls it
+    // first makes the controller store a NULL handle -- and the very next `RAIL_ConfigEvents` faults reading
+    // `[NULL + 0x138]`, which is exactly the fault this module kept producing.
+    //
+    // So the application does not call `RAIL_Init` and does not configure channels. Whatever RAIL needs, the
+    // controller brings with it: the blobs were built for this exact part, and the crystal frequency travels inside
+    // the chip-specific configuration they carry.
+    // `sl_rail_util_pa_init()` was tried here and is not the missing piece: it pulls `RAILCb_PaAutoModeDecision`,
+    // which the PA component expects the application to define, and the radio bring-up fails identically without it.
+    // Left out rather than half-wired.
 
-    let channels = efr32mg24_rail_sys::ble_config::config();
-    trace(2, channels.xtalFrequencyHz);
-    let chan_status = efr32mg24_rail_sys::RAIL_ConfigChannels(handle, channels, None) as u32;
-    trace(3, chan_status);
-    if chan_status != 0 {
-        return chan_status;
-    }
+    trace(2, 0);
+    trace(3, 0);
 
     // The host. `sl_bt_stack_init` is the vendor's wrapper and supplies the feature-use and BGAPI class tables that
     // `sli_bt_init_stack` requires; calling the three-argument form with NULLs initialises a host that registers
@@ -184,10 +251,12 @@ pub unsafe fn start(config: Configuration) -> u32 {
         return status;
     }
 
-    // The start, which brings the radio up (`ll_radioInit` calls `RAIL_Init`, gets NULL because the instance already
-    // exists, and continues on the instance configured above) and should queue `system_boot`.
+    // **The real start.** `sli_bt_start_stack` is the wrong function (it returned `0x0483`, a value no header
+    // defines, and produced no event). The vendor's own `bluetooth_thread` calls `sli_bt_system_start_bluetooth()`
+    // to start the host, and the BGAPI command `sl_bt_system_start_bluetooth` is a different thing entirely: it
+    // exists only in on-demand-start builds and answers `SL_STATUS_NOT_AVAILABLE` here, which is correct.
     trace(6, 0xFFFF_FFFF);
-    let started = sli_bt_start_stack();
+    let started = sli_bt_system_start_bluetooth();
     trace(7, started);
     started
 }
@@ -207,8 +276,8 @@ pub const fn default_configuration() -> Configuration {
             linklayer_priorities: core::ptr::null_mut(),
         },
         gattdb: core::ptr::null(),
-        scheduler_callback: None,
-        stack_schedule_callback: None,
+        scheduler_callback: Some(on_link_layer_wakeup),
+        stack_schedule_callback: Some(on_stack_wakeup),
         max_timers: 8,
         rf: RfConfig {
             tx_gain: 0,

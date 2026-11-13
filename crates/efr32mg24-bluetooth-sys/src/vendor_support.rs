@@ -24,13 +24,6 @@
 
 use core::ffi::c_void;
 
-/// `ECODE_NVM3_ERR_NO_VALID_PAGES` = `ECODE_EMDRV_NVM3_BASE | 0x03`; the base is `0xF000_E000`.
-const ECODE_NVM3_ERR_NO_VALID_PAGES: u32 = 0xF000_E003;
-/// `ECODE_NVM3_ERR_NOT_OPENED` = `ECODE_EMDRV_NVM3_BASE | 0x07`.
-const ECODE_NVM3_ERR_NOT_OPENED: u32 = 0xF000_E007;
-/// `ECODE_NVM3_ERR_KEY_NOT_FOUND` = `(0xF0000000 | 0xE000) | 0x0B`
-const ECODE_NVM3_ERR_KEY_NOT_FOUND: u32 = 0xF000_E00B;
-
 // The four `sl_btctrl_init_*` declarations that used to live here are gone with the Rust transcription of
 // `sli_bt_init_controller_features`: the SDK's own `sl_bt_stack_init.c` provides that function now.
 
@@ -81,59 +74,11 @@ pub extern "C" fn sl_power_manager_subscribe_em_transition_event(
 
 static mut EM_SUBSCRIPTIONS: u32 = 0;
 
-/// Storage for the stack's default NVM3 handle. Opaque to us: the stack owns the layout and only ever passes the
-/// pointer back to the functions below. Sized generously (256 bytes) because the real `nvm3_Handle_t` carries
-/// its cache, and a smaller buffer would be a silent overflow the day persistence is implemented for real.
-#[no_mangle]
-pub static mut nvm3_defaultHandle: [u8; 256] = [0; 256];
-
-/// Storage for the default NVM3 initialisation structure, for the same reason. `nvm3_Init_t` is a handful of
-/// pointers and sizes; 128 bytes is well above its size on this target.
-#[no_mangle]
-pub static mut nvm3_defaultInit: [u8; 128] = [0; 128];
-
-/// Open the store. There is nothing to open: reporting success is what the stack needs to continue.
-///
-/// # Safety
-///
-/// Called by the stack with its own handle pointer; both arguments are ignored.
-#[no_mangle]
-pub unsafe extern "C" fn nvm3_open(_handle: *mut c_void, _init: *const c_void) -> u32 {
-    // **A refusal, not a false success.** This used to return `ECODE_NVM3_OK` while leaving the handle untouched,
-    // because persistence is not implemented here. The stack took the success at face value and dereferenced a
-    // handle it had never had filled in: measured `cfsr=0x8200 bfar=0x0000_0138`, a null pointer read 0x138 bytes
-    // into a structure, inside `sli_bt_start_stack`. Returning "no valid pages" tells it the truth, so it can carry
-    // on without bonding data instead of walking into an empty handle.
-    ECODE_NVM3_ERR_NO_VALID_PAGES
-}
-
-/// Read an object. Always "not found", which is the behaviour of an empty store.
-///
-/// # Safety
-///
-/// `value`/`len` are the stack's buffer; nothing is written, so no bounds can be violated.
-#[no_mangle]
-pub unsafe extern "C" fn nvm3_readData(
-    _handle: *mut c_void,
-    _key: u32,
-    _value: *mut c_void,
-    _len: usize,
-) -> u32 {
-    let p = core::ptr::addr_of_mut!(NVM_MISSES);
-    core::ptr::write_volatile(p, core::ptr::read_volatile(p) + 1);
-    ECODE_NVM3_ERR_KEY_NOT_FOUND
-}
-
-/// Delete an object. Nothing is stored, so nothing can be deleted; success is honest here because the
-/// post-condition the caller wants (the key is absent) holds.
-///
-/// # Safety
-///
-/// As `nvm3_readData`.
-#[no_mangle]
-pub unsafe extern "C" fn nvm3_deleteObject(_handle: *mut c_void, _key: u32) -> u32 {
-    ECODE_NVM3_ERR_NOT_OPENED
-}
+// The NVM3 surface that used to live here -- `nvm3_open`, `nvm3_readData`, `nvm3_writeData`, `nvm3_deleteObject`
+// and the default-instance globals -- is gone. It was a stand-in that could not work: `sli_bt_start_stack` treats a
+// failed `nvm3_open` as fatal (`bl nvm3_open` / `bl ecode2bg` / `bne` in its disassembly), and a success that left
+// the handle unfilled made the stack read a null pointer 0x138 bytes in. The vendor's real NVM3 is vendored in
+// `vendor/nvm3/` and linked from `libnvm3_CM33_gcc.a`.
 
 /// Power-manager requirements recorded, and NVM3 read misses. The example prints both.
 pub fn stats() -> (u32, u32) {

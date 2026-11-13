@@ -23,6 +23,9 @@ fn main() {
         "vendor445/src/em_system.c",
         // GPIO_PinModeSet: the stack configures its GPIOs itself, and the v4.4.5 emlib owns that function.
         "vendor445/src/em_gpio.c",
+        // The flash controller. NVM3's HAL calls MSC_Init/MSC_WriteWord/MSC_ErasePage, and the stack's own start
+        // refuses to continue if NVM3 fails to open.
+        "vendor445/src/em_msc.c",
         // SystemSYSCLKGet and friends: em_cmu.c calls into the device unit.
         "vendor445/device/system_efr32mg24.c",
         "src/shim.c",

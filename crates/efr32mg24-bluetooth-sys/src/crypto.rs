@@ -26,10 +26,13 @@ use aes_modes::{cmac, decrypt as ccm_decrypt, encrypt as ccm_encrypt, BLE_NONCE_
 
 /// `SL_STATUS_OK`
 const SL_STATUS_OK: u32 = 0;
-/// `SL_STATUS_NOT_SUPPORTED`
-const SL_STATUS_NOT_SUPPORTED: u32 = 0x0000_0004;
+/// `SL_STATUS_NOT_SUPPORTED`, which is `0x000F` -- checked against `sl_status.h`, not guessed. It was `0x0004`
+/// here for a while, and `0x0004` is no status at all.
+const SL_STATUS_NOT_SUPPORTED: u32 = 0x000F;
 /// `SL_STATUS_INVALID_PARAMETER`
 const SL_STATUS_INVALID_PARAMETER: u32 = 0x0000_0021;
+/// `SL_STATUS_INVALID_SIGNATURE`
+const SL_STATUS_INVALID_SIGNATURE: u32 = 0x002C;
 
 /// AES-ECB, one block. The stack uses it for single-block operations; CCM\* below does its own blocks.
 ///
@@ -112,8 +115,30 @@ pub unsafe extern "C" fn sli_ccm_encrypt_and_tag_ble(
     SL_STATUS_OK
 }
 
-/// The decrypting direction, which the stack also needs when receiving. Not in the vendor header above, but the
-/// same shape; kept here so both directions come from one implementation.
+/// The decrypting direction, under the name `sli_protocol_crypto.h` actually declares.
+///
+/// The link failed on this symbol the moment the stack was really started (`sli_bt_system_start_bluetooth`), which
+/// is how the name was found: the header had it, and this file only had the invented one below.
+///
+/// # Safety
+///
+/// As `sli_ccm_encrypt_and_tag_ble`: `data` must point to `length` writable bytes, `key` to 16 readable bytes, `iv`
+/// to 13, and `tag` to 4.
+#[no_mangle]
+pub unsafe extern "C" fn sli_ccm_auth_decrypt_ble(
+    data: *mut u8,
+    length: usize,
+    key: *const u8,
+    iv: *const u8,
+    header: u8,
+    tag: *const u8,
+) -> u32 {
+    sli_ccm_decrypt_and_verify_ble(data, length, key, iv, header, tag)
+}
+
+/// The decrypting direction, kept under the name this file invented before the header was read.
+///
+/// The vendor's name is `sli_ccm_auth_decrypt_ble`, which is now the entry point above and delegates here.
 ///
 /// # Safety
 ///
@@ -142,8 +167,9 @@ pub unsafe extern "C" fn sli_ccm_decrypt_and_verify_ble(
     let aad = [header];
     match ccm_decrypt(&k, &nonce, &aad, payload, &expected) {
         Ok(()) => SL_STATUS_OK,
-        // Authentication failure is its own status: the caller must drop the packet, not retry.
-        Err(_) => 0x0000_0F01,
+        // Authentication failure is its own status, and it is `SL_STATUS_INVALID_SIGNATURE` = `0x002C`: the caller
+        // must drop the packet, not retry. `0x0F01` was invented here and means nothing to the stack.
+        Err(_) => SL_STATUS_INVALID_SIGNATURE,
     }
 }
 
