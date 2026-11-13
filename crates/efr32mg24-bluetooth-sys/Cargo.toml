@@ -38,6 +38,7 @@ efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
 efr32mg24-pac = { path = "../efr32mg24-pac" }
 
 [build-dependencies]
+cc = "1"
 # For generating Rust bindings from C headers
 bindgen = "0.69"
 # For verifying Bluetooth blob integrity

@@ -75,6 +75,10 @@ static mut CONFIGURATION: Configuration = default_configuration();
 extern "C" {
     /// `sli_bt_init_stack` — the host's initialisation, three arguments wide.
     ///
+    /// Declared and unused: calling it with NULL feature and class tables was this project's original mistake, and
+    /// keeping the declaration records the shape that made the mistake possible.
+    #[allow(dead_code)]
+    ///
     /// The second and third are the SDK's optional scheduling hooks; both null selects the
     /// interrupt-driven defaults, which is what a bare-metal application wants.
     fn sli_bt_init_stack(
@@ -82,6 +86,14 @@ extern "C" {
         response_callback: *mut c_void,
         event_callback: *mut c_void,
     ) -> u32;
+
+    /// `sl_bt_stack_init` — the SDK's own initialisation entry point, from `sl_bt_stack_init.c`.
+    ///
+    /// It takes no arguments and supplies the three that `sli_bt_init_stack` needs: the configuration, the
+    /// feature-use table and the BGAPI class table. Calling `sli_bt_init_stack` directly with NULLs -- which this
+    /// project did, believing the last two were optional scheduling hooks -- initialises the host without
+    /// registering any class, so it returns success and then emits nothing at all.
+    fn sl_bt_stack_init() -> u32;
 
     /// `sli_bt_start_stack` — start the host; `system_boot` follows as an event.
     ///
@@ -113,48 +125,52 @@ fn trace(slot: u32, value: u32) {
 /// Must be called once, before any other BGAPI command, with the radio's clocks available. The blobs keep the
 /// configuration pointer, so the value is given a static home and must remain the only one in use.
 pub unsafe fn start(config: Configuration) -> u32 {
-    // **RAIL first, and it needs two things this project had to measure.**
+    // **The stack owns RAIL, and that order is forced by RAIL's own contract.**
     //
-    // 1. **HFXO running and selected.** RAIL compares the configuration's `xtalFrequencyHz` against the frequency
-    //    the device reports; an HFXO that was never started reports zero, so the comparison fails and RAIL asserts
-    //    `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` (code 66) even when the table says 39 MHz. Measured: with the table
-    //    alone the assert is 66; with HFXO started first, `RAIL_ConfigChannels` returns `RAIL_STATUS_NO_ERROR`.
-    // 2. **A channel configuration**, because the Bluetooth blobs never call `RAIL_ConfigChannels` themselves
-    //    (checked: zero imports across all three archives). The configuration is the SDK's own generated table for
-    //    this part at 39 MHz, emitted into Rust in `efr32mg24_rail_sys::ble_config`.
+    // `rail.h` says of `RAIL_Init`: "Call this function only once per protocol. If called again, it will do nothing
+    // and return NULL." The Bluetooth host calls it during its initialisation. This module used to call it first,
+    // which meant the host got NULL back, stored NULL, and later passed NULL to `RAIL_SetTune` -- and RAIL asserted
+    // `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` with a NULL handle, which read as "the crystal frequency is wrong" while
+    // the real fault was that two owners existed.
     //
-    // Both belong here rather than in each example: a caller that forgets either gets a hang with no evidence.
-    // SAFETY: called once, before any other BGAPI command; the radio's clocks exist by construction.
+    // So: the host initialises the radio, and the application configures the channels afterwards, through the
+    // generic handle `RAIL_EFR32_HANDLE` (`0xFFFFFFFF`) that this single-instance part uses. The frequency itself
+    // still has to be known to RAIL before it configures the radio, which is why the HFXO is started first --
+    // without it the device reports zero hertz and the assertion is genuine.
     {
         efr32mg24_emlib_sys::emlib_hfxo_start();
         efr32mg24_emlib_sys::emlib_clock_select_hfxo();
         trace(0, 1);
-
-        let mut rail_config: efr32mg24_rail_sys::RAIL_Config_t = core::mem::zeroed();
-        let handle = efr32mg24_rail_sys::RAIL_Init(&mut rail_config, None);
-        trace(1, handle as usize as u32);
-        if handle.is_null() {
-            return SL_STATUS_FAIL;
-        }
-        let channels = efr32mg24_rail_sys::ble_config::config();
-        trace(2, channels.xtalFrequencyHz);
-        let status = efr32mg24_rail_sys::RAIL_ConfigChannels(handle, channels, None) as u32;
-        trace(3, status);
-        if status != 0 {
-            return status;
-        }
     }
 
     // The blobs may keep the pointer, so it is given a static home rather than a stack slot. A
     // `Box` would need an allocator this crate does not have; a `static mut` accessed once, under
     // the caller's single-owner contract, is the honest equivalent.
+    // The configuration the SDK's wrapper uses is `bt_config` inside `sl_bt_stack_init.c`; the value passed here is
+    // kept for callers that want to see it, but the host reads its own. That is why `SL_BT_CONFIG_DEFAULT` in the
+    // vendored file is the thing to change for buffer sizes and connection counts.
     CONFIGURATION = config;
-    let config_ptr = core::ptr::addr_of!(CONFIGURATION);
     trace(4, 0xFFFF_FFFF); // about to enter the host's initialisation
-    let status = sli_bt_init_stack(config_ptr, core::ptr::null_mut(), core::ptr::null_mut());
+    let status = sl_bt_stack_init();
     trace(5, status);
     if status != 0 {
         return status;
+    }
+
+    // Channels, on the generic handle, now that the host has created the RAIL instance.
+    // SAFETY: called once, after the host's initialisation and before it uses the radio.
+    unsafe {
+        let channels = efr32mg24_rail_sys::ble_config::config();
+        trace(2, channels.xtalFrequencyHz);
+        let chan_status = efr32mg24_rail_sys::RAIL_ConfigChannels(
+            0xFFFF_FFFF as efr32mg24_rail_sys::RAIL_Handle_t,
+            channels,
+            None,
+        ) as u32;
+        trace(3, chan_status);
+        if chan_status != 0 {
+            return chan_status;
+        }
     }
     // **`sli_bt_start_stack` is not called.** Measured: `sli_bt_init_stack` returns 0 -- the host initialises --
     // and then `sli_bt_start_stack` returns a value that looks like an uninitialised register (0xc2a3de54) and RAIL
@@ -163,12 +179,15 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // first is whether init alone is enough. Leaving the call out is a measurement, not a decision: if `system_boot`
     // never appears this is the line to put back.
     trace(6, 0xFFFF_FFFF);
-    trace(7, 0x600D_0000);
-    0
+    // **Started, because the event queue needs it.** Measured with the SDK's own initialiser in place: init returns
+    // 0, a BGAPI command (`sl_bt_system_get_version`) also returns 0 -- the host runs -- but `sl_bt_pop_event`
+    // answers 45 (`SL_STATUS_NOT_FOUND`) and `system_boot` never arrives. The earlier attempt to call this produced
+    // a RAIL assert, and that attempt was made when the initialiser had no feature or BGAPI class tables; with them
+    // present the call is worth repeating, and the trace records what it returns either way.
+    let started = sli_bt_start_stack();
+    trace(7, started);
+    started
 }
-
-/// `SL_STATUS_FAIL`, for the one early return above.
-const SL_STATUS_FAIL: u32 = 0x0001;
 
 /// The configuration a bare-metal advertiser needs.
 ///

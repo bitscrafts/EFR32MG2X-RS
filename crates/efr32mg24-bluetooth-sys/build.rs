@@ -98,6 +98,51 @@ fn main() {
 
             // Link all three Bluetooth binary blobs
             println!("cargo:rustc-link-search=native={}", blob_dir.display());
+            // **The SDK's own stack initialiser, compiled here.**
+            //
+            // `sli_bt_init_stack` takes three arguments: the configuration, the feature-use table and the BGAPI
+            // class table. This project called it with the last two NULL, which initialises the host without
+            // registering a single class -- it returns success, never emits `system_boot`, and `sl_bt_pop_event`
+            // answers 45 (`SL_STATUS_NOT_FOUND`) forever. The tables belong to this file, and the SDK compiles it
+            // in the application with a component catalogue; `vendor/bt_stack/sl_component_catalog.h` is that
+            // catalogue, written by hand for a minimal peripheral (system, GAP, connections, legacy advertising,
+            // GATT server, NVM).
+            {
+                let manifest = std::path::PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+                let emlib_vendor = manifest.join("../efr32mg24-emlib-sys/vendor");
+                let rail_vendor = manifest.join("../efr32mg24-rail-sys/vendor");
+                cc::Build::new()
+                    .file("vendor/bt_stack/sl_bt_stack_init.c")
+                    // The one generated object the initialiser needs; see the file's header for why it is hand-written.
+                    .file("vendor/bt_stack/sli_bt_connection_config.c")
+                    .include("vendor/bt_stack")
+                    .include("vendor/bt_stack/include")
+                    .include("vendor/bluetooth")
+                    .include(rail_vendor.join("rail"))
+                    .include(rail_vendor.join("rail/include"))
+                    .include(emlib_vendor.join("emlib/inc"))
+                    .include(emlib_vendor.join("device"))
+                    .include(emlib_vendor.join("common/inc"))
+                    .include(emlib_vendor.join("common"))
+                    .include(emlib_vendor.join("cmsis"))
+                    .define("EFR32MG24B220F1536IM48", None)
+                    .define("EFR32MG24", None)
+                    // The initialiser refuses to compile without this, and it is the switch that makes it include
+                    // `sl_component_catalog.h` -- the file in `vendor/bt_stack/` that lists the components.
+                    .define("SL_COMPONENT_CATALOG_PRESENT", None)
+                    // Values the component system normally generates: connections and advertisers reserved by
+                    // components other than the application. This firmware has no such components, and the
+                    // `_SUM` macros in `sl_bluetooth_config.h` add them to the application's own counts.
+                    .define("SL_BT_COMPONENT_CONNECTIONS", "0")
+                    .define("SL_BT_COMPONENT_ADVERTISERS", "0")
+                    .flag_if_supported("-mcmse")
+                    .flag_if_supported("-ffunction-sections")
+                    .flag_if_supported("-fdata-sections")
+                    .flag_if_supported("-Wno-everything")
+                    .compile("bt_stack_init");
+                println!("cargo:rerun-if-changed=vendor/bt_stack/");
+            }
+
             println!("cargo:rustc-link-lib=static=bluetooth_controller_efr32xg24_gcc_release");
             println!("cargo:rustc-link-lib=static=bluetooth_host_efr32xg24_gcc_release");
             println!("cargo:rustc-link-lib=static=bgcommon_efr32xg24_gcc_release");

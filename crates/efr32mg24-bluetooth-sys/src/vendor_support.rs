@@ -24,20 +24,13 @@
 
 use core::ffi::c_void;
 
-/// `SL_STATUS_OK`
-const SL_STATUS_OK: u32 = 0;
 /// `ECODE_NVM3_OK`
 const ECODE_NVM3_OK: u32 = 0;
 /// `ECODE_NVM3_ERR_KEY_NOT_FOUND` = `(0xF0000000 | 0xE000) | 0x0B`
 const ECODE_NVM3_ERR_KEY_NOT_FOUND: u32 = 0xF000_E00B;
 
-extern "C" {
-    // In the controller blob; verified present with nm before this file was written.
-    fn sl_btctrl_init_adv();
-    fn sl_btctrl_init_scan();
-    fn sl_btctrl_init_conn();
-    fn sl_btctrl_init_phy();
-}
+// The four `sl_btctrl_init_*` declarations that used to live here are gone with the Rust transcription of
+// `sli_bt_init_controller_features`: the SDK's own `sl_bt_stack_init.c` provides that function now.
 
 /// How many power-manager requirements the stack has asked for, and how many NVM read misses occurred. Both are
 /// diagnostics: the first says what a real power manager would have to honour, the second says how much the
@@ -45,22 +38,9 @@ extern "C" {
 static mut EM_REQUIREMENTS: u32 = 0;
 static mut NVM_MISSES: u32 = 0;
 
-/// The stack's controller bring-up, transcribed from `sl_bt_stack_init.c`.
-///
-/// Advertising, scanning, connection and PHY: the four features a peripheral-only build enables. The SDK gates
-/// each on a catalogue macro; without the catalogue here, all four run, which is what this firmware uses.
-#[no_mangle]
-pub extern "C" fn sli_bt_init_controller_features() -> u32 {
-    // SAFETY: these are controller initialisers with no arguments and no preconditions beyond the stack being
-    // started, which is the caller's contract in the SDK as well.
-    unsafe {
-        sl_btctrl_init_adv();
-        sl_btctrl_init_scan();
-        sl_btctrl_init_conn();
-        sl_btctrl_init_phy();
-    }
-    SL_STATUS_OK
-}
+// `sli_bt_init_controller_features` used to be implemented here, in Rust. It is gone on purpose: the SDK's own
+// `sl_bt_stack_init.c` (vendored as `vendor/bt_stack/`) defines it, along with the feature-use and BGAPI class
+// tables that the host needs, and two definitions of the same symbol is a link error rather than a choice.
 
 /// Record an energy-mode requirement. The device never sleeps, so nothing is acted on.
 #[no_mangle]

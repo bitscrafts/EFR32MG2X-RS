@@ -149,6 +149,27 @@ fn main() -> ! {
 
     stage(b"initdone", boot, sleeptimer::irq_stats());
 
+    // **A command, not just a wait.** If the host is running, a BGAPI command produces a response event; if the
+    // queue stays empty even after a command, the host is initialised but not running, which is a different defect
+    // from a missing `system_boot`. This is the difference between "wait longer" and "start it".
+    let mut major: u16 = 0;
+    let mut minor: u16 = 0;
+    let mut patch: u16 = 0;
+    let mut build: u16 = 0;
+    let mut bootloader: u32 = 0;
+    let mut hash: u32 = 0;
+    let cmd_status = unsafe {
+        efr32mg24_bluetooth_sys::ffi::sl_bt_system_get_version(
+            &mut major,
+            &mut minor,
+            &mut patch,
+            &mut build,
+            &mut bootloader,
+            &mut hash,
+        )
+    };
+    stage(b"bgapi", cmd_status as u32, 0);
+
     // Give the host a moment to emit system_boot, then ask for events. This is where the polled path and the
     // interrupt path differ, so the loop calls both.
     delay.delay_ms(100);
@@ -185,6 +206,12 @@ fn main() -> ! {
     n = push_dec(&mut m, n, events);
     n = label(&mut m, n, b" pop=");
     n = push_dec(&mut m, n, last_pop);
+    n = label(&mut m, n, b" cmd=");
+    n = push_dec(&mut m, n, cmd_status as u32);
+    n = label(&mut m, n, b" ver=");
+    n = push_dec(&mut m, n, major as u32);
+    n = label(&mut m, n, b".");
+    n = push_dec(&mut m, n, minor as u32);
     let (used, fails, viol) = efr32mg24_bluetooth_sys::heap::stats();
     n = label(&mut m, n, b" heap=");
     n = push_dec(&mut m, n, used as u32);
