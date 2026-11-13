@@ -3,6 +3,25 @@
 Measured 2026-11-13, after `sli_psa_context_get_size` and `sli_aes_crypt_ctr_radio` became Rust
 (`crates/efr32mg24-bluetooth-sys/src/support.rs`, `libraries/aes-ctr-radio`).
 
+## Decision, and the order it implies (user, 2026-11-13)
+
+> *"documente a analise, apos o ble estiver totalmente funcional e com exemplos correndo iremos fazer essas
+> migracoes c->rust!"*
+
+The migrations described here are **deferred, deliberately**. They are not a prerequisite for Bluetooth and
+must not become one: rewriting `em_cmu.c` while the link layer is still one symbol from linking would move
+the failure surface from "one missing timer" to "a clock tree that nobody has measured". The order is:
+
+1. **BLE fully functional** — the vendor stack links, boots (`system_boot` with a Bluetooth address), the
+   board advertises and a GATT client connects and reads a characteristic.
+2. **Examples running** — one example per level that exercises that path, on the board, with the observed
+   output recorded, not merely compiled.
+3. **Then, and only then**, the migrations below, one file at a time, each with the gate green before the
+   next one starts and with the previous behaviour measured again after the swap.
+
+What is already Rust (the two support symbols) was not a migration of convenience: without them the stack
+does not link at all, so they are on the critical path to step 1 rather than in the deferred list.
+
 The rule this file applies: **C that is ours becomes Rust; vendor binary blobs stay, because they are
 licensed binaries and not source.** What follows is every C file the build compiles, ranked by what it would
 cost to replace.
@@ -64,3 +83,24 @@ In pure Rust that means a real HAL piece — drive the SYSRTC peripheral (start 
 compare channel, route its interrupt, keep a small timer list) instead of vendoring `sl_sleeptimer.c`. That
 is the natural next step and it is a HAL-shaped one, not a wrapper: a timer the rest of the project can use
 too.
+
+Note the direction of causality, because it is easy to get backwards: implementing this timer **in Rust is
+not one of the deferred migrations** — it is the last thing standing between the link and the stack. It
+belongs to step 1, and it belongs in the HAL rather than in a `-sys` crate, because a timer is hardware
+policy, not vendor glue.
+
+## Definition of done for "BLE fully functional"
+
+Written down so that it can be checked rather than argued:
+
+- [ ] `ble_beacon --features stack` links, with no undefined symbols.
+- [ ] Flashed, the stack reports `system_boot` with a version and an address, read from the mailbox.
+- [ ] The name it advertises is listed by `scripts/ble-scan-bluez.sh` on the host, not merely captured by
+      `btmon`.
+- [ ] `ble_gatt` links and a GATT client on the host connects and reads a characteristic back:
+      `bluetoothctl connect <addr>` followed by `bluetoothctl gatt.read <handle>` returning the value the
+      firmware set.
+- [ ] Each of those paths has an example that **ran**, with its output recorded in `docs/03-development/EXAMPLES.md`.
+
+Advertising through RAIL (commit `5092303` onward) satisfies none of these except the third, by a different
+route: that is the link layer alone, with no host stack, and it cannot answer a GATT read.
