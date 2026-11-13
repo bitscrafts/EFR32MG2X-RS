@@ -229,3 +229,49 @@ Also unresolved and *not* claimed: no independent observer has confirmed any of 
 The host's `bluetoothctl scan` returned no device list even while the host itself was advertising, so
 that instrument is unverified and proves nothing in either direction. The phone is the only trusted
 observer available, and it saw `lnx-ble` but never `xiao-mg24`.
+## It transmits, and no receiver hears it (2026-11-12, end of this session)
+
+The chain is now measured at every link, and that is the useful part: each link says the packet is
+fine, and the air says otherwise.
+
+```
+RAIL_BLE_Init                       ok
+RAIL_BLE_ConfigPhy1MbpsViterbi      st=0
+RAIL_BLE_ConfigChannelRadioParams   st=0   (crcInit 0x555555, AA 0x8E89BED6, channel 37)
+RAIL_ConfigTxPower + SetTxPowerDbm  pa=0 dbm=0   (HP mode, 3300 mV, 10 dBm)
+RAIL_ConfigData                     PACKET_MODE
+RAIL_PrepareChannel(37)             pr=0
+RAIL_StartTx(37)                    st=0
+RAIL_EVENT_TX_PACKET_SENT           hw=57   <- counted in the radio's OWN interrupt
+PDU, read back off the chip         40 14 | F5 FF FE 13 3E E0 | 02 01 06 | 0A 09 "xiao-mg24"
+host scan, 100% duty cycle          sees 4 other advertisers (up to 262 reports each), not this one
+```
+
+`hw=` is the decisive number and it is new here: it is not this program counting its own calls, it is
+`RAIL_EVENT_TX_PACKET_SENT` arriving in the events callback, which only fires when the radio's interrupt
+handler runs. `hw=57` with `sent=57` says the modem completes a packet every time it is asked.
+
+So the API is not lying and the frame in memory is not wrong. What remains is the step between the modem
+and the antenna: either the on-air framing (access address / whitening / PHY variant) disagrees with the
+specification in a way a scanner silently drops, or the output stage is not driving the board's antenna.
+
+What would settle it, in order of cost:
+
+1. **A phone with nRF Connect** — a different receiver with a different front end. It saw `lnx-ble` when
+   the host advertised, so it works.
+2. **`RAIL_GetTxPowerDbm()` after transmission** — if it does not read back what was requested, the PA is
+   not accepting the configuration.
+3. **`RAIL_ConfigAntenna()`** — the vendor's generated `rail_config.c` for this exact part contains no
+   antenna configuration, so the default path is what the vendor ships; that argues the switch is not the
+   cause, but the default path has never been *read back* here.
+
+Everything below this line was fixed on the way, and each one was a real defect, not a guess:
+
+- The PAC declared 46 of the device's 74 interrupts; the radio's were missing, the vector table held
+  zeroes, and the first radio interrupt jumped to address 0 (HardFault, CFSR=0x00000100).
+- `PROVIDE(FRC = DefaultHandler)` satisfied the vector's reference, so the linker never pulled the blob
+  member defining the real handler (measured: pc inside `DefaultHandler_`). Fixed with `+whole-archive`.
+- The HAL shipped a duplicate `device.x` that shadowed the PAC's.
+- The beacon did not follow `rail_ble.h`'s documented sequence: `RAIL_BLE_Init` and
+  `RAIL_BLE_ConfigChannelRadioParams` were both missing, and without the first the radio enters TX and
+  never leaves.

@@ -123,6 +123,19 @@ pub extern "C" fn RAILCb_AssertFailed(
     }
 }
 
+/// Packets the RADIO reports as sent, counted in the events callback. The loop's own counter counts
+/// calls to `RAIL_StartTx`; this one counts interrupts raised by the radio, and the two disagreeing is
+/// exactly the case where the API looks fine and the air stays empty.
+static mut TX_PACKET_SENT: u32 = 0;
+
+/// RAIL events. Runs in interrupt context.
+unsafe extern "C" fn on_rail_event(_handle: rail::RAIL_Handle_t, events: rail::RAIL_Events_t) {
+    // bit 24 of RAIL_Events_t is RAIL_EVENT_TX_PACKET_SENT
+    if (events & (1u64 << 24)) != 0 {
+        TX_PACKET_SENT = TX_PACKET_SENT.wrapping_add(1);
+    }
+}
+
 /// RAIL's power-amplifier callback. The Bluetooth stack provides its own policy; a beacon does not need
 /// one, but the symbol has to exist or the link fails.
 #[no_mangle]
@@ -152,11 +165,15 @@ pub extern "C" fn main() -> ! {
     let mut delay = board.delay();
 
     let mut cfg: rail::RAIL_Config_t = unsafe { core::mem::zeroed() };
+    cfg.eventsCallback = Some(on_rail_event);
     let handle = unsafe { rail::RAIL_Init(&mut cfg, None) };
     if handle.is_null() {
         mailbox::write(Status::Fail, b"tx: RAIL_Init returned null");
         stop(&mut delay);
     }
+
+    // Ask for the send-complete event explicitly rather than relying on defaults.
+    unsafe { rail::RAIL_ConfigEvents(handle, 1u64 << 24, 1u64 << 24) };
 
     // The documented sequence, in the documented order.
     unsafe { rail::RAIL_BLE_Init(handle) };
@@ -278,9 +295,16 @@ pub extern "C" fn main() -> ! {
             );
             mailbox::write(Status::Info, &wm[..wa]);
         }
-        // A real advertiser rotates the three advertising channels (physical 0..2 are logical 37..39),
+        // A real advertiser rotates the three advertising channels. The BLE configuration numbers them
+        // 37..39 (the logical channel numbers of the specification); 0..2 would be DATA channels, 2404 MHz
+        // upwards, where no scanner listens.
         // so a scanner listening on any of them sees the device. One fixed channel is invisible to a
         // scanner whose window is on another.
+        // Prepare the channel before transmitting: RAIL tunes/calibrates the radio for it. The vendor's
+        // own init calls this (sl_rail_prepare_channel in the RAIL 3 API), and without it the modem
+        // completes a packet while the PA is not driven on that frequency.
+        let prep = unsafe { rail::RAIL_PrepareChannel(handle, 37) };
+
         let st = unsafe {
             rail::RAIL_StartTx(
                 handle,
@@ -311,6 +335,10 @@ pub extern "C" fn main() -> ! {
         ta = mailbox::push_dec(&mut tm, ta, count);
         ta = mailbox::push(&mut tm, ta, b" fail=");
         ta = mailbox::push_dec(&mut tm, ta, failures);
+        ta = mailbox::push(&mut tm, ta, b" pr=");
+        ta = mailbox::push_dec(&mut tm, ta, prep as u32);
+        ta = mailbox::push(&mut tm, ta, b" hw=");
+        ta = mailbox::push_dec(&mut tm, ta, unsafe { TX_PACKET_SENT });
         ta = mailbox::push(&mut tm, ta, b" st=");
         ta = mailbox::push_dec(&mut tm, ta, st as u32);
         ta = mailbox::push(&mut tm, ta, b" rs=");
