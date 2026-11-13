@@ -61,6 +61,8 @@
 //! - No reverse engineering or modification of blobs
 //! - Distribution requires MSLA compliance
 
+/// The timer the stack schedules its events on, in Rust and polled.
+pub mod sleeptimer;
 mod support;
 
 // Raw FFI bindings (always available)

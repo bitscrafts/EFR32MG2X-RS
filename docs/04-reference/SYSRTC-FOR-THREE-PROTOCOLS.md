@@ -151,3 +151,35 @@ that interrupts. That distinction matters for the stack: `sl_sleeptimer` needs t
 
 Nothing here is guessed: the three offsets and the `dsb` came from measurement, and the two open points are
 stated with the observation that produced them.
+
+## Correction, same evening: the counter runs at 32 968 Hz
+
+The "~2.88 MHz" above was **my instrument, not the silicon**. Measured in absolute terms — the host reads
+`SYSRTC0->CNT` over SWD twice, with the host's own clock between the reads, so no chip clock enters the
+arithmetic:
+
+```
+CNT 12957624 -> 13309201   delta=351577 ticks in 10.66 s   rate = 32,968 Hz   (1.01x of 32,768)
+```
+
+32.968 kHz against a nominal 32.768 kHz: 0.6 %, which is LFRCO being a trimmed RC oscillator. The earlier
+ratio of ~88x came from dividing by an *assumed* 19 MHz core clock through the DWT; the loop that "waited
+1.9 M cycles" actually waited 8.79 s. The lesson is the book's own: when the test disagrees with the hardware,
+suspect the test — and this project has a second instance of the same family in `DELAY-CLOCK-DEFECT.md`.
+
+`scripts/read-rate.sh` is the instrument that settled it, and it stays: any future timing claim about this
+board should be made in wall-clock seconds, not in cycles of a clock nobody has verified.
+
+## Still open: the compare event does not fire
+
+Measured with the corrected rate, a deadline 100 ms ahead, and a wraparound-safe wait:
+
+```
+cmp: start=0 deadline=3200 reached=4201 late=1001 fired=0 en=1 run=1
+```
+
+The counter passed the deadline by 1001 ticks and `GRP0_IF` bit 0 never set. So `GRP0_CTRL` at 0x68 either is
+not the control register or its enable is not bit 0 — the blob only proves where `IF` (0x60) and `IEN` (0x64)
+live. **This does not block the stack from booting**: `sl_sleeptimer` is currently implemented as a polled
+scheduler (`crates/efr32mg24-bluetooth-sys/src/sleeptimer.rs`) with the ten functions the stack imports, driven
+by `poll()` from the application loop. It blocks only interrupt-driven timers and low-power sleep.
