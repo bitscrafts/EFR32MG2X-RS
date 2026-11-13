@@ -204,27 +204,28 @@ pub extern "C" fn main() -> ! {
     };
     unsafe { rail::RAIL_ConfigData(handle, &dc) };
 
-    // The power amplifier has no configuration until it is given one.
+    // The power amplifier, with the vendor's PA conversion plugin linked in (vendor/pa2): that plugin
+    // Mode 4 is what the vendor's own xg24 PA configuration selects (SL_RAIL_UTIL_PA_SELECTION_2P4GHZ =
+    // RAIL_TX_POWER_MODE_2P4GIG_HIGHEST); the HP alias used before is a different PA entirely.
+    // supplies the dBm-to-raw mapping RAIL documents as an override. Before it existed,
+    // `RAIL_SetTxPowerDbm` returned success and `RAIL_GetTxPowerDbm` read back -32768 (RAIL's invalid
+    // power), so the PA drove nothing while every packet still completed at the modem.
     let pa = rail::RAIL_TxPowerConfig_t {
-        mode: rail::RAIL_TxPowerMode_t_enum_RAIL_TX_POWER_MODE_2P4_HP as u8,
+        mode: rail::RAIL_TxPowerMode_t_enum_RAIL_TX_POWER_MODE_2P4GIG_HIGHEST as u8,
         voltage: 3300,
         rampTime: 10,
     };
     let pa_st = unsafe { rail::RAIL_ConfigTxPower(handle, &pa) };
     let dbm_st = unsafe { rail::RAIL_SetTxPowerDbm(handle, 100) };
 
-    // AdvA: the six bytes above the unique id, with the two most significant bits set to `11`, which is
-    // what makes it a static random address. A phone shows the packet under this address.
-    let uid = unsafe { efr32mg24_emlib_sys::emlib_unique_id() };
-    let mut addr = [0u8; 6];
-    for (i, b) in addr.iter_mut().enumerate() {
-        *b = (uid >> (8 * (5 - i))) as u8;
-    }
-    addr[0] |= 0xC0;
+    // AdvA, as a PUBLIC address with a fixed value. A static random address derived from the chip's unique
+    // id is fine on air, but it changes meaning with every board and cannot be searched for by hand: for
+    // bring-up a fixed public address is one less variable. TxAdd in the header byte is 0 for this.
+    let addr: [u8; 6] = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
 
     let mut pdu = [0u8; 40];
     let mut n = 0;
-    pdu[n] = 0x40; // ADV_IND, TxAdd=1 (random address)
+    pdu[n] = 0x00; // ADV_IND, TxAdd=0 (public address)
     n += 1;
     pdu[n] = 20; // payload length: 6 address + 14 advertising data
     n += 1;
@@ -238,6 +239,19 @@ pub extern "C" fn main() -> ! {
     n += 9;
     let pdu_len = n as u16;
 
+    let mut path: rail::RAIL_AntennaSel_t = unsafe { core::mem::zeroed() };
+    let path_st = unsafe { rail::RAIL_GetRfPath(handle, &mut path) };
+    let read_dbm = unsafe { rail::RAIL_GetTxPowerDbm(handle) };
+    let raw_level = unsafe { rail::RAIL_GetTxPower(handle) } as u32;
+
+    // Kept in their own words so the loop's counters cannot overwrite them before the host reads.
+    unsafe {
+        core::ptr::write_volatile(0x2003_F100 as *mut u32, read_dbm as u32);
+        core::ptr::write_volatile(0x2003_F104 as *mut u32, path_st as u32);
+        core::ptr::write_volatile(0x2003_F108 as *mut u32, path as u32);
+        core::ptr::write_volatile(0x2003_F10C as *mut u32, raw_level);
+    }
+
     {
         let mut m = [0u8; 64];
         let mut at = 0;
@@ -247,6 +261,12 @@ pub extern "C" fn main() -> ! {
         at = mailbox::push_dec(&mut m, at, pa_st as u32);
         at = mailbox::push(&mut m, at, b" dbm=");
         at = mailbox::push_dec(&mut m, at, dbm_st as u32);
+        at = mailbox::push(&mut m, at, b" rd=");
+        at = mailbox::push_dec(&mut m, at, read_dbm as u32);
+        at = mailbox::push(&mut m, at, b" path=");
+        at = mailbox::push_dec(&mut m, at, path_st as u32);
+        at = mailbox::push(&mut m, at, b"/");
+        at = mailbox::push_dec(&mut m, at, path as u32);
         mailbox::write(Status::Info, &m[..at]);
     }
 

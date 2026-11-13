@@ -148,6 +148,48 @@ fn main() {
         ).expect("Couldn't write placeholder bindings");
     }
 
+    // The PA conversion plugin (Zlib, Gecko SDK v4.4.5, the RAIL 2.x variant of it).
+    //
+    // Measured before this existed: `RAIL_SetTxPowerDbm(handle, 100)` returned 0 and
+    // `RAIL_GetTxPowerDbm` read back -32768 -- RAIL's "invalid power" -- while every transmission still
+    // completed (`RAIL_EVENT_TX_PACKET_SENT` fired). The dBm-to-raw mapping is a WEAK function the customer
+    // is documented to override; rail.h says so at RAIL_ConvertDbmToRaw. Without the override the PA gets
+    // no valid level, drives nothing, and the modem reports success for a packet nobody can hear.
+    //
+    // This also supplies `sl_rail_util_pa_get_tx_power_config_2p4ghz`, one of the five symbols that kept
+    // the vendor Bluetooth stack from linking.
+    if target.starts_with("thumbv") {
+        let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        let emlib_vendor = manifest_dir.join("../efr32mg24-emlib-sys/vendor");
+        cc::Build::new()
+            .file("vendor/pa2/pa_conversions_efr32.c")
+            .file("vendor/pa2/pa_curves_efr32.c")
+            .include("vendor/pa2")
+            .include("vendor/pa2/efr32xg24")
+            .include("vendor/pa/efr32xg24/config")
+            .include("vendor/pa")
+            .include("vendor/rail")
+            .include("vendor/rail/protocol/ble")
+            .include("vendor/rail/chip/efr32xg2x")
+            // The device header refuses to compile without the exact part number; emlib-sys defines the
+            // same two for its own units.
+            .define("EFR32MG24B220F1536IM48", None)
+            .define("EFR32MG24", None)
+            .include(emlib_vendor.join("emlib/inc"))
+            .include(emlib_vendor.join("device"))
+            .include(emlib_vendor.join("common/inc"))
+            .include(emlib_vendor.join("common"))
+            .include(emlib_vendor.join("cmsis"))
+            // Same reasons as emlib: vendor C written for gnu11, and the device unit carries SAU setup that
+            // needs the CMSE extension even though we never run it.
+            .flag_if_supported("-mcmse")
+            .flag_if_supported("-ffunction-sections")
+            .flag_if_supported("-fdata-sections")
+            .flag_if_supported("-Wno-everything")
+            .compile("rail_pa");
+        println!("cargo:rerun-if-changed=vendor/pa2/");
+    }
+
     // Tell Cargo to re-run this build script if these files change
     println!("cargo:rerun-if-changed=blobs/");
     println!("cargo:rerun-if-changed=vendor/");

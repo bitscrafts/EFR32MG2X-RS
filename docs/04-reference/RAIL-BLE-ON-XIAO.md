@@ -275,3 +275,46 @@ Everything below this line was fixed on the way, and each one was a real defect,
 - The beacon did not follow `rail_ble.h`'s documented sequence: `RAIL_BLE_Init` and
   `RAIL_BLE_ConfigChannelRadioParams` were both missing, and without the first the radio enters TX and
   never leaves.
+## The power amplifier: found, and still not satisfied (2026-11-13)
+
+The gap between "the modem sends" and "the air has it" has a name, and the measurement points at it:
+
+```
+RAIL_ConfigTxPower(mode)        HP (0) = 0    MP (1) = 1    LP (1) = 1
+RAIL_SetTxPowerDbm(100)         HP = 0        MP = 2        LP = 2
+RAIL_GetTxPowerDbm()            -32768        -32768        -32768     <- RAIL's invalid power
+RAIL_SetTxPower(raw)            2 (INVALID_STATE) for every raw value
+RAIL_GetTxPower()               0xFF (invalid)
+RAIL_GetRfPath()                0 (status 0)
+```
+
+-32768 is `RAIL_TX_POWER_DBM_INVALID`. The call that is supposed to configure the amplifier returns success
+and the read-back says the amplifier has no valid level. A transmitter in that state completes packets at the
+modem — which is exactly what `RAIL_EVENT_TX_PACKET_SENT` was counting — and drives nothing.
+
+`rail.h` documents why a conversion can be missing: `RAIL_ConvertDbmToRaw` is a **weak function the customer
+overrides**, and Silicon Labs ships that override as the PA conversion plugin. This project had no plugin, so
+the weak default was doing the mapping.
+
+Fixed here, from the vendor's own RAIL 2.x sources (Gecko SDK v4.4.5, Zlib), vendored to
+`crates/efr32mg24-rail-sys/vendor/pa2/` and compiled into the crate:
+
+- `pa_conversions_efr32.c`, `pa_curves_efr32.c` and the xg24 curve tables,
+- which define `RAIL_ConvertDbmToRaw`, `RAIL_ConvertRawToDbm` **strong** (verified: `T` in the ELF at
+  `0x08009018` / `0x08009114`, overriding the blob's weak versions) and also
+  `sl_rail_util_pa_get_tx_power_config_2p4ghz` — one of the five symbols the Bluetooth stack was missing.
+
+The vendor's own xg24 configuration also corrected a wrong assumption here: the selected PA mode is
+`SL_RAIL_UTIL_PA_SELECTION_2P4GHZ = RAIL_TX_POWER_MODE_2P4GIG_HIGHEST` (value 4), not the `2P4_HP` alias
+(value 0) that was being used.
+
+**Still open, and stated plainly:** with the plugin linked and mode 4 selected, `RAIL_GetTxPowerDbm()` still
+returns -32768 and `RAIL_GetTxPower()` still returns 0xFF. The dBm-to-raw function now exists, so the missing
+mapping is no longer the whole story: either the plugin's curve selection needs
+`SL_RAIL_UTIL_PA_CONFIG_HEADER` pointing at the xg24 curve set explicitly, or the PA needs a calibration step
+this build does not perform. `SL_RAIL_UTIL_PA_CALIBRATION_ENABLE` is now 0 (the vendor's own NVM calibration
+headers are not part of this project), which is the documented nominal-curve path and did not change the
+read-back.
+
+The next measurement is therefore not another guess: read `RAIL_GetPaPowerMode()` / the PA status register
+after `RAIL_ConfigTxPower`, and compare with what `pa_conversions_efr32.c` believes it configured.

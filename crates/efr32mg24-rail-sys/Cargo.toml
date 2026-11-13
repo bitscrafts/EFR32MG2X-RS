@@ -34,6 +34,8 @@ name = "rail_version"
 bindgen = "0.69"
 # For verifying RAIL blob integrity
 sha2 = "0.10"
+# For compiling the PA conversion plugin, which is C
+cc = "1.0"
 
 [features]
 # No default features
