@@ -67,6 +67,17 @@ CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
 # form of `--agents` requires Claude Code v2.1.281+; this machine runs 2.1.300.
 AGENTS_FILE="${AGENTS_FILE:-}"
 
+# **Resuming is the default rule in this project (AGENTS.md HARD RULE 0e) -- and it is affordable only if the history
+# is compacted.** Measured on 2026-11-13: a 286-turn single run carried ~179k tokens of context per turn at
+# $0.018/turn, while resuming that same session for 8 turns carried ~310k per turn at $0.72-1.18. The cost is the
+# per-turn context, not the resume: keep the thread, shrink the window.
+#
+#   AUTOCOMPACT=auto     let Claude Code decide (default)
+#   AUTOCOMPACT=120000   force a window, e.g. a quarter of a 1M-context model, which keeps recent work verbatim
+#   AUTOCOMPACT=0        pass nothing, i.e. leave whatever the session already had
+AUTOCOMPACT="${AUTOCOMPACT:-auto}"
+FORK="${FORK:-0}"
+
 # The tool's own environment, set here rather than inherited.
 export PATH="/root/.local/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin"
 export IS_SANDBOX="${IS_SANDBOX:-1}"
@@ -98,6 +109,8 @@ echo "   permission   : $PERM    (plan => Opus plans; anything else => Sonnet ex
 if [ -n "$AGENTS_FILE" ]; then
   echo "   subagents    : $AGENTS_FILE ($(grep -c '"model"' "$AGENTS_FILE" 2>/dev/null) definition(s))"
 fi
+echo "   autocompact  : ${AUTOCOMPACT}   (the lever that makes a resumed session affordable)"
+[ "$FORK" = "1" ] && echo "   fork         : yes (resume the history into a new session id)"
 if [ "$RESUME" -eq 1 ]; then
   echo "   resume       : ${SESSION:-<none recorded>}"
 else
@@ -116,6 +129,11 @@ ARGS=(--model "$MODEL" --permission-mode "$PERM" --max-turns "$MAX_TURNS"
 if [ -n "$AGENTS_FILE" ] && [ -f "$AGENTS_FILE" ]; then
   ARGS=(--agents "$AGENTS_FILE" "${ARGS[@]}")
 fi
+# `--autocompact auto` is the tool's own default, so only pass it when it was set to something else.
+if [ "$AUTOCOMPACT" != "0" ] && [ "$AUTOCOMPACT" != "auto" ]; then
+  ARGS=(--autocompact "$AUTOCOMPACT" "${ARGS[@]}")
+fi
+[ "$FORK" = "1" ] && ARGS=(--fork-session "${ARGS[@]}")
 if [ "$RESUME" -eq 1 ] && [ -n "$SESSION" ]; then
   ARGS=(--resume "$SESSION" "${ARGS[@]}")
   echo "   log          : $LOG"
