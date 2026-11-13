@@ -1,0 +1,72 @@
+\section{One Radio, Three Protocols}
+\label{sec:ble-one-radio}
+
+Everything in this chapter so far treats the radio as a Bluetooth radio. It is not. It is a 2.4\,GHz radio
+that happens to be running Bluetooth at the moment, and the same silicon is meant to run 802.15.4 --- Zigbee
+and Thread --- later. That is not an aspiration, it is measurable in the archive this project already
+links:
+
+\begin{minted}[fontsize=\footnotesize]{console}
+$ nm -g librail_efr32xg24_gcc_release.a | grep -c RAIL_IEEE802154
+81
+$ nm -g librail_efr32xg24_gcc_release.a | grep -c RAIL_BLE
+54
+\end{minted}
+
+Eighty-one 802.15.4 entry points and fifty-four Bluetooth ones, in the same binary. Nothing has to be
+downloaded for the link layer of Zigbee or Thread; the question is only what the layers above the radio are
+allowed to assume.
+
+\subsection{The rules, written while Bluetooth was being brought up}
+
+A constraint noticed later is a refactor. So the rules are stated here, at the point where the Bluetooth
+path was made to work, and they bind the code that follows.
+
+\textbf{The radio sits behind a protocol-neutral boundary.} The HAL tunes, transmits and receives. Bluetooth
+and 802.15.4 are modules above it. A HAL function whose name contains \codeinline{advertising},
+\codeinline{access address} or \codeinline{connection} is in the wrong layer, however convenient it looks
+at the time.
+
+\textbf{Channel numbering belongs to the protocol.} This chapter paid for that rule: RAIL's channel argument
+is the \emph{physical} channel, Bluetooth's advertising channels are the pairs $(0,37)$, $(12,38)$,
+$(39,39)$, and 802.15.4 numbers its channels on a different grid entirely. A caller that passes a number it
+heard from a specification is passing a number into the wrong namespace.
+
+\textbf{Services that all three protocols need are written once, and neutrally.} The timer, the persistent
+store and the cipher are not Bluetooth features:
+
+\begin{center}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Service & Needed by & Where it belongs \\
+\midrule
+timer over SYSRTC & every stack schedules events & the HAL \\
+persistent store (nvm3) & pairing data, network keys, frame counters & one flash region, one API \\
+cipher & Bluetooth CTR, 802.15.4 CCM* & a block cipher; CCM* is a mode on top \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The timer is the immediate consequence. The next section of work is a timer, and writing it as a
+\codeinline{sl\_sleeptimer} shim would mean Zigbee needs a second driver for the same peripheral. Writing it
+as a HAL timer over SYSRTC costs the same and serves three protocols.
+
+\textbf{One state buffer is a single-protocol assumption.} \codeinline{RAIL\_AddStateBuffer} takes a buffer
+per protocol instance. Code that hard-codes one global has already decided the product runs one protocol
+forever.
+
+\subsection{What the radio does not decide}
+
+Whether Bluetooth and an 802.15.4 stack run together, time-sliced, or in separate firmware images is a
+question this part answers with its 256\,kB of RAM, and the answer can wait. What cannot wait is the
+boundary that keeps the question open. The test is one sentence long, and it can be asked of any new piece
+of code:
+
+\begin{quote}
+\emph{Would this be identical for 802.15.4?}
+\end{quote}
+
+If yes, it belongs in the HAL or in a hardware-free library, and it must be written so that Zigbee and
+Thread can use it unchanged. If no, it is a protocol module, and neither the HAL, nor the BSP, nor the other
+protocol may reach into it. Applied consistently, the second radio protocol becomes an addition; applied
+carelessly, it becomes a rewrite of everything this chapter built.

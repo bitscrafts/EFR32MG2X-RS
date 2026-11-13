@@ -266,3 +266,4 @@ See [LICENSE](../LICENSE) file for details.
 - [The path to GATT](04-reference/GATT-PATH.md) -- the four symbols left, two of them not obtainable from public sources.
 - [HOST RULE: the radio carries the network](04-reference/HOST-RADIO-SAFETY.md)
 - [What is still C, and what it costs to be Rust](04-reference/PURE-RUST-PATH.md)
+- [One radio, three protocols](04-reference/RADIO-PROTOCOLS.md)
