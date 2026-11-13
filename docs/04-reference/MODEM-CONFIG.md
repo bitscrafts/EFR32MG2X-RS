@@ -114,3 +114,57 @@ Step 2 is available today and is the cheapest way to learn the encoding; step 3 
   identified as the explanation for the physical/logical confusion measured the day before; the
   blob-provides-code-not-data distinction measured (`RAIL_BLE_Phy1Mbps` NULL, `phyConfigBase` null asserts);
   the five unknowns listed with the experiments that would close them.
+
+## The table exists, and it is in the package — 2026-11-13
+
+The claim above ("only the Radio Configurator produces it") was too strong. The Gecko SDK v4.4.5 package ships the
+Radio Configurator's output for BLE on this part, generated and Zlib licensed:
+
+    platform/radio/rail_lib/plugin/rail_util_built_in_phys/efr32xg24/sl_rail_ble_config_39MHz.c
+
+Vendored (reduced to the 1 Mbps Viterbi 39 MHz configuration and the tables it references) under
+`crates/efr32mg24-rail-sys/vendor/ble_config/`. Its values, read from the file rather than deduced:
+
+    RAIL_ChannelConfig_t sl_rail_ble_phy_1Mbps_viterbi_39MHz_channelConfig = {
+      .phyConfigBase       = sl_rail_ble_phy_1Mbps_viterbi_39MHz_modemConfigBase,
+      .phyConfigDeltaSubtract = NULL,
+      .configs             = sl_rail_ble_phy_1Mbps_viterbi_39MHz_channels,
+      .length              = 3U,
+      .signature           = 0UL,
+      .xtalFrequencyHz     = 39000000UL,
+    };
+
+    entry 0: baseFrequency 2402000000, channelSpacing 2000000, physicalChannelOffset 0,
+             channelNumberStart 0, channelNumberEnd 37
+
+Three entries cover the band; the first spans channels 0..37 from 2402 MHz in 2 MHz steps.
+
+**Two things this settles:**
+
+1. **The crystal frequency is 39 MHz**, which is what RAIL asserts about (`RAIL_ASSERT_INVALID_XTAL_FREQUENCY`,
+   code 66) when it has no configuration at all. A Bluetooth stack that starts without this table cannot configure
+   RAIL, and the default implementation of `RAILCb_AssertFailed` then loops forever — which is exactly the "hang"
+   this project spent a session chasing.
+2. **The channel numbering is physical**: channel 0 = 2402 MHz, 12 = 2426, 39 = 2480. The advertising example's
+   `(0,37)`, `(12,38)`, `(39,39)` pairs are the physical channel for the radio and the Bluetooth logical channel for
+   the whitening seed, and this table's first entry confirms the physical side. `physicalChannelOffset` is 0, so no
+   offset is applied.
+
+## Why the table is vendored but not compiled
+
+Compiling the file as a separate C unit fails at link with `duplicate symbol`, and the reason is worth recording:
+`rail_types.h` includes chip-specific `.c` sources, so any translation unit of ours that includes it also defines
+things the RAIL blob already defines (`sli_bootloader_preHook` from `rfhal_pti.c`, plus a pile of `RAILINT_*`).
+Including a header should not add functions to the image; here it does.
+
+The intended route is therefore to **emit the table as Rust statics**: the modem configuration is a `uint32_t[]`,
+the channel entries are a small `repr(C)` array, and the `RAIL_ChannelConfig_t` is six fields. That keeps the data
+(the Radio Configurator's own output) and leaves the C out, which is also this project's stated direction.
+
+## What the table still does not explain
+
+The Bluetooth blobs never call `RAIL_ConfigChannels` (checked: zero imports across all three archives), so the
+application has to, in the order the SDK's own flex utility uses: `RAIL_Init`, then `RAIL_ConfigChannels` with this
+table. Whether the stack then accepts a RAIL instance it did not create itself is the open question -- and the way
+to answer it is a program that does exactly that and reads `rail_assert::last_assert()` afterwards.
+

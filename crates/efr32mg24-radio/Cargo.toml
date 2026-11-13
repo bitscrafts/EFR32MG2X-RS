@@ -10,6 +10,7 @@ keywords = ["efr32", "mg24", "bluetooth", "ble", "rail"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
+efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys" }
 # The two vendor stacks, as generated bindings plus their binary blobs.
 efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys" }
 # The HAL is here for one thing only: a delay the stack can use while it boots.

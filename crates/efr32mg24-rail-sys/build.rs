@@ -162,6 +162,12 @@ fn main() {
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
         let emlib_vendor = manifest_dir.join("../efr32mg24-emlib-sys/vendor");
         cc::Build::new()
+            // **The Radio Configurator's BLE 39 MHz table is vendored but NOT compiled here.** Including it as a
+            // separate C unit duplicates symbols that the RAIL blob already contains, because Silabs' `rail_types.h`
+            // includes chip-specific `.c` files: the link fails with `duplicate symbol: sli_bootloader_preHook`
+            // (rfhal_pti.c) and a pile of `RAILINT_*` names. The data is in `vendor/ble_config/` and the intended
+            // route is to emit it as Rust statics -- see docs/04-reference/MODEM-CONFIG.md. It is what fixes
+            // `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` (66), which is what stops the Bluetooth stack from starting.
             .file("vendor/pa2/pa_conversions_efr32.c")
             .file("vendor/pa2/pa_curves_efr32.c")
             .include("vendor/pa2")
@@ -171,6 +177,7 @@ fn main() {
             .include("vendor/rail")
             .include("vendor/rail/protocol/ble")
             .include("vendor/rail/chip/efr32xg2x")
+            .include("vendor/ble_config")
             // The device header refuses to compile without the exact part number; emlib-sys defines the
             // same two for its own units.
             .define("EFR32MG24B220F1536IM48", None)
