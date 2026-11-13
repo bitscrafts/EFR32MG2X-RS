@@ -1,17 +1,18 @@
-//! Does the timer work on its own, and where does the stack's init stop?
+//! Where does the Bluetooth bring-up stop? One run, one flow, one answer.
 //!
-//! Two questions that a single run can separate:
+//! This probe exists because the questions kept changing while the instrument kept accumulating patches: at one
+//! point it called `stack_init::start` **twice**, and the second call's trace overwrote the first call's, so a
+//! stage that had failed read as a stage that had passed. It was rewritten from scratch with a single flow, and
+//! every diagnostic slot is cleared before anything runs.
 //!
-//! 1. **Is our timer path real?** Schedule a timer for 100 ms with a Rust callback, spin for a while, and report
-//!    whether the callback ran and whether the compare interrupt fired. If this works, the timer is not the
-//!    problem, whatever happens next.
-//! 2. **Where does `sli_bt_init_stack` stop?** Call it afterwards and report its status next to the interrupt
-//!    counter and the heap state. Three outcomes, three different faults: it never returns (it waits for
-//!    something), it returns a status (the stack is telling us what it wants), or it returns zero and no
-//!    `system_boot` ever arrives (the host started but its event loop is not being serviced).
+//! The sequence, and what each step proves:
 //!
-//! The order matters. Arming first means the interrupt is already enabled and has already been taken at least
-//! once before the stack is involved, so a zero interrupt count afterwards cannot be blamed on the arming code.
+//! 1. **HFXO, RAIL, channel table, host init, host start** — with a trace word per step, so a stall names itself.
+//! 2. **The timer, after the stack** — RAIL configures the SYSRTC during bring-up and `CFG` cannot be written
+//!    while the counter runs, so an application that starts it first makes the stack fault.
+//! 3. **A BGAPI command** — a running host answers one. This is the difference between "wait longer for
+//!    `system_boot`" and "the host is not running".
+//! 4. **The event queue** — `system_boot` should be the first event.
 
 #![no_std]
 #![no_main]
@@ -24,18 +25,40 @@ use core::ffi::c_void;
 use cortex_m_rt::entry;
 use efr32mg24_bluetooth_sys::sleeptimer;
 use efr32mg24_hal::board::Board;
+use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::prelude::*;
 use panic_halt as _;
 
-/// Counts how many times the timer callback ran. `static mut` with volatile access, because it is written from an
-/// interrupt handler and read from the main loop.
+/// Counts how many times the timer callback ran. Written from an interrupt, read from the main loop.
 static mut TICKS: u32 = 0;
 
-/// The callback the stack uses too: it must be `extern "C"` and take the timer's data pointer.
 extern "C" fn on_tick(_data: *mut c_void) {
     unsafe {
         let p = core::ptr::addr_of_mut!(TICKS);
         core::ptr::write_volatile(p, core::ptr::read_volatile(p).wrapping_add(1));
+    }
+}
+
+/// A HardFault handler that reports instead of hanging. `cortex-m-rt`'s default is an empty loop, which is
+/// indistinguishable from a slow init; this one records the exception frame's program counter plus `CFSR` and
+/// `BFAR`, so the fault names the instruction that caused it.
+#[no_mangle]
+pub unsafe extern "C" fn HardFault() -> ! {
+    // The handler has its own prologue, so the exception frame is not exactly at `msp`. Dump sixteen words and let
+    // the frame be recognised by its own shape (`xPSR` has bit 0 set, `pc` sits two words above it).
+    let sp = cortex_m::register::msp::read() as *const u32;
+    let slot = 0x2003_F200 as *mut u32;
+    slot.write_volatile(0xFA17_0000);
+    slot.add(1).write_volatile(sp as u32);
+    slot.add(2)
+        .write_volatile(core::ptr::read_volatile(0xE000_ED28 as *const u32)); // CFSR
+    slot.add(3)
+        .write_volatile(core::ptr::read_volatile(0xE000_ED38 as *const u32)); // BFAR
+    for i in 0..16 {
+        slot.add(4 + i).write_volatile(sp.add(i).read_volatile());
+    }
+    loop {
+        core::hint::spin_loop();
     }
 }
 
@@ -75,7 +98,7 @@ fn label(out: &mut [u8], mut at: usize, s: &[u8]) -> usize {
 }
 
 /// Publish a stage marker. The mailbox keeps the last record, so if the program stops, the record that is there
-/// names the stage it stopped in -- which is the whole point of publishing as we go instead of at the end.
+/// names the stage it stopped in.
 fn stage(tag: &[u8], a: u32, b: u32) {
     let mut m = [0u8; 64];
     let mut n = 0;
@@ -92,14 +115,43 @@ fn main() -> ! {
     let mut board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
 
+    // Every diagnostic record survives a reset, and a stale one reads exactly like a fresh one. Clear all three
+    // before anything runs: the RAIL assertion record, the fault record, and the bring-up trace.
+    unsafe {
+        let assert_slot = 0x2003_F500 as *mut u32;
+        let fault_slot = 0x2003_F200 as *mut u32;
+        let trace_slot = 0x2003_F600 as *mut u32;
+        for i in 0..8 {
+            trace_slot.add(i).write_volatile(0xAAAA_AAAA);
+        }
+        for i in 0..20 {
+            fault_slot.add(i).write_volatile(0);
+        }
+        for i in 0..4 {
+            assert_slot.add(i).write_volatile(0);
+        }
+    }
+
     stage(b"boot", 0, 0);
 
-    // 1. The timer on its own, before the stack exists.
+    // 1. The whole bring-up, traced.
+    let boot = unsafe {
+        efr32mg24_bluetooth_sys::stack_init::start(
+            efr32mg24_bluetooth_sys::stack_init::default_configuration(),
+        )
+    };
+    stage(b"initdone", boot, sleeptimer::irq_stats());
+
+    // **The documented way to start the host, tried before anything else.** Its absence is why the stack is meant to
+    // start automatically; if it answers here, it answers the question of who is supposed to run the stack.
+    let start_cmd = unsafe { efr32mg24_bluetooth_sys::ffi::sl_bt_system_start_bluetooth() };
+    stage(b"startcmd", start_cmd as u32, 0);
+
+    // 2. The timer, now that the radio owns the counter. `board.sysrtc()` returns immediately on a running module.
     let rtc = board.sysrtc();
-    stage(b"sysrtc", 1, 0);
     let mut handle = [0u8; 32];
     let period_ticks = sleeptimer::sl_sleeptimer_ms32_to_tick(50);
-    let status = unsafe {
+    let sched = unsafe {
         sleeptimer::sl_sleeptimer_restart_timer(
             handle.as_mut_ptr(),
             period_ticks,
@@ -109,56 +161,33 @@ fn main() -> ! {
             0,
         )
     };
+    stage(b"sched", sched, period_ticks);
 
-    stage(b"sched", status, period_ticks);
-
-    // Read back the three things an interrupt needs: the peripheral's enable bit, the NVIC's enable bit, and the
-    // core's global mask. Without these three numbers, "no interrupt" is four different faults wearing one name.
     let iser2 = unsafe { core::ptr::read_volatile(0xE000_E108 as *const u32) };
     let ien = unsafe { core::ptr::read_volatile(0x500A_8064 as *const u32) };
-    let cmp0 = unsafe { core::ptr::read_volatile(0x500A_806C as *const u32) };
-    let cnt = unsafe { core::ptr::read_volatile(0x500A_8018 as *const u32) };
-    let primask = cortex_m::register::primask::read();
-    stage(b"iser2", iser2, ien);
-    stage(b"cmpcnt", cmp0, cnt);
-    stage(b"primask", primask as u32, 0);
+    stage(b"nvic", iser2, ien);
 
-    // Wait for at least three periods. `poll()` is deliberately *not* called here: the point is whether the
-    // interrupt alone can run the callback.
     let mut waited = 0u32;
-    while waited < 200 {
+    while waited < 300 {
         delay.delay_ms(1);
         waited += 1;
         if unsafe { core::ptr::read_volatile(core::ptr::addr_of!(TICKS)) } >= 3 {
             break;
         }
     }
-
-    let tick_count = unsafe { core::ptr::read_volatile(core::ptr::addr_of!(TICKS)) };
-    stage(b"waited", tick_count, sleeptimer::irq_stats());
+    let ticks = unsafe { core::ptr::read_volatile(core::ptr::addr_of!(TICKS)) };
     let irqs = sleeptimer::irq_stats();
+    stage(b"timer", ticks, irqs);
     let _ = rtc;
 
-    // 2. Now the stack, with the timer already proven.
-    stage(b"preinit", tick_count, sleeptimer::irq_stats());
-    let boot = unsafe {
-        efr32mg24_bluetooth_sys::stack_init::start(
-            efr32mg24_bluetooth_sys::stack_init::default_configuration(),
-        )
-    };
-
-    stage(b"initdone", boot, sleeptimer::irq_stats());
-
-    // **A command, not just a wait.** If the host is running, a BGAPI command produces a response event; if the
-    // queue stays empty even after a command, the host is initialised but not running, which is a different defect
-    // from a missing `system_boot`. This is the difference between "wait longer" and "start it".
+    // 3. A BGAPI command: if the host runs, this answers.
     let mut major: u16 = 0;
     let mut minor: u16 = 0;
     let mut patch: u16 = 0;
     let mut build: u16 = 0;
     let mut bootloader: u32 = 0;
     let mut hash: u32 = 0;
-    let cmd_status = unsafe {
+    let cmd = unsafe {
         efr32mg24_bluetooth_sys::ffi::sl_bt_system_get_version(
             &mut major,
             &mut minor,
@@ -168,59 +197,69 @@ fn main() -> ! {
             &mut hash,
         )
     };
-    stage(b"bgapi", cmd_status as u32, 0);
+    stage(b"bgapi", cmd as u32, 0);
 
-    // Give the host a moment to emit system_boot, then ask for events. This is where the polled path and the
-    // interrupt path differ, so the loop calls both.
-    delay.delay_ms(100);
+    // 4. The event queue.
     let mut events = 0u32;
     let mut last_pop = 0u32;
-    for _ in 0..200 {
+    let mut boot_event = 0u32;
+    for _ in 0..300 {
         sleeptimer::poll();
         let mut evt = core::mem::MaybeUninit::<efr32mg24_bluetooth_sys::ffi::sl_bt_msg_t>::uninit();
         let popped = unsafe { efr32mg24_bluetooth_sys::ffi::sl_bt_pop_event(evt.as_mut_ptr()) };
         last_pop = popped as u32;
         if popped == 0 {
             events += 1;
+            // `sl_bt_evt_system_boot_id` is the event that proves the host finished coming up.
+            let evt = unsafe { evt.assume_init() };
+            let id =
+                unsafe { core::ptr::read_volatile(core::ptr::addr_of!(evt.header) as *const u8) };
+            if id == 0x00 {
+                boot_event += 1;
+            }
         }
         delay.delay_ms(1);
     }
 
-    let mut m = [0u8; 180];
+    let (heap_in_use, heap_failures, heap_violations) = efr32mg24_bluetooth_sys::heap::stats();
+    let assert = efr32mg24_bluetooth_sys::rail_assert::last_assert();
+
+    let mut m = [0u8; 200];
     let mut n = 0;
-    n = label(&mut m, n, b"st=");
-    n = push_hex(&mut m, n, status);
-    n = label(&mut m, n, b" boot=");
+    n = label(&mut m, n, b"boot=");
     n = push_hex(&mut m, n, boot);
-    n = label(&mut m, n, b" tick=");
-    n = push_dec(&mut m, n, tick_count);
-    n = label(&mut m, n, b" irq=");
-    n = push_dec(&mut m, n, irqs);
-    n = label(&mut m, n, b" tick2=");
-    n = push_dec(&mut m, n, unsafe {
-        core::ptr::read_volatile(core::ptr::addr_of!(TICKS))
-    });
-    n = label(&mut m, n, b" irq2=");
-    n = push_dec(&mut m, n, sleeptimer::irq_stats());
-    n = label(&mut m, n, b" evt=");
-    n = push_dec(&mut m, n, events);
-    n = label(&mut m, n, b" pop=");
-    n = push_dec(&mut m, n, last_pop);
+    n = label(&mut m, n, b" stcmd=");
+    n = push_hex(&mut m, n, start_cmd as u32);
     n = label(&mut m, n, b" cmd=");
-    n = push_dec(&mut m, n, cmd_status as u32);
+    n = push_dec(&mut m, n, cmd as u32);
     n = label(&mut m, n, b" ver=");
     n = push_dec(&mut m, n, major as u32);
     n = label(&mut m, n, b".");
     n = push_dec(&mut m, n, minor as u32);
-    let (used, fails, viol) = efr32mg24_bluetooth_sys::heap::stats();
+    n = label(&mut m, n, b" evt=");
+    n = push_dec(&mut m, n, events);
+    n = label(&mut m, n, b"/");
+    n = push_dec(&mut m, n, boot_event);
+    n = label(&mut m, n, b" pop=");
+    n = push_dec(&mut m, n, last_pop);
+    n = label(&mut m, n, b" tick=");
+    n = push_dec(&mut m, n, ticks);
+    n = label(&mut m, n, b"/");
+    n = push_dec(&mut m, n, irqs);
     n = label(&mut m, n, b" heap=");
-    n = push_dec(&mut m, n, used as u32);
+    n = push_dec(&mut m, n, heap_in_use as u32);
     n = label(&mut m, n, b"/");
-    n = push_dec(&mut m, n, fails);
+    n = push_dec(&mut m, n, heap_failures);
     n = label(&mut m, n, b"/");
-    n = push_dec(&mut m, n, viol);
+    n = push_dec(&mut m, n, heap_violations);
+    n = label(&mut m, n, b" asrt=");
+    let (assert_code, assert_handle, _) = assert.unwrap_or((0, 0, 0));
+    n = push_dec(&mut m, n, assert_code);
+    n = label(&mut m, n, b" h=");
+    n = push_hex(&mut m, n, assert_handle);
 
-    let ok = tick_count >= 1 && irqs >= 1;
+    // PASS only when the host really came up: a boot event was seen and a command answered.
+    let ok = boot == 0 && cmd == 0 && boot_event >= 1;
     mailbox::write(
         if ok {
             mailbox::Status::Pass
@@ -230,7 +269,15 @@ fn main() -> ! {
         &m[..n],
     );
 
+    let mut tick = false;
     loop {
-        cortex_m::asm::wfi();
+        delay.delay_ms(250);
+        tick = !tick;
+        board.output_on(Port::A, 7, !tick);
+        sleeptimer::poll();
+        let mut evt = core::mem::MaybeUninit::<efr32mg24_bluetooth_sys::ffi::sl_bt_msg_t>::uninit();
+        unsafe {
+            efr32mg24_bluetooth_sys::ffi::sl_bt_pop_event(evt.as_mut_ptr());
+        }
     }
 }

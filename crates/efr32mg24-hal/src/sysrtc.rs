@@ -123,6 +123,18 @@ impl Sysrtc {
             unsafe { core::ptr::read_volatile(clken0) } | bits::CLKEN0_LFRCO | bits::CLKEN0_SYSRTC0;
         unsafe { core::ptr::write_volatile(clken0, gates) };
 
+        // **A running module is not reconfigured, and this early return is load-bearing.**
+        //
+        // `CFG` is writable only while the counter is disabled. Once the Bluetooth stack has started, RAIL owns the
+        // SYSRTC configuration -- it programs the module for its own sequencer timing on group 1 -- and a second
+        // party that stops, disables and reconfigures it produces a bus fault on the `CFG` write at
+        // `0x500a_800c` (measured: `cfsr=0x8200 bfar=0x500a800c`, escalated to a HardFault inside the fault
+        // handler). Whoever started it keeps it; an application only needs to read `CNT` and to program its own
+        // compare channel on group 0, and both are legal while it runs.
+        if this.is_enabled() && this.is_running() {
+            return this;
+        }
+
         // 2. Clock select, at the offset the header gives. 0 would mean disabled, which is what the wrong
         //    offset left behind.
         let clkctrl = (this.cmu + off::CMU_SYSRTC0CLKCTRL) as *mut u32;

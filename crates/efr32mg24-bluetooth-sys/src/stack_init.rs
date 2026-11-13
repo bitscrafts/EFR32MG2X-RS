@@ -69,7 +69,20 @@ pub struct Configuration {
     pub rf: RfConfig,
 }
 
-/// The one configuration this program will ever use.
+/// Where RAIL keeps its per-instance state.
+///
+/// `RAIL_Init` is documented to cache the pointer for the lifetime of the application, so this lives in a static
+/// rather than in a stack slot. Zero, with a null scheduler and buffer, is the documented "no dynamic memory"
+/// configuration.
+static mut RAIL_CONFIGURATION: efr32mg24_rail_sys::RAIL_Config_t =
+    efr32mg24_rail_sys::RAIL_Config_t {
+        eventsCallback: None,
+        protocol: core::ptr::null_mut(),
+        scheduler: core::ptr::null_mut(),
+        buffer: [0u8; 1],
+    };
+
+/// The one host configuration this program will ever use.
 static mut CONFIGURATION: Configuration = default_configuration();
 
 extern "C" {
@@ -125,65 +138,55 @@ fn trace(slot: u32, value: u32) {
 /// Must be called once, before any other BGAPI command, with the radio's clocks available. The blobs keep the
 /// configuration pointer, so the value is given a static home and must remain the only one in use.
 pub unsafe fn start(config: Configuration) -> u32 {
-    // **The stack owns RAIL, and that order is forced by RAIL's own contract.**
+    // Four measurements, in the order the vendor's own initialiser puts them, with a trace word per step so that a
+    // failure names itself instead of hiding behind a hang.
     //
-    // `rail.h` says of `RAIL_Init`: "Call this function only once per protocol. If called again, it will do nothing
-    // and return NULL." The Bluetooth host calls it during its initialisation. This module used to call it first,
-    // which meant the host got NULL back, stored NULL, and later passed NULL to `RAIL_SetTune` -- and RAIL asserted
-    // `RAIL_ASSERT_INVALID_XTAL_FREQUENCY` with a NULL handle, which read as "the crystal frequency is wrong" while
-    // the real fault was that two owners existed.
+    //   0  HFXO running        1  RAIL instance         2  table's crystal       3  channel config status
+    //   4  entering the host   5  host initialisation   6  entering the start    7  start status
     //
-    // So: the host initialises the radio, and the application configures the channels afterwards, through the
-    // generic handle `RAIL_EFR32_HANDLE` (`0xFFFFFFFF`) that this single-instance part uses. The frequency itself
-    // still has to be known to RAIL before it configures the radio, which is why the HFXO is started first --
-    // without it the device reports zero hertz and the assertion is genuine.
+    // **Why the application initialises RAIL at all.** `RAIL_ChannelConfig_t.xtalFrequencyHz` is the only place RAIL
+    // learns the crystal, and only `RAIL_ConfigChannels` accepts it. Nothing in the Bluetooth blobs calls that
+    // function (verified: zero imports across all four), so somebody else has to -- and the vendor's own answer is
+    // `sl_rail_util_init.c`, which does `RAIL_Init` then `RAIL_ConfigData` then `RAIL_ConfigChannels` from the
+    // application, before the stack is started.
     {
         efr32mg24_emlib_sys::emlib_hfxo_start();
         efr32mg24_emlib_sys::emlib_clock_select_hfxo();
         trace(0, 1);
     }
 
-    // The blobs may keep the pointer, so it is given a static home rather than a stack slot. A
-    // `Box` would need an allocator this crate does not have; a `static mut` accessed once, under
-    // the caller's single-owner contract, is the honest equivalent.
-    // The configuration the SDK's wrapper uses is `bt_config` inside `sl_bt_stack_init.c`; the value passed here is
-    // kept for callers that want to see it, but the host reads its own. That is why `SL_BT_CONFIG_DEFAULT` in the
-    // vendored file is the thing to change for buffer sizes and connection counts.
+    // The instance. `RAIL_Init` is documented to work "only once per protocol" and to return NULL if called again,
+    // so this crate must be the one caller and must keep the handle.
+    let rail_config: *mut efr32mg24_rail_sys::RAIL_Config_t =
+        core::ptr::addr_of_mut!(RAIL_CONFIGURATION);
+    let handle = efr32mg24_rail_sys::RAIL_Init(rail_config, None);
+    trace(1, handle as usize as u32);
+    if handle.is_null() {
+        return 0x0021; // SL_STATUS_INVALID_PARAMETER: no RAIL instance
+    }
+
+    let channels = efr32mg24_rail_sys::ble_config::config();
+    trace(2, channels.xtalFrequencyHz);
+    let chan_status = efr32mg24_rail_sys::RAIL_ConfigChannels(handle, channels, None) as u32;
+    trace(3, chan_status);
+    if chan_status != 0 {
+        return chan_status;
+    }
+
+    // The host. `sl_bt_stack_init` is the vendor's wrapper and supplies the feature-use and BGAPI class tables that
+    // `sli_bt_init_stack` requires; calling the three-argument form with NULLs initialises a host that registers
+    // nothing and never emits an event.
     CONFIGURATION = config;
-    trace(4, 0xFFFF_FFFF); // about to enter the host's initialisation
+    trace(4, 0xFFFF_FFFF);
     let status = sl_bt_stack_init();
     trace(5, status);
     if status != 0 {
         return status;
     }
 
-    // Channels, on the generic handle, now that the host has created the RAIL instance.
-    // SAFETY: called once, after the host's initialisation and before it uses the radio.
-    unsafe {
-        let channels = efr32mg24_rail_sys::ble_config::config();
-        trace(2, channels.xtalFrequencyHz);
-        let chan_status = efr32mg24_rail_sys::RAIL_ConfigChannels(
-            0xFFFF_FFFF as efr32mg24_rail_sys::RAIL_Handle_t,
-            channels,
-            None,
-        ) as u32;
-        trace(3, chan_status);
-        if chan_status != 0 {
-            return chan_status;
-        }
-    }
-    // **`sli_bt_start_stack` is not called.** Measured: `sli_bt_init_stack` returns 0 -- the host initialises --
-    // and then `sli_bt_start_stack` returns a value that looks like an uninitialised register (0xc2a3de54) and RAIL
-    // asserts 66 with a NULL handle, which is the signature of something reconfiguring the radio without a
-    // configuration. The host's own event queue is what carries `system_boot`, so the question worth answering
-    // first is whether init alone is enough. Leaving the call out is a measurement, not a decision: if `system_boot`
-    // never appears this is the line to put back.
+    // The start, which brings the radio up (`ll_radioInit` calls `RAIL_Init`, gets NULL because the instance already
+    // exists, and continues on the instance configured above) and should queue `system_boot`.
     trace(6, 0xFFFF_FFFF);
-    // **Started, because the event queue needs it.** Measured with the SDK's own initialiser in place: init returns
-    // 0, a BGAPI command (`sl_bt_system_get_version`) also returns 0 -- the host runs -- but `sl_bt_pop_event`
-    // answers 45 (`SL_STATUS_NOT_FOUND`) and `system_boot` never arrives. The earlier attempt to call this produced
-    // a RAIL assert, and that attempt was made when the initialiser had no feature or BGAPI class tables; with them
-    // present the call is worth repeating, and the trace records what it returns either way.
     let started = sli_bt_start_stack();
     trace(7, started);
     started

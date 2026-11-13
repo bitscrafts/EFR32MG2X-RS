@@ -24,8 +24,10 @@
 
 use core::ffi::c_void;
 
-/// `ECODE_NVM3_OK`
-const ECODE_NVM3_OK: u32 = 0;
+/// `ECODE_NVM3_ERR_NO_VALID_PAGES` = `ECODE_EMDRV_NVM3_BASE | 0x03`; the base is `0xF000_E000`.
+const ECODE_NVM3_ERR_NO_VALID_PAGES: u32 = 0xF000_E003;
+/// `ECODE_NVM3_ERR_NOT_OPENED` = `ECODE_EMDRV_NVM3_BASE | 0x07`.
+const ECODE_NVM3_ERR_NOT_OPENED: u32 = 0xF000_E007;
 /// `ECODE_NVM3_ERR_KEY_NOT_FOUND` = `(0xF0000000 | 0xE000) | 0x0B`
 const ECODE_NVM3_ERR_KEY_NOT_FOUND: u32 = 0xF000_E00B;
 
@@ -97,7 +99,12 @@ pub static mut nvm3_defaultInit: [u8; 128] = [0; 128];
 /// Called by the stack with its own handle pointer; both arguments are ignored.
 #[no_mangle]
 pub unsafe extern "C" fn nvm3_open(_handle: *mut c_void, _init: *const c_void) -> u32 {
-    ECODE_NVM3_OK
+    // **A refusal, not a false success.** This used to return `ECODE_NVM3_OK` while leaving the handle untouched,
+    // because persistence is not implemented here. The stack took the success at face value and dereferenced a
+    // handle it had never had filled in: measured `cfsr=0x8200 bfar=0x0000_0138`, a null pointer read 0x138 bytes
+    // into a structure, inside `sli_bt_start_stack`. Returning "no valid pages" tells it the truth, so it can carry
+    // on without bonding data instead of walking into an empty handle.
+    ECODE_NVM3_ERR_NO_VALID_PAGES
 }
 
 /// Read an object. Always "not found", which is the behaviour of an empty store.
@@ -125,7 +132,7 @@ pub unsafe extern "C" fn nvm3_readData(
 /// As `nvm3_readData`.
 #[no_mangle]
 pub unsafe extern "C" fn nvm3_deleteObject(_handle: *mut c_void, _key: u32) -> u32 {
-    ECODE_NVM3_OK
+    ECODE_NVM3_ERR_NOT_OPENED
 }
 
 /// Power-manager requirements recorded, and NVM3 read misses. The example prints both.
