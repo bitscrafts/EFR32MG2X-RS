@@ -20,6 +20,94 @@ use core::ffi::c_void;
 /// which reads `[r3, #24]` from the same base.
 const SYSRTC_CNT: usize = 0x500A_8018;
 
+/// The registers the interrupt path needs, at the offsets measured from the blob (see
+/// `docs/04-reference/SYSRTC-COMPARE-WORKS.md`). The per-channel flag is **bit 1** for channel 0, not bit 0, and a
+/// flag is cleared by writing it to the `+0x2000` alias rather than by storing zero.
+const SYSRTC_BASE: usize = 0x500A_8000;
+const R_GRP0_IF: usize = 0x60;
+const R_GRP0_IEN: usize = 0x64;
+const R_GRP0_CMP0: usize = 0x6C;
+const IF_CLEAR_ALIAS: usize = 0x2000;
+/// `SYSRTC_GRP0_IEN` bit for compare channel 0, measured (bit 1).
+const IEN_CMP0: u32 = 1 << 1;
+/// `SYSRTC_APP` in the PAC's interrupt list. IRQ 67 lives in `ISER2` (64..95), bit 3 — the first attempt used
+/// `ISER1` and the compiler refused the shift by 35, which is the least destructive way to learn it.
+const SYSRTC_APP_IRQ: u32 = 67;
+/// `NVIC_ISER2`, `0xE000_E100 + 4 * (67 / 32)`.
+const NVIC_ISER2: usize = 0xE000_E108;
+
+/// Whether the NVIC bit has been set. One write, once, so the scheduler does not pay for it on every schedule.
+static mut IRQ_ENABLED: bool = false;
+/// How many times the compare interrupt has fired, so the example can tell an interrupt-driven timer from a
+/// polled one that happens to look identical from the outside.
+static mut IRQ_HITS: u32 = 0;
+
+/// Program the next wake and make sure the compare interrupt is unmasked.
+///
+/// # Safety
+///
+/// Touches SYSRTC and NVIC registers; call only with the module enabled and running.
+unsafe fn arm(next: u32) {
+    core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_CMP0) as *mut u32, next);
+    core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IF + IF_CLEAR_ALIAS) as *mut u32, 0xFF);
+    core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IEN) as *mut u32, IEN_CMP0);
+
+    if !core::ptr::read_volatile(core::ptr::addr_of!(IRQ_ENABLED)) {
+        core::ptr::write_volatile(NVIC_ISER2 as *mut u32, 1u32 << (SYSRTC_APP_IRQ % 32));
+        core::ptr::write_volatile(core::ptr::addr_of_mut!(IRQ_ENABLED), true);
+    }
+}
+
+/// The earliest deadline in the table, or `None` when nothing is scheduled.
+fn earliest() -> Option<u32> {
+    unsafe {
+        let table = &*core::ptr::addr_of!(TIMERS);
+        let mut best: Option<u32> = None;
+        for t in table.iter() {
+            if !t.active {
+                continue;
+            }
+            best = Some(match best {
+                // "Earlier" on a wrapping counter: the smaller distance from now.
+                Some(b) if now().wrapping_sub(b) < now().wrapping_sub(t.deadline) => b,
+                _ => t.deadline,
+            });
+        }
+        best
+    }
+}
+
+/// The compare interrupt. This is the path the stack expects, and the reason the polled loop alone was not enough:
+/// during `sli_bt_init_stack` the application loop is not running, so a callback that only fires from `poll()`
+/// never fires at all, and the init waits forever.
+///
+/// The SDK's own `sl_sleeptimer_hal_sysrtc.c` runs its expiry callback from this interrupt, so doing the same is
+/// not a shortcut -- it is the design. The pollable `poll()` stays for the cases where the loop runs anyway.
+#[no_mangle]
+pub extern "C" fn SYSRTC_APP_IRQHandler() {
+    crate::sleeptimer::on_compare_interrupt();
+}
+
+/// Clear the flag first, then run what is due and re-arm: clearing first means a callback that takes longer than
+/// the next deadline still gets its own interrupt instead of finding a stuck flag.
+pub(crate) fn on_compare_interrupt() {
+    unsafe {
+        core::ptr::write_volatile(
+            (SYSRTC_BASE + R_GRP0_IF + IF_CLEAR_ALIAS) as *mut u32,
+            IEN_CMP0,
+        );
+        let p = core::ptr::addr_of_mut!(IRQ_HITS);
+        core::ptr::write_volatile(p, core::ptr::read_volatile(p).wrapping_add(1));
+    }
+    poll();
+}
+
+/// Compare interrupts taken, and callbacks run. A boot where `irq` stays 0 while the stack is waiting means the
+/// NVIC bit or `IEN` is wrong, which is a different fault from a scheduler that runs and computes the wrong time.
+pub fn irq_stats() -> u32 {
+    unsafe { core::ptr::read_volatile(core::ptr::addr_of!(IRQ_HITS)) }
+}
+
 /// The counter runs at 32 968 Hz measured (nominal 32 768). The nominal is reported because the stack converts
 /// through it and a 0.6% error over a connection interval is smaller than the interval's own quantisation.
 const TICKS_PER_SECOND: u32 = 32_768;
@@ -281,6 +369,16 @@ pub fn poll() {
     for (cb, data) in due.iter().take(due_count) {
         if let Some(f) = cb {
             f(*data);
+        }
+    }
+
+    // Re-arm for whatever is next. With nothing scheduled the interrupt source is turned off rather than left
+    // pointing at a deadline in the past, which would make the handler run continuously.
+    // SAFETY: the timer table is this module's own and the registers are the ones measured above.
+    unsafe {
+        match earliest() {
+            Some(next) => arm(next),
+            None => core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IEN) as *mut u32, 0),
         }
     }
 }
