@@ -53,6 +53,11 @@ while [ $# -gt 0 ]; do
 done
 
 MODEL="${MODEL:-opusplan}"
+# `opusplan` switches by MODE, not per turn: `plan` runs Opus, anything else runs Sonnet. Verified on this machine
+# with one-turn probes: plan -> claude-opus-5-5, bypassPermissions -> claude-sonnet-5-5. Pinning the mode to
+# execution for a whole session is therefore the same as pinning the model to Sonnet, which is what round 1 did
+# without saying so.
+PERM="${PERM:-bypassPermissions}"
 MAX_TURNS="${MAX_TURNS:-200}"
 LABEL="${BRIEF_LABEL:-ble-finish}"
 CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
@@ -84,7 +89,7 @@ echo "   brief        : $BRIEF"
 echo "   payload      : $(wc -c < "$BRIEF") bytes, $(wc -l < "$BRIEF") lines"
 echo "   max turns    : $MAX_TURNS"
 echo "   workdir      : $PROJECT"
-echo "   mode         : bypassPermissions (this container is the sandbox; IS_SANDBOX=$IS_SANDBOX)"
+echo "   permission   : $PERM    (plan => Opus plans; anything else => Sonnet executes)"
 if [ "$RESUME" -eq 1 ]; then
   echo "   resume       : ${SESSION:-<none recorded>}"
 else
@@ -98,7 +103,7 @@ cd "$PROJECT" || exit 1
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 LOG="$STATE_DIR/run-$LABEL-$STAMP.jsonl"
 
-ARGS=(--model "$MODEL" --permission-mode bypassPermissions --max-turns "$MAX_TURNS"
+ARGS=(--model "$MODEL" --permission-mode "$PERM" --max-turns "$MAX_TURNS"
       --output-format stream-json --verbose -p "$(cat "$BRIEF")")
 if [ "$RESUME" -eq 1 ] && [ -n "$SESSION" ]; then
   ARGS=(--resume "$SESSION" "${ARGS[@]}")
