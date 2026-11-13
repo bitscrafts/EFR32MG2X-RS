@@ -114,6 +114,8 @@ fn main() {
             for (dir_var, lib) in [
                 ("DEP_EFR32MG24_RAIL_BLOB_DIR", "rail_efr32xg24_gcc_release"),
                 ("DEP_EMLIB_MIN_LIB_DIR", "emlib_min"),
+                // The PA curves (sl_rail_util_pa_get_tx_power_config_2p4ghz) live in rail-sys's own archive.
+                ("DEP_EFR32MG24_RAIL_LIB_DIR", "rail_pa"),
             ] {
                 if let Ok(dir) = env::var(dir_var) {
                     println!("cargo:rustc-link-search=native={dir}");

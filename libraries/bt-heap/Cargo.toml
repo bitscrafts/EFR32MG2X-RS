@@ -1,0 +1,10 @@
+[package]
+name = "bt-heap"
+version = "0.1.0"
+edition = "2021"
+description = "A small first-fit heap for the Bluetooth stack, with no std and no external crates"
+license = "MIT"
+publish = false
+
+[lib]
+name = "bt_heap"

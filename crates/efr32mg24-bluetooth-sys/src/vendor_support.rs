@@ -1,0 +1,140 @@
+//! The vendor entry points that are neither emlib nor stack, answered in Rust.
+//!
+//! Three groups, each with the reason it is here rather than vendored as C:
+//!
+//! 1. **`sli_bt_init_controller_features`** — in the SDK this is a dispatcher over `sl_btctrl_init_*` calls,
+//!    every one of them guarded by a catalogue macro. Measured: `sl_btctrl_init_adv`, `_scan`, `_conn` and
+//!    `_phy` all exist in the controller blob we link, so this is a faithful Rust transcription of the four
+//!    calls a single-protocol peripheral build makes — not an invention.
+//!
+//! 2. **`sli_power_manager_update_*`** — in the SDK these maintain the power manager's requirements table so the
+//!    device may enter EM2. This firmware never sleeps (the polled timer cannot wake us), so the requirements
+//!    are counted and not acted on. That is a deliberate, visible limitation, not an oversight: `stats()`
+//!    reports the count so a future power manager has something to start from.
+//!
+//! 3. **`nvm3_*`** — Gecko SDK v4.4.5 ships NVM3's *core* as a prebuilt library, not source (`nvm3.c` is absent
+//!    from the package while `nvm3_default.c` is present), so there is nothing to vendor. This implements the
+//!    ABI the stack calls against, with **no persistence**: `readData` always reports "key not found", which is
+//!    exactly what an empty NVM looks like. Bonding therefore cannot survive a reset yet, and that is stated
+//!    here rather than discovered later. Everything the stack does with an empty store works; the moment
+//!    persistence matters, this module is the thing to replace.
+//!
+//! Error codes are Silabs' own, from `ecode.h`: `ECODE_OK = 0`, and the NVM3 base is
+//! `ECODE_EMDRV_BASE (0xF0000000) | 0xE000`, with `KEY_NOT_FOUND` at `| 0x0B`.
+
+use core::ffi::c_void;
+
+/// `SL_STATUS_OK`
+const SL_STATUS_OK: u32 = 0;
+/// `ECODE_NVM3_OK`
+const ECODE_NVM3_OK: u32 = 0;
+/// `ECODE_NVM3_ERR_KEY_NOT_FOUND` = `(0xF0000000 | 0xE000) | 0x0B`
+const ECODE_NVM3_ERR_KEY_NOT_FOUND: u32 = 0xF000_E00B;
+
+extern "C" {
+    // In the controller blob; verified present with nm before this file was written.
+    fn sl_btctrl_init_adv();
+    fn sl_btctrl_init_scan();
+    fn sl_btctrl_init_conn();
+    fn sl_btctrl_init_phy();
+}
+
+/// How many power-manager requirements the stack has asked for, and how many NVM read misses occurred. Both are
+/// diagnostics: the first says what a real power manager would have to honour, the second says how much the
+/// stack expects from persistent storage.
+static mut EM_REQUIREMENTS: u32 = 0;
+static mut NVM_MISSES: u32 = 0;
+
+/// The stack's controller bring-up, transcribed from `sl_bt_stack_init.c`.
+///
+/// Advertising, scanning, connection and PHY: the four features a peripheral-only build enables. The SDK gates
+/// each on a catalogue macro; without the catalogue here, all four run, which is what this firmware uses.
+#[no_mangle]
+pub extern "C" fn sli_bt_init_controller_features() -> u32 {
+    // SAFETY: these are controller initialisers with no arguments and no preconditions beyond the stack being
+    // started, which is the caller's contract in the SDK as well.
+    unsafe {
+        sl_btctrl_init_adv();
+        sl_btctrl_init_scan();
+        sl_btctrl_init_conn();
+        sl_btctrl_init_phy();
+    }
+    SL_STATUS_OK
+}
+
+/// Record an energy-mode requirement. The device never sleeps, so nothing is acted on.
+#[no_mangle]
+pub extern "C" fn sli_power_manager_update_em_requirement(_em: u32, _add: bool) {
+    unsafe {
+        let p = core::ptr::addr_of_mut!(EM_REQUIREMENTS);
+        core::ptr::write_volatile(p, core::ptr::read_volatile(p) + 1);
+    }
+}
+
+/// Record a clock-preservation requirement. Same reasoning.
+#[no_mangle]
+pub extern "C" fn sli_power_manager_update_hf_clock_settings_preservation_requirement(_add: bool) {
+    unsafe {
+        let p = core::ptr::addr_of_mut!(EM_REQUIREMENTS);
+        core::ptr::write_volatile(p, core::ptr::read_volatile(p) + 1);
+    }
+}
+
+/// Storage for the stack's default NVM3 handle. Opaque to us: the stack owns the layout and only ever passes the
+/// pointer back to the functions below. Sized generously (256 bytes) because the real `nvm3_Handle_t` carries
+/// its cache, and a smaller buffer would be a silent overflow the day persistence is implemented for real.
+#[no_mangle]
+pub static mut nvm3_defaultHandle: [u8; 256] = [0; 256];
+
+/// Storage for the default NVM3 initialisation structure, for the same reason. `nvm3_Init_t` is a handful of
+/// pointers and sizes; 128 bytes is well above its size on this target.
+#[no_mangle]
+pub static mut nvm3_defaultInit: [u8; 128] = [0; 128];
+
+/// Open the store. There is nothing to open: reporting success is what the stack needs to continue.
+///
+/// # Safety
+///
+/// Called by the stack with its own handle pointer; both arguments are ignored.
+#[no_mangle]
+pub unsafe extern "C" fn nvm3_open(_handle: *mut c_void, _init: *const c_void) -> u32 {
+    ECODE_NVM3_OK
+}
+
+/// Read an object. Always "not found", which is the behaviour of an empty store.
+///
+/// # Safety
+///
+/// `value`/`len` are the stack's buffer; nothing is written, so no bounds can be violated.
+#[no_mangle]
+pub unsafe extern "C" fn nvm3_readData(
+    _handle: *mut c_void,
+    _key: u32,
+    _value: *mut c_void,
+    _len: usize,
+) -> u32 {
+    let p = core::ptr::addr_of_mut!(NVM_MISSES);
+    core::ptr::write_volatile(p, core::ptr::read_volatile(p) + 1);
+    ECODE_NVM3_ERR_KEY_NOT_FOUND
+}
+
+/// Delete an object. Nothing is stored, so nothing can be deleted; success is honest here because the
+/// post-condition the caller wants (the key is absent) holds.
+///
+/// # Safety
+///
+/// As `nvm3_readData`.
+#[no_mangle]
+pub unsafe extern "C" fn nvm3_deleteObject(_handle: *mut c_void, _key: u32) -> u32 {
+    ECODE_NVM3_OK
+}
+
+/// Power-manager requirements recorded, and NVM3 read misses. The example prints both.
+pub fn stats() -> (u32, u32) {
+    unsafe {
+        (
+            core::ptr::read_volatile(core::ptr::addr_of!(EM_REQUIREMENTS)),
+            core::ptr::read_volatile(core::ptr::addr_of!(NVM_MISSES)),
+        )
+    }
+}

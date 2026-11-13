@@ -14,6 +14,7 @@ members = [
     # `libraries/` is domain policy: no hardware, builds and tests on the host.
     "libraries/motion-detection",
     "libraries/aes-ctr-radio",
+    "libraries/bt-heap",
 ]
 exclude = [
     "crates/efr32mg24-bootloader",

@@ -273,3 +273,4 @@ See [LICENSE](../LICENSE) file for details.
 - [SYSRTC, for the three protocols that will share it](04-reference/SYSRTC-FOR-THREE-PROTOCOLS.md)
 - [Reading the vendor blobs (objdump, then REA + Ghidra)](03-development/BLOB-DISASSEMBLY.md)
 - [The modem configuration: the data RAIL needs and nobody documents](04-reference/MODEM-CONFIG.md)
+- [Bluetooth integration: the symbol ledger](03-development/BLE-INTEGRATION.md)

@@ -61,9 +61,13 @@
 //! - No reverse engineering or modification of blobs
 //! - Distribution requires MSLA compliance
 
+/// The stack's allocator, over `libraries/bt-heap`.
+pub mod heap;
 /// The timer the stack schedules its events on, in Rust and polled.
 pub mod sleeptimer;
 mod support;
+/// Vendor entry points answered in Rust (controller feature init, power manager, NVM3 surface).
+pub mod vendor_support;
 
 // Raw FFI bindings (always available)
 #[allow(clippy::missing_safety_doc)]

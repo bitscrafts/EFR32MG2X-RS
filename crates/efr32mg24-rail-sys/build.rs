@@ -187,6 +187,9 @@ fn main() {
             .flag_if_supported("-fdata-sections")
             .flag_if_supported("-Wno-everything")
             .compile("rail_pa");
+        // Exposed so a dependent can place this archive AFTER its own blobs: the PA curves are referenced
+        // by the Bluetooth blobs, and an archive only satisfies symbols that are already undefined.
+        println!("cargo:lib-dir={}", std::env::var("OUT_DIR").unwrap());
         println!("cargo:rerun-if-changed=vendor/pa2/");
     }
 

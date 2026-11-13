@@ -11,6 +11,8 @@ keywords = ["efr32", "bluetooth", "ble", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
+efr32mg24-emlib-sys = { path = "../efr32mg24-emlib-sys" }
+bt-heap = { path = "../../libraries/bt-heap" }
 # AES-CTR for the controller, in Rust: libraries/aes-ctr-radio holds the implementation and its
 # FIPS-197 test, so the crypto is testable here instead of trusted as a vendor blob.
 aes-ctr-radio = { path = "../../libraries/aes-ctr-radio" }
