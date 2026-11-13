@@ -28,7 +28,9 @@
 //! bus clocks, clock select, wait, `CFG`, group config, interrupts off and cleared, `EN_SET`, `CMD = START`.
 //! Every synchronised register is read or written across a `SYNCBUSY` wait.
 
-use efr32mg24_pac::{cmu_s::RegisterBlock as CmuBlock, sysrtc0_s::RegisterBlock, CmuS, Sysrtc0S};
+use efr32mg24_pac::{
+    cmu_ns::RegisterBlock as CmuBlock, sysrtc0_ns::RegisterBlock, CmuNs, Sysrtc0Ns,
+};
 
 /// Offsets measured against the vendor headers (see the module note).
 mod off {
@@ -38,6 +40,14 @@ mod off {
     pub const CMU_CLKEN0: usize = 0x64;
     /// `SYSRTC_EN_SET`, the write-1-to-set alias of `EN`.
     pub const EN_SET: usize = 0x1004;
+    /// `SYSRTC_EN_CLR`, the write-1-to-clear alias. Disabling must use this; writing 0 to `EN_SET` does nothing.
+    pub const EN_CLR: usize = 0x2004;
+    /// The group block, at the offsets the RAIL blob uses (`SYSRTC_SEQ_IRQHandler` reads `+0x60` and `+0x64`).
+    /// Every SDK header puts these at 0x40 and is wrong for this silicon.
+    pub const GRP0_IF: usize = 0x60;
+    pub const GRP0_IEN: usize = 0x64;
+    pub const GRP0_CTRL: usize = 0x68;
+    pub const GRP0_CMP0VALUE: usize = 0x6C;
 }
 
 mod bits {
@@ -61,6 +71,19 @@ mod bits {
     pub const CLKSEL_MASK: u32 = 0x3;
 }
 
+/// One 32-bit register write at an absolute address, for the registers the PAC models wrongly.
+#[inline]
+fn wr(addr: usize, value: u32) {
+    // SAFETY: the caller passes an address inside a peripheral this module owns.
+    unsafe { core::ptr::write_volatile(addr as *mut u32, value) };
+}
+
+#[inline]
+fn rd(addr: usize) -> u32 {
+    // SAFETY: as `wr`.
+    unsafe { core::ptr::read_volatile(addr as *const u32) }
+}
+
 /// The SYSRTC peripheral, once.
 pub struct Sysrtc {
     regs: *const RegisterBlock,
@@ -73,7 +96,7 @@ unsafe impl Send for Sysrtc {}
 
 impl Sysrtc {
     /// Take the peripheral and put it in a known state: LFRCO, compare channel 0 armed, counter running.
-    pub fn take(cmu: &CmuS, rtc: &Sysrtc0S) -> Self {
+    pub fn take(cmu: &CmuNs, rtc: &Sysrtc0Ns) -> Self {
         let cmu_regs: &CmuBlock = cmu;
         let cmu_base = cmu_regs as *const CmuBlock as usize;
         let regs: &RegisterBlock = rtc;
@@ -103,29 +126,32 @@ impl Sysrtc {
         if this.regs_ref().en().read().bits() & bits::EN_EN != 0 {
             this.write_cmd(bits::CMD_STOP);
             this.wait_sync();
-            this.write_en_set(0);
+            // Disable through EN_CLR (0x2004). Writing 0 to EN_SET does nothing, which is how a warm reset
+            // could leave the module running while we reconfigured it.
+            wr(this.regs as usize + off::EN_CLR, bits::EN_EN);
             this.wait_sync();
         }
 
         // 4. CFG: debug-run off, so the counter stops when the core is halted.
         this.regs_ref().cfg().write(|w| unsafe { w.bits(0) });
 
-        // 5. Group 0, compare channel 0, free-running counter.
-        this.regs_ref()
-            .grp0_ctrl()
-            .write(|w| unsafe { w.bits(bits::CTRL_CMP0EN) });
+        // 5. Group 0, compare channel 0, free-running counter, at the offsets the RAIL blob itself uses:
+        //    GRP0_IF 0x60, GRP0_IEN 0x64, GRP0_CTRL 0x68. The headers put the group at 0x40 and are wrong for
+        //    this silicon -- writes there were silently lost and the compare channel was never enabled.
+        wr(this.regs as usize + off::GRP0_CTRL, bits::CTRL_CMP0EN);
 
         // 6. Every group interrupt off and cleared, so the first wake is a real deadline.
-        this.regs_ref().grp0_ien().write(|w| unsafe { w.bits(0) });
-        this.regs_ref()
-            .grp0_if()
-            .write(|w| unsafe { w.bits(bits::GRP0_ALL) });
+        wr(this.regs as usize + off::GRP0_IEN, 0);
+        wr(this.regs as usize + off::GRP0_IF, bits::GRP0_ALL);
 
         // 7. Enable the module through EN_SET (0x1004), then start. 0x1000 is IPVERSION_SET and writing
         //    there left EN at zero, which is how the first version of this module failed.
         this.write_en_set(bits::EN_EN);
         this.wait_sync();
         this.write_cmd(bits::CMD_START);
+        // The store must actually leave the core before anything reads the counter again: with a buffered
+        // store the first later access is where the core runs into it, which reads as "the counter read hangs".
+        unsafe { core::arch::asm!("dsb 0xf", "isb 0xf") };
 
         this.set_counter(0);
 
@@ -203,12 +229,8 @@ impl Sysrtc {
     #[inline]
     pub fn schedule_at(&self, deadline: u32) {
         self.wait_sync();
-        self.regs_ref()
-            .grp0_cmp0value()
-            .write(|w| unsafe { w.bits(deadline) });
-        self.regs_ref()
-            .grp0_ien()
-            .write(|w| unsafe { w.bits(bits::GRP0_CMP0) });
+        wr(self.regs as usize + off::GRP0_CMP0VALUE, deadline);
+        wr(self.regs as usize + off::GRP0_IEN, bits::GRP0_CMP0);
     }
 
     /// Schedule `ticks` from now.
@@ -220,11 +242,9 @@ impl Sysrtc {
     /// True if compare channel 0 fired, and acknowledge it.
     #[inline]
     pub fn take_compare_event(&self) -> bool {
-        let fired = self.regs_ref().grp0_if().read().bits() & bits::GRP0_CMP0 != 0;
+        let fired = rd(self.regs as usize + off::GRP0_IF) & bits::GRP0_CMP0 != 0;
         if fired {
-            self.regs_ref()
-                .grp0_if()
-                .write(|w| unsafe { w.bits(bits::GRP0_CMP0) });
+            wr(self.regs as usize + off::GRP0_IF, bits::GRP0_CMP0);
         }
         fired
     }

@@ -41,7 +41,7 @@ impl Board {
     /// SYSRTC is one peripheral, so it is handed out here rather than taken by a stack: a second consumer
     /// (Zigbee, Thread, or the application's own scheduler) shares this counter instead of starting another.
     pub fn sysrtc(&self) -> crate::sysrtc::Sysrtc {
-        crate::sysrtc::Sysrtc::take(&self.dp.cmu_s, &self.dp.sysrtc0_s)
+        crate::sysrtc::Sysrtc::take(&self.dp.cmu_ns, &self.dp.sysrtc0_ns)
     }
 
     /// A millisecond delay on SysTick.

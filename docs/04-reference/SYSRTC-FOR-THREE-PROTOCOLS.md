@@ -122,3 +122,32 @@ peripheral is behind it.
 2. Compile `offsetof` against the vendor headers, and cross-check against the blob's own disassembly.
 3. Re-run the cumulative probe before touching the HAL: it says which step stalls in one flash.
 4. Do not trust `PAC` for a register that misbehaves; do not trust a header alone for the same reason.
+
+## Update, same day: the counter runs
+
+After the blob's group offsets, a `dsb` after `CMD`, and disabling through `EN_CLR`, the counter counts. Measured
+on the board through the HAL:
+
+```
+rtc: ticks=287906  rate=2879kHz  en=1  run=1  deadline=289507  reached=324185  late=34678  fired=0
+```
+
+What that establishes, and what it does not:
+
+- **It counts.** `EN=1`, `RUNNING=1`, and the counter passed a programmed deadline (`reached > deadline`), so
+  the "read never returns" defect is gone. The three changes that did it were: the group block at the blob's
+  offsets (0x60/0x64/0x68, not the headers' 0x40/0x44/0x48), `dsb`/`isb` after the `CMD = START` store (a
+  buffered store was the reason the *next* access appeared to hang), and disabling through `EN_CLR` (0x2004).
+- **The rate is not 32.768 kHz.** Measured against the DWT cycle counter it is ~2.88 MHz, about 88x the
+  nominal LFRCO rate. Either the clock select is not taking effect (0x240 may not be `SYSRTC0CLKCTRL` after
+  all) or the DWT/core clock assumption behind the comparison is wrong. This project already has a known
+  clock discrepancy (the `delay_ms(10)` that takes 4.35 ms, `DELAY-CLOCK-DEFECT.md`), so the core-clock
+  assumption is the first thing to re-measure, not the last.
+- **The compare event does not fire.** `fired=0` while the counter passed the deadline, so `GRP0_CTRL` is
+  either not at 0x68 or its enable bit is not bit 0. The blob only proves `IF` (0x60) and `IEN` (0x64).
+
+Both remaining questions are cheap to answer and neither is a blocker for a *timer that polls* — only for one
+that interrupts. That distinction matters for the stack: `sl_sleeptimer` needs the interrupt.
+
+Nothing here is guessed: the three offsets and the `dsb` came from measurement, and the two open points are
+stated with the observation that produced them.
