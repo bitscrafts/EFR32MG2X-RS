@@ -214,10 +214,15 @@ impl BleEvent {
     ///
     /// Parsed `BleEvent` or `None` if event is empty (status != 0)
     pub(super) unsafe fn parse(evt: &bt::sl_bt_msg_t) -> Option<Self> {
-        // Extract event ID from header
-        // Header format: [31:24] = class, [23:16] = command, [15:0] = unused
-        // Event ID is the full header value
-        let event_id = evt.header;
+        // **The id is the header masked, not the header.** `SL_BGAPI_MSG_ID(HDR)` is `HDR & 0xffff00f8` in
+        // `sl_bgapi.h`, because the low three bits are flags that vary per message. Matching the raw header works
+        // only while those bits happen to be zero, and the failure is silent: every event the stack delivers falls
+        // through the match and `poll_event` returns `None`, which is indistinguishable from an empty queue.
+        //
+        // Measured on this board: a two-second scan delivered 41 events with id `0x010500a0` and the parser
+        // recognised none of them, while the radio was demonstrably receiving (`RAIL_ScheduleRx` 601 calls, every one
+        // status 0).
+        let event_id = evt.header & 0xffff_00f8;
 
         // Match on event ID constants
         match event_id {
@@ -239,6 +244,30 @@ impl BleEvent {
                 Some(BleEvent::Disconnected {
                     connection: data.connection,
                     reason: data.reason,
+                })
+            }
+
+            // **The compat scanner's report.** With the `scanner` component enabled and neither `legacy_scanner` nor
+            // `extended_scanner` present, the stack reports through this event (`0x010500a0`), not through
+            // `sl_bt_evt_scanner_legacy_advertisement_report` (`0x000500a0`). Measured on the board: two seconds of
+            // scanning handed over 39 events and the parser recognised none of them, because only the legacy id was
+            // mapped -- the radio was receiving the whole time (`RAIL_ScheduleRx` 601 calls, all status 0).
+            //
+            // Same payload contract as the legacy report for the fields this API exposes: address (6 bytes, in the
+            // controller's order), address type, RSSI as i8, and a length-prefixed flexible array.
+            bt::sl_bt_evt_scanner_scan_report_id => {
+                let data = unsafe { evt.data.evt_scanner_scan_report.as_ref() };
+                let len = (data.data.len as usize).min(31);
+                let mut payload: heapless::Vec<u8, 31> = heapless::Vec::new();
+                for i in 0..len {
+                    let byte = unsafe { data.data.data.as_ptr().add(i).read() };
+                    let _ = payload.push(byte);
+                }
+                Some(BleEvent::Advertisement {
+                    address: data.address.addr,
+                    address_type: data.address_type,
+                    rssi: data.rssi,
+                    data: payload,
                 })
             }
 

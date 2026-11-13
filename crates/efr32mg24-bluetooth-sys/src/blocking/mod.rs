@@ -35,5 +35,5 @@ mod types;
 
 pub use error::BleError;
 pub use events::BleEvent;
-pub use stack::Bluetooth;
+pub use stack::{last_event_header, Bluetooth};
 pub use types::{CharHandle, GapAdBuilder};

@@ -6,7 +6,21 @@ use super::error::BleError;
 use super::events::BleEvent;
 use super::types::{CharHandle, GapAdBuilder};
 use crate::ffi as bt;
+use core::sync::atomic::{AtomicU32, Ordering as AtomicOrdering};
 use embedded_hal::delay::DelayNs;
+
+/// The header of the most recent event popped from the stack's queue, for diagnosis.
+///
+/// The event id is `header & 0xffff00f8` (`SL_BGAPI_MSG_ID`), which is the number to compare against the `*_id`
+/// constants in `sl_bt_api.h`. Reading it is how "the device heard nothing" was separated from "the device heard
+/// everything and this parser could not name it": measured on the board, two seconds of scanning produced 39 events
+/// and zero recognised advertisements, and the header said which event they were.
+pub static LAST_EVENT_HEADER: AtomicU32 = AtomicU32::new(0);
+
+/// Read [`LAST_EVENT_HEADER`].
+pub fn last_event_header() -> u32 {
+    LAST_EVENT_HEADER.load(AtomicOrdering::Relaxed)
+}
 
 /// Bluetooth Low Energy stack
 ///
@@ -756,6 +770,15 @@ impl Bluetooth {
         if status != 0 {
             return None;
         }
+
+        // **The raw header of the last event, kept for diagnosis.** An event that this parser does not recognise is
+        // dropped silently, and "the scanner heard nothing" and "the scanner received events this code cannot name"
+        // look identical from outside. Recording the header -- and its id, which `SL_BGAPI_MSG_ID` extracts with
+        // `0xffff00f8` -- turns that into a number a reader can compare against `sl_bt_api.h`.
+        // SAFETY: `sl_bt_pop_event` returned 0, so the structure holds a valid header.
+        let header =
+            unsafe { core::ptr::read_volatile(core::ptr::addr_of!((*evt.as_ptr()).header)) };
+        LAST_EVENT_HEADER.store(header, AtomicOrdering::Relaxed);
 
         // SAFETY: sl_bt_pop_event() returns 0 only when event is valid
         let evt = unsafe { evt.assume_init() };

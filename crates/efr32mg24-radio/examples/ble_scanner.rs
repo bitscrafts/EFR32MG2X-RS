@@ -165,9 +165,51 @@ fn main() -> ! {
 
     let mut heard: u32 = 0;
     let mut best_rssi: i8 = i8::MIN;
+    // Every event the stack hands over, whether or not this example understands it. Without this counter, "no
+    // advertisement" and "advertisements arriving but not recognised" are the same observation -- and the radio has
+    // already been measured asking to receive (`RAIL_ScheduleRx` 601 times, all status 0), so the question is no
+    // longer whether the link layer listens but whether what it receives ever reaches this code.
+    let mut popped: u32 = 0;
+
+    // **Two seconds of measurement before the loop.** With `wfi()` in the idle branch, a counter written from there
+    // only advances when an interrupt wakes the core, so it says nothing about the first seconds. A bounded, timed
+    // window says exactly what arrived while the scan was starting.
+    {
+        let mut waited = 0u32;
+        while waited < 2_000 {
+            if ble.poll_event().is_some() {
+                popped += 1;
+            }
+            delay.delay_ms(10);
+            waited += 10;
+        }
+        let mut msg = [0u8; 48];
+        let mut at = 0;
+        msg[at..at + 8].copy_from_slice(b"scan: p=");
+        at += 8;
+        at = push_dec(&mut msg, at, popped);
+        msg[at..at + 3].copy_from_slice(b" a=");
+        at += 3;
+        at = push_dec(&mut msg, at, heard);
+        // The id of the last event the stack handed over: `header & 0xffff00f8`, comparable with `sl_bt_api.h`.
+        msg[at..at + 4].copy_from_slice(b" id=");
+        at += 4;
+        let id = efr32mg24_bluetooth_sys::last_event_header() & 0xffff_00f8;
+        for shift in [28u32, 24, 20, 16, 12, 8, 4, 0] {
+            let nib = ((id >> shift) & 0xF) as u8;
+            msg[at] = if nib < 10 {
+                b'0' + nib
+            } else {
+                b'a' + nib - 10
+            };
+            at += 1;
+        }
+        mailbox::write(mailbox::Status::Info, &msg[..at]);
+    }
 
     loop {
         if let Some(event) = ble.poll_event() {
+            popped += 1;
             if let BleEvent::Advertisement {
                 address,
                 rssi,
@@ -207,7 +249,10 @@ fn main() -> ! {
                     } else {
                         at = push_dec(&mut msg, at, u32::from(rssi as u8));
                     }
-                    msg[at..at + 6].copy_from_slice(b" len=");
+                    // `copy_from_slice` requires equal lengths, and `b" len="` is five bytes: this line asked for six
+                    // and panicked the first time an advertisement actually reached it. Nothing exercised it before,
+                    // because no event had ever been parsed.
+                    msg[at..at + 5].copy_from_slice(b" len=");
                     at += 5;
                     at = push_dec(&mut msg, at, data.len() as u32);
                     msg[at..at + 3].copy_from_slice(b" n=");
@@ -217,9 +262,8 @@ fn main() -> ! {
                 }
             }
         } else {
-            // Nothing in the queue: sleep until the next interrupt. A polling loop that spins here
-            // burns power for no reason, and this is exactly the state a beacon tester leaves the
-            // board in for minutes at a time.
+            // Sleep until the next interrupt. A polling loop that spins here burns power for no reason,
+            // and this is exactly the state a beacon tester leaves the board in for minutes at a time.
             cortex_m::asm::wfi();
         }
     }

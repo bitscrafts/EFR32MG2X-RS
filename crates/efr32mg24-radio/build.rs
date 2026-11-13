@@ -18,6 +18,14 @@ fn main() {
         "RAIL_StartScheduledTx",
         "RAIL_Idle",
         "RAIL_WriteTxFifo",
+        // Receiving, because a scanner that reports nothing has two possible causes -- the link layer never asks the
+        // radio to receive, or it does and the packets never arrive -- and only a counter tells them apart. Both
+        // symbols are declared in `vendor/rail/rail.h` (3749 and 3672) and the controller references both, so both
+        // are wrappable. `RAIL_GetRxPacketInfo` is NOT in this list: the controller imports it, but the header this
+        // project vendors does not declare it, and a wrapper written against a guessed prototype is the exact defect
+        // this project keeps finding in other people's code.
+        "RAIL_ScheduleRx",
+        "RAIL_ConfigRxOptions",
     ] {
         println!("cargo:rustc-link-arg-examples=--wrap={sym}");
     }

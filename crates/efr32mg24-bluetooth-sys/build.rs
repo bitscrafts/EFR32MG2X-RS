@@ -305,6 +305,10 @@ fn main() {
     // fails on symbols that are visibly present in the source, and the build looks stale.
     println!("cargo:rerun-if-changed=blobs/");
     println!("cargo:rerun-if-changed=vendor/");
+    // The component catalogue and the feature instances live in `config/`, and a change there changes what the C in
+    // `vendor/bt_stack` compiles to. Leaving this line out means an edit to the catalogue silently does nothing: the
+    // scanner class stayed absent from the image while the catalogue said it was enabled, and the build looked fine.
+    println!("cargo:rerun-if-changed=config/");
 
     // **Two vendor objects define the same pool table.** `sl_btctrl_linklayer.c.obj` (controller) and `bglib.c.obj`
     // (host) each define `bg_pool_pools` -- 272 bytes, `OBJECT` type, in both archives, measured with `readelf -sW`

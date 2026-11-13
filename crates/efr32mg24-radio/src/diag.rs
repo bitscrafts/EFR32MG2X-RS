@@ -62,6 +62,12 @@ const WRITE: usize = 23;
 const WRITE_LEN: usize = 24;
 const WRITE_CAPTURED_LEN: usize = 25;
 const WRITE_BYTES: usize = 26;
+/// Calls to `RAIL_ScheduleRx`. A scanner that hears nothing either never gets here or gets here and nothing arrives.
+const RX_SCHED: usize = 15;
+/// The status of the last `RAIL_ScheduleRx`.
+const RX_SCHED_STATUS: usize = 16;
+/// Calls to `RAIL_ConfigRxOptions`.
+const RX_CONFIG_OPTS: usize = 27;
 
 /// Set when a transmit started and the next FIFO write has not been captured yet.
 static ARMED: AtomicU32 = AtomicU32::new(0);
@@ -134,6 +140,17 @@ extern "C" {
         info: *const core::ffi::c_void,
     ) -> u8;
     fn __real_RAIL_Idle(handle: *mut core::ffi::c_void, mode: u8, wait: bool);
+    /// The schedule-RX config and the scheduler info are forwarded untouched: this wrapper counts and forwards, it
+    /// does not interpret. Declaring them opaque is therefore honest rather than lazy -- there is no field here that
+    /// this code claims to understand.
+    fn __real_RAIL_ScheduleRx(
+        handle: *mut core::ffi::c_void,
+        channel: u16,
+        cfg: *const core::ffi::c_void,
+        scheduler_info: *const core::ffi::c_void,
+    ) -> u8;
+    /// `RAIL_RxOptions_t` is a 32-bit option mask in `rail.h`.
+    fn __real_RAIL_ConfigRxOptions(handle: *mut core::ffi::c_void, mask: u32, options: u32) -> u8;
     fn __real_RAIL_WriteTxFifo(
         handle: *mut core::ffi::c_void,
         data: *const u8,
@@ -251,4 +268,34 @@ pub unsafe extern "C" fn __wrap_RAIL_WriteTxFifo(
         }
     }
     __real_RAIL_WriteTxFifo(handle, data, len, reset)
+}
+
+/// Count the link layer's receive scheduling.
+///
+/// A scanner that reports nothing has two possible causes and they call for opposite work: the link layer never asks
+/// the radio to receive, or it asks and no packet ever arrives. This counter is the difference. It reads 0 in a
+/// firmware whose scanner "started successfully", which is what the board did before the scanner component was added
+/// to the catalogue.
+#[no_mangle]
+pub unsafe extern "C" fn __wrap_RAIL_ScheduleRx(
+    handle: *mut core::ffi::c_void,
+    channel: u16,
+    cfg: *const core::ffi::c_void,
+    scheduler_info: *const core::ffi::c_void,
+) -> u8 {
+    DIAG[RX_SCHED].fetch_add(1, Relaxed);
+    let status = __real_RAIL_ScheduleRx(handle, channel, cfg, scheduler_info);
+    DIAG[RX_SCHED_STATUS].store(u32::from(status), Relaxed);
+    status
+}
+
+/// Count the receive-option changes, which is how the link layer turns filtering and address matching on.
+#[no_mangle]
+pub unsafe extern "C" fn __wrap_RAIL_ConfigRxOptions(
+    handle: *mut core::ffi::c_void,
+    mask: u32,
+    options: u32,
+) -> u8 {
+    DIAG[RX_CONFIG_OPTS].fetch_add(1, Relaxed);
+    __real_RAIL_ConfigRxOptions(handle, mask, options)
 }
