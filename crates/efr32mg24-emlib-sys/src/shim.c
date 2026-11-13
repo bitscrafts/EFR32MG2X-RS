@@ -53,13 +53,24 @@ bool emlib_hfxo_start(void)
 {
   CMU_HFXOInit_TypeDef hfxoInit = CMU_HFXOINIT_DEFAULT;
   CMU_HFXOInit(&hfxoInit);
-  /* `wait = true` makes the vendor function block until the oscillator settles, which is the readiness
-   * criterion this emlib version offers: it has neither CMU_OscillatorReady() nor an HFXORDY bit in
-   * CMU_STATUS for this part. The real proof is downstream — RAIL refuses a channel configuration whose
-   * crystal frequency disagrees with the chip's, so if the crystal were not up the next call would say
-   * so with an assertion rather than a silent wrong transmission. */
-  CMU_OscillatorEnable(cmuOsc_HFXO, true, true);
-  return true;
+
+  /* Start the oscillator by register.
+   *
+   * This is the part that took three attempts. `CMU_OscillatorEnable()` is a documented no-op in this
+   * emlib version ("a dummy function to solve backward compatibility issues"), and `CMU_HFXOInit()`
+   * only writes the crystal configuration. On Series 2 the HFXO is its own peripheral with a control
+   * register, and `HFXO_CTRL_FORCEEN` ("Force Digital Clock Request") is what turns it on. Both the bit
+   * and `HFXO_STATUS_RDY` come from the device header, not from a guess.
+   */
+  HFXO0->CTRL |= HFXO_CTRL_FORCEEN;
+
+  /* Bounded wait: an oscillator that never settles must report false, not spin forever. */
+  for (uint32_t i = 0U; i < 2000000U; i++) {
+    if ((HFXO0->STATUS & HFXO_STATUS_RDY) != 0U) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /* The frequency RAIL will compare the channel configuration against. */

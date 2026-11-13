@@ -80,3 +80,54 @@ Open question worth answering with a scope, not a guess: the XIAO MG24 Sense's c
 whether Seeed's design loads it. The reference design and the module schematic settle it; the vendor's
 generated configuration for this exact part (`efr32mg24b220f1536im48`) says 39 MHz, which is the value
 to verify.
+## Update: the crystal starts, and the frequency is still unknown (2026-11-12)
+
+`emlib_hfxo_start()` now starts the oscillator **by register**, which is where the earlier attempt was
+wrong:
+
+```c
+HFXO0->CTRL |= HFXO_CTRL_FORCEEN;      /* "Force Digital Clock Request" */
+while ((HFXO0->STATUS & HFXO_STATUS_RDY) == 0) { ... }
+```
+
+`HFXO_CTRL_FORCEEN` and `HFXO_STATUS_RDY` come from the device header, and the instance is `HFXO0` — the
+compiler corrected that guess for us (`'HFXO' undeclared; did you mean 'HFXO0'?`).
+
+Measured after that change:
+
+```
+hfxo started=1  hfxo=0kHz  sys=19000kHz     (started=1 means STATUS.RDY came up)
+rx: assert=66                               (RAIL still refuses the configuration)
+```
+
+So the two facts to hold together:
+
+1. **The oscillator reports ready.** `STATUS.RDY` sets within the bounded wait, so the crystal is
+   physically running and the register sequence is right.
+2. **The software does not know its frequency.** `CMU_ClockFreqGet(cmuClock_HFXO)` returns **0**, and
+   RAIL compares the channel configuration's `xtalFrequencyHz` (39 000 000) against that knowledge, not
+   against the oscillator's actual behaviour. A ready oscillator with an unknown frequency is still
+   unusable to a synthesizer.
+
+The missing piece is a build input, not code: the crystal frequency and load-capacitance trim for this
+board are supplied by a generated `sl_device_init_hfxo_config.h` in Silicon Labs' projects, which this
+project does not have. It is the same class of artifact as `rail_config.c` — vendor-generated
+per-board data — and it is why emlib has no `HFXO_FREQ` anywhere in the headers we vendored.
+
+### What to do next, in order
+
+1. Obtain (or write, from the module schematic) `sl_device_init_hfxo_config.h` for the XIAO MG24 Sense:
+   crystal frequency (the vendor configuration for this part says 39 MHz) and the CTUNE values.
+2. Compile it into `efr32mg24-emlib-sys` — it must be visible to `em_cmu.c`, because that is where the
+   frequency query is answered.
+3. Re-measure: the criterion is `CMU_ClockFreqGet(cmuClock_HFXO) == 39 000 000`, printed by
+   `rail_caps`. Nothing after this is meaningful until that number is right.
+4. Then `rail_ble_rx` again. Success is not "no assert": it is a packet in the mailbox, because RAIL
+   will happily receive noise on a wrong frequency if the CRC happens to match, and only a frame with
+   the host's name in it proves the path.
+
+### Honest status of the ask
+
+`xiao-mg24` advertising is **not** done, and nothing has been transmitted by the board. What exists:
+nine examples, one of them (`rail_ble_rx`) that compiles and runs to the point of the radio refusing
+its configuration for a reason that is now named exactly.
