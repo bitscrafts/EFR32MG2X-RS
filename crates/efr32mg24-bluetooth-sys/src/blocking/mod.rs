@@ -35,5 +35,6 @@ mod types;
 
 pub use error::BleError;
 pub use events::BleEvent;
+pub mod gatt_db;
 pub use stack::{last_event_header, Bluetooth};
 pub use types::{CharHandle, GapAdBuilder};

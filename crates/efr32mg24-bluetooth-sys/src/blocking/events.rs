@@ -112,6 +112,22 @@ pub enum BleEvent {
     /// - Connection handle cleared
     Disconnected { connection: u8, reason: u16 },
 
+    /// A remote client changed its subscription to one of this device's characteristics.
+    ///
+    /// This is the only observable trace a client leaves when it starts listening: a plain *read* is answered inside
+    /// the stack from the attribute table and produces no event at all, which is why "the phone read the
+    /// characteristic" cannot be proven from the device side -- only from the client side. A subscription can.
+    ///
+    /// # Fields
+    /// - `connection`: Connection handle
+    /// - `characteristic`: GATT characteristic handle
+    /// - `notifications`: Whether the client turned notifications (or indications) on
+    Subscribed {
+        connection: u8,
+        characteristic: u16,
+        notifications: bool,
+    },
+
     /// GATT characteristic written by remote client
     ///
     /// # Fields
@@ -268,6 +284,18 @@ impl BleEvent {
                     address_type: data.address_type,
                     rssi: data.rssi,
                     data: payload,
+                })
+            }
+
+            // A client turned notifications on or off. `status_flags` reports which part of the client configuration
+            // changed; `client_config_flags` carries the value, and `sl_bt_gatt_server_notification` (1) is the bit
+            // that means "notify me".
+            bt::sl_bt_evt_gatt_server_characteristic_status_id => {
+                let data = unsafe { evt.data.evt_gatt_server_characteristic_status.as_ref() };
+                Some(BleEvent::Subscribed {
+                    connection: data.connection,
+                    characteristic: data.characteristic,
+                    notifications: (data.client_config_flags & 0x0001) != 0,
                 })
             }
 

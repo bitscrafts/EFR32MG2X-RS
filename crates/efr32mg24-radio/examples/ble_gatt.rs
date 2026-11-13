@@ -30,7 +30,7 @@ use efr32mg24_hal::board::Board;
 use efr32mg24_hal::entry;
 use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::prelude::*;
-use efr32mg24_radio::{BleEvent, Bluetooth, CharHandle};
+use efr32mg24_radio::{BleEvent, Bluetooth};
 use panic_halt as _;
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
@@ -38,8 +38,21 @@ mod mailbox;
 
 /// The 16-bit UUID this example advertises. Any value works; a real product registers one.
 const SERVICE_UUID: u16 = 0x1815; // Automation I/O, chosen only because it reads plausibly
-/// The characteristic the counter is published on.
-const COUNTER_HANDLE: CharHandle = CharHandle(0x000B);
+
+/// The 128-bit UUID of the GATT service this firmware actually serves.
+///
+/// The advertised `SERVICE_UUID` is the short form a scanner shows; the service a client can *use* is this one, built
+/// at run time with `sl_bt_gattdb_*`. A client connected to the previous version of this example listed zero
+/// characteristics, because the counter was published on `CharHandle(0x000B)` -- a handle that no attribute ever
+/// occupied. The handle is now whatever the database returns.
+const SERVICE_UUID_128: [u8; 16] = [
+    0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x01, 0x00, 0x40, 0x6e,
+];
+
+/// The counter characteristic: readable, and notifiable so a client can watch it move.
+const COUNTER_UUID_128: [u8; 16] = [
+    0x9e, 0xca, 0xdc, 0x24, 0x0e, 0xe5, 0xa9, 0xe0, 0x93, 0xf3, 0xa3, 0xb5, 0x02, 0x00, 0x40, 0x6e,
+];
 
 fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
     let mut digits = [0u8; 10];
@@ -67,11 +80,48 @@ fn main() -> ! {
 
     let mut ble = match Bluetooth::new(&mut delay) {
         Ok(ble) => ble,
-        Err(_) => {
-            mailbox::write(mailbox::Status::Fail, b"ble: stack did not boot");
+        Err(e) => {
+            let mut msg = [0u8; 32];
+            let mut at = 0;
+            msg[at..at + 12].copy_from_slice(b"ble: boot st");
+            at += 12;
+            at = push_dec(&mut msg, at, u32::from(e.to_u16()));
+            mailbox::write(mailbox::Status::Fail, &msg[..at]);
             loop {
                 cortex_m::asm::wfi();
             }
+        }
+    };
+
+    // Build what this device serves, before advertising it. A service that is advertised but never added is a device
+    // a client connects to and finds empty -- which is what the first version of this example did.
+    //
+    // **A missing database is not a reason to stop advertising.** The dynamic GATT database component cannot be
+    // enabled yet (see `config/sl_component_catalog.h`: the stack answers `SL_STATUS_TIMEOUT` at boot when it is), so
+    // this example publishes what happened and keeps going. The alternative -- refusing to run -- would hide a working
+    // connection and advertising path behind a component that is missing for an unrelated reason, and the mailbox
+    // would say only "failed".
+    let counter_handle = match efr32mg24_bluetooth_sys::gatt_db::add_service(
+        SERVICE_UUID_128,
+        &[(
+            COUNTER_UUID_128,
+            efr32mg24_bluetooth_sys::gatt_db::PROP_READ
+                | efr32mg24_bluetooth_sys::gatt_db::PROP_NOTIFY,
+        )],
+    ) {
+        Ok(handles) => handles.characteristic(0),
+        Err(e) => {
+            // Publish the code, not just the fact. The number is the stack's own status, so a reader can look it up:
+            // 15 is `SL_STATUS_NOT_SUPPORTED`, which names the missing component exactly.
+            let mut msg = [0u8; 40];
+            let mut at = 0;
+            // `b"gatt: no attrs s"` is sixteen bytes; asking for fifteen panics, and a panic here leaves the mailbox
+            // holding the *previous* run's record, which reads as "the new firmware did nothing".
+            msg[at..at + 16].copy_from_slice(b"gatt: no attrs s");
+            at += 16;
+            at = push_dec(&mut msg, at, u32::from(e.to_u16()));
+            mailbox::write(mailbox::Status::Info, &msg[..at]);
+            None
         }
     };
 
@@ -91,6 +141,22 @@ fn main() -> ! {
         loop {
             cortex_m::asm::wfi();
         }
+    }
+
+    // Say so, once, before waiting. Everything after this point is driven by a central: without a marker, "advertising
+    // and waiting for a connection" and "hung before the loop" leave the mailbox holding whatever the previous run
+    // wrote, and the two are indistinguishable from outside. Measured: the first run of this example wrote nothing at
+    // all, and the only way to tell it had succeeded was to read the code.
+    // One record, both facts: the advertising state and whether there is anything to serve. Written as two records
+    // the second overwrote the first, and a reader saw "advertising, waiting" with no hint that the device had no
+    // attributes -- which is the defect this example exists to expose.
+    {
+        let mut msg = [0u8; 56];
+        let mut at = 0;
+        msg[at..at + 20].copy_from_slice(b"gatt: adv waiting a=");
+        at += 20;
+        at = push_dec(&mut msg, at, if counter_handle.is_some() { 1 } else { 0 });
+        mailbox::write(mailbox::Status::Info, &msg[..at]);
     }
 
     let mut connected = false;
@@ -117,15 +183,33 @@ fn main() -> ! {
                 // The client wrote the CCC descriptor: it wants notifications.
                 subscribed = true;
             }
+            Some(BleEvent::Subscribed {
+                notifications,
+                characteristic,
+                ..
+            }) => {
+                // The stack reports the subscription itself, which is a better signal than inferring it from a write:
+                // it fires for a client that uses the documented CCC path, and it says whether listening was turned
+                // on or off. Recorded, because it is the only trace a client leaves on the device side.
+                subscribed = notifications;
+                let mut msg = [0u8; 48];
+                let mut at = 0;
+                msg[at..at + 9].copy_from_slice(b"gatt: sub");
+                at += 9;
+                at = push_dec(&mut msg, at, u32::from(characteristic));
+                msg[at..at + 3].copy_from_slice(if notifications { b" on" } else { b" of" });
+                at += 3;
+                mailbox::write(mailbox::Status::Info, &msg[..at]);
+            }
             Some(_) => {}
             None => {}
         }
 
-        if connected && subscribed {
+        if connected && subscribed && counter_handle.is_some() {
             counter += 1;
             let mut payload = [0u8; 4];
             payload.copy_from_slice(&counter.to_le_bytes());
-            match ble.notify(COUNTER_HANDLE, &payload) {
+            match ble.notify(counter_handle.expect("guarded above"), &payload) {
                 Ok(()) => notified += 1,
                 // Refused means the transmit queue was full. Counted, not dropped in silence.
                 Err(_) => refused += 1,

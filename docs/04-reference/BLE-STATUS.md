@@ -4,9 +4,37 @@ Updated 2026-11-13. Every number below came from the board, not from a datasheet
 
 ## One line
 
-The radio works, the host initialises and **answers BGAPI commands** (`sl_bt_system_get_version` → 7.2), and the
-event queue stays empty, so no example advertises through the stack yet. The radio has been proven separately by a
-pure-RAIL advertisement that three independent receivers decoded.
+**All three BLE directions now work on the board: it advertises with a name, it scans and decodes what it hears, and a
+real client connects to it.** What it cannot yet do is *serve* a GATT attribute, because the dynamic GATT database
+component is not available in this build (see the last update for the measurement).
+
+## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
+
+`ble_scanner` reports advertisements: `scan: 56:44:81:80:de:90 rssi=-76 len=13 n=4`. Three independent defects sat
+between the radio and the application, and the counters are what separated them.
+
+| Claim | Evidence |
+|---|---|
+| The link layer was asking the radio to receive all along | `diag` `RAIL_ScheduleRx` = **601 calls, every one status 0**, `RAIL_ConfigRxOptions` once -- read without halting |
+| The stack was delivering events | `scan: p=41 a=0 id=010500a0` -- 41 events in two seconds, **zero** recognised as advertisements |
+| Defect 1: the scanner class was not registered | `SL_CATALOG_BLUETOOTH_FEATURE_SCANNER_PRESENT` added; `sli_bgapi_class_bt_scanner_optimized` appears in the image (count 0 before) |
+| Defect 2: the catalogue edit was inert | `build.rs` watched `vendor/` but not `config/`, so the C that reads the catalogue was never recompiled; `rerun-if-changed=config/` is the fix |
+| Defect 3: the parser matched the raw header | `BleEvent::parse` compared `evt.header` instead of `header & 0xffff00f8` (`SL_BGAPI_MSG_ID`); the low three bits are flags, so every event fell through the match and `poll_event` returned `None` |
+| Fourth defect, exposed by the third | `ble_scanner` panicked at `msg[at..at + 6].copy_from_slice(b" len=")` -- five bytes into six. Nothing had reached that line before |
+| Reproducibility defect | `sl_component_catalog.h` is ours and was inside the gitignored `vendor/`; a clone would have built firmware with no advertiser component. It now lives in `config/`, tracked |
+
+`ble_gatt` advertises as `xiao-mg24-gatt`, the host connects (`Connection successful`) and a phone on nRF Connect sees
+it. It serves **no attributes**: a client listing characteristics gets zero, because the counter was published on
+`CharHandle(0x000B)`, a handle no attribute ever occupied.
+
+| GATT attempt | Measurement |
+|---|---|
+| A GATT database built in Rust (`gatt_db`, using `sl_bt_gattdb_*`) | the commands answer **15** = `SL_STATUS_NOT_SUPPORTED`; the `dynamic_gattdb` component is not enabled |
+| Enabling `SL_CATALOG_BLUETOOTH_FEATURE_DYNAMIC_GATTDB_PRESENT` | `sli_bt_system_start_bluetooth` returns **7** = `SL_STATUS_TIMEOUT` and `system_boot` never arrives -- so the component is left disabled, with the reason in the catalogue |
+| What is missing | the component's generated `sl_bt_dynamic_gattdb_configure()`; the vendored SDK subset contains no generator and no reference implementation |
+
+The example now reports the whole state in one record -- `gatt: adv waiting a=0` -- instead of a second record
+overwriting the first, which had hidden the empty database behind a cheerful "advertising, waiting".
 
 ## Update 2026-11-13 (round 2): the link layer's advertising is on the air
 

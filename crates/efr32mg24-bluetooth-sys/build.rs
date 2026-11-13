@@ -115,6 +115,7 @@ fn main() {
                     .file("vendor/bt_stack/sl_bt_stack_init.c")
                     // The one generated object the initialiser needs; see the file's header for why it is hand-written.
                     .file("config/sli_bt_connection_config.c")
+                    .file("config/sli_bt_dynamic_gattdb_config.c")
                     // The same shape of generated object for the "advertiser" component: its feature
                     // instance is application code in the SDK, not something the blob exports. Measured: without
                     // it the link fails on `sli_feature_bt_advertiser_config`, and without the component entirely

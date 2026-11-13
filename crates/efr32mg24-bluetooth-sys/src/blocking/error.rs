@@ -58,6 +58,22 @@ pub enum BleError {
 }
 
 impl BleError {
+    /// The status code behind this error, for a diagnostic that has to be read on a board with no debugger attached.
+    ///
+    /// **Only `BgapiError` has one.** A typed variant is a category this crate chose, not a code the stack returned:
+    /// mapping it to a number invents a value that a reader would then look up in `sl_status.h` and believe. The first
+    /// version of this function did exactly that -- `BufferOverflow => 0x0007` -- and `0x0007` is `SL_STATUS_TIMEOUT`,
+    /// so a full buffer would have been reported as a timeout.
+    ///
+    /// `0xFFFF` therefore means "this error did not come from a BGAPI status", and it is deliberately not a plausible
+    /// status code.
+    pub fn to_u16(&self) -> u16 {
+        match self {
+            BleError::BgapiError(code) => *code,
+            _ => 0xFFFF,
+        }
+    }
+
     /// Convert BGAPI status code to BleError
     ///
     /// Maps common BGAPI error codes to typed error variants.
