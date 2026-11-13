@@ -94,3 +94,21 @@ Two tick counts, one cycle count each, and the answer appears:
 Until one of those is measured, the honest statement about this board's delays is: they are shorter
 than requested, by a factor that has been seen between 2.3 and 3.0, and nothing in this project should
 assume a `delay_ms` is what it says.
+
+## Addendum 2026-11-13: a fourth reading, from an example rather than an instrument
+
+`ble_advertise_custom` publishes its uptime as a raw DWT cycle count (`cy=`), because no divisor for this
+board's core clock has been proven. Read off the board after a flash that ends in `reset run`:
+
+```
+adv frame=9B cy=404172741 n=22
+```
+
+That is ~404 million cycles across the ~10 s the mailbox was left to settle, so **~40 MHz**, not the 19 MHz the
+device configures and not the ~78 MHz a debugger-attached reading once suggested.
+
+How much to trust it: the elapsed time is the harness's `sleep`, not a measurement on the board, so the divisor is
+good to perhaps ±20% -- enough to rule out 19 MHz (which would need 190 million cycles in that window) and enough to
+land near the 44 MHz that SysTick implies, but not enough to name a divider. The exact experiment remains the one
+described above: measure a known number of SysTick ticks against the DWT counter in the same run, on the board, with
+no debugger attached.

@@ -111,14 +111,22 @@ fn main() -> ! {
     let mut updates: u32 = 0;
 
     loop {
-        let uptime_s = dwt::cycles_to_us(dwt::since(boot), 19_000_000) / 1_000_000;
-        if uptime_s != last_second {
-            last_second = uptime_s;
+        // **Cycles, not seconds.** This used to divide by 19 MHz and call the result seconds. The core clock on this
+        // part is an open defect in this tree (`DELAY-CLOCK-DEFECT.md`: the device configures 19 MHz, SysTick implies
+        // about 44 MHz, and a debugger-attached measurement read about 78 MHz), so any divisor here would be a guess
+        // printed with a unit -- and a number with a wrong unit is worse than a raw count. The counter therefore stays
+        // in cycles, which are exact, and the frame carries them as they are. A u32 of cycles wraps every ~55 s at
+        // 78 MHz and every ~226 s at 19 MHz, which is the price of not naming a clock this tree cannot yet measure.
+        let uptime_cycles = dwt::since(boot);
+        // The refresh gate, not a published value: 19 M cycles is roughly a second at any of the three candidate
+        // clocks, and the frame carries the cycle count itself.
+        if uptime_cycles / 19_000_000 != last_second {
+            last_second = uptime_cycles / 19_000_000;
             frame[0] = FRAME_VERSION;
             frame[1..3].copy_from_slice(&DEVICE_ID.to_le_bytes());
             frame[3] = FW_MAJOR;
             frame[4] = FW_MINOR;
-            frame[5..9].copy_from_slice(&uptime_s.to_le_bytes());
+            frame[5..9].copy_from_slice(&uptime_cycles.to_le_bytes());
 
             if ble.set_manufacturer_data(COMPANY_ID, &frame).is_ok() {
                 // Restart advertising so the new payload goes out; the stack does not re-read the
@@ -130,9 +138,9 @@ fn main() -> ! {
                     msg[at..at + 10].copy_from_slice(b"adv frame=");
                     at += 10;
                     at = push_dec(&mut msg, at, frame.len() as u32);
-                    msg[at..at + 5].copy_from_slice(b"B up=");
+                    msg[at..at + 5].copy_from_slice(b"B cy=");
                     at += 5;
-                    at = push_dec(&mut msg, at, uptime_s);
+                    at = push_dec(&mut msg, at, uptime_cycles);
                     msg[at..at + 3].copy_from_slice(b" n=");
                     at += 3;
                     at = push_dec(&mut msg, at, updates);
