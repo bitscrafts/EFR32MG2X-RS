@@ -61,6 +61,11 @@ PERM="${PERM:-bypassPermissions}"
 MAX_TURNS="${MAX_TURNS:-200}"
 LABEL="${BRIEF_LABEL:-ble-finish}"
 CLAUDE_BIN="${CLAUDE_BIN:-$HOME/.local/bin/claude}"
+# A subagent definition file, passed with `--agents`. This is how a cheap executor reports to an expensive reviewer
+# WITHOUT resuming a long session: a subagent has its own context window, so the reviewer does not re-read the whole
+# history (measured: a resumed session costs ~$0.7-1.2/turn, a subagent request costs a fraction of that). The file
+# form of `--agents` requires Claude Code v2.1.281+; this machine runs 2.1.300.
+AGENTS_FILE="${AGENTS_FILE:-}"
 
 # The tool's own environment, set here rather than inherited.
 export PATH="/root/.local/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin"
@@ -90,6 +95,9 @@ echo "   payload      : $(wc -c < "$BRIEF") bytes, $(wc -l < "$BRIEF") lines"
 echo "   max turns    : $MAX_TURNS"
 echo "   workdir      : $PROJECT"
 echo "   permission   : $PERM    (plan => Opus plans; anything else => Sonnet executes)"
+if [ -n "$AGENTS_FILE" ]; then
+  echo "   subagents    : $AGENTS_FILE ($(grep -c '"model"' "$AGENTS_FILE" 2>/dev/null) definition(s))"
+fi
 if [ "$RESUME" -eq 1 ]; then
   echo "   resume       : ${SESSION:-<none recorded>}"
 else
@@ -105,6 +113,9 @@ LOG="$STATE_DIR/run-$LABEL-$STAMP.jsonl"
 
 ARGS=(--model "$MODEL" --permission-mode "$PERM" --max-turns "$MAX_TURNS"
       --output-format stream-json --verbose -p "$(cat "$BRIEF")")
+if [ -n "$AGENTS_FILE" ] && [ -f "$AGENTS_FILE" ]; then
+  ARGS=(--agents "$AGENTS_FILE" "${ARGS[@]}")
+fi
 if [ "$RESUME" -eq 1 ] && [ -n "$SESSION" ]; then
   ARGS=(--resume "$SESSION" "${ARGS[@]}")
   echo "   log          : $LOG"
