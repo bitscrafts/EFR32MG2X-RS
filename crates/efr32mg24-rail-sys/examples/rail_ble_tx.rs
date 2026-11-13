@@ -232,14 +232,15 @@ pub extern "C" fn main() -> ! {
     // scanning host, which is a weak advertisement for a phone to catch reliably.
     let dbm_st = unsafe { rail::RAIL_SetTxPowerDbm(handle, 200) };
 
-    // AdvA, as a PUBLIC address with a fixed value. A static random address derived from the chip's unique
-    // id is fine on air, but it changes meaning with every board and cannot be searched for by hand: for
-    // bring-up a fixed public address is one less variable. TxAdd in the header byte is 0 for this.
-    let addr: [u8; 6] = [0x00, 0x11, 0x22, 0x33, 0x44, 0x55];
+    // AdvA: a fixed STATIC RANDOM address, sent least-significant byte first, which is what the scanner
+    // shows reversed as C0:DE:00:00:00:01. Random rather than public on purpose: a public address claims
+    // an IEEE OUI this project does not own, and the static-random rule (top two bits of the most
+    // significant byte set to 11) is exactly satisfied by 0xC0.
+    let addr: [u8; 6] = [0x01, 0x00, 0x00, 0x00, 0xDE, 0xC0];
 
     let mut pdu = [0u8; 40];
     let mut n = 0;
-    pdu[n] = 0x00; // ADV_IND, TxAdd=0 (public address)
+    pdu[n] = 0x40; // ADV_IND, TxAdd=1 (random address)
     n += 1;
     pdu[n] = 20; // payload length: 6 address + 14 advertising data
     n += 1;
@@ -309,13 +310,18 @@ pub extern "C" fn main() -> ! {
         // waits. One channel per 100 ms round -- the earlier shape -- gives each channel a packet only
         // every 300 ms, which a phone's scan window can miss for a long time. The radio parameters are
         // re-applied per channel because the whitening seed is the channel number.
-        for channel in [37u16, 38, 39] {
+        // RAIL's channel argument is the PHYSICAL channel: `railChannel = 0` is `logicalChannel = 37`
+        // (rail_ble.h, the repeated-transmit example). Physical N is 2402 + 2N MHz, so the three
+        // advertising channels are (0, 37), (12, 38) and (39, 39). Passing 37/38/39 as we did transmitted
+        // on 2476/2478/2480 MHz -- data channels except the last -- which is why only one third of the
+        // packets were on a channel any scanner looks at.
+        for (channel, logical) in [(0u16, 37u16), (12, 38), (39, 39)] {
             unsafe {
                 rail::RAIL_BLE_ConfigChannelRadioParams(
                     handle,
                     0x0055_5555,
                     0x8E89_BED6,
-                    channel,
+                    logical,
                     false,
                 )
             };
