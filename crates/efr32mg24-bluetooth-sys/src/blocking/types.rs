@@ -224,6 +224,34 @@ impl GapAdBuilder {
         Ok(())
     }
 
+    /// Replace the manufacturer-specific field: drop any existing one, then add this one.
+    ///
+    /// `add_manufacturer_data` appends, which is right for building a payload once and wrong for a payload that is
+    /// refreshed (an uptime counter, a sensor reading): the third refresh overflows the 31-byte budget. The other
+    /// fields (flags, name, UUIDs) are kept. If the new field does not fit, the old one is already gone, and the
+    /// error says so by being returned.
+    pub fn replace_manufacturer_data(
+        &mut self,
+        company_id: u16,
+        data: &[u8],
+    ) -> Result<(), BleError> {
+        let mut read = 0;
+        let mut write = 0;
+        while read < self.offset {
+            let len = usize::from(self.buffer[read]) + 1;
+            if read + len > self.offset {
+                break;
+            }
+            if self.buffer[read + 1] != 0xFF {
+                self.buffer.copy_within(read..read + len, write);
+                write += len;
+            }
+            read += len;
+        }
+        self.offset = write;
+        self.add_manufacturer_data(company_id, data)
+    }
+
     /// Get advertising data as byte slice
     ///
     /// Returns only the filled portion of the buffer (not all 31 bytes).
@@ -346,5 +374,19 @@ mod tests {
 
         builder.clear();
         assert_eq!(builder.len(), 3); // Back to just flags
+    }
+
+    #[test]
+    fn replace_manufacturer_data_does_not_accumulate() {
+        let mut builder = GapAdBuilder::new();
+        builder.add_name("ab").unwrap();
+        for n in 0u8..10 {
+            builder.replace_manufacturer_data(0x02E5, &[n; 9]).unwrap();
+        }
+        // flags 3 + name 4 + manufacturer 13: one manufacturer field, the last value, the name kept.
+        assert_eq!(builder.len(), 3 + 4 + 13);
+        assert_eq!(&builder.as_slice()[3..7], &[3, 0x09, b'a', b'b']);
+        assert_eq!(builder.as_slice()[7..9], [12, 0xFF]);
+        assert_eq!(builder.as_slice()[builder.len() - 1], 9);
     }
 }

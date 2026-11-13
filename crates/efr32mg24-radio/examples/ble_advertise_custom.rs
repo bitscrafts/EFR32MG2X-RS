@@ -130,10 +130,10 @@ fn main() -> ! {
                     msg[at..at + 10].copy_from_slice(b"adv frame=");
                     at += 10;
                     at = push_dec(&mut msg, at, frame.len() as u32);
-                    msg[at..at + 4].copy_from_slice(b"B up=");
-                    at += 4;
+                    msg[at..at + 5].copy_from_slice(b"B up=");
+                    at += 5;
                     at = push_dec(&mut msg, at, uptime_s);
-                    msg[at..at + 4].copy_from_slice(b" n=");
+                    msg[at..at + 3].copy_from_slice(b" n=");
                     at += 3;
                     at = push_dec(&mut msg, at, updates);
                     mailbox::write(mailbox::Status::Pass, &msg[..at]);

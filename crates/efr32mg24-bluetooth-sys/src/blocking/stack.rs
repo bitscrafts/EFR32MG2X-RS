@@ -271,7 +271,11 @@ impl Bluetooth {
         unsafe {
             let status = bt::sl_bt_advertiser_start(
                 self.advertising_set,
-                2, // discover: 2 = User/General discoverable
+                // sl_bt_advertiser_user_data (0x4): send the data set above as it is. In general_discoverable (0x2) the stack
+                // builds the advertising PDU itself -- flags only -- and the set_data payload, name included, never reaches
+                // the air (measured: the first FIFO write was 3 bytes of data, flags, with the name set). The builder
+                // already carries the flags field, so nothing is lost.
+                4,
                 0, // connect: 0 = Non-connectable (beacon mode)
             );
             if status != 0 {
@@ -351,7 +355,11 @@ impl Bluetooth {
         unsafe {
             let status = bt::sl_bt_advertiser_start(
                 self.advertising_set,
-                2, // discover: 2 = User/General discoverable
+                // sl_bt_advertiser_user_data (0x4): send the data set above as it is. In general_discoverable (0x2) the stack
+                // builds the advertising PDU itself -- flags only -- and the set_data payload, name included, never reaches
+                // the air (measured: the first FIFO write was 3 bytes of data, flags, with the name set). The builder
+                // already carries the flags field, so nothing is lost.
+                4,
                 2, // connect: 2 = Undirected connectable
             );
             if status != 0 {
@@ -509,7 +517,7 @@ impl Bluetooth {
         if company_id == 0xFFFF {
             return Err(BleError::InvalidParameter);
         }
-        self.adv_data.add_manufacturer_data(company_id, data)
+        self.adv_data.replace_manufacturer_data(company_id, data)
     }
 
     /// Check if device is currently advertising
