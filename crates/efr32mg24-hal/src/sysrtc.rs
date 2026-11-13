@@ -106,6 +106,37 @@ pub struct Sysrtc {
 unsafe impl Send for Sysrtc {}
 
 impl Sysrtc {
+    /// Gate the SYSRTC's bus clocks and select its reference clock, **without touching the module itself**.
+    ///
+    /// This is the state the Bluetooth stack needs before it starts. Measured both ways: with the clocks gated off,
+    /// RAIL's first write to `SYSRTC->CMD` during its bring-up faults (`cfsr=0x8200`, `bfar=0x500a_8014`) because the
+    /// module has no bus clock; with the module *running* (i.e. after a full [`Sysrtc::take`]) RAIL's write to `CFG`
+    /// faults instead (`bfar=0x500a_800c`), because `CFG` is writable only while the counter is disabled. Gating the
+    /// clock and leaving the module disabled is the only state that satisfies both.
+    ///
+    /// Call this before starting the Bluetooth stack. A later [`Sysrtc::take`] is still correct: it sees the gates
+    /// already set and a module that is not running, and configures it as it always did.
+    pub fn enable_clocks(cmu: &CmuNs) {
+        // Same coercion `take` uses: `CmuNs` is a peripheral wrapper, not a pointer.
+        let cmu_regs: &CmuBlock = cmu;
+        let cmu_base = cmu_regs as *const CmuBlock as usize;
+        let clken0 = (cmu_base + off::CMU_CLKEN0) as *mut u32;
+        let gates =
+            unsafe { core::ptr::read_volatile(clken0) } | bits::CLKEN0_LFRCO | bits::CLKEN0_SYSRTC0;
+        unsafe { core::ptr::write_volatile(clken0, gates) };
+
+        // Clock select, at the offset measured from the blob (the header's is wrong for this silicon).
+        let clkctrl = (cmu_base + off::CMU_SYSRTC0CLKCTRL) as *mut u32;
+        let current = unsafe { core::ptr::read_volatile(clkctrl) };
+        unsafe {
+            core::ptr::write_volatile(clkctrl, (current & !bits::CLKSEL_MASK) | bits::CLKSEL_LFRCO)
+        };
+
+        // No sync-busy wait here on purpose: this module has no constant for it, and inventing one is exactly the
+        // failure mode this project keeps paying for. `take()` performs the documented wait before it configures
+        // anything, and RAIL performs its own before it writes `CFG`.
+    }
+
     /// Take the peripheral and put it in a known state: LFRCO, compare channel 0 armed, counter running.
     pub fn take(cmu: &CmuNs, rtc: &Sysrtc0Ns) -> Self {
         let cmu_regs: &CmuBlock = cmu;

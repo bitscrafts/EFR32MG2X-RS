@@ -28,6 +28,9 @@ cty = "0.2"
 # Safe wrapper dependencies
 heapless = "0.8"
 embedded-hal = "1.0"
+# Register access for the Secure Engine TRNG: the PAC carries the SVD-generated types, so no register offset
+# is ever written by hand in this crate.
+efr32mg24-pac = { path = "../efr32mg24-pac" }
 
 [dev-dependencies]
 # Required for examples

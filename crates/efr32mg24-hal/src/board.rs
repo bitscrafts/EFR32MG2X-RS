@@ -36,6 +36,12 @@ impl Board {
         Some(Self { dp, _cp: cp })
     }
 
+    /// Gate the SYSRTC's clocks without starting it. The state the Bluetooth stack needs before it configures the
+    /// radio; see `sysrtc::Sysrtc::enable_clocks` for the two faults that bracket this state.
+    pub fn prepare_sysrtc_clocks(&self) {
+        crate::sysrtc::Sysrtc::enable_clocks(&self.dp.cmu_ns);
+    }
+
     /// The tick timer, shared by every protocol stack that may run on this radio.
     ///
     /// SYSRTC is one peripheral, so it is handed out here rather than taken by a stack: a second consumer

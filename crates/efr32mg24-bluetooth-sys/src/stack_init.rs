@@ -119,10 +119,30 @@ extern "C" fn on_stack_wakeup() {
 extern "C" {
     /// The link-layer servicing function the vendor's own `linklayer_thread` calls.
     fn sl_bt_priority_handle();
+    /// The host's own processing: GAP/GATT state and its software timers. The vendor's `sl_bt_step` is
+    /// `sl_bt_run()` + `sl_bt_event_pending_len()` + `sl_bt_pop_event()`, and `sl_bt_run` is the part that makes the
+    /// host advance; without it a started stack answers synchronous commands and queues nothing.
+    fn sl_bt_run();
+    /// Bytes in the pending event, or 0 if none is waiting.
+    fn sl_bt_event_pending_len() -> u32;
     /// The host's *internal* start. Not the BGAPI `sl_bt_system_start_bluetooth`, which answers
     /// `SL_STATUS_NOT_AVAILABLE` without the on-demand-start component: this is the one the vendor's
     /// `bluetooth_thread` calls when it starts the stack, and it is what generates `system_boot`.
     fn sli_bt_system_start_bluetooth() -> u32;
+}
+
+/// Service the link layer now. This is what the vendor's bare-metal build wires to `PendSV`, and what its
+/// `linklayer_thread` calls when a kernel is present:
+///
+/// ```c
+/// void PendSV_Handler(void) { sl_bt_priority_handle(); }
+/// ```
+///
+/// Measured on this board: with no `PendSV` handler defined, the very first request from the host lands in
+/// `DefaultHandler` and the firmware sits there — `ICSR.VECTACTIVE = 14` with `PC` inside `DefaultHandler_`, no fault
+/// and no status, which is the "hang" this project chased for hours.
+pub fn service_link_layer() {
+    unsafe { sl_bt_priority_handle() };
 }
 
 /// Service the host. Call this from the application's main loop, as often as it comes round.
@@ -133,6 +153,15 @@ pub fn pump() {
     if LINK_LAYER_WAITING.swap(false, Ordering::AcqRel) {
         unsafe { sl_bt_priority_handle() };
     }
+    // **The host's turn.** Measured: with only the link layer serviced, `sli_bt_system_start_bluetooth` returns 0 and
+    // the event queue is still empty (`sl_bt_pop_event` = 45 = `SL_STATUS_NOT_FOUND`), so `system_boot` -- which the
+    // start enqueues -- is only delivered once the host runs.
+    unsafe { sl_bt_run() };
+}
+
+/// Whether an event is waiting to be popped. The application pops it; this only reports.
+pub fn event_pending() -> bool {
+    unsafe { sl_bt_event_pending_len() > 0 }
 }
 
 /// What the host has asked for since boot, for diagnostics: `(link_layer_callbacks, stack_callbacks, link_layer_pending)`.

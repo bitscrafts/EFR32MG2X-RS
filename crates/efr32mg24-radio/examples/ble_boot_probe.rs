@@ -22,12 +22,21 @@ mod mailbox;
 
 use core::ffi::c_void;
 
-use cortex_m_rt::entry;
+use cortex_m_rt::{entry, exception};
 use efr32mg24_bluetooth_sys::sleeptimer;
 use efr32mg24_hal::board::Board;
 use efr32mg24_hal::pin::Port;
 use efr32mg24_hal::prelude::*;
 use panic_halt as _;
+
+/// What the entropy test found, published for a debugger that can read a symbol address:
+/// `[status, flags, requests]`.
+///
+/// `#[no_mangle]` and volatile stores, because this was optimised away on the first attempt: a private static that
+/// the program never *reads* has no observable effect, so LLVM removed both the variable and the stores, and the
+/// symbol was simply absent from the ELF.
+#[no_mangle]
+pub static mut ENTROPY_REPORT: [u32; 3] = [0; 3];
 
 /// Counts how many times the timer callback ran. Written from an interrupt, read from the main loop.
 static mut TICKS: u32 = 0;
@@ -115,6 +124,16 @@ fn stage(tag: &[u8], a: u32, b: u32) {
     mailbox::write(mailbox::Status::Pass, &m[..n]);
 }
 
+/// **The handler the vendor's bare-metal design requires.**
+///
+/// Without it the host's first `PENDSVSET` lands in `DefaultHandler_` and the firmware stops there with `ICSR`
+/// reporting vector 14 — no fault, no status, indistinguishable from a deadlock. Measured on this board before this
+/// handler existed.
+#[exception]
+fn PendSV() {
+    efr32mg24_bluetooth_sys::stack_init::service_link_layer();
+}
+
 #[entry]
 fn main() -> ! {
     let board = Board::take().expect("peripherals taken twice");
@@ -155,7 +174,52 @@ fn main() -> ! {
     let nvm = unsafe { nvm3_initDefault() };
     stage(b"nvm3", nvm, 0);
 
+    // **The entropy test that cannot be faked.** Two calls on buffers pre-filled with a sentinel, before the stack
+    // exists. Three separate things have to be true: both calls report success, the sentinel is gone (the SE really
+    // wrote to memory -- a stub that returned 0 without writing would leave 0xA5 there), and the two outputs differ
+    // (a counter that merely incremented would produce equal buffers only by coincidence, but a fixed value would
+    // not).
+    let mut e1 = [0xA5u8; 32];
+    let mut e2 = [0xA5u8; 32];
+    let s1 = unsafe { efr32mg24_bluetooth_sys::psa::psa_generate_random(e1.as_mut_ptr(), 32) };
+    let s2 = unsafe { efr32mg24_bluetooth_sys::psa::psa_generate_random(e2.as_mut_ptr(), 32) };
+    let sentinel_gone = !e1.contains(&0xA5) && !e2.contains(&0xA5);
+    let differ = e1 != e2;
+    let (req, retries, fails) = efr32mg24_bluetooth_sys::se_trng::stats();
+    stage(
+        b"entropy",
+        s1 as u32,
+        (s2 as u32 & 0xFF)
+            | ((sentinel_gone as u32) << 8)
+            | ((differ as u32) << 9)
+            | (retries << 12)
+            | (fails << 16),
+    );
+    stage(b"entropyreq", req, 0);
+    // Published through a real static, not a fixed address: `0x2003_F6xx` sits inside the mailbox's own page, and the
+    // record write overwrote these words (measured: they read back as 0xFFFFFFFF, a value no code here can produce).
+    unsafe {
+        let r = core::ptr::addr_of_mut!(ENTROPY_REPORT);
+        core::ptr::write_volatile(core::ptr::addr_of_mut!((*r)[0]), s1 as u32);
+        core::ptr::write_volatile(
+            core::ptr::addr_of_mut!((*r)[1]),
+            (sentinel_gone as u32)
+                + ((differ as u32) << 1)
+                + ((retries % 16) << 8)
+                + ((fails % 16) << 12),
+        );
+        core::ptr::write_volatile(core::ptr::addr_of_mut!((*r)[2]), req);
+    }
+
     stage(b"boot", 0, 0);
+
+    // **The SYSRTC's clock, before the radio is started.** Measured: with the gates off, RAIL's first write to
+    // `SYSRTC->CMD` during its bring-up faults (`bfar=0x500a_8014`); with the module *running*, its `CFG` write
+    // faults instead (`bfar=0x500a_800c`). Gated and disabled is the state that satisfies both, and the HAL now
+    // exposes exactly that.
+    {
+        board.prepare_sysrtc_clocks();
+    }
 
     // 1. The whole bring-up, traced.
     let boot = unsafe {
@@ -226,6 +290,7 @@ fn main() -> ! {
     let mut events = 0u32;
     let mut last_pop = 0u32;
     let mut boot_event = 0u32;
+    let mut first_header = 0u32;
     for _ in 0..300 {
         // **The missing pump.** The host asks for link-layer work through a callback; nothing happens in this build
         // unless the application answers it, and an unanswered host queues no events at all.
@@ -236,12 +301,17 @@ fn main() -> ! {
         last_pop = popped as u32;
         if popped == 0 {
             events += 1;
-            // `sl_bt_evt_system_boot_id` is the event that proves the host finished coming up.
+            // **The id is `header & 0xffff00f8`, not a byte of it.** `SL_BGAPI_MSG_ID` in `sl_bgapi.h` masks with
+            // `0xffff00f8`, and `sl_bt_evt_system_boot_id` is `0x000100a0`. Reading only the low byte (as this did
+            // first) cannot tell one event from another, and it reported "no boot event" while an event was in fact
+            // sitting in the record.
             let evt = unsafe { evt.assume_init() };
-            let id =
-                unsafe { core::ptr::read_volatile(core::ptr::addr_of!(evt.header) as *const u8) };
-            if id == 0x00 {
+            let header = unsafe { core::ptr::read_volatile(core::ptr::addr_of!(evt.header)) };
+            if header & 0xffff_00f8 == 0x0001_00a0 {
                 boot_event += 1;
+            }
+            if events == 1 {
+                first_header = header;
             }
         }
         delay.delay_ms(1);

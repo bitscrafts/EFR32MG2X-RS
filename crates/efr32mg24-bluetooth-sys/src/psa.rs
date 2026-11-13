@@ -39,6 +39,9 @@ const PSA_SUCCESS: i32 = 0;
 const PSA_ERROR_NOT_SUPPORTED: i32 = -134;
 /// `PSA_ERROR_INVALID_ARGUMENT`
 const PSA_ERROR_INVALID_ARGUMENT: i32 = -135;
+
+/// `PSA_ERROR_HARDWARE_FAILURE`: the entropy source failed. The buffer is zeroed and nothing is invented.
+const PSA_ERROR_HARDWARE_FAILURE: i32 = -147;
 /// `PSA_ERROR_INVALID_HANDLE`
 const PSA_ERROR_INVALID_HANDLE: i32 = -136;
 /// `PSA_ERROR_BAD_STATE`
@@ -125,19 +128,41 @@ pub extern "C" fn psa_crypto_init() -> i32 {
     PSA_SUCCESS
 }
 
-/// Randomness is not available on this part, and this function says so rather than inventing bytes.
+/// Hardware entropy, from the Secure Engine's TRNG.
 ///
-/// See the module note: no TRNG is declared for this device, and a predictable "random" source would silently
-/// weaken any key the stack derives from it.
+/// **This function used to refuse.** Its doc claimed no TRNG was declared for this device; the premise was wrong, and
+/// a read-only review of this tree found it: the device header defines `SEMAILBOX_PRESENT`, and the vendor's own
+/// `sl_se_get_random` on this exact part issues `SLI_SE_COMMAND_TRNG_GET_RANDOM` through the mailbox. That refusal is
+/// what made `sli_bt_system_start_bluetooth` return `0x040C` (`SL_STATUS_BT_RADIO`): `ll_randomInit` asks for 32
+/// bytes, `bg_random_get_data` maps any failure to `0x0407`, and the radio wrapper masks it with `0xFF`.
+///
+/// The rule that produced the refusal still holds, and is now honoured rather than dodged: never invent randomness.
+/// On failure this returns `PSA_ERROR_HARDWARE_FAILURE` with the buffer zeroed, and there is no fallback to a
+/// counter or a timer. `se_trng` documents the protocol and the provenance of every constant in it.
 ///
 /// # Safety
 ///
-/// `output` must point to `output_size` writable bytes. Nothing is written.
+/// `output` must point to `output_size` writable bytes in SRAM.
 #[no_mangle]
-pub unsafe extern "C" fn psa_generate_random(_output: *mut u8, _output_size: usize) -> i32 {
+pub unsafe extern "C" fn psa_generate_random(output: *mut u8, output_size: usize) -> i32 {
     let p = ptr::addr_of_mut!(RANDOM_REQUESTS);
     ptr::write_volatile(p, ptr::read_volatile(p) + 1);
-    PSA_ERROR_NOT_SUPPORTED
+    crate::se_trng::count_request();
+
+    if output.is_null() {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    if output_size == 0 {
+        return 0;
+    }
+
+    let buf = core::slice::from_raw_parts_mut(output, output_size);
+    match crate::se_trng::fill(buf) {
+        Ok(()) => 0,
+        // `fill` has already zeroed the buffer. Counts of requests/retries/failures live in `se_trng::stats`; the
+        // bytes themselves are never recorded.
+        Err(_) => PSA_ERROR_HARDWARE_FAILURE,
+    }
 }
 
 /// Reset an attributes structure to the all-zero state PSA defines for it.

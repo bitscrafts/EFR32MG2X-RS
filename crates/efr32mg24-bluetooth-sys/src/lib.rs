@@ -79,6 +79,8 @@ pub use efr32mg24_rail_sys as rail;
 pub mod psa;
 /// RAIL's assertion callback: a failure that reports instead of looping.
 pub mod rail_assert;
+/// Hardware entropy: the Secure Engine's TRNG, through the mailbox.
+pub mod se_trng;
 /// The timer the stack schedules its events on, in Rust and polled.
 pub mod sleeptimer;
 mod support;
