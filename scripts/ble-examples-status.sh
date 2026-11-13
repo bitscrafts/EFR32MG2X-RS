@@ -33,15 +33,21 @@ for entry in $EXAMPLES; do
   ex=${entry##*:}
   built=""
   used=""
-  for feat in "" "stack"; do
+  # Every candidate feature set an example may declare in `required-features`. Trying them in order and reporting the
+  # one that worked is what makes this script answer "does every example build?" -- with a single hardcoded `stack`,
+  # `ble_gatt` reported FAIL while it builds fine with `ble gatt stack`, and a FAIL that is a script defect hides the
+  # examples that genuinely do not build.
+  for feat in "" "stack" "ble gatt stack" "gatt stack" "sense stack"; do
     if [ -z "$feat" ]; then
       args=(--release --target "$TARGET" -p "$pkg" --example "$ex")
     else
-      args=(--release --target "$TARGET" -p "$pkg" --example "$ex" --features stack)
+      # shellcheck disable=SC2206
+      args=(--release --target "$TARGET" -p "$pkg" --example "$ex" --features "$feat")
     fi
     if cargo build "${args[@]}" >/tmp/blebuild.log 2>&1; then
       built="$OUT/$ex"
       used=${feat:-none}
+      used=${used// /+}
       break
     fi
   done
