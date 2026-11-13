@@ -13,6 +13,7 @@ members = [
     "crates/xiao-expansion-base-bsp",
     # `libraries/` is domain policy: no hardware, builds and tests on the host.
     "libraries/motion-detection",
+    "libraries/aes-ctr-radio",
 ]
 exclude = [
     "crates/efr32mg24-bootloader",

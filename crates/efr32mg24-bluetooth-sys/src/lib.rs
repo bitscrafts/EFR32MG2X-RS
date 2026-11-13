@@ -61,6 +61,8 @@
 //! - No reverse engineering or modification of blobs
 //! - Distribution requires MSLA compliance
 
+mod support;
+
 // Raw FFI bindings (always available)
 #[allow(clippy::missing_safety_doc)]
 // ^ the safety docs are in the C headers this module is generated from, and bindgen does not carry

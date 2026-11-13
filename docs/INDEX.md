@@ -265,3 +265,4 @@ See [LICENSE](../LICENSE) file for details.
 - [BLE through RAIL on the XIAO](04-reference/RAIL-BLE-ON-XIAO.md) -- caps, both assertions, and the HFXO no-op trap.
 - [The path to GATT](04-reference/GATT-PATH.md) -- the four symbols left, two of them not obtainable from public sources.
 - [HOST RULE: the radio carries the network](04-reference/HOST-RADIO-SAFETY.md)
+- [What is still C, and what it costs to be Rust](04-reference/PURE-RUST-PATH.md)

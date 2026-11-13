@@ -1,0 +1,10 @@
+[package]
+name = "aes-ctr-radio"
+version = "0.1.0"
+edition = "2021"
+description = "AES-128 CTR as the Bluetooth stack needs it, in pure Rust, with no hardware"
+license = "MIT"
+publish = false
+
+[lib]
+name = "aes_ctr_radio"
