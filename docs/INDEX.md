@@ -274,3 +274,4 @@ See [LICENSE](../LICENSE) file for details.
 - [Reading the vendor blobs (objdump, then REA + Ghidra)](03-development/BLOB-DISASSEMBLY.md)
 - [The modem configuration: the data RAIL needs and nobody documents](04-reference/MODEM-CONFIG.md)
 - [Bluetooth integration: the symbol ledger](03-development/BLE-INTEGRATION.md)
+- [The compare channel works, and three registers were wrong](04-reference/SYSRTC-COMPARE-WORKS.md)

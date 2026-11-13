@@ -60,9 +60,17 @@ mod bits {
     pub const CMD_STOP: u32 = 1 << 1;
     /// `SYSRTC_GRP0_CTRL.CMP0EN`.
     pub const CTRL_CMP0EN: u32 = 1 << 0;
-    /// `SYSRTC_GRP0_IF/IEN` bit 0 (compare 0); 0x7 clears every channel of the group.
-    pub const GRP0_CMP0: u32 = 1 << 0;
-    pub const GRP0_ALL: u32 = 0x7;
+    /// `SYSRTC_GRP0_IF/IEN`, one bit per channel, **shifted by one against every header**. Measured on the board:
+    /// a compare on channel 0 sets bit 1 (0x22 read back, with the group-level mirror also set) exactly one count
+    /// after the programmed value, and a compare on channel 1 sets bit 2 (0x44). With only CMP0 enabled the flag
+    /// appeared in bit 1 and never in bit 0 — so the per-channel flag is bit `1 + n`, and the headers are off by
+    /// one here just as they are for the group's base offset.
+    pub const GRP0_CMP0: u32 = 1 << 1;
+    /// Compare channel 1's flag, same shift.
+    pub const GRP0_CMP1: u32 = 1 << 2;
+    /// Bits 4..7 mirror the channel flags at group level. Clearing them all is harmless and stops a stale
+    /// aggregate from looking like a pending event.
+    pub const GRP0_ALL: u32 = 0xFF;
     /// `CMU_CLKEN0` bits: LFRCO (22) and SYSRTC0 (30).
     pub const CLKEN0_LFRCO: u32 = 1 << 22;
     pub const CLKEN0_SYSRTC0: u32 = 1 << 30;
@@ -142,7 +150,7 @@ impl Sysrtc {
 
         // 6. Every group interrupt off and cleared, so the first wake is a real deadline.
         wr(this.regs as usize + off::GRP0_IEN, 0);
-        wr(this.regs as usize + off::GRP0_IF, bits::GRP0_ALL);
+        wr(this.regs as usize + off::GRP0_IF + 0x2000, bits::GRP0_ALL);
 
         // 7. Enable the module through EN_SET (0x1004), then start. 0x1000 is IPVERSION_SET and writing
         //    there left EN at zero, which is how the first version of this module failed.
@@ -244,7 +252,12 @@ impl Sysrtc {
     pub fn take_compare_event(&self) -> bool {
         let fired = rd(self.regs as usize + off::GRP0_IF) & bits::GRP0_CMP0 != 0;
         if fired {
-            wr(self.regs as usize + off::GRP0_IF, bits::GRP0_CMP0);
+            // Clear through the write-1-to-clear alias at +0x2000: a plain store of 0 to the flag register leaves it
+            // set, which is how a deadline can look "already fired" on the next call.
+            wr(
+                self.regs as usize + off::GRP0_IF + 0x2000,
+                bits::GRP0_CMP0 | bits::GRP0_CMP1,
+            );
         }
         fired
     }

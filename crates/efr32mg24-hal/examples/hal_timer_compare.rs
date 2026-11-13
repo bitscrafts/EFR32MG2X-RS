@@ -11,8 +11,8 @@
 #![no_std]
 #![no_main]
 
+use cortex_m_rt::entry;
 use efr32mg24_hal::board::Board;
-use efr32mg24_hal::entry;
 use efr32mg24_hal::sysrtc::Sysrtc;
 use panic_halt as _;
 
