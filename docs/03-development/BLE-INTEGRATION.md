@@ -31,7 +31,7 @@ cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg24-radio \
 | `psa_crypto_init`, `psa_generate_random`, `psa_import_key`, `psa_destroy_key`, `psa_reset_key_attributes`, `psa_set_key_domain_parameters`, `psa_mac_sign_setup`/`update`/`finish`/`abort` | PSA Crypto: the API the stack's security manager uses to import its keys and compute CMAC | **Real work, and honest stubs are not acceptable**: a stub that returns success without storing a key makes the stack believe it has security it does not have. Needs a key-slot table plus AES-CMAC, both testable against RFC 4493 on the host. `psa_generate_random` must come from the TRNG, not a counter. |
 | `sli_aes_crypt_ecb_radio` | single-block AES for the link layer | Implementable with `libraries/aes-ctr-radio`'s block cipher. **The signature is inferred from the call site, not documented**: `(r0=1, r1=pointer, r2=128, r3=pointer, [sp]=pointer)`. A wrong argument order is memory corruption, so this must be validated against a BLE test vector rather than trusted. |
 | `sli_ccm_encrypt_and_tag_ble` | BLE's CCM* for encrypted packets | Same shape of problem, six arguments at the call site. CCM* is CTR + CBC-MAC with a 13-byte nonce; the algorithm is public, the ABI is not. Validate against RFC 3610 vectors. |
-| `sl_power_manager_subscribe_em_transition_event` | power manager subscription | Trivial to satisfy (record the callback, never call it) and safe, because no transition ever happens in this firmware. |
+| ~~`sl_power_manager_subscribe_em_transition_event`~~ | **done** | Recorded and never called: no transition happens in this firmware, so nothing downstream can depend on one. `vendor_support::subscriptions()` reports the count. |
 
 ## What the package does and does not contain
 
@@ -48,7 +48,7 @@ Measured by extracting all 1748 `.a` files from `gecko-sdk-v4.4.5` and running `
 
 ## Order of work, with the reasoning
 
-1. **`sl_power_manager_subscribe_em_transition_event`** — five minutes, unblocks nothing on its own.
+1. ~~`sl_power_manager_subscribe_em_transition_event`~~ — done.
 2. **AES-ECB + CCM\*** — with RFC 3610 vectors as the contract. Doing them together is right: CCM* uses ECB, and
    a wrong ECB order shows up as a wrong tag rather than as a subtle failure later.
 3. **PSA** — key slots + CMAC + TRNG. This is the one that must not be faked, because the stack's security

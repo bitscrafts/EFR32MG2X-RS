@@ -80,6 +80,25 @@ pub extern "C" fn sli_power_manager_update_hf_clock_settings_preservation_requir
     }
 }
 
+/// Subscribe to energy-mode transition events.
+///
+/// The stack uses this to be told when the device is about to sleep. This firmware never sleeps (the timer is
+/// polled), so no transition ever happens and the subscription is recorded without a callback to call. Safe by
+/// construction: the callback is never invoked, so nothing downstream can depend on a transition that does not
+/// occur. `stats()` reports that a subscription was taken, so a future power manager knows it must honour one.
+#[no_mangle]
+pub extern "C" fn sl_power_manager_subscribe_em_transition_event(
+    _handle: *mut c_void,
+    _info: *const c_void,
+) {
+    unsafe {
+        let p = core::ptr::addr_of_mut!(EM_SUBSCRIPTIONS);
+        core::ptr::write_volatile(p, core::ptr::read_volatile(p) + 1);
+    }
+}
+
+static mut EM_SUBSCRIPTIONS: u32 = 0;
+
 /// Storage for the stack's default NVM3 handle. Opaque to us: the stack owns the layout and only ever passes the
 /// pointer back to the functions below. Sized generously (256 bytes) because the real `nvm3_Handle_t` carries
 /// its cache, and a smaller buffer would be a silent overflow the day persistence is implemented for real.
@@ -137,4 +156,9 @@ pub fn stats() -> (u32, u32) {
             core::ptr::read_volatile(core::ptr::addr_of!(NVM_MISSES)),
         )
     }
+}
+
+/// How many energy-mode transition subscriptions were taken.
+pub fn subscriptions() -> u32 {
+    unsafe { core::ptr::read_volatile(core::ptr::addr_of!(EM_SUBSCRIPTIONS)) }
 }
