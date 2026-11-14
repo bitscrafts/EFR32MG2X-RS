@@ -29,7 +29,7 @@ These examples use the Gecko bootloader and have been confirmed working on hardw
 To flash any of these examples:
 
 ```bash
-cd /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-bootloader
+cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-bootloader
 
 # Flash volume example
 ../openocd/bin/openocd -s ../openocd/scripts \

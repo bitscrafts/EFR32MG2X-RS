@@ -302,7 +302,7 @@ This is the **exact command that successfully flashed** the Arduino example on 2
 ~/Library/Arduino15/packages/SiliconLabs/tools/openocd/0.12.0-arduino1-static/bin/openocd \
   -f interface/cmsis-dap.cfg \
   -f target/efm32s2_g23.cfg \
-  -c "init; reset_config srst_nogate; reset halt; program /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24_flash_erase_macos/SimplicityCommander-Mac/Commander-cli.app/Contents/MacOS/MicrophoneVolume.ino.with_bootloader.hex verify; reset; exit"
+  -c "init; reset_config srst_nogate; reset halt; program /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24_flash_erase_macos/SimplicityCommander-Mac/Commander-cli.app/Contents/MacOS/MicrophoneVolume.ino.with_bootloader.hex verify; reset; exit"
 ```
 
 **Result**:

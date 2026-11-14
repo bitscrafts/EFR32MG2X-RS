@@ -20,7 +20,7 @@
 //!
 //! ```text
 //! cargo build --release -p efr32mg24-hal --features rt --example fall-detector
-//! scripts/flash-lnx.sh <elf> --confirm
+//! scripts/flash.sh <elf> --confirm
 //! ```
 //!
 //! At boot it prints one mailbox line with the verdict of two self tests (real

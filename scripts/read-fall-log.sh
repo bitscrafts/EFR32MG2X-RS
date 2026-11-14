@@ -15,7 +15,7 @@
 # Usage: scripts/read-fall-log.sh [host] [elf]
 set -euo pipefail
 
-HOST="${1:-mvcorrea@10.10.10.217}"
+HOST="${1:-${FLASH_HOST:-localhost}}"
 ELF="${2:-/projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/base_fall_detector}"
 ODD=/tmp/openocd-mg24-mini.cfg
 OUT=/tmp/fall-read

@@ -228,7 +228,7 @@ Silicon Labs' Bluetooth stack, and that is where the GATT milestone has to be wo
 Also unresolved and *not* claimed: no independent observer has confirmed any of these transmissions.
 The host's `bluetoothctl scan` returned no device list even while the host itself was advertising, so
 that instrument is unverified and proves nothing in either direction. The phone is the only trusted
-observer available, and it saw `lnx-ble` but never `xiao-mg24`.
+observer available, and it saw `host-ble` but never `xiao-mg24`.
 ## It transmits, and no receiver hears it (2026-11-12, end of this session)
 
 The chain is now measured at every link, and that is the useful part: each link says the packet is
@@ -257,7 +257,7 @@ specification in a way a scanner silently drops, or the output stage is not driv
 
 What would settle it, in order of cost:
 
-1. **A phone with nRF Connect** — a different receiver with a different front end. It saw `lnx-ble` when
+1. **A phone with nRF Connect** — a different receiver with a different front end. It saw `host-ble` when
    the host advertised, so it works.
 2. **`RAIL_GetTxPowerDbm()` after transmission** — if it does not read back what was requested, the PA is
    not accepting the configuration.

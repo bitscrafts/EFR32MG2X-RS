@@ -480,7 +480,7 @@ ls /dev/cu.usbmodem*
 # Expected: /dev/cu.usbmodem24D15EE4 (or similar)
 
 # 2. Navigate to recovery package
-cd /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24_flash_erase_macos
+cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24_flash_erase_macos
 
 # 3. Execute recovery script
 ./xiao_mg24_erase.sh
@@ -493,7 +493,7 @@ cd /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24
 # shutdown command invoked
 
 # 4. If successful, immediately flash recovery firmware
-cd /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-hal
+cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-hal
 cargo run --example 00_recovery --features rt --release
 ```
 

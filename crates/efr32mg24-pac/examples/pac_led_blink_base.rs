@@ -2,7 +2,7 @@
 //! per phase, no gap -- i.e. the continuous blink the board has been running.
 //!
 //! Compare against `pac_blink_double`. Verified over SWD, not by eye:
-//! `scripts/read-led-lnx.sh` (mode7=4, DOUT toggles, DIN follows) and
+//! `scripts/read-led.sh` (mode7=4, DOUT toggles, DIN follows) and
 //! `scripts/measure-blink-rate.sh` (toggle counter read from the mailbox twice,
 //! divided by the wall-clock gap).
 

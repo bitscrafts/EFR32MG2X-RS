@@ -34,7 +34,7 @@ Note the trap: the **same physical board** identified itself as `239a:8029 "Feat
 before the touch and as `239a:00b3 "nice!nano"` after it. The USB identity is the firmware's claim, not
 the hardware's — which is why the serial number is the field to match on, and it did not change.
 
-## The host's radios (lnx)
+## The host's radios
 
 | Identifier | Value | How |
 |---|---|---|

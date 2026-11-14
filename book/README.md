@@ -1008,7 +1008,7 @@ fi
 # sync-and-build.sh
 
 BOOK_HOST="book-builder.local"
-BOOK_DIR="/Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/book"
+BOOK_DIR="/Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/book"
 
 # Sync latex files
 echo "Syncing LaTeX files to build host..."
@@ -1081,7 +1081,7 @@ book/
 **Symbolic Links (Optional):**
 ```bash
 # For chapters heavily tied to actual code
-ln -s /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-hal/src/gpio \
+ln -s /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-hal/src/gpio \
       book/project/chapter-03-gpio/src/gpio
 ```
 

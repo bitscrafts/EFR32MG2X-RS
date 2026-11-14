@@ -2,50 +2,46 @@ name: Build and Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [master, main]
   pull_request:
-    branches: [ master ]
   workflow_dispatch:
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  build-pac:
-    name: Build PAC
+  gate:
+    name: Gate (build, clippy, host tests, examples)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+
+      # Both targets are needed: the firmware crates build for the microcontroller, and the pure-logic crates under
+      # `libraries/` are tested on the host — an allocator or a cipher is proven by running it, not by compiling it.
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv8m.main-none-eabihf
-      - run: cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
 
-  build-hal:
-    name: Build HAL
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - name: Cache cargo registry and build
+        uses: actions/cache@v4
         with:
-          targets: thumbv8m.main-none-eabihf
-      - run: cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            targets
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-  build-examples:
-    name: Build Examples
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      # **The same script that runs locally.** One definition of "the project is healthy" is worth more than a workflow
+      # that drifts from it: the previous version of this job ran `cargo test ... || echo "Tests placeholder"`, which
+      # cannot fail, and built examples without the features they require.
+      # Run once, keep the full log, and let the step's exit status be the gate's verdict. Running it twice to print a
+      # summary would double the CI time for a tail of output that the first run already produced.
+      - name: Run the gate
+        run: |
+          set -o pipefail
+          bash scripts/gate.sh 2>&1 | tee gate.log
+
+      - name: Upload the gate log
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          targets: thumbv8m.main-none-eabihf
-      - run: cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
-        working-directory: crates/efr32mg24-hal
-
-  test:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --lib --no-default-features || echo "Tests placeholder - no tests yet"
+          name: gate-log
+          path: gate.log

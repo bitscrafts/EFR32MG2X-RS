@@ -22,7 +22,7 @@
 //!
 //! ```bash
 //! cargo build --release -p xiao-mg24-bsp --features rt --example 00_blink
-//! bash scripts/flash-lnx.sh \
+//! bash scripts/flash.sh \
 //!   /projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/00_blink --confirm
 //! ```
 //!

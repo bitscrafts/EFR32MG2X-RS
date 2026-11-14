@@ -6,6 +6,13 @@
 
 **Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. HAL core (12 modules), RAIL FFI bindings, Bluetooth stack, and XiaoBle BSP all production-ready. Next: Phase D3 (Zigbee 3.0) / Phase E (Security).
 
+**Status 2026-11-14**: the Bluetooth stack now runs on hardware and a phone can use it -- advertising, scanning,
+connections, GATT read/write/notify, and the BME680 published as the standard Environmental Sensing service
+(`base_ble_env_gatt`, verified with nRF Connect). Two items remain inside Phase D2: **D2f pairing/bonding** (the PSA
+layer is written and verified on the board; the security manager fails before the key exchange, so it stays out of the
+product build) and **D2g BME680 gas resistance**. All 26 examples compile under `scripts/check-examples-build.sh` and
+`scripts/gate.sh` reports `VERDICT: PASS`. See the Gantt and phase table in `README.md`.
+
 **Repository Structure**:
 ```
 EFR32MG24/

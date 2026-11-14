@@ -5,7 +5,7 @@ Measured 2026-11-12, on the host that owns the boards.
 ## The fact
 
 ```
-wlx90de80814455  UP   10.10.10.217/24    default via 10.10.10.1     USB 1-8, interface 1-8:1.2
+wlx90de80814455  UP   ${FLASH_HOST:-localhost}/24    default via 10.10.10.1     USB 1-8, interface 1-8:1.2
 hci0             UP   90:DE:80:81:44:56                             USB 1-8, interface 1-8:1.0
 enp6s0           DOWN
 ```
@@ -14,7 +14,7 @@ The Wi-Fi interface and the Bluetooth controller are **two functions of one USB 
 interface is the **only route off the machine**. Every SSH session used to do this work arrives over it:
 
 ```
-ESTAB  10.10.10.217:22 <- 10.10.10.210:54820
+ESTAB  ${FLASH_HOST:-localhost}:22 <- 10.10.10.210:54820
 ```
 
 So a command that powers, resets or unbinds that USB device does not "disrupt a peripheral" — it removes

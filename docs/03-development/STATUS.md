@@ -3,7 +3,12 @@
 **Date**: January 3, 2026
 **Project**: EFR32MG24 Rust Support (PAC + HAL + Radio + Bluetooth)
 **Phase**: Phase D2 Complete ✅ - Bluetooth 5.3 LE Integration
-**Identifiers**: P1-P4 (✅), A1-A3 (✅), B1-B4 (✅), C1-C6 (✅), D0.1-D0.3 (✅), D1-RAIL.1 (✅), D2-BLE (✅)
+**Identifiers**: P1-P4 (✅), A1-A3 (✅), B1-B4 (✅), C1-C6 (✅), D0.1-D0.3 (✅), D1-RAIL.1 (✅), D2-BLE (✅), D2-on-hardware (✅), D2f pairing (⏳ open), D2g gas (⏳ planned)
+
+**Update 2026-11-14**: Phase D2 is verified on hardware rather than only integrated: advertising, scanning,
+connections, GATT read/write/notify, and the BME680 on the standard Environmental Sensing service, confirmed from a
+phone. D2f (pairing) and D2g (gas resistance) are the remaining items; the Gantt and the phase table in `README.md`
+carry the current state.
 
 ---
 

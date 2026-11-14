@@ -32,7 +32,7 @@
 //!    is taken from the counter WRAP instead (`cur < prev`).
 //!
 //! Verified over SWD, not by eye:
-//!   scripts/read-led-lnx.sh        mode7=4, DOUT toggles, DIN follows
+//!   scripts/read-led.sh        mode7=4, DOUT toggles, DIN follows
 //!   scripts/measure-blink-rate.sh  toggle counter from the mailbox
 
 #![no_std]

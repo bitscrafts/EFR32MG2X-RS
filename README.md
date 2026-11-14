@@ -1,5 +1,7 @@
 # EFR32MG24 Rust Support
 
+![XIAO MG24 Sense on the XIAO Expansion Base](docs/images/xiao-mg24-sense.jpg)
+
 Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoCs.
 
 
@@ -16,7 +18,10 @@ Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Sili
 
 > **Documentation**: https://bitscrafts.github.io/EFR32MG2X-RS/efr32mg24_hal/index.html
 
-> ✅ **Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. Next: Phase D3 (Zigbee) / Phase E (Application Development)
+> ✅ **Status**: Bluetooth 5.3 LE works on hardware -- beacon advertising, scanning, connections, a GATT server with
+> read, write and notify, and the BME680 published as the standard Environmental Sensing service, verified on a phone.
+> Pairing (D2f) and the BME680 gas reading (D2g) are the open items; see "The BLE part, honestly" below. Next phases:
+> D3 (Zigbee) / Phase E (Application Development).
 
 ## Overview
 
@@ -65,7 +70,16 @@ gantt
     D0 Radio Prep        :done, d0, 2025-12-27, 1d
     D1 RAIL Foundation   :done, d1, 2025-12-28, 1d
     D2 Bluetooth 5.3 LE  :done, d2, 2025-12-28, 6d
-    D3 Zigbee 3.0        :d3, after d2, 7d
+    section Phase D2 - on hardware
+    D2a Stack on the board  :done, d2a, 2026-11-09, 4d
+    D2b Advertise and scan  :done, d2b, 2026-11-12, 2d
+    D2c GATT read/write/notify :done, d2c, 2026-11-13, 1d
+    D2d Example matrix      :done, d2d, 2026-11-14, 1d
+    D2e BME680 on a phone   :done, d2e, 2026-11-14, 1d
+    D2f Pairing and bonding :active, d2f, 2026-11-15, 5d
+    D2g BME680 gas resistance :d2g, after d2f, 3d
+    section Phase D
+    D3 Zigbee 3.0        :d3, after d2g, 7d
     D4 Thread/Matter     :d4, after d3, 7d
     section Phase E
     Security Features    :e, after d4, 14d
@@ -82,30 +96,42 @@ gantt
 | **D0** | Radio Preparation | ✅ Complete | 3/3 (100%) |
 | **D1** | RAIL Foundation | ✅ Complete | 1/1 (100%) |
 | **D2** | Bluetooth 5.3 LE | ✅ Complete | 5/5 (100%) |
+| **D2a** | Stack on the board | ✅ Complete | 1/1 (100%) |
+| **D2b** | Advertise and scan | ✅ Complete | 2/2 (100%) |
+| **D2c** | GATT read/write/notify | ✅ Complete | 3/3 (100%) |
+| **D2d** | Example matrix on hardware | ✅ Complete | 13/13 examples run |
+| **D2e** | BME680 on a phone | ✅ Complete | 3/3 characteristics |
+| **D2f** | Pairing and bonding | ⏳ Open | 0/1 (PSA layer done, security manager open) |
+| **D2g** | BME680 gas resistance | ⏳ Planned | 0/1 |
 | **D3** | Zigbee 3.0 | ⏳ Planned | 0/4 (0%) |
 | **D4** | Thread/Matter | ⏳ Planned | 0/4 (0%) |
 | **E** | Security Features | ⏳ Planned | 0/3 (0%) |
 
 ### Project Metrics
 
-**Crates**: 5 total
+**Crates**: 12 total
 - efr32mg24-pac (138,448 lines, 133 peripherals)
 - efr32mg24-hal (12 peripheral modules)
+- efr32mg24-radio (Bluetooth API, RAIL, diagnostics)
 - efr32mg24-rail-sys (3,974 FFI bindings)
 - efr32mg24-bluetooth-sys (4,307 BGAPI bindings)
-- xiao-mg24-bsp (board support package)
+- efr32mg24-emlib-sys, efr32mg24-bt-stubs, cmsis-stubs (C interop for the vendor blobs)
+- xiao-mg24-bsp (XIAO MG24 Sense)
+- xiao-expansion-base-bsp (XIAO Expansion Base)
+- efr32mg24-bootloader, bootloader-test-app
+
+**Libraries** (`libraries/`): bt-heap, aes-modes, aes-ctr-radio, motion-detection -- `no_std`, tested on the host
 
 **HAL Modules**: 12 production-ready drivers
 - Phase A: clock, gpio, delay (3 modules)
 - Phase B: usart, i2c, spi, timer (4 modules)
 - Phase C: adc, dma, emu, rtc, wdog (5 modules)
 
-**Examples**: 27 working examples
-- HAL examples: 14 (covering all 12 modules, 00_recovery through 12_wdog)
-- BLE FFI examples: 4 (crates/efr32mg24-bluetooth-sys/examples/)
-- BSP examples: 9 (crates/xiao-mg24-bsp/examples/ - blink, safe BLE wrapper, LED control, sensor notifications, microphone streaming)
+**Examples**: 83 files, 26 of them checked by `scripts/check-examples-build.sh` across the PAC, HAL, radio and BSP levels
+- The Bluetooth and BSP examples declare `required-features`, so a plain `cargo build --examples` skips them silently;
+  that script names each one with its features and fails if any does not compile.
 
-**Build Status**: All examples compile successfully with zero errors
+**Build Status**: All examples compile successfully with zero errors; `scripts/gate.sh` reports `VERDICT: PASS`
 
 ### ✅ Completed Phases
 
@@ -127,11 +153,74 @@ gantt
 
 ### Next Up
 
+- [ ] **D2f**: Bluetooth pairing and bonding (the PSA layer is written and verified; the security manager fails before the key exchange)
+- [ ] **D2g**: BME680 gas resistance (heater, `res_heat` and the `par_g*` curves)
 - [ ] **D3**: Zigbee 3.0 protocol stack integration
 - [ ] **D4**: Thread/Matter support
 - [ ] **Phase E**: Security features (AES, SHA, Secure Vault)
 - [ ] **C2-DMA.3/4**: Linked descriptors and interrupt-driven async DMA
 - [ ] **C6-Test**: Hardware validation on XIAO MG24 Sense
+
+### What runs on the board today (measured, 2026-11-14)
+
+Every row below was measured on hardware with a machine watching the radio from outside. The board's own report is
+never the evidence: an example whose job is to transmit passes only when something else sees it on the air.
+
+| example | layer | what proves it |
+|---|---|---|
+| `pac_led_blink`, `hal_led_blink`, `module_led_blink`, `base_led_blink` | PAC → BSP | the pin is read back toggling, not assumed |
+| `pac_bme680`, `pac_env_display`, `base_env_display` | PAC → BSP | compensated temperature, pressure and humidity, on the panel |
+| `hal_mic_level`, `module_mic_level` | HAL | RMS over 128 samples, the LED follows the level |
+| `hal_imu_read`, `module_imu` | HAL | accelerometer identity and three axes |
+| `ble_beacon` | radio | `Name (complete): xiao-mg24` seen by a scanner |
+| `ble_scanner` | radio | decodes a known address, with a control run that does not |
+| `ble_advertise_custom` | radio | a 9-byte manufacturer frame with a live counter |
+| `ble_gatt` | radio | a client connects, reads, writes and subscribes; the firmware echoes the written bytes in its notifications |
+| `base_ble_env_gatt` | BSP | the BME680 as a standard Environmental Sensing service, read and notified, verified on a phone |
+| `module_ble_beacon`, `module_ble_motion`, `module_ble_fall`, `base_ble_env` | BSP | sensor data in the advertising payload |
+| `ble_diag`, `ble_boot_probe`, `ble_rail_then_stack` | radio | transmit counters, boot status, crystal frequency |
+
+### The BLE part, honestly
+
+**Works:** advertising (connectable and not), scanning, connections, a GATT server with read, write and notify, and a
+sensor published as the standard `0x181A` Environmental Sensing service -- temperature `0x2A6E`, humidity `0x2A6F`,
+pressure `0x2A6D`. A generic phone app labels and decodes those without any profile document from us.
+
+**Does not work, and is not in the product build:** pairing and bonding. The security manager is a catalogue option
+that is deliberately off. With it enabled a pairing request is accepted and then fails at a DHKey check **without any
+cryptographic function being called** (`pg=0 pe=0 pa=0`), which puts the fault before the key exchange rather than in
+it. See [`docs/04-reference/BLE-STATUS.md`](docs/04-reference/BLE-STATUS.md).
+
+**The advertising rate is unmeasured.** The only adapter available captures roughly 8% of what is on the air, so counts
+cannot be turned into a rate without a controllable receiver.
+
+### Quick start
+
+```bash
+# Everything the gate checks: build every crate, clippy at zero, host tests, examples, message buffers
+bash scripts/gate.sh
+
+# Every example with the features it declares (the Bluetooth and BSP ones are skipped by `cargo --examples`)
+bash scripts/check-examples-build.sh
+
+# Flash one example and run it. The script refuses a load address that would overwrite the bootloader and verifies
+# the image by reading it back.
+cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg24-radio \
+  --example ble_gatt --features "ble gatt stack"
+FLASH_HOST=<bench-host> bash scripts/flash.sh \
+  target/thumbv8m.main-none-eabihf/release/examples/ble_gatt --confirm --run
+```
+
+`FLASH_HOST` is the machine the debug probe is attached to; the scripts reach it over SSH and speak to the target with
+OpenOCD. Nothing in the repository depends on a particular host.
+
+### A note on the evidence
+
+Several checks here exist because a green check once passed while the thing it checked was broken: a scan that
+reported nothing because the *scanner* was the bottleneck, a GATT read answered from the host's cache, a mailbox
+record that survived a reset and was read as the current one. Where a document states a result, it states how it was
+measured and what would make it false.
+
 
 ## PAC (Peripheral Access Crate)
 

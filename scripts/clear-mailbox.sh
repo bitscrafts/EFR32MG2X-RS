@@ -11,8 +11,8 @@
 # Writes one word inside this project's own diagnostic area; nothing else is touched.
 set -uo pipefail
 
-HOST="${1:-10.10.10.217}"
-USER_NAME="${2:-mvcorrea}"
+HOST="${1:-${FLASH_HOST:-localhost}}"
+USER_NAME="${2:-${FLASH_USER:-$(id -un)}}"
 CFG=/tmp/openocd-mg24-mini.cfg
 MAILBOX=0x2003F000
 

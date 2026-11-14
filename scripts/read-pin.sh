@@ -18,8 +18,8 @@ set -uo pipefail
 REG="${1:-0x5003C040}"
 BIT="${2:-7}"
 SAMPLES="${3:-6}"
-HOST="${4:-10.10.10.217}"
-USER_NAME="${5:-mvcorrea}"
+HOST="${4:-${FLASH_HOST:-localhost}}"
+USER_NAME="${5:-${FLASH_USER:-$(id -un)}}"
 
 CFG=/tmp/openocd-mg24-mini.cfg
 if ! ssh -o ConnectTimeout=10 "${USER_NAME}@${HOST}" "test -f ${CFG}"; then

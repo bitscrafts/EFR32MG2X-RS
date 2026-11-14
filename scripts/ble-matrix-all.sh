@@ -11,8 +11,8 @@
 # The results file is append-per-example, so a timeout in the middle leaves the finished rows intact.
 set -u
 
-HOST="${FLASH_HOST:-10.10.10.217}"
-USER_="${FLASH_USER:-mvcorrea}"
+HOST="${FLASH_HOST:-localhost}"
+USER_="${FLASH_USER:-$(id -un)}"
 RESULTS="${1:-/projects/_tmp/efr32mg24-rs/MATRIX-RESULTS.md}"
 FILTER="${2:-}"
 ADDR_E4="E4:0A:75:13:3E:E0"     # the board's own advertising address

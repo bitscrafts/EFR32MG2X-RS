@@ -17,8 +17,8 @@
 # Usage: scripts/read-mailbox.sh [host] [user]
 set -uo pipefail
 
-HOST="${1:-10.10.10.217}"
-USER_NAME="${2:-mvcorrea}"
+HOST="${1:-${FLASH_HOST:-localhost}}"
+USER_NAME="${2:-${FLASH_USER:-$(id -un)}}"
 ADDR=0x2003F000
 WORDS=72          # 288 bytes: 16 of header + 272 of message. 64 truncated the record exactly where the
                   # fields that explain a failure live, which twice produced "no data" where data existed.

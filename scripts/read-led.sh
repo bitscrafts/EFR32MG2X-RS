@@ -23,8 +23,8 @@
 set -uo pipefail
 
 SAMPLES="${1:-8}"
-HOST="${2:-10.10.10.217}"
-USER_NAME="${3:-mvcorrea}"
+HOST="${2:-${FLASH_HOST:-localhost}}"
+USER_NAME="${3:-${FLASH_USER:-$(id -un)}}"
 CFG=/tmp/openocd-mg24-mini.cfg
 
 BASE=0x5003C000          # GPIO non-secure alias

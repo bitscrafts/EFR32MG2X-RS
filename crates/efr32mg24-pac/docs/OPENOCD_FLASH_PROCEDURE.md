@@ -188,7 +188,7 @@ Or using full path:
 ~/Library/Arduino15/packages/SiliconLabs/tools/openocd/0.12.0-arduino1-static/bin/openocd \
   -f interface/cmsis-dap.cfg \
   -f target/efm32s2_g23.cfg \
-  -c "program /Users/mvcorrea/Library/Arduino15/packages/SiliconLabs/hardware/silabs/3.0.0/bootloaders/seeed-studio-xiao-mg24-bootloader-storage-internal-single-512k.hex verify reset exit"
+  -c "program /Users/${FLASH_USER:-$(id -un)}/Library/Arduino15/packages/SiliconLabs/hardware/silabs/3.0.0/bootloaders/seeed-studio-xiao-mg24-bootloader-storage-internal-single-512k.hex verify reset exit"
 ```
 
 **Expected output**: `** Verified OK **` (ignore pthread mutex assertion error at the end)
@@ -215,7 +215,7 @@ Or using full path:
 
 **Bootloader File Location**:
 ```
-/Users/mvcorrea/Library/Arduino15/packages/SiliconLabs/hardware/silabs/3.0.0/bootloaders/
+/Users/${FLASH_USER:-$(id -un)}/Library/Arduino15/packages/SiliconLabs/hardware/silabs/3.0.0/bootloaders/
 seeed-studio-xiao-mg24-bootloader-storage-internal-single-512k.hex
 ```
 (30 KB file)

@@ -293,7 +293,7 @@ fn main() {
 #### Step 1: Create Test Application Crate
 
 ```bash
-cd /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/
+cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/
 mkdir bootloader-test-app
 cd bootloader-test-app
 ```

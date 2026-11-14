@@ -9,8 +9,8 @@ set -uo pipefail
 
 ADDR="${1:?usage: read-memory.sh <addr> <word-count> [host] [user]}"
 WORDS="${2:?usage: read-memory.sh <addr> <word-count> [host] [user]}"
-HOST="${3:-10.10.10.217}"
-USER_NAME="${4:-mvcorrea}"
+HOST="${3:-${FLASH_HOST:-localhost}}"
+USER_NAME="${4:-${FLASH_USER:-$(id -un)}}"
 CFG=/tmp/openocd-mg24-mini.cfg
 
 ssh -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \

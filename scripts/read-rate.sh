@@ -18,7 +18,7 @@ read_word() {
     | awk -v w="$WORD" 'index($0, w) == 1 { print strtonum("0x" $2) }' 2>/dev/null
 }
 
-HOST=${HOST:-mvcorrea@10.10.10.217}
+HOST=${HOST:-${FLASH_HOST:-localhost}}
 
 w1=$(ssh "$HOST" "sudo -n openocd -f interface/cmsis-dap.cfg -f /tmp/openocd-mg24-mini.cfg -c 'init; halt' \
       -c 'mdw $WORD 1' -c 'resume; shutdown' 2>&1" | grep "^$WORD" | awk '{print $2}')

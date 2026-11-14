@@ -47,7 +47,7 @@ commander flash firmware.hex \
 ## Test Flash (Verify Connection)
 
 ```bash
-cd /Users/mvcorrea/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24_flash_erase_macos/SimplicityCommander-Mac/Commander-cli.app/Contents/MacOS/
+cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/xiao_mg24_flash_erase_macos/SimplicityCommander-Mac/Commander-cli.app/Contents/MacOS/
 
 commander flash MicrophoneVolume.ino.with_bootloader.hex \
   --identifybyserialport /dev/cu.usbmodem24D15EE43

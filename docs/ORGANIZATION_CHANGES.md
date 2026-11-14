@@ -120,7 +120,7 @@ Historical documents and resolved issues:
 ## Final Structure
 
 ```
-/Users/mvcorrea/Private/PROJECTS/20260515-efr32mg24/
+/Users/${FLASH_USER:-$(id -un)}/Private/PROJECTS/20260515-efr32mg24/
 ├── scripts/                          # NEW: Build and flash scripts
 │   ├── README.md                     # Script documentation
 │   ├── build-container.sh

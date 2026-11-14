@@ -21,11 +21,11 @@ fi
 
 echo "== $PKG/$EX"
 python3 scripts/elf-load-range.py "$ELF" | head -1
-FLASH_HOST=10.10.10.217 FLASH_USER=mvcorrea bash scripts/flash.sh "$ELF" --confirm --run 2>&1 | grep -E "Verification|FAILED" || {
+FLASH_HOST=${FLASH_HOST:-localhost} FLASH_USER=${FLASH_USER:-$(id -un)} bash scripts/flash.sh "$ELF" --confirm --run 2>&1 | grep -E "Verification|FAILED" || {
   echo "flash failed"; exit 1; }
 
 sleep 8
 echo "-- mailbox:"
 bash scripts/read-mailbox.sh 2>/dev/null | head -3
 echo "-- RAIL assert slot (magic, code, handle, count):"
-ssh mvcorrea@10.10.10.217 'sudo -n openocd -f interface/cmsis-dap.cfg -f /tmp/openocd-mg24-mini.cfg -c "init; halt" -c "mdw 0x2003F500 4" -c "resume; shutdown" 2>&1 | grep 0x2003f500'
+ssh ${FLASH_HOST:-localhost} 'sudo -n openocd -f interface/cmsis-dap.cfg -f /tmp/openocd-mg24-mini.cfg -c "init; halt" -c "mdw 0x2003F500 4" -c "resume; shutdown" 2>&1 | grep 0x2003f500'

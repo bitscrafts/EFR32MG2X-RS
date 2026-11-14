@@ -16,8 +16,8 @@ set -u
 PKG="$1"
 EX="$2"
 FEAT="${3:-stack}"
-HOST="${FLASH_HOST:-10.10.10.217}"
-USER_="${FLASH_USER:-mvcorrea}"
+HOST="${FLASH_HOST:-localhost}"
+USER_="${FLASH_USER:-$(id -un)}"
 TARGET=thumbv8m.main-none-eabihf
 OUT=/projects/_cache/targets/$TARGET/release/examples
 

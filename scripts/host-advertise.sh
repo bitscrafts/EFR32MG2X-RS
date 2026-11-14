@@ -6,7 +6,7 @@
 # On this host the Bluetooth controller and the Wi-Fi interface are two functions of ONE USB dongle,
 # and that Wi-Fi interface is the only route off the machine:
 #
-#     wlx90de80814455  UP   10.10.10.217/24   default via 10.10.10.1   (USB 1-8, interface 1.2)
+#     wlx90de80814455  UP   ${FLASH_HOST:-localhost}/24   default via 10.10.10.1   (USB 1-8, interface 1.2)
 #     hci0             BD   90:DE:80:81:44:56                          (USB 1-8, interface 1.0)
 #     enp6s0           DOWN
 #
@@ -28,14 +28,14 @@
 # ## What it advertises
 #
 #   02 01 06                        flags: LE general discoverable, BR/EDR not supported
-#   08 09 "lnx-ble"                 complete local name
+#   08 09 "host-ble"                 complete local name
 #   07 FF FF FF 58 49 41 4F         manufacturer data, company 0xFFFF, payload "XIAO"
 set -euo pipefail
 
 IFACE=${IFACE:-hci0}
 # The name on THIS host is the host's. "xiao-mg24" belongs to the board, and using it here once made a
 # scanner listing look like the board was advertising when it was not.
-NAME=${NAME:-lnx-ble}
+NAME=${NAME:-host-ble}
 
 usb_parent() {
   local p

@@ -1,6 +1,6 @@
 # Testing the radio: what is actually available
 
-Measured 2026-11-12, on the host that owns the boards (`10.10.10.217`).
+Measured 2026-11-12, on the host that owns the boards (`${FLASH_HOST:-localhost}`).
 
 ## The host has a Bluetooth adapter, and it can play both roles
 
@@ -21,7 +21,7 @@ With those two, the host becomes a BLE peer that needs no phone and no extra har
 **As a transmitter**, which is what the board's examples need to hear:
 
 ```bash
-printf 'power off\nsystem-alias lnx-ble\npower on\ndiscoverable on\nadvertise on\n' \
+printf 'power off\nsystem-alias host-ble\npower on\ndiscoverable on\nadvertise on\n' \
   | sudo bluetoothctl
 ```
 
@@ -69,7 +69,7 @@ unnamed address (`*.44:56` in nRF Connect), which answers "is the radio on" and 
 
 ```
 02 01 06                        flags: LE general discoverable
-08 09 6C 6E 78 2D 62 6C 65      complete local name "lnx-ble"
+08 09 6C 6E 78 2D 62 6C 65      complete local name "host-ble"
 07 FF FF FF 58 49 41 4F         manufacturer data, company 0xFFFF, payload "XIAO"
 ```
 
@@ -94,4 +94,4 @@ LE Set Advertising Data        Status: Success (0x00)
 LE Set Advertise Enable        Status: Success (0x00)
 ```
 
-and a phone, as a receiver built by somebody else, lists `lnx-ble`.
+and a phone, as a receiver built by somebody else, lists `host-ble`.

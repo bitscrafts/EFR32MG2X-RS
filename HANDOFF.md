@@ -1,16 +1,39 @@
 # HANDOFF — EFR32MG2X-RS (XIAO MG24 Sense + Expansion Base)
 
 **State: green, everything below verified on hardware.** Branch `master`, pushed to
-`origin` (`bitscrafts/EFR32MG2X-RS`). Board left running `bsp_env_clock`.
+`origin` (`bitscrafts/EFR32MG2X-RS`). Board left running `base_env_display` (BME680 on the panel), then
+`base_ble_env_gatt` (the sensor over Bluetooth).
 
 ## The ladder, and how far it is built
 
 ```
-PAC  ██████████  drivers at register level, 15 examples, all measured
-HAL  ████████░░  drivers for every base device + IMU + mic; examples per device
-BSP  ███░░░░░░░  ExpansionBase facade works (bsp_env_clock); old modules pending retirement
-RADIO ░░░░░░░░░  not started
+PAC   ██████████  registers from the SVD, 26 examples, all measured on hardware
+HAL   ██████████  pins, clocks, I2C, timers, ADC, IMU, microphone, BME680
+RADIO █████████░  advertising, scanning, connections, GATT read/write/notify; pairing open
+BSP   ████████░░  both boards usable: sensor, panel, RTC, buzzer, button; BLE sensor node
 ```
+
+## Session 2026-11-14 — Bluetooth closes, and what closed it
+
+1. **The Bluetooth stack works on hardware.** Beacon advertising with a name, scanning that decodes a known address, a
+   connectable GATT server with read, write and notify, and the firmware echoing written bytes in its notifications --
+   so the proof cannot be answered by a host cache.
+2. **The BME680 reaches a phone.** `base_ble_env_gatt` publishes the carrier's sensor as the standard `0x181A`
+   Environmental Sensing service with `0x2A6E` temperature, `0x2A6F` humidity and `0x2A6D` pressure, read and notified.
+   Verified on the user's phone with nRF Connect, and byte for byte by `scripts/host-env-verify.py`.
+3. **The heap defect that broke a second connection is contained.** A vendor-blob write of about 136 bytes into a
+   64-byte allocation destroyed the block header that followed it, dropping 57 KiB of a 64 KiB arena out of reach.
+   Blocks now carry 256 bytes of slack: with a client connected the arena keeps 53720 bytes instead of 72.
+4. **The PSA layer for pairing exists and is verified on the board** -- P-256 generation, public-key export, ECDH,
+   AES-CMAC, AES-CTR, AES-ECB -- behind a catalogue switch that is off in the product build.
+5. **Documentation and hygiene for publication.** No references to the internal bench host or account remain; the
+   vendored OpenOCD binary and three third-party `.hex` files left the tree (13 MB); the internal book tooling left the
+   repository; CI now runs the same gate as the bench instead of a step that could not fail, and
+   `scripts/check-examples-build.sh` builds all 26 examples with the features they declare.
+
+**The one open question:** with the security manager enabled a pairing request is accepted and then fails at a DHKey
+check with `pg=0 pe=0 pa=0` -- no cryptographic call was made -- so the fault is before the key exchange. The component
+stays out of the product build until that is answered.
 
 ## What runs today, and the evidence
 
