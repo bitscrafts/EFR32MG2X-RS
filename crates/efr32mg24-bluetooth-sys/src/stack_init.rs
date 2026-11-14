@@ -437,7 +437,10 @@ pub const fn default_configuration() -> Configuration {
     Configuration {
         config_flags: 0,
         bluetooth: StackConfig {
-            max_buffer_memory: 8192,
+            // 8 KiB was enough for advertising, scanning and GATT. A pairing attempt is the demanding case: the
+            // security manager allocates its own buffers, and `smp_state_slave_idle` answers a request whose
+            // allocation failed with SMP reason 8, "unspecified" -- the same code as every other refusal.
+            max_buffer_memory: 16384,
             linklayer_config: 0,
             linklayer_priorities: core::ptr::null_mut(),
         },

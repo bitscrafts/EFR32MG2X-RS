@@ -25,8 +25,17 @@ use p256::elliptic_curve::rand_core::{CryptoRng, RngCore};
 use p256::elliptic_curve::sec1::ToEncodedPoint;
 use p256::{PublicKey, SecretKey};
 
-/// `PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1)`
-pub const PSA_KEY_TYPE_ECC_KEY_PAIR_P256: u16 = 0x4112;
+/// `PSA_KEY_TYPE_ECC_KEY_PAIR(PSA_ECC_FAMILY_SECP_R1)`.
+///
+/// **0x7112, not 0x4112.** `crypto_values.h` gives `PSA_KEY_TYPE_ECC_PUBLIC_KEY_BASE = 0x4100` and
+/// `PSA_KEY_TYPE_ECC_KEY_PAIR_BASE = 0x7100`; the key *pair* base is the higher one. The first version of this
+/// constant used 0x4112, so `psa_generate_key` did not recognise the security manager's request, fell through to its
+/// AES branch -- 256 bits is a legal AES size, so nothing complained -- and the public-key export then refused a key
+/// that was not an ECC pair. The security manager answered the pairing request with SMP reason 8, "unspecified".
+pub const PSA_KEY_TYPE_ECC_KEY_PAIR_P256: u16 = 0x7112;
+
+/// `PSA_KEY_TYPE_AES`
+pub const PSA_KEY_TYPE_AES: u16 = 0x2400;
 /// `PSA_ALG_ECDH`
 pub const PSA_ALG_ECDH: u32 = 0x0902_0000;
 /// `PSA_ERROR_NOT_SUPPORTED`
@@ -41,6 +50,14 @@ const PSA_ERROR_INVALID_HANDLE: i32 = -136;
 /// The last call that failed and what it was handed, so a pairing attempt that aborts with "unspecified reason" can be
 /// read off the board instead of guessed at. `(operation, value)`: operation 1 = generate, 2 = export public,
 /// 3 = agreement, 4 = attributes; value is the status code, or the key type for a refused generate.
+static mut EC_GENERATED: u32 = 0;
+
+/// How many P-256 key pairs `psa_generate_key` has produced. A pairing attempt that leaves this at zero never reached
+/// the cryptography.
+pub fn generated_count() -> u32 {
+    unsafe { EC_GENERATED }
+}
+
 static mut LAST_FAIL_OP: u32 = 0;
 static mut LAST_FAIL_VALUE: u32 = 0;
 
@@ -145,6 +162,7 @@ pub unsafe fn generate_ecc_key(attributes: *const KeyAttributes, key: *mut u64) 
     match crate::psa::store_key(&scalar, u32::from(PSA_KEY_TYPE_ECC_KEY_PAIR_P256)) {
         Some(id) => {
             *key = u64::from(id);
+            unsafe { EC_GENERATED = EC_GENERATED.wrapping_add(1) };
             0
         }
         None => {

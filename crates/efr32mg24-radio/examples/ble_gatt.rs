@@ -302,7 +302,7 @@ fn main() -> ! {
                     // 160, not 64: this is the widest record in the tree (nine label/value pairs, two of them
                     // five-digit ticks) and the first version was 64, which panicked on the bounds check and left the
                     // mailbox holding the *previous* record -- so the summary looked like it had never been written.
-                    let mut msg = [0u8; 160];
+                    let mut msg = [0u8; 256];
                     let mut at = 0;
                     msg[at..at + 9].copy_from_slice(b"gatt: end");
                     at += 9;
@@ -318,8 +318,31 @@ fn main() -> ! {
                     msg[at..at + b" rfs=".len()].copy_from_slice(b" rfs=");
                     at += b" rfs=".len();
                     at = push_dec(&mut msg, at, refused);
-                    msg[at..at + b" wr=".len()].copy_from_slice(b" wr=");
-                    at += b" wr=".len();
+                    // The summary is the record that survives a disconnect, and a failed pairing *is* a disconnect:
+                    // the security manager's event, then the close, then this. Anything written between them is
+                    // overwritten, so these numbers live here.
+                    let (_, hf_sum, hv_sum) = efr32mg24_bluetooth_sys::heap::stats();
+                    at = push_literal(&mut msg, at, b" se=");
+                    at = push_dec(&mut msg, at, last_sec_event);
+                    at = push_literal(&mut msg, at, b"/");
+                    at = push_dec(&mut msg, at, last_sec_reason);
+                    at = push_literal(&mut msg, at, b" ec=");
+                    at = push_dec(
+                        &mut msg,
+                        at,
+                        efr32mg24_bluetooth_sys::psa_ec::generated_count(),
+                    );
+                    at = push_literal(&mut msg, at, b" hf=");
+                    at = push_dec(&mut msg, at, hf_sum);
+                    at = push_literal(&mut msg, at, b" hv=");
+                    at = push_dec(&mut msg, at, hv_sum);
+                    at = push_literal(&mut msg, at, b" lf=");
+                    at = push_dec(
+                        &mut msg,
+                        at,
+                        efr32mg24_bluetooth_sys::heap::last_failed_size() as u32,
+                    );
+                    at = push_literal(&mut msg, at, b" wr=");
                     at = push_dec(&mut msg, at, control_writes);
                     at += 5;
                     at = push_dec(&mut msg, at, refused);
@@ -364,6 +387,34 @@ fn main() -> ! {
                 at = push_literal(&mut msg, at, b" r=");
                 at = push_dec(&mut msg, at, u32::from(reason));
                 mailbox::write(mailbox::Status::Info, &msg[..at]);
+
+                // A short record too: the mailbox keeps one and caps it, so the numbers that explain the failure are
+                // written where they fit -- how many P-256 key pairs the pairing produced, and whether the heap
+                // failed or was corrupted while it ran.
+                let (_, heap_fail, heap_viol) = efr32mg24_bluetooth_sys::heap::stats();
+                let mut brief = [0u8; 64];
+                let mut bat = 0;
+                bat = push_literal(&mut brief, bat, b"gatt: pair se=");
+                bat = push_dec(&mut brief, bat, u32::from(event));
+                bat = push_literal(&mut brief, bat, b" r=");
+                bat = push_dec(&mut brief, bat, u32::from(reason));
+                bat = push_literal(&mut brief, bat, b" ec=");
+                bat = push_dec(
+                    &mut brief,
+                    bat,
+                    efr32mg24_bluetooth_sys::psa_ec::generated_count(),
+                );
+                bat = push_literal(&mut brief, bat, b" hf=");
+                bat = push_dec(&mut brief, bat, heap_fail);
+                bat = push_literal(&mut brief, bat, b" hv=");
+                bat = push_dec(&mut brief, bat, heap_viol);
+                bat = push_literal(&mut brief, bat, b" lf=");
+                bat = push_dec(
+                    &mut brief,
+                    bat,
+                    efr32mg24_bluetooth_sys::heap::last_failed_size() as u32,
+                );
+                mailbox::write(mailbox::Status::Info, &brief[..bat]);
             }
 
             Some(BleEvent::GattWrite {
@@ -493,7 +544,7 @@ fn main() -> ! {
         // from a literal written with one length and advanced by another, and the check that catches them only sees
         // `copy_from_slice`, so the counting is kept in one place.
         if iterations % 2000 == 0 {
-            let mut msg = [0u8; 128];
+            let mut msg = [0u8; 192];
             let mut at = 0;
             at = push_literal(&mut msg, at, b"gatt c");
             at = push_dec(&mut msg, at, counter);
@@ -511,6 +562,23 @@ fn main() -> ! {
             at = push_dec(&mut msg, at, security_events);
             // What the board believes the client wrote, and what the cryptography layer was asked for. Both are the
             // difference between "nothing happened" and "something happened and was refused".
+            // **Was the security manager's allocation the failure?** `bonding_failed` reason 8 has two causes in
+            // `smp_state_slave_idle`: a failed `smp_alloc_data` (352 bytes from this heap) or a failed bonding store.
+            // The allocator counts its own failures and reports the largest block it could still serve.
+            let (heap_in_use, heap_failures, heap_violations) =
+                efr32mg24_bluetooth_sys::heap::stats();
+            at = push_literal(&mut msg, at, b" hp=");
+            at = push_dec(&mut msg, at, heap_in_use as u32);
+            at = push_literal(&mut msg, at, b" hf=");
+            at = push_dec(&mut msg, at, heap_failures);
+            at = push_literal(&mut msg, at, b" hv=");
+            at = push_dec(&mut msg, at, heap_violations);
+            at = push_literal(&mut msg, at, b" hl=");
+            at = push_dec(
+                &mut msg,
+                at,
+                efr32mg24_bluetooth_sys::heap::largest_free() as u32,
+            );
             let (alg, refusals) = efr32mg24_bluetooth_sys::psa::unsupported_algorithm();
             at = push_literal(&mut msg, at, b" h=");
             at = push_hex32(&mut msg, at, efr32mg24_bluetooth_sys::last_event_header());

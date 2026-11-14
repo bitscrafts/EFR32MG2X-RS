@@ -50,6 +50,9 @@ pub struct Heap<'a> {
     /// Walks that hit a corrupt block or exceeded the step budget. Non-zero means the arena's own metadata was
     /// damaged, which almost always means someone wrote past an allocation.
     violations: u32,
+    /// The last size an allocation asked for and could not be served. Recorded because "out of memory" without the
+    /// size says nothing actionable: 352 bytes failing out of 64 KiB is a different bug from 40 KiB failing.
+    last_failed_size: usize,
 }
 
 impl<'a> Heap<'a> {
@@ -62,6 +65,7 @@ impl<'a> Heap<'a> {
             in_use: 0,
             failures: 0,
             violations: 0,
+            last_failed_size: 0,
         };
         if len >= HEADER + LINK + ALIGN {
             heap.write_size(0, len);
@@ -142,6 +146,7 @@ impl<'a> Heap<'a> {
         }
 
         self.failures = self.failures.saturating_add(1);
+        self.last_failed_size = size;
         core::ptr::null_mut()
     }
 
@@ -254,6 +259,11 @@ impl<'a> Heap<'a> {
     /// out-of-bounds write by a caller, and it is reported instead of hanging.
     pub fn violations(&self) -> u32 {
         self.violations
+    }
+
+    /// The last size that could not be served.
+    pub fn last_failed_size(&self) -> usize {
+        self.last_failed_size
     }
 
     /// Walk the free list and count blocks that fail the sanity check, without modifying anything. The entry
@@ -413,5 +423,53 @@ mod tests {
                 "returning a block must restore capacity"
             );
         });
+    }
+}
+
+#[cfg(test)]
+mod smp_size_tests {
+    use super::*;
+
+    /// The security manager's state block: `smp_alloc_data` asks for 0x160 bytes and then writes all of it. If this
+    /// allocator hands back a block that cannot hold what it was asked for, the last bytes land on the next block's
+    /// header -- which shows up as a corrupt free list, not as a heap error.
+    #[test]
+    fn a_352_byte_allocation_holds_352_bytes() {
+        let mut arena = [0u8; 4096];
+        let mut heap = Heap::new(&mut arena);
+
+        let p = heap.alloc(0x160);
+        assert!(!p.is_null(), "352 bytes out of 4 KiB must be served");
+        // Write every byte the caller owns, then one canary pattern around it: any overrun would corrupt a header.
+        unsafe {
+            for i in 0..0x160 {
+                *p.add(i) = (i % 251) as u8;
+            }
+        }
+        for i in 0..0x160 {
+            unsafe {
+                assert_eq!(*p.add(i), (i % 251) as u8, "byte {i} was overwritten");
+            }
+        }
+
+        // A second allocation must not overlap the first one's payload.
+        let q = heap.alloc(0x40);
+        assert!(!q.is_null());
+        unsafe {
+            let first_end = p as usize + 0x160;
+            assert!(
+                q as usize >= first_end,
+                "second block at {q:p} overlaps the first block's payload ending at {first_end:#x}"
+            );
+        }
+
+        heap.dealloc(p);
+        heap.dealloc(q);
+        assert_eq!(
+            heap.violations(),
+            0,
+            "the free list was corrupted by a legal sequence"
+        );
+        assert_eq!(heap.failures(), 0);
     }
 }

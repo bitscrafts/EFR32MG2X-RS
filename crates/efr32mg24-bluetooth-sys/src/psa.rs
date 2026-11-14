@@ -757,6 +757,13 @@ pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u64) 
         );
     }
     // An AES key: the size is in bits, second field.
+    //
+    // The type is checked, not assumed. Treating "not ECC" as "AES" is what let a 0x7112 key-pair request become a
+    // 32-byte AES key without a word of complaint, because 256 bits is a legal AES size.
+    if key_type != crate::psa_ec::PSA_KEY_TYPE_AES {
+        record_unsupported(key_type.into());
+        return PSA_ERROR_NOT_SUPPORTED;
+    }
     let bits = ptr::read_unaligned(attributes.add(2) as *const u16);
     let len = (bits / 8) as usize;
     if len != 16 && len != 32 {

@@ -4,12 +4,35 @@
 //! fortieth of this part's RAM — because a heap that grows to hide a leak is a heap that fails on the customer's
 //! device instead of on the bench.
 //!
-//! Reentrancy: not supported, and measured rather than assumed. If the stack ever allocates from an interrupt,
-//! `contention` will be non-zero and the caller will find out from the example's diagnostics instead of from a
-//! corrupted free list.
+//! Reentrancy: supported, by serialising the free list behind a short critical section. It was *not* supported when
+//! this module was written, and the reasoning -- "the stack allocates only from the main loop" -- held until pairing,
+//! which allocates from the stack's own context. The failure surfaced as a pairing refused with SMP reason 8 and as
+//! corrupt-list violations, not as a heap error.
 
 use bt_heap::Heap;
 use core::ffi::c_void;
+
+/// Run `f` with interrupts masked, restoring the previous mask afterwards.
+///
+/// The project is PAC-only, so this is the two instructions the core offers rather than a dependency: `mrs` reads
+/// PRIMASK, `cpsid i` sets it, and the old value is written back so a critical section nested inside another one does
+/// not unmask on the way out.
+#[inline]
+fn critical<R>(f: impl FnOnce() -> R) -> R {
+    let primask: u32;
+    // SAFETY: reading and writing PRIMASK is architecturally defined on this core; interrupts are restored to their
+    // previous state before returning, so the caller's context is unchanged.
+    unsafe {
+        core::arch::asm!("mrs {}, PRIMASK", out(reg) primask, options(nomem, nostack));
+        core::arch::asm!("cpsid i", options(nomem, nostack));
+    }
+    let result = f();
+    // SAFETY: as above; only the bit this function set is cleared.
+    unsafe {
+        core::arch::asm!("msr PRIMASK, {}", in(reg) primask, options(nomem, nostack));
+    }
+    result
+}
 
 /// The arena.
 ///
@@ -19,25 +42,21 @@ use core::ffi::c_void;
 /// controller initialisation was restored, `sl_btctrl_init_mem(8192)` came first and left the host without room, so
 /// the link layer's first command buffer allocation returned NULL and `hci_command_init_shared` faulted writing to
 /// address 5 -- a fault that says "null buffer" only if you already know that is what it is.
-const ARENA_BYTES: usize = 32768;
+// Sized against a pairing attempt, not against advertising. The security manager allocates its own buffers, and
+// `smp_state_slave_idle` answers a pairing request whose allocation failed with SMP reason 8 -- "unspecified" -- which
+// on the air is indistinguishable from any other refusal. The device has 252 KB of RAM; 32 KB was a guess made when
+// the only consumer was the advertiser.
+const ARENA_BYTES: usize = 65536;
 
 static mut ARENA: [u8; ARENA_BYTES] = [0; ARENA_BYTES];
 static mut HEAP: Option<Heap<'static>> = None;
 
-/// Calls that arrived while another allocation was in progress. Should be zero; a non-zero value means the
-/// caller must move its allocation out of the interrupt context.
-static mut CONTENTION: u32 = 0;
-static mut BUSY: bool = false;
-
-/// Count a call that arrived while another was in progress.
-fn bump_contention() {
-    let p = core::ptr::addr_of_mut!(CONTENTION);
-    // SAFETY: single word, written under the same serialisation the entry points use.
-    unsafe { core::ptr::write_volatile(p, core::ptr::read_volatile(p).wrapping_add(1)) };
-}
+// The contention counter and the `BUSY` flag that fed it are gone with the refusal they described: serialisation is
+// now a critical section, so "a call arrived during another" is no longer a state that can exist.
 
 fn heap() -> &'static mut Heap<'static> {
-    // SAFETY: single-threaded, and `BUSY` serialises the entry points below. The arena lives for the program.
+    // SAFETY: the entry points run inside `critical()`, so no other context touches this while it is borrowed,
+    // and the arena lives for the program.
     unsafe {
         let slot = &mut *core::ptr::addr_of_mut!(HEAP);
         if slot.is_none() {
@@ -55,14 +74,14 @@ fn heap() -> &'static mut Heap<'static> {
 /// Called by the vendor stack with a size it computed; the returned pointer must be released with `sl_free`.
 #[no_mangle]
 pub unsafe extern "C" fn sl_malloc(size: usize) -> *mut c_void {
-    if core::ptr::read_volatile(core::ptr::addr_of!(BUSY)) {
-        bump_contention();
-        return core::ptr::null_mut();
-    }
-    core::ptr::write_volatile(core::ptr::addr_of_mut!(BUSY), true);
-    let p = heap().alloc(size) as *mut c_void;
-    core::ptr::write_volatile(core::ptr::addr_of_mut!(BUSY), false);
-    p
+    // **Serialised, not refused.** The previous version returned NULL when a second call arrived while one was in
+    // progress, and counted it as "contention". Pairing made that fatal: the security manager allocates from the
+    // stack's own context while the main loop is draining events, and a refused 352-byte allocation is answered on
+    // the air with SMP reason 8 -- "unspecified". The free list also showed corrupt-list violations, which is what
+    // two writers to one list look like from the allocator's side.
+    //
+    // The critical section is a few microseconds: the list is small and the search is first-fit.
+    critical(|| heap().alloc(size) as *mut c_void)
 }
 
 /// Release a block.
@@ -72,13 +91,9 @@ pub unsafe extern "C" fn sl_malloc(size: usize) -> *mut c_void {
 /// `ptr` must come from `sl_malloc` and not have been freed already, or be null.
 #[no_mangle]
 pub unsafe extern "C" fn sl_free(ptr: *mut c_void) {
-    if core::ptr::read_volatile(core::ptr::addr_of!(BUSY)) {
-        bump_contention();
-        return;
-    }
-    core::ptr::write_volatile(core::ptr::addr_of_mut!(BUSY), true);
-    heap().dealloc(ptr as *mut u8);
-    core::ptr::write_volatile(core::ptr::addr_of_mut!(BUSY), false);
+    // Same critical section as `sl_malloc`: a free that interleaved with an allocation in the other context would
+    // splice the list under the allocator's feet.
+    critical(|| heap().dealloc(ptr as *mut u8))
 }
 
 /// Bytes handed out, allocation failures, and corrupt-list violations — the three numbers that say whether the
@@ -92,6 +107,17 @@ pub fn stats() -> (usize, u32, u32) {
         match slot.as_ref() {
             Some(h) => (h.in_use(), h.failures(), h.violations()),
             None => (0, 0, 0),
+        }
+    }
+}
+
+/// The last size an allocation asked for and could not get.
+pub fn last_failed_size() -> usize {
+    unsafe {
+        let slot = &*core::ptr::addr_of!(HEAP);
+        match slot.as_ref() {
+            Some(h) => h.last_failed_size(),
+            None => 0,
         }
     }
 }

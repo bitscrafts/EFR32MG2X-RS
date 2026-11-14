@@ -129,9 +129,42 @@ Also measured on the way: with `SL_BT_SM_CONFIGURATION_BONDING_REQUIRED` set, th
 request a bond (BlueZ's `pair` sends "No bonding") with the same `0x08` before any exchange. Flags are now `SC_ONLY`
 alone; that removed one refusal, not the failure.
 
-Next step, and it needs the blob: find where the security manager returns `0x1208` on the pairing-request path. The
-REA dossier in `_tmp/efr32mg24-rs/rea-dossier/` is the tool for it, and the question is narrow -- which state the SM
-expects to be different before it will proceed.
+### Where it actually stops, from the decompiled handler
+
+`smp_state_slave_idle` reaches SMP reason 8 -- "unspecified" -- on two paths only: `smp_alloc_data` returning zero, or
+`sli_bt_bonding_store_data` failing. The board separates them:
+
+```
+gatt: end ... se=4/4616 ec=0 hf=2 hv=8 lf=352
+                 ^^      ^^   ^^   ^^   ^^^^^
+                 |       |    |    |    the allocation that failed: 352 bytes
+                 |       |    |    corrupt free-list detections
+                 |       |    allocation failures
+                 |       no P-256 key pair was ever generated
+                 bonding_failed, 0x1208
+```
+
+`lf=352` is `bg_zalloc(0x160)` -- `smp_alloc_data`, exactly. `ec=0` says the security manager never reached the
+cryptography at all. And `hv=8` says the free list is already corrupt by the time it asks, so the allocation that
+fails is a *symptom*: something wrote past an allocation earlier in the exchange.
+
+Three defects were found and fixed on the way to those numbers:
+
+1. **`psa_generate_key` did not recognise the security manager's key type.** `smp_generate_ecc_keypair` calls
+   `psa_set_key_type(attributes, 0x7112)`. This crate compared against `0x4112`, which is `crypto_values.h`'s
+   **public-key** base -- `PSA_KEY_TYPE_ECC_KEY_PAIR_BASE` is `0x7100`. The request fell through to the AES branch,
+   where 256 bits is a legal size, so a P-256 key-pair request became a 32-byte AES key with no complaint, and the
+   public-key export then refused it. The AES branch now also *checks* that the type is AES.
+2. **`sl_malloc`/`sl_free` refused concurrent calls instead of serialising them.** They are now behind a short
+   critical section (`mrs`/`cpsid i`/`msr PRIMASK`, no new dependency). Measured: `hf`/`hv` went from 2/8 to 0/0
+   before a pairing attempt.
+3. **The 352-byte case is now a host test** (`cargo test -p bt-heap --target x86_64-unknown-linux-gnu`), because the
+   embedded target has no test harness: a block that cannot hold what it was asked for would put the caller's last
+   bytes on the next block's header, which is exactly what a corrupt free list looks like from the allocator's side.
+   The test passes, so the allocator is sound for that size and the corruption comes from a consumer.
+
+Next step, and it is small: a per-block canary in `bt-heap`, so the consumer that overruns is identified by the block
+it damaged instead of by a violation count.
 
 A defect found on the way: the key table did not store the handle it handed out, so `psa_destroy_key` and any lookup
 guessed `handle n = slot n - 1` -- true only until the first destroy. Slots now carry their id.
