@@ -41,6 +41,14 @@ fi
 # five into four), and every instance was found by flashing a firmware and reading a mailbox that never changed.
 # It costs milliseconds here, which is the whole argument for putting it in the gate rather than in a note.
 echo "=== message buffers ==="
+# The crate documentation's example page is generated. If it does not match the tree it is naming examples that no
+# longer exist -- which is a documentation defect that compiles and looks fine on the page.
+if python3 scripts/gen-pac-examples-doc.py --check >/tmp/gate-examples-doc.log 2>&1; then
+  pass "crate docs: the example list matches the tree"
+else
+  fail "crate docs: $(tail -1 /tmp/gate-examples-doc.log)"
+fi
+
 if python3 scripts/check-copy-len.py crates/ >/tmp/gate-copy-len.log 2>&1; then
   pass "copy_from_slice lengths ($(tail -1 /tmp/gate-copy-len.log))"
 else
