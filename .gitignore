@@ -39,6 +39,9 @@ efr32mg24-hal/examples/02_blink.rs
 book/output/
 book/project/*/target/
 *.pdf
+# ...except the book itself, which is delivered as a reading copy at the root of the repository. Build output
+# stays ignored; this one file is the product.
+!Implementing-Rust-Support-for-Embedded-Hardware-EFR32MG24.pdf
 book/**/*.aux
 book/**/*.log
 book/**/*.out
