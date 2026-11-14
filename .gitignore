@@ -41,7 +41,7 @@ book/project/*/target/
 *.pdf
 # ...except the book itself, which is delivered as a reading copy at the root of the repository. Build output
 # stays ignored; this one file is the product.
-!Implementing-Rust-Support-for-Embedded-Hardware-EFR32MG24.pdf
+!Rust-Embedded-Hardware-Support.pdf
 book/**/*.aux
 book/**/*.log
 book/**/*.out
@@ -62,3 +62,7 @@ _tmp/
 *.bin
 *.pack
 !scripts/**/*.hex
+
+# Reverse-engineering tooling: the container recipe is a bench tool, not part of the crate
+# (and the images it builds are large).
+docker/

@@ -1,8 +1,8 @@
 # What the vendor's blobs actually do — findings from decompilation
 
 This file records what reading the shipped binaries established about the Bluetooth bring-up, **in our own words
-and with no vendor code in it**. The decompiled output itself (Ghidra 12.2 via REA) lives outside the tree, at
-`/projects/_tmp/efr32mg24-rs/rea-dossier/`, because the blobs are MSLA-licensed and this repository is public. The
+and with no vendor code in it**. The decompiled output itself lives outside the tree, because the blobs are MSLA-licensed and this repository is
+public. The
 rule and its reasoning are in `BLOB-DISASSEMBLY.md`.
 
 Written 2026-11-13 after that dossier found the cause of a `0x040C` (`SL_STATUS_BT_RADIO`) failure that had resisted

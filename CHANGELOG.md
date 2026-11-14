@@ -41,7 +41,7 @@ a second machine watching the air -- the board's own report is never accepted as
 - **CI**: the gate runs on the runner with the C toolchain the build scripts need; per-crate compiler output is kept and
   uploaded; the book is compiled in the same TeX image as the bench and its page count checked.
 - **Book**: the built PDF at the repository root as
-  `Implementing-Rust-Support-for-Embedded-Hardware-EFR32MG24.pdf` (168 pages).
+  `Rust-Embedded-Hardware-Support.pdf` (170 pages).
 
 ### Fixed
 

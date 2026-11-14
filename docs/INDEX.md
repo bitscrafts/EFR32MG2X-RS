@@ -273,9 +273,9 @@ See [LICENSE](../LICENSE) file for details.
 
 | [`docs/04-reference/SYSRTC-OPUS-REVIEW.md`](docs/04-reference/SYSRTC-OPUS-REVIEW.md) | Review report (SYSRTC-OPUS-REVIEW) |
 - [SYSRTC, for the three protocols that will share it](04-reference/SYSRTC-FOR-THREE-PROTOCOLS.md)
-- [Reading the vendor blobs (objdump, then REA + Ghidra)](03-development/BLOB-DISASSEMBLY.md)
+- [Reading the vendor blobs (objdump, then a decompiler)](03-development/BLOB-DISASSEMBLY.md)
 - [The modem configuration: the data RAIL needs and nobody documents](04-reference/MODEM-CONFIG.md)
 - [Bluetooth integration: the symbol ledger](03-development/BLE-INTEGRATION.md)
 - [The compare channel works, and three registers were wrong](04-reference/SYSRTC-COMPARE-WORKS.md)
 - [Bluetooth: the state, measured](04-reference/BLE-STATUS.md)
-| [BLE-REA-FINDINGS.md](04-reference/BLE-REA-FINDINGS.md) | What the vendor blobs do, from decompilation (no vendor code) |
+| [BLE-BLOB-FINDINGS.md](04-reference/BLE-BLOB-FINDINGS.md) | What the vendor blobs do, from decompilation (no vendor code) |

@@ -38,86 +38,23 @@ rather than a register, and the handler clears only the channels that are enable
 
 and, in `RTCCSYNC_GetRtccCount`, a plain read of `CNT` at **+0x18**, which is the offset we use and confirms it.
 
-## Level 2 — REA + Ghidra, for pseudocode and cross-references
+## Level 2 — a decompiler, for pseudocode and cross-references
 
-REA ("reverse engineer anything") is an MCP server and CLI that wraps Ghidra, Rizin and others. The CLI is
-what is used here; the MCP form is for an agent to call interactively.
+`objdump` gives instructions; the question is usually about control flow, so a decompiler earns its place: it
+recovers the function boundaries, the arguments of every call, and which constants reach which register. That is
+how the twelve functions behind the `0x040C` (`SL_STATUS_BT_RADIO`) failure were read.
 
-### Installing it on this container (the exact, complete recipe)
+The decompiler is a tool of the bench, not of the repository. Its installation, versions and invocation are not
+documented here on purpose: what matters to a reader is the *finding* and how it was checked against the silicon,
+and both live in `docs/04-reference/BLE-BLOB-FINDINGS.md`. A tool pinned in a project document ages badly and gets
+copied into places it does not belong.
 
-Three components, and the versions are not negotiable — REA rejects the rest:
+Two rules survive from those sessions and they are not about the tool:
 
-| Component | Version | Why that one |
-|---|---|---|
-| Node | 22.23.4+ / 24.22.1+ / **26.12.1+** | 26.7.0 (what the image ships) is *rejected*: `rea-agents` requires `^22.23.4 \|\| ^24.22.1 \|\| >=26.12.1` |
-| JDK | **25** | Ghidra 12.2 refuses anything older: `Select a 64-bit full JDK 25 or newer` |
-| Ghidra | **12.2 PUBLIC** | REA's bridge is verified against 12.1.4 and accepts 12.x >= 12.1 |
-
-```bash
-# 1. JDK 25 (Debian 13's apt has it; 21 is not enough for Ghidra 12.2)
-apt-get install -y openjdk-25-jdk-headless
-
-# 2. Ghidra 12.2, extracted with the executables still executable
-mkdir -p /projects/_tmp/tools && cd /projects/_tmp/tools
-curl -sL -o ghidra.zip \
-  https://github.com/NationalSecurityAgency/ghidra/releases/download/Ghidra_12.2_build/ghidra_12.2_PUBLIC_20261016.zip
-python3 -m zipfile -e ghidra.zip .          # NOT a Python zipfile.extractall: see the trap below
-chmod +x ghidra_12.2_PUBLIC/support/analyzeHeadless \
-         ghidra_12.2_PUBLIC/Ghidra/Features/Decompiler/os/linux_x86_64/*
-
-# 3. REA itself
-npm i -g rea-agents@latest
-
-# 4. Environment (every one of these is required, and they must be set in the shell that runs REA)
-export JAVA_HOME=/usr/lib/jvm/java-25-openjdk-amd64
-export PATH=/root/.local/bin:$JAVA_HOME/bin:$PATH
-export GHIDRA_INSTALL_DIR=/projects/_tmp/tools/ghidra_12.2_PUBLIC
-
-# 5. Prove it before using it
-node /root/.local/lib/node_modules/rea-agents/scripts/rea.mjs capabilities \
-  | grep -A3 "id: ghidra" | grep status        # must print: status: available
-```
-
-`scripts/setup-rea.sh` in this repository does exactly the above and is what should be called; this section
-exists so that the script's choices are explained rather than magic.
-
-### The traps, each of which cost a run
-
-- **`zipfile.extractall` drops the executable bit.** Ghidra's `analyzeHeadless` and the native `decompile`
-  binary then exist but are not executable, and REA reports `executable_missing` — pointing at a file that is
-  right there. `python3 -m zipfile -e` preserves the mode; a bare `chmod +x` on the two paths is the fix.
-- **JDK 21 is not enough.** The failure is `unsupported_version` with the reason naming JDK 25, after the
-  Ghidra path was already accepted. Install 25 *and* export `JAVA_HOME`; a `java` on PATH from another
-  version wins otherwise.
-- **A background shell does not inherit the interactive environment.** The first run of the decompile script
-  in the background exited 127 (`npx: command not found`). Scripts must set `PATH`/`JAVA_HOME`/
-  `GHIDRA_INSTALL_DIR` themselves and use absolute paths for `node`.
-- **REA is an MCP server first.** `rea analyze` / `rea decompile` work as a CLI, but the CLI is a thin front
-  end over the same providers, so the capability check above is the thing to run before trusting any output.
-
-### The commands that matter
-
-```bash
-REA=/root/.local/lib/node_modules/rea-agents/scripts/rea.mjs
-ELF=/projects/_cache/targets/thumbv8m.main-none-eabihf/release/examples/rail_ble_tx
-
-# what is this binary (arch, format, digest, providers)
-node "$REA" analyze "$ELF" --format md
-
-# pseudocode for one function, by symbol name
-node "$REA" decompile "$ELF" --procedure SYSRTC_SEQ_IRQHandler --format md
-```
-
-Ghidra analyses the whole image on first use (a few minutes for a 70 KB ARM ELF); afterwards the session
-serves queries. The output is a markdown envelope: `evidence_id`, `subject.digest`, `provider`, then the
-pseudocode under `normalized_result`, with `authority: shipped-artifact` and `confidence: observed`.
-
-What it returned for the same function the objdump showed, described rather than reproduced: the decompiler names
-the two addresses itself — `0x500a8060` and `0x500a8064` — and the body is one masked read of the group status, one
-write through the clear alias, and a return. That is the group interrupt block at **+0x60/+0x64**, while every header
-in the SDK (both the gecko_sdk v4.4.5 and the newer simplicity_sdk) puts `GRP0_IF` at **+0x40** and `GRP0_IEN` at
-**+0x44**. The decompiler's value here is confirmation, not detail: it independently reproduces the offsets the
-listing gave.
+- **Rename everything before you believe anything.** A decompiler's names (`uVar12`, `param_2`) carry no meaning;
+  the meaning comes from the call sites and from the header that declares the function.
+- **A decompiled function is a hypothesis until the silicon agrees.** Where the pseudocode and the measured
+  behaviour disagree, the measurement wins, and the disagreement is the most informative thing in the session.
 
 ## The offsets, and the rule
 
@@ -145,7 +82,7 @@ repo!"*). Two reasons, and the first one is reason enough:
 - a decompiler's output is not a source of truth to be copied around — it is evidence to be read once and
   then expressed as a *finding* (an offset, a sequence, a contract) in prose or in our own Rust.
 
-So the workflow is: run REA against the ELF, read the pseudocode, and write **what it establishes** into a
+So the workflow is: run the decompiler against the ELF, read the pseudocode, and write **what it establishes** into a
 document like this one. This document was itself in breach of that rule until 2026-11-13 — it carried a short
 objdump excerpt and a decompiled function body while thirty lines below it said not to. Both were replaced by the
 finding in prose, and the version with the vendor's bytes was moved to
