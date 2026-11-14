@@ -2,6 +2,9 @@
 
 ![XIAO MG24 Sense on the XIAO Expansion Base](docs/images/xiao-mg24-sense.jpg)
 
+*XIAO MG24 Sense in the XIAO Expansion Base running `base_env_display`: the panel carries the BME680's compensated
+readings (temperature, pressure, humidity), with the sensor and a microphone breakout beside it.*
+
 Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoCs.
 
 
