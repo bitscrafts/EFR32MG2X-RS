@@ -1,55 +1,87 @@
-#!/bin/bash
-# Build script for EFR32MG24 book
-# Run from book/latex directory
+#!/usr/bin/env bash
+# Build the book, the same way CI does.
+#
+#   bash book/build.sh              # local XeLaTeX if present, else the TeX Live image
+#   bash book/build.sh --local      # force local XeLaTeX
+#   bash book/build.sh --container  # force the image (podman or docker)
+#   bash book/build.sh --no-copy    # leave the PDF in book/latex/ only
+#
+# Order matters and mirrors the workflow: check the sources, check that the printed code parses, check that the
+# references point at something, compile twice so the contents and cross-references settle, then refuse an
+# implausible page count. A book that builds while printing code nobody compiled is the failure this guards
+# against, and it is silent -- the PDF looks fine.
+set -euo pipefail
 
-set -e
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO="$(dirname "${HERE}")"
+TEXLIVE_IMAGE="${TEXLIVE_IMAGE:-docker.io/texlive/texlive:latest}"
+OUT_NAME="Rust-Embedded-Hardware-Support.pdf"
 
-echo "=== Building EFR32MG24 Embedded Rust Book ==="
-echo "Date: $(date)"
-echo "Working directory: $(pwd)"
-echo ""
+MODE="auto"
+COPY=1
+for arg in "$@"; do
+    case "${arg}" in
+        --local)     MODE="local" ;;
+        --container) MODE="container" ;;
+        --no-copy)   COPY=0 ;;
+        *) echo "unknown option: ${arg}" >&2; exit 2 ;;
+    esac
+done
 
-# Check for required files
-echo "Checking files..."
-if [ ! -f "main.tex" ]; then echo "Error: main.tex not found!"; exit 1; fi
-if [ ! -f "preamble.tex" ]; then echo "Error: preamble.tex not found!"; exit 1; fi
-echo "✓ All required files present"
-echo ""
+echo "=== checking the sources"
+python3 "${HERE}/check-tex.py"
+python3 "${HERE}/check-code-blocks.py"
+python3 "${HERE}/check-refs.py"
 
-# Run pdflatex (first pass)
-echo "=== First XeLaTeX pass ==="
-if xelatex -shell-escape -interaction=nonstopmode main.tex 2>&1 | tee build.log; then
-    echo "✓ First pass completed"
-else
-    echo "✗ First pass failed - check build.log"
-    echo ""
-    echo "Last 50 lines of errors:"
-    grep -B2 -A2 "Error\|error:\|Undefined" build.log | tail -50
+compile_local() {
+    echo "=== compiling with the local XeLaTeX (two passes)"
+    cd "${HERE}/latex"
+    xelatex -shell-escape -interaction=nonstopmode main.tex > pass1.log 2>&1 || true
+    if ! xelatex -shell-escape -interaction=nonstopmode main.tex > pass2.log 2>&1; then
+        echo "--- second pass failed:" >&2
+        tail -40 pass2.log >&2
+        exit 1
+    fi
+}
+
+compile_container() {
+    local engine
+    if command -v podman >/dev/null 2>&1; then engine=podman
+    elif command -v docker >/dev/null 2>&1; then engine=docker
+    else
+        echo "no local XeLaTeX and no podman/docker: install texlive-xetex or a container engine" >&2
+        exit 1
+    fi
+    echo "=== compiling in ${TEXLIVE_IMAGE} via ${engine} (two passes)"
+    "${engine}" run --rm -v "${HERE}":/work -w /work/latex "${TEXLIVE_IMAGE}" sh -c '
+        xelatex -shell-escape -interaction=nonstopmode main.tex > pass1.log 2>&1 || true
+        xelatex -shell-escape -interaction=nonstopmode main.tex > pass2.log 2>&1 || { tail -40 pass2.log; exit 1; }
+        tail -2 pass2.log
+    '
+}
+
+case "${MODE}" in
+    local)     compile_local ;;
+    container) compile_container ;;
+    auto)
+        if command -v xelatex >/dev/null 2>&1; then compile_local; else compile_container; fi
+        ;;
+esac
+
+echo "=== checking the result"
+PAGES=$(sed -n 's/.*Output written on main\.pdf (\([0-9]*\) pages.*/\1/p' "${HERE}/latex/pass2.log" | tail -1)
+if [ -z "${PAGES}" ]; then
+    echo "the compile did not report a page count; see book/latex/pass2.log" >&2
     exit 1
 fi
-echo ""
-
-# Run pdflatex (second pass for TOC)
-echo "=== Second XeLaTeX pass ==="
-if xelatex -shell-escape -interaction=nonstopmode main.tex 2>&1 | tee -a build.log; then
-    echo "✓ Second pass completed"
-else
-    echo "✗ Second pass failed - check build.log"
+if [ "${PAGES}" -lt 100 ]; then
+    echo "implausible page count: ${PAGES}" >&2
     exit 1
 fi
-echo ""
+echo "  ${PAGES} pages"
 
-# Check if PDF was created
-if [ -f "main.pdf" ]; then
-    echo "=== Build successful! ==="
-    ls -lh main.pdf
-    echo ""
-    echo "PDF info:"
-    pdfinfo main.pdf 2>/dev/null | head -10 || echo "pdfinfo not available"
-else
-    echo "✗ Build failed - no PDF generated"
-    exit 1
+if [ "${COPY}" -eq 1 ]; then
+    cp "${HERE}/latex/main.pdf" "${REPO}/${OUT_NAME}"
+    echo "  copied to ${OUT_NAME} ($(du -h "${REPO}/${OUT_NAME}" | cut -f1))"
 fi
-
-echo ""
-echo "=== Build complete ==="
+echo "book: OK"

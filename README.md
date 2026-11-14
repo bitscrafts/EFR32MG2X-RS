@@ -309,9 +309,17 @@ See [docs/03-development/PLAN.md](docs/03-development/PLAN.md) for the complete 
 
 **Complete documentation index**: [docs/INDEX.md](docs/INDEX.md)
 
+### The book
+
+**[Rust Embedded Hardware Support — A Complete Guide Using the Silicon Labs EFR32MG24](Rust-Embedded-Hardware-Support.pdf)**
+-- 170 pages, built from the sources under [`book/`](book) on every push. Every code listing in it is parsed by CI and
+every reference is checked against a real label and a real file, so the PDF cannot quietly rot away from the code.
+
 ### Quick Links
 
 - **[docs/INDEX.md](docs/INDEX.md)** - Complete documentation index
+- **[docs/03-development/BACKLOG.md](docs/03-development/BACKLOG.md)** - What is open, in order, with the evidence
+- **[docs/04-reference/BLE-STATUS.md](docs/04-reference/BLE-STATUS.md)** - The Bluetooth state, measured
 - **[docs/03-development/STATUS.md](docs/03-development/STATUS.md)** - Current project status (what's done, what's next)
 - **[docs/03-development/PLAN.md](docs/03-development/PLAN.md)** - Development roadmap (9-phase plan)
 - **[docs/04-reference/hardware/XIAO_MG24_HARDWARE.md](docs/04-reference/hardware/XIAO_MG24_HARDWARE.md)** - Target hardware details
