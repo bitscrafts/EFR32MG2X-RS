@@ -69,6 +69,10 @@ notifications: 10
 
 ### On the phone
 
+**Verified on the user's phone with nRF Connect, 2026-11-14.** This is the strongest evidence in this document: every
+other line comes from an instrument of mine, and this one from someone who simply opened an app and read the values. The
+host client agrees with it byte for byte, which is the point of having both.
+
 1. nRF Connect (or any generic BLE explorer), scan: the board appears as **`xiao-mg24-env`**.
 2. Connect. The service list shows *Environmental Sensing*.
 3. Open it: *Temperature*, *Humidity* and *Pressure* with their units. Read gives the current value; tapping notify
