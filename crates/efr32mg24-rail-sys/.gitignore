@@ -1,20 +1,19 @@
-# Binary blobs (MSLA licensed, must be obtained from Gecko SDK)
-*.a
-*.o
-*.so
-*.lib
-*.dll
-*.dylib
-
-# Vendor headers (Zlib licensed, must be extracted from Gecko SDK)
-*.h
-*.hpp
-*.c
-*.cpp
-
-# Build artifacts
+# The RAIL crate links a vendor blob and compiles one vendor C file, and both are part of the build:
+#
+#   blobs/efr32mg24b220/librail_efr32xg24_gcc_release.a   the radio library itself
+#   vendor/rail/**                                        the headers the bindings are generated from
+#   vendor/pa_auto_mode/pa_auto_mode.c                    the PA table helper the blob expects
+#
+# Both were excluded here, which made a clean clone fail in this crate with "vendor/pa_auto_mode/
+# pa_auto_mode.c: No such file or directory" -- a file the reader has no way to obtain. The repository
+# publishes the Bluetooth and NVM3 archives for the same reason: a radio crate whose inputs are missing is a
+# radio crate nobody can build.
+#
+# They stay small enough not to matter (1.5 MB of archive, 1.2 MB of headers), and the alternative -- fetching
+# the Gecko SDK inside the build -- would need a mapping from SDK layout to our vendor layout that can drift
+# silently. Publishing is the honest option.
+#
+# Build output and generated bindings are still ignored, below.
 target/
 Cargo.lock
-
-# Generated bindings (will be in OUT_DIR, not tracked)
 bindings.rs
