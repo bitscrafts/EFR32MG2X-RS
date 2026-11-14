@@ -21,9 +21,9 @@ example and prints the build range, the mailbox and the host capture together, s
 | `ble_advertise_custom` | **PASS** | host decodes the payload: `Company: ... (741)` = 0x02E5, `Data[9]: 01010000010eca3919` -- version, device id, fw 0.1, and a live cycle counter |
 | `ble_gatt` | **BLOCKED** | advertises as `xiao-mg24-gatt`; the host connects (`Connection successful`) and a phone sees it, and a client listing characteristics gets **zero**: the dynamic GATT database cannot be enabled (see the GATT table above) |
 | `module_ble_beacon` | **PASS** | after forwarding the BSP's `stack` feature to `efr32mg24-radio/stack`: `Name: xiao-mg24-bsp` in the host capture, 8 reports, -87 dBm |
-| `base_ble_env` | **PASS**, data only | env frame on air at the board's address: `Data[10]: 010024ff1200f2030904`; it carries no name by design, so the payload is the evidence, not a name |
-| `module_ble_motion` | **PASS** | board address on air with a 10-byte motion frame: `Data[10]: 01002dff0900f1030604` = version, flag, X `-211`, Y `9`, Z `1009` mg, magnitude `1031`; mailbox `motion: |a|=1029 mg still n=1` |
-| `module_ble_fall` | **PASS** | board address on air with a 12-byte fall frame: `Data[12]: 0100000000000000fffff803` |
+| `base_ble_env` | **PASS, but sparse** | env frame on air at the board's address: `Data[9]: 01b50cf503d4192900`; it carries no name by design, so the payload is the evidence. Duty cycle is the problem below: 2 advertisements in an 18 s window |
+| `module_ble_motion` | **PASS, but sparse** | board address on air with a 10-byte motion frame: `Data[10]: 01002dff0900f1030604` = version, flag, X `-211`, Y `9`, Z `1009` mg, magnitude `1031`; mailbox `motion: |a|=1029 mg still n=1`. 7 advertisements in a 10 s window |
+| `module_ble_fall` | **PASS, but sparse** | board address on air with a 12-byte fall frame: `Data[12]: 0100000000000000fffff803`. 12 advertisements in a 10 s window |
 | `hal_led_blink` | **PASS** | PA7 (`0x5003C040` bit 7) sampled over SWD without halting: `0x80 -> 0x00 -> 0x80` -- the LED physically blinks |
 | `bt_version`, `hal_mic_level`, `module_mic_level`, `rail_ble_tx`, `rail_ble_rx`, `rail_caps`, `ble_boot_probe` | build-verified | three of them (`bt_version`, `hal_mic_level`, `module_mic_level`) had message-buffer panics that would have hit on first run; fixed, and `scripts/check-copy-len.py` now runs in the gate |
 
@@ -36,6 +36,22 @@ all three, so "no name" cannot be read as "no signal" again.
 One firmware defect did come out of that chase, and it was real: `module_ble_motion` wrote a record only when the
 motion flag *changed*, so a board sitting still said nothing at all and looked dead. It now writes once before the
 loop and once with the first frame.
+
+**The next thing to fix, measured while writing this table.** The three examples that push a changing payload
+(`base_ble_env`, `module_ble_motion`, `module_ble_fall`) call `set_manufacturer_data` and then `start_advertising` on
+every update, and `start_advertising` on a running set **aborts and restarts it**. The result is a duty cycle far
+below the interval they ask for:
+
+| Example | Advertisements in the window | Neighbours in the same window |
+|---|---|---|
+| `base_ble_env` | 2 in 18 s | 53 |
+| `module_ble_motion` | 7 in 10 s | 43 |
+| `module_ble_fall` | 12 in 10 s | 41 |
+
+That is 0.1-1.2 Hz against the 10 Hz the 100 ms interval asks for, and it is also the likely reason the board reads
+-87 dBm while sitting centimetres from the adapter: fewer transmissions is less energy in the air, and an aborting
+set spends time not transmitting at all. The fix is one advertising set kept running with its data updated, aborted
+only when the stack refuses an in-place update -- not a restart per frame.
 
 ## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
 
