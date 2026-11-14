@@ -19,7 +19,7 @@ example and prints the build range, the mailbox and the host capture together, s
 | `ble_beacon` | **PASS** | host `btmon`: `Name (complete): xiao-mg24`, flags 0x06, 14 bytes, `E4:0A:75:13:3E:E0`, -85 dBm |
 | `ble_scanner` | **PASS** | hears the host's own advertiser by address: `scan: 90:de:80:81:44:56 rssi=-75 len=13`. **Control**: with the host's advertising off the same image reports a different device (`49:7a:43:ea:f3:f0`) and never that address |
 | `ble_advertise_custom` | **PASS** | host decodes the payload: `Company: ... (741)` = 0x02E5, `Data[9]: 01010000010eca3919` -- version, device id, fw 0.1, and a live cycle counter |
-| `ble_gatt` | **BLOCKED** | advertises as `xiao-mg24-gatt`; the host connects (`Connection successful`) and a phone sees it, and a client listing characteristics gets **zero**: the dynamic GATT database cannot be enabled (see the GATT table above) |
+| `ble_gatt` | **PASS** | a BlueZ client connects, discovers the service and lists **one** characteristic (`6e400002-b5a3-f393-e0a9-e50e24dcca9e`, flags `read,notify`), subscribes, and **three `Handle Value Notification` frames appear on handle `0x0003` in the host capture**. Board summary on disconnect: `gatt: end on=1 of=1 ntf=3 rfs=1` |
 | `module_ble_beacon` | **PASS** | after forwarding the BSP's `stack` feature to `efr32mg24-radio/stack`: `Name: xiao-mg24-bsp` in the host capture, 8 reports, -87 dBm |
 | `base_ble_env` | **PASS, but sparse** | env frame on air at the board's address: `Data[9]: 01b50cf503d4192900`; it carries no name by design, so the payload is the evidence. Duty cycle is the problem below: 2 advertisements in an 18 s window |
 | `module_ble_motion` | **PASS, but sparse** | board address on air with a 10-byte motion frame: `Data[10]: 01002dff0900f1030604` = version, flag, X `-211`, Y `9`, Z `1009` mg, magnitude `1031`; mailbox `motion: |a|=1029 mg still n=1`. 7 advertisements in a 10 s window |
@@ -74,9 +74,10 @@ it. It serves **no attributes**: a client listing characteristics gets zero, bec
 
 | GATT attempt | Measurement |
 |---|---|
-| A GATT database built in Rust (`gatt_db`, using `sl_bt_gattdb_*`) | the commands answer **15** = `SL_STATUS_NOT_SUPPORTED`; the `dynamic_gattdb` component is not enabled |
-| Enabling `SL_CATALOG_BLUETOOTH_FEATURE_DYNAMIC_GATTDB_PRESENT` | `sli_bt_system_start_bluetooth` returns **7** = `SL_STATUS_TIMEOUT` and `system_boot` never arrives -- so the component is left disabled, with the reason in the catalogue |
-| What is missing | the component's generated `sl_bt_dynamic_gattdb_configure()`; the vendored SDK subset contains no generator and no reference implementation |
+| A GATT database built in Rust (`gatt_db`, using `sl_bt_gattdb_*`) | with the `dynamic_gattdb` component off: every command answers **15** = `SL_STATUS_NOT_SUPPORTED` |
+| Enabling `SL_CATALOG_BLUETOOTH_FEATURE_DYNAMIC_GATTDB_PRESENT`, first try | `sli_bt_system_start_bluetooth` returned **7** = `SL_STATUS_TIMEOUT` and `system_boot` never arrived. Read at the time as "the component cannot work in this build" |
+| The actual cause | the feature's configuration instance had the **wrong type**. `bt_dynamic_gattdb_init` is thirty bytes: `ldr r0,[r0]` then `and r1,r0,#1` (GATT caching) and `ubfx r0,r0,#1,#1` (include static database), then `b.w gatt_db_dynamic_init`. It consumes a `sli_bt_gattdb_config_t` (`{ uint32_t flags; }`), not the `sli_bt_dynamic_gattdb_config_t` (`{ uint8_t max_dynamic_gattdbs; }`) that its own header advertises. With the wrong shape, the flags were whatever the byte happened to be |
+| After fixing the type (flags 0) | the stack boots, `add_service` returns 0, the client lists the characteristic, and three notifications reach the air |
 
 The example now reports the whole state in one record -- `gatt: adv waiting a=0` -- instead of a second record
 overwriting the first, which had hidden the empty database behind a cheerful "advertising, waiting".

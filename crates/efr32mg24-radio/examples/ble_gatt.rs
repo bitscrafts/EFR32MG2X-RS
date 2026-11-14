@@ -164,6 +164,12 @@ fn main() -> ! {
     let mut counter: u32 = 0;
     let mut notified: u32 = 0;
     let mut refused: u32 = 0;
+    // Subscription history. The mailbox holds one record, and a client's last act before leaving is to turn
+    // notifications *off* -- so the event that proves the subscription worked was overwritten by the one that ends it.
+    // These counters make the summary on disconnect the whole story: whether a client subscribed, and whether the
+    // notifications it asked for actually went out.
+    let mut subs_on: u32 = 0;
+    let mut subs_off: u32 = 0;
 
     loop {
         match ble.poll_event() {
@@ -175,6 +181,28 @@ fn main() -> ! {
                 connected = false;
                 subscribed = false;
                 led.off();
+                // The summary, written where a tester will look after the client has gone: what the client asked for
+                // and what the board managed to send. A row of zeros here and a row of numbers are the difference
+                // between "the connection worked" and "the service worked".
+                {
+                    let mut msg = [0u8; 64];
+                    let mut at = 0;
+                    msg[at..at + 9].copy_from_slice(b"gatt: end");
+                    at += 9;
+                    msg[at..at + 4].copy_from_slice(b" on=");
+                    at += 4;
+                    at = push_dec(&mut msg, at, subs_on);
+                    msg[at..at + 4].copy_from_slice(b" of=");
+                    at += 4;
+                    at = push_dec(&mut msg, at, subs_off);
+                    msg[at..at + 5].copy_from_slice(b" ntf=");
+                    at += 5;
+                    at = push_dec(&mut msg, at, notified);
+                    msg[at..at + 5].copy_from_slice(b" rfs=");
+                    at += 5;
+                    at = push_dec(&mut msg, at, refused);
+                    mailbox::write(mailbox::Status::Info, &msg[..at]);
+                }
                 // A disconnect is not the end: a product advertises again, which is the difference
                 // between a demo and something a user can reconnect to.
                 let _ = ble.start_connectable(100, 0);
@@ -186,17 +214,30 @@ fn main() -> ! {
             Some(BleEvent::Subscribed {
                 notifications,
                 characteristic,
+                status_flags,
+                client_config,
                 ..
             }) => {
                 // The stack reports the subscription itself, which is a better signal than inferring it from a write:
                 // it fires for a client that uses the documented CCC path, and it says whether listening was turned
                 // on or off. Recorded, because it is the only trace a client leaves on the device side.
                 subscribed = notifications;
+                if notifications {
+                    subs_on += 1;
+                } else {
+                    subs_off += 1;
+                }
                 let mut msg = [0u8; 48];
                 let mut at = 0;
                 msg[at..at + 9].copy_from_slice(b"gatt: sub");
                 at += 9;
                 at = push_dec(&mut msg, at, u32::from(characteristic));
+                msg[at..at + 3].copy_from_slice(b" sf");
+                at += 3;
+                at = push_dec(&mut msg, at, u32::from(status_flags));
+                msg[at..at + 3].copy_from_slice(b" cc");
+                at += 3;
+                at = push_dec(&mut msg, at, u32::from(client_config));
                 msg[at..at + 3].copy_from_slice(if notifications { b" on" } else { b" of" });
                 at += 3;
                 mailbox::write(mailbox::Status::Info, &msg[..at]);

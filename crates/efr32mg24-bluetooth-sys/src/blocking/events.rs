@@ -125,6 +125,10 @@ pub enum BleEvent {
     Subscribed {
         connection: u8,
         characteristic: u16,
+        /// Which part of the client configuration changed (`sl_bt_gatt_server_client_config` / `..._client_config`).
+        status_flags: u8,
+        /// The value the client wrote: 0 none, 1 notification, 2 indication.
+        client_config: u16,
         notifications: bool,
     },
 
@@ -295,6 +299,8 @@ impl BleEvent {
                 Some(BleEvent::Subscribed {
                     connection: data.connection,
                     characteristic: data.characteristic,
+                    status_flags: data.status_flags,
+                    client_config: data.client_config_flags,
                     notifications: (data.client_config_flags & 0x0001) != 0,
                 })
             }
