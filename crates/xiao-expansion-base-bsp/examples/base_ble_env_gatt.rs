@@ -213,7 +213,7 @@ fn main() -> ! {
 
         updates += 1;
         if updates % 15 == 0 {
-            let mut msg = [0u8; 64];
+            let mut msg = [0u8; 224];
             let mut at = 0;
             at = push(&mut msg, at, b"env gatt: t=");
             at = push_dec(&mut msg, at, reading.temperature_centi_c.unsigned_abs());
@@ -225,6 +225,46 @@ fn main() -> ! {
             at = push_dec(&mut msg, at, updates);
             at = push(&mut msg, at, b" c=");
             at = push_dec(&mut msg, at, connections);
+            // **Is the heap damaged by our own loop or by the GATT path?** These three numbers separate the two: with no
+            // client they must stay at zero, and if they move while nobody is connected the fault is in this example.
+            let (heap_fail, heap_viol) = {
+                let (_, fail, viol) = efr32mg24_radio::heap_stats();
+                (fail, viol)
+            };
+            at = push(&mut msg, at, b" hf=");
+            at = push_dec(&mut msg, at, heap_fail);
+            at = push(&mut msg, at, b" hv=");
+            at = push_dec(&mut msg, at, heap_viol);
+            at = push(&mut msg, at, b" hl=");
+            at = push_dec(&mut msg, at, efr32mg24_radio::heap_largest_free() as u32);
+            // Which block was written past, and the last allocations. The size names the consumer; the ring says what
+            // was handed out just before the damage.
+            let (bad, total, bad_size, bad_at) = efr32mg24_radio::heap_audit();
+            at = push(&mut msg, at, b" ad=");
+            at = push_dec(&mut msg, at, bad);
+            at = push(&mut msg, at, b"/");
+            at = push_dec(&mut msg, at, total);
+            at = push(&mut msg, at, b" b=");
+            at = push_dec(&mut msg, at, bad_size as u32);
+            at = push(&mut msg, at, b"@");
+            at = push_dec(&mut msg, at, bad_at as u32);
+            // The last allocations, newest first: the size of the damaged block identifies the caller, and its
+            // neighbours say what was handed out around it.
+            let ring = efr32mg24_radio::heap_recent();
+            at = push(&mut msg, at, b" r=");
+            for (i, (size, offset)) in ring.iter().take(4).enumerate() {
+                if i > 0 {
+                    at = push(&mut msg, at, b",");
+                }
+                at = push_dec(&mut msg, at, *size as u32);
+                at = push(&mut msg, at, b"@");
+                at = push_dec(&mut msg, at, *offset as u32);
+            }
+            let (damaged_size, damaged_at) = efr32mg24_radio::heap_last_damaged();
+            at = push(&mut msg, at, b" ld=");
+            at = push_dec(&mut msg, at, damaged_size as u32);
+            at = push(&mut msg, at, b"@");
+            at = push_dec(&mut msg, at, damaged_at as u32);
             mailbox::write(mailbox::Status::Info, &msg[..at]);
         }
 

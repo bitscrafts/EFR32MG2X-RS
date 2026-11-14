@@ -98,6 +98,38 @@ The PSA layer it needs is written, committed and **verified on the board** -- P-
 and ECDH (`ec1 pk65 dh1` in the boot record) -- so re-enabling is a catalogue change plus the free-list defect, not a
 rewrite. `scripts/read-memory.sh` and the per-block canaries in `bt-heap` are the instruments for that defect.
 
+## Known defect: the heap is damaged when a client connects
+
+Measured with the canary and the allocation ring, both added for this:
+
+```
+no client   hf=0 hv=0 hl=57880  ad=0/15
+connected   hf=3 hv=2 hl=72     ad=1/12 b=0@5320 ld=64@5240  r=64@5240,448@7648,...
+```
+
+Three things this establishes, and one that it rules out:
+
+- **It is the connection, not the notifications.** With a client connected and never subscribed, the heap goes from
+  clean to damaged.
+- **The damaged block is named.** The last allocation before the damage is 64 bytes, and that is the block whose canary
+  dies: the ring says `64@5240` and `ld=64@5240`.
+- **The damage is zeros, and it reaches the next block's size word** (`b=0@5320`), which is why a single overrun drops
+  57 KiB of a 64 KiB arena out of reach -- `hl` collapses from 57880 to 72.
+- **Ruled out:** the connection configuration. `sli_feature_bt_connection_config` in the ELF is `04 00 fb 00` --
+  four connections, 251-byte data length -- which is correct, and was the first suspect because a wrong config type had
+  already caused the GATT defect.
+
+Containment, measured rather than reasoned: blocks now reserve sixty-four bytes between the caller's payload and the
+canary. Sixteen was tried first and was not enough. With sixty-four, the same connect leaves `hl=664` instead of `72` --
+nine times more usable arena -- and the damage is still reported.
+
+What the ring shows on the second connect is `64@9072, 448@8544, 64@9072, 448@8544`: the same two offsets allocated
+again and again. That is the shape of a **use after free** inside the vendor blob rather than a plain overrun, and it is
+the next thing to prove.
+
+What it costs today: the demo works (notifications delivered, `refused=0`, the values verified on a phone), but the arena
+degrades on each connection, so a second connection and pairing are the operations that fail.
+
 ## Known defect: heap integrity under a notification load
 
 A GATT session with a subscriber shows `hf=15 hv=7` in the board's own record: fifteen allocations failed and seven

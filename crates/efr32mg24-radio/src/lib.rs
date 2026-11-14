@@ -47,6 +47,18 @@ pub use ble::{BleError, BleEvent, Bluetooth, CharHandle, GapAdBuilder};
 // put two BLE layers in one manifest. Re-exporting keeps the stack a detail of this crate.
 pub use efr32mg24_bluetooth_sys::gatt_db;
 
+/// `(damaged, total, first_size, first_offset)` for the whole arena, walked linearly.
+pub use efr32mg24_bluetooth_sys::heap::audit as heap_audit;
+/// The largest single block the heap can still serve.
+pub use efr32mg24_bluetooth_sys::heap::largest_free as heap_largest_free;
+/// `(usable_size, offset)` of the last block found with a damaged canary.
+pub use efr32mg24_bluetooth_sys::heap::last_damaged as heap_last_damaged;
+/// The last few allocations, newest first: `(requested_size, offset)`.
+pub use efr32mg24_bluetooth_sys::heap::recent as heap_recent;
+/// `(in_use, failures, violations)` from the stack's heap. Re-exported so a BSP can report the heap's health without
+/// depending on the `-sys` crate.
+pub use efr32mg24_bluetooth_sys::heap::stats as heap_stats;
+
 #[cfg(feature = "rail")]
 compile_error!(
     "the RAIL feature is staged: its headers and blob are not vendored yet — see \
