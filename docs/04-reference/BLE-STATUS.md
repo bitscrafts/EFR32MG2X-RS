@@ -1,4 +1,60 @@
-# BLE — the state of the bring-up, measured
+# BLE status
+
+**2026-11-14: BLE works.** Thirteen examples build, flash and run on the board, and the eight whose job is to transmit
+are seen on the air from a separate host. GATT is usable end to end: a client connects, reads a characteristic, writes
+to another, subscribes, and the firmware echoes the written bytes back in its notifications.
+
+Run the whole matrix with one command:
+
+```bash
+bash scripts/ble-matrix-all.sh /tmp/matrix.md              # every example
+bash scripts/ble-matrix-all.sh /tmp/matrix.md "xiao"       # a subset, by label
+```
+
+| example | build | flash | on air | evidence |
+|---|---|---|---|---|
+| `efr32mg24-radio/ble_beacon` | ok | ok | **yes** | `Name (complete): xiao-mg24` |
+| `efr32mg24-radio/ble_scanner` | ok | ok | n/a (receives) | decodes a known host address, control with the host off |
+| `efr32mg24-radio/ble_advertise_custom` | ok | ok | **yes** | `Data[9]: 0101000001...` with a live cycle counter |
+| `efr32mg24-radio/ble_gatt` | ok | ok | **yes** | read + write + notify, 23 notifying echoes of the written bytes |
+| `efr32mg24-radio/ble_diag` | ok | ok | **yes** | transmit counters, all statuses zero |
+| `efr32mg24-radio/ble_boot_probe` | ok | ok | n/a (probe) | `ver=7.2`, command path answered |
+| `efr32mg24-radio/ble_rail_then_stack` | ok | ok | n/a (probe) | crystal measured 39 MHz |
+| `xiao-mg24-bsp/module_ble_beacon` | ok | ok | **yes** | `advertising as xiao-mg24-bsp` |
+| `xiao-mg24-bsp/module_ble_motion` | ok | ok | **yes** | `Data[10]` with three axis samples |
+| `xiao-mg24-bsp/module_ble_fall` | ok | ok | **yes** | `Data[12]: 0100000000000000ffff1604` |
+| `xiao-expansion-base-bsp/base_ble_env` | ok | ok | **yes** | `Data[9]` with temperature and pressure |
+| `efr32mg24-hal/hal_led_blink` | ok | ok | n/a | drives PA7, the control that the board runs this code |
+
+Three things this table is careful about, each of which had gone wrong before:
+
+- **The board's own record is not the criterion.** An example passes when a separate host sees it on the air. Examples
+  whose job is to receive or probe are marked `n/a` rather than credited.
+- **The mailbox survives a reset**, so `scripts/clear-mailbox.sh` invalidates it before every flash. Without that, an
+  example that reports only on an event shows the *previous* image's numbers: after flashing `module_ble_fall` the
+  mailbox still held `ble_gatt`'s record, including the bytes a client had written minutes earlier.
+- **A silent example is not a dead one.** `module_ble_fall` writes nothing to the mailbox and transmits normally; the
+  table says `(silent)` and puts the payload in the evidence column.
+
+## The one thing that does not work: pairing
+
+`SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT` is **off, deliberately**. With it enabled, every pairing request ended in
+`Pairing Failed: unspecified reason (0x08)` because a 352-byte allocation inside the security manager could not be
+served: the arena's free list was already damaged, leaving only 272 bytes reachable out of 65536. Pairing is not
+required for a working GATT service, and carrying a component that corrupts the heap puts every other example at risk.
+
+The PSA layer it needs is written, committed and **verified on the board** -- P-256 key generation, public-key export
+and ECDH (`ec1 pk65 dh1` in the boot record) -- so re-enabling is a catalogue change plus the free-list defect, not a
+rewrite. `scripts/read-memory.sh` and the per-block canaries in `bt-heap` are the instruments for that defect.
+
+## Known defect: heap integrity under a notification load
+
+A GATT session with a subscriber shows `hf=15 hv=7` in the board's own record: fifteen allocations failed and seven
+blocks were found with a damaged canary. Notifications are still delivered (23 echoes reached the client and the
+payloads were correct), so this is a defect to fix rather than a showstopper, and it is the same free-list damage that
+stops pairing. It is recorded here rather than buried because a heap that fails intermittently is the kind of thing that
+becomes a field failure.
+
 
 Updated 2026-11-13. Every number below came from the board, not from a datasheet or from hope.
 
