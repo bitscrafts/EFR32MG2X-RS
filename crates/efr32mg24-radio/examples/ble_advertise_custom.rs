@@ -110,6 +110,9 @@ fn main() -> ! {
     let mut last_second = u32::MAX;
     let mut updates: u32 = 0;
 
+    // No start here. The loop's per-second update *is* the start: measured, starting the set here and again in the
+    // loop leaves it emitting about two packets and then going quiet, because the stack answers the second start
+    // without resuming the first.
     loop {
         // **Cycles, not seconds.** This used to divide by 19 MHz and call the result seconds. The core clock on this
         // part is an open defect in this tree (`DELAY-CLOCK-DEFECT.md`: the device configures 19 MHz, SysTick implies
@@ -128,9 +131,10 @@ fn main() -> ! {
             frame[4] = FW_MINOR;
             frame[5..9].copy_from_slice(&uptime_cycles.to_le_bytes());
 
+            // **Restart, because legacy advertising cannot change its payload in place.** Measured: with the restart
+            // removed and the set started once, the payload on the air stayed all zeros -- `set_manufacturer_data` on
+            // a running legacy set does not reach the next packet. The restart is what makes the uptime advance.
             if ble.set_manufacturer_data(COMPANY_ID, &frame).is_ok() {
-                // Restart advertising so the new payload goes out; the stack does not re-read the
-                // advertising data while a set is running.
                 if ble.start_advertising(200, 0).is_ok() {
                     updates += 1;
                     let mut msg = [0u8; 64];

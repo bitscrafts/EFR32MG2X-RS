@@ -37,21 +37,22 @@ One firmware defect did come out of that chase, and it was real: `module_ble_mot
 motion flag *changed*, so a board sitting still said nothing at all and looked dead. It now writes once before the
 loop and once with the first frame.
 
-**The next thing to fix, measured while writing this table.** The three examples that push a changing payload
-(`base_ble_env`, `module_ble_motion`, `module_ble_fall`) call `set_manufacturer_data` and then `start_advertising` on
-every update, and `start_advertising` on a running set **aborts and restarts it**. The result is a duty cycle far
-below the interval they ask for:
+**A published number that had to be withdrawn: the "duty cycle".** An earlier version of this section reported
+`base_ble_env` 2 advertisements in 18 s, `module_ble_motion` 7 in 10 s and `module_ble_fall` 12 in 10 s, and concluded
+that restarting the advertising set per update was starving the radio.
 
-| Example | Advertisements in the window | Neighbours in the same window |
-|---|---|---|
-| `base_ble_env` | 2 in 18 s | 53 |
-| `module_ble_motion` | 7 in 10 s | 43 |
-| `module_ble_fall` | 12 in 10 s | 41 |
+That conclusion does not survive a calibration. `ble_beacon` -- the one example whose advertising is known good, a
+phone and the host both see it within a second -- measures **2 reports in 11 s** under the same capture. The limit is
+the receiver, not the transmitter: the host's dongle is owned by `bluetoothd`, and the scan parameters that would give
+a 100% window are answered `Command Disallowed (0x0c)` while it holds the controller. Every one of those counts
+measures the scanner's duty cycle.
 
-That is 0.1-1.2 Hz against the 10 Hz the 100 ms interval asks for, and it is also the likely reason the board reads
--87 dBm while sitting centimetres from the adapter: fewer transmissions is less energy in the air, and an aborting
-set spends time not transmitting at all. The fix is one advertising set kept running with its data updated, aborted
-only when the stack refuses an in-place update -- not a restart per frame.
+What survives: an advertising report seen twice **75 ms apart** (beacon) and **76 ms apart** (`ble_advertise_custom`)
+shows the interval is in the right order; the per-second totals do not.
+
+To measure a rate on this bench, the receiver has to be controllable -- a second board running `ble_scanner` with a
+known window, or the host with `bluetoothd` stopped. Neither is in place, so **the advertising rate is unmeasured**, and
+that is the honest state rather than a number produced by an instrument that cannot see.
 
 ## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
 
