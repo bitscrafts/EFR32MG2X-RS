@@ -13,7 +13,7 @@ categories = ["embedded", "hardware-support", "no-std"]
 name = "efr32mg24_hal"
 
 [dependencies]
-efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac", version = "0.1.0" }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac", version = "0.1.1" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 embedded-hal = { workspace = true }
 critical-section = { workspace = true }

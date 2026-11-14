@@ -522,13 +522,22 @@ cargo doc --no-deps --features rt --open
 - [x] 10+ BLE/BSP examples
 
 **Long Term Goals**:
-- [ ] Published to crates.io
-- [ ] Hardware tested on XIAO MG24 Sense
+- [x] Published to crates.io — `efr32mg2x-pac` and `efr32mg2x-hal` (0.1.1). The radio, the board BSPs and the helper
+      libraries are not published: the radio carries vendor binaries and needs the build-time fetch first.
+- [x] Hardware tested on XIAO MG24 Sense — BLE read by a phone, the BME680 published as a standard service, the blink
+      measured at 1.02 Hz, `hal_env_display` showing T/P/RH on the OLED
 - [ ] Phase D3: Zigbee 3.0 integration
 - [ ] Phase D4: Thread/Matter support
 - [ ] Phase E: Security features (AES, SHA, Secure Vault)
 - [ ] Embassy async support
 - [ ] Community contributors
+
+## Before publishing anything
+
+`cargo publish --dry-run` compiles the package and never reads it. That is how `efr32mg2x-hal 0.1.0` reached crates.io
+announcing "USART complete, I2C/SPI/Timers next" with all three implemented, and linking a `docs/PHASE2_PLAN.md` that
+does not exist. Read the README and the `docs/` that ship inside the package, then run
+`python3 scripts/check-publishable.py` — it is also in the gate. A published version cannot be edited, only superseded.
 
 ## Contact & Repository
 

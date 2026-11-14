@@ -49,6 +49,15 @@ else
   fail "crate docs: $(tail -1 /tmp/gate-examples-doc.log)"
 fi
 
+# What would be published, read the way a stranger reads it. cargo publish --dry-run compiles the package and never
+# looks at it: that is how ef32mg2x-hal 0.1.0 reached crates.io announcing "I2C/SPI/Timers next" with all three in the
+# tree, and linking a docs/PHASE2_PLAN.md that does not exist.
+if PATH="/usr/local/cargo/bin:$PATH" python3 scripts/check-publishable.py >/tmp/gate-publishable.log 2>&1; then
+  pass "crates.io: the package says what the tree does"
+else
+  fail "crates.io: $(grep -m1 '^  ' /tmp/gate-publishable.log)"
+fi
+
 if python3 scripts/check-copy-len.py crates/ >/tmp/gate-copy-len.log 2>&1; then
   pass "copy_from_slice lengths ($(tail -1 /tmp/gate-copy-len.log))"
 else

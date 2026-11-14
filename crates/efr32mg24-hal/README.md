@@ -2,7 +2,8 @@
 
 High-level, type-safe Hardware Abstraction Layer for EFR32MG24 microcontrollers.
 
-> ✅ **Status**: Phase 5 Tier 2 - USART Complete, I2C/SPI/Timers Next
+> **Status**: 20 peripheral drivers in the tree. What is measured on the board, and what merely compiles, is listed
+> below rather than summarised in a phase number that has been stale since June 2026.
 
 ## Overview
 
@@ -14,23 +15,46 @@ This crate provides high-level, safe abstractions over EFR32MG24 peripherals wit
 - **RAM**: 256 KB
 - **Radio**: 2.4 GHz (Bluetooth 5.3, Zigbee, Thread, Matter)
 
-## Status
+## What is in the tree
 
-**Current Version**: 0.1.0
-**Phase 5 Tier 2** - USART complete, I2C/SPI/Timers next
+Twenty modules, each one a peripheral or a bus:
 
-### Implemented Peripherals
+```
+adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
+i2c  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
+```
 
-**Tier 1 (Complete):**
-- ✅ **Clock Management (CMU)** - HFXO/HFRCO configuration with hardware register access
-- ✅ **GPIO** - Type-safe pin modes with hardware register manipulation
-- ✅ **Delay** - SysTick-based delays integrated with CMU
+The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
+SPI and the timers are here, and USART is here but has never been watched doing anything on the board.
 
-**Tier 2 (In Progress):**
-- ✅ **USART0** - Serial communication with embedded-hal-nb traits
-- ⏳ I2C (I2C0, I2C1) - Planned next
-- ⏳ SPI (USART in SPI mode) - Planned
-- ⏳ Timer (TIMER0-4) and PWM - Planned
+## What is in the tree, measured
+
+Twenty modules. All of them are implementations, not skeletons: the smallest has 2 public functions, the largest 18, and
+the only `unimplemented!` in the crate is inside a doc example. What differs is how far each one has been taken.
+
+**Watched on the board**
+
+| module | what was measured |
+|---|---|
+| `bus` + `display` + `sensors` | `hal_env_display`: `T=31.68C P=1015hPa H=68.2%` on the OLED, matching the PAC twin within sensor noise |
+| `pin` | the LED toggling, seen |
+| `timer` + `buzzer` | `TOP` calibrated, `CC0_CFG=0x02`, counter climbing — registers confirmed, **no sound heard** (open trace or no buzzer fitted) |
+| `rtc` | `base_rtc` runs |
+| `dwt` | used as the time base by several examples that were run |
+
+**Exercised by an example, not yet watched:** `board`, `microphone`, `sysrtc`, `delay`.
+
+**Implemented, no example reaches it:** `adc`, `clock`, `dma`, `emu`, `i2c`, `pwm`, `spi`, `usart`, `wdog`.
+
+Two of those deserve naming rather than a row in a table:
+
+- `i2c` drives the hardware I2C0 peripheral, and that path has a **documented defect**: after `CMD.START` the state reads
+  `0xd7` (BUSY|MASTER|TRANSMITTER|NACKED) and `PSTART` never clears. Every working I2C path in this repository is
+  `bus::BitBangI2c`, which is a different module. See `docs/04-reference/I2C0-READ-DEFECT.md`.
+- `sysrtc` had two wrong offsets corrected (CLKCTRL `0x240`, EN_SET `0x1004`) and accepts `EN`, but the counter is not
+  read back correctly.
+
+
 
 ## Quick Start
 
@@ -100,9 +124,9 @@ fn main() -> ! {
 
 ### Module Documentation
 
-- **[src/clock/README.md](src/clock/README.md)** - Clock Management Unit (CMU)
-- **[src/gpio/README.md](src/gpio/README.md)** - GPIO digital I/O
-- **[src/delay/README.md](src/delay/README.md)** - SysTick-based delays
+- **[src/clock/](src/clock/)** - Clock Management Unit (CMU)
+- **[src/pin/](src/pin.rs)** - GPIO digital I/O
+- **[src/delay.rs](src/delay/)** - SysTick-based delays
 
 ### API Documentation
 
@@ -170,21 +194,22 @@ cargo test --features rt
 - **Critical sections**: Safe atomic operations via cortex-m
 - **Modular design**: Clean separation of concerns, all files <400 lines
 
-## Development Status
+## Where the state lives
 
-See [docs/STATUS.md](docs/STATUS.md) for detailed implementation status and [docs/PHASE2_PLAN.md](docs/PHASE2_PLAN.md) for the Phase 2 development plan.
+[docs/STATUS.md](docs/STATUS.md) carries the dated status; this README's own summary above is the short version. The
+workspace-wide authority is `docs/03-development/STATUS.md` in the project repository.
 
 ## License
 
 Licensed under either of:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](../LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-MIT))
 
 at your option.
 
 ---
 
-**Version**: 0.1.0
-**Last Updated**: December 4, 2025
-**Status**: Phase 2 Complete - Tier 1 Peripherals Implemented
+**Version**: 0.1.1
+**Last Updated**: November 14, 2026
+**Status**: 20 drivers in the tree; the measured/unmeasured split is at the top of this file

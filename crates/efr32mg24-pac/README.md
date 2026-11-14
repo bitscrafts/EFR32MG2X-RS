@@ -308,7 +308,7 @@ PAC testing is limited without hardware:
 
 ## Related Crates
 
-- [efr32mg24-hal](../efr32mg24-hal/) - High-level Hardware Abstraction Layer
+- [efr32mg24-hal](https://github.com/bitscrafts/EFR32MG2X-RS/tree/master/crates/efr32mg24-hal) - High-level Hardware Abstraction Layer
 - [cortex-m](https://crates.io/crates/cortex-m) - Core Cortex-M functionality
 - [cortex-m-rt](https://crates.io/crates/cortex-m-rt) - Runtime support
 
@@ -322,8 +322,8 @@ PAC testing is limited without hardware:
 
 Licensed under either of:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](../LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](../LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-APACHE))
+- MIT license ([LICENSE-MIT](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-MIT))
 
 at your option.
 
