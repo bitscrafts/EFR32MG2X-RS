@@ -342,6 +342,12 @@ fn main() -> ! {
                         at,
                         efr32mg24_bluetooth_sys::heap::last_failed_size() as u32,
                     );
+                    // Which block was written past. The size names the call site that allocates it.
+                    let (damaged_size, damaged_at) = efr32mg24_bluetooth_sys::heap::last_damaged();
+                    at = push_literal(&mut msg, at, b" ld=");
+                    at = push_dec(&mut msg, at, damaged_size as u32);
+                    at = push_literal(&mut msg, at, b"@");
+                    at = push_dec(&mut msg, at, damaged_at as u32);
                     at = push_literal(&mut msg, at, b" wr=");
                     at = push_dec(&mut msg, at, control_writes);
                     at += 5;
@@ -573,6 +579,17 @@ fn main() -> ! {
             at = push_dec(&mut msg, at, heap_failures);
             at = push_literal(&mut msg, at, b" hv=");
             at = push_dec(&mut msg, at, heap_violations);
+            // The whole arena, audited: how many blocks carry a damaged canary, out of how many, and where the first
+            // one is. A linear walk by size does not consult the free list, which is the structure under suspicion.
+            let (bad, total, bad_size, bad_at) = efr32mg24_bluetooth_sys::heap::audit();
+            at = push_literal(&mut msg, at, b" ad=");
+            at = push_dec(&mut msg, at, bad);
+            at = push_literal(&mut msg, at, b"/");
+            at = push_dec(&mut msg, at, total);
+            at = push_literal(&mut msg, at, b" b=");
+            at = push_dec(&mut msg, at, bad_size as u32);
+            at = push_literal(&mut msg, at, b"@");
+            at = push_dec(&mut msg, at, bad_at as u32);
             at = push_literal(&mut msg, at, b" hl=");
             at = push_dec(
                 &mut msg,
@@ -586,6 +603,20 @@ fn main() -> ! {
             at = push_hex32(&mut msg, at, alg);
             at = push_literal(&mut msg, at, b"x");
             at = push_dec(&mut msg, at, refusals);
+            // Which block was written past, and the largest block still allocatable. The second number is the honest
+            // read of the free list: "7 KiB in use of 64" next to "largest free block 272" cannot both be true unless
+            // the list itself is damaged, which is exactly what `hv` is counting.
+            let (damaged_size, damaged_at) = efr32mg24_bluetooth_sys::heap::last_damaged();
+            at = push_literal(&mut msg, at, b" ld=");
+            at = push_dec(&mut msg, at, damaged_size as u32);
+            at = push_literal(&mut msg, at, b"@");
+            at = push_dec(&mut msg, at, damaged_at as u32);
+            at = push_literal(&mut msg, at, b" hl=");
+            at = push_dec(
+                &mut msg,
+                at,
+                efr32mg24_bluetooth_sys::heap::largest_free() as u32,
+            );
             at = push_literal(&mut msg, at, b" cv=");
             for byte in control_value {
                 at = push_hex_byte(&mut msg, at, byte);

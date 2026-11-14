@@ -163,8 +163,36 @@ Three defects were found and fixed on the way to those numbers:
    bytes on the next block's header, which is exactly what a corrupt free list looks like from the allocator's side.
    The test passes, so the allocator is sound for that size and the corruption comes from a consumer.
 
-Next step, and it is small: a per-block canary in `bt-heap`, so the consumer that overruns is identified by the block
-it damaged instead of by a violation count.
+### The canary names the damaged blocks
+
+Every block in `bt-heap` now carries an eight-byte canary past its last usable byte, and `audit()` walks the arena
+linearly by size -- not via the free list, which is the structure under suspicion. The board reports:
+
+```
+gatt: end ... se=4/4616 ec=0 hf=2 hv=9 lf=352 ld=64@5456
+gatt c0 ... hp=7472 hf=2 hv=9 ad=2/10 b=264@5256 hl=272 ...
+```
+
+- `lf=352` -- the allocation `smp_alloc_data` cannot get.
+- `hl=272` -- the largest block the (damaged) free list can still offer. 7472 bytes are in use of a **65536-byte**
+  arena (`ARENA` is `0x10000` in the ELF), so this is not memory pressure: the free list is broken.
+- `ad=2/10` -- the linear walk reaches only ten blocks and then hits an invalid size word, so the block chain itself is
+  broken somewhere around offset 7500.
+- `b=264@5256` and `ld=64@5456` -- the two blocks whose canaries were overwritten: one of 264 usable bytes, one of 64.
+
+So a consumer writes past a 64-byte block and past a 264-byte block during the pairing exchange, and the allocation
+that then fails is a symptom three steps later.
+
+Two instrument defects had to be fixed to read any of this:
+
+- The mailbox reader (`scripts/read-mailbox.sh`) read 64 bytes of a record that is allowed 200, cutting the record
+  exactly where the explaining fields live. It reads 288 now.
+- The canary's magic word was 64-bit, which is an out-of-range literal on this 32-bit target -- it compiled on the
+  host tests and failed on the board.
+
+Next step: read the arena around offsets 5256 and 5456 over SWD and compare the damaged headers with the allocated
+sizes; the block of 64 usable bytes that takes 65 is the classic 65-byte uncompressed ECC point written into a
+64-byte buffer.
 
 A defect found on the way: the key table did not store the handle it handed out, so `psa_destroy_key` and any lookup
 guessed `handle n = slot n - 1` -- true only until the first destroy. Slots now carry their id.

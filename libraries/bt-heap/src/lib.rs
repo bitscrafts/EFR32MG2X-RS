@@ -36,6 +36,17 @@ pub const ALIGN: usize = 8;
 /// see the module note for the bug that made this necessary.
 const HEADER: usize = 8;
 
+/// A word written at the end of every block, past the last byte the caller may use. `dealloc` checks it, so an overrun
+/// is reported against **the block that was overrun** -- its size and offset -- instead of only being noticed later as a
+/// corrupt free list. That difference is what turns "eight violations" into "the 352-byte block was written past".
+pub const CANARY: usize = 8;
+
+/// The value written into the canary word, mixed with the block's offset so that a stray copy of a fixed pattern is
+/// unlikely to reproduce it.
+// **A value that fits `usize` on both targets.** The board is 32-bit and the host running the tests is 64-bit; a
+// 64-bit magic compiled on the board and silently became an out-of-range literal.
+const CANARY_MAGIC: usize = 0xcafe_babe;
+
 /// Bytes a free block needs beyond its size word: the link to the next free block, as an offset from the arena
 /// base. Written and read through raw pointers, so the type exists only to size it correctly.
 const LINK: usize = core::mem::size_of::<Option<usize>>();
@@ -53,6 +64,10 @@ pub struct Heap<'a> {
     /// The last size an allocation asked for and could not be served. Recorded because "out of memory" without the
     /// size says nothing actionable: 352 bytes failing out of 64 KiB is a different bug from 40 KiB failing.
     last_failed_size: usize,
+    /// The usable size of the last block whose canary was found damaged, and that block's offset. This is the number
+    /// that names the overrunning consumer: blocks are handed out per call site, so the size identifies it.
+    last_damaged_size: usize,
+    last_damaged_offset: usize,
 }
 
 impl<'a> Heap<'a> {
@@ -66,6 +81,8 @@ impl<'a> Heap<'a> {
             failures: 0,
             violations: 0,
             last_failed_size: 0,
+            last_damaged_size: 0,
+            last_damaged_offset: 0,
         };
         if len >= HEADER + LINK + ALIGN {
             heap.write_size(0, len);
@@ -73,6 +90,39 @@ impl<'a> Heap<'a> {
             heap.free = Some(0);
         }
         heap
+    }
+
+    fn canary_for(at: usize) -> usize {
+        CANARY_MAGIC ^ at
+    }
+
+    /// Write the canary into the last word of the block starting at `at`.
+    fn write_canary(&mut self, at: usize, block_size: usize) {
+        let value = Self::canary_for(at);
+        // SAFETY: `block_size` is the block's own size and ends on an eight-byte boundary inside the buffer.
+        unsafe {
+            core::ptr::write_unaligned(
+                self.buf.as_mut_ptr().add(at + block_size - CANARY) as *mut usize,
+                value,
+            );
+        }
+    }
+
+    /// Check the canary at the end of the block starting at `at`. Records the block's usable size when it is damaged.
+    fn check_canary(&mut self, at: usize, block_size: usize) -> bool {
+        // SAFETY: as `write_canary`.
+        let found = unsafe {
+            core::ptr::read_unaligned(
+                self.buf.as_ptr().add(at + block_size - CANARY) as *const usize
+            )
+        };
+        if found == Self::canary_for(at) {
+            return true;
+        }
+        self.violations = self.violations.saturating_add(1);
+        self.last_damaged_size = block_size.saturating_sub(HEADER + CANARY);
+        self.last_damaged_offset = at;
+        false
     }
 
     fn write_size(&mut self, at: usize, size: usize) {
@@ -110,7 +160,7 @@ impl<'a> Heap<'a> {
         if size == 0 {
             return core::ptr::null_mut();
         }
-        let need = round_up(size + HEADER);
+        let need = round_up(size + HEADER + CANARY);
 
         let mut prev: Option<usize> = None;
         let mut cur = self.free;
@@ -137,6 +187,7 @@ impl<'a> Heap<'a> {
                     }
                     self.write_size(at, block_size);
                 }
+                self.write_canary(at, self.read_size(at));
                 self.in_use += need;
                 // The payload starts after the header; the header keeps the size for `dealloc`.
                 return unsafe { self.buf.as_mut_ptr().add(at + HEADER) };
@@ -167,6 +218,9 @@ impl<'a> Heap<'a> {
             return;
         }
         let size = self.read_size(offset);
+        // Before the list is touched: a damaged canary means the caller's bytes ran into the next block's header, and
+        // splicing this block into the free list would spread the damage.
+        self.check_canary(offset, size);
         if size < HEADER || !size.is_multiple_of(ALIGN) || offset + size > self.buf.len() {
             // Not one of ours, or the header was overwritten. Counting is better than corrupting the list.
             self.failures = self.failures.saturating_add(1);
@@ -264,6 +318,54 @@ impl<'a> Heap<'a> {
     /// The last size that could not be served.
     pub fn last_failed_size(&self) -> usize {
         self.last_failed_size
+    }
+
+    /// Walk the whole arena and check every block's canary, whether it is free or allocated.
+    ///
+    /// Blocks cover the arena contiguously, so a linear walk by size reaches all of them without consulting the free
+    /// list -- which is the point: the free list is the thing suspected of being damaged. Returns
+    /// `(damaged_blocks, total_blocks, first_damaged_size, first_damaged_offset)`.
+    pub fn audit(&self) -> (u32, u32, usize, usize) {
+        let mut at = 0usize;
+        let mut blocks = 0u32;
+        let mut damaged = 0u32;
+        let mut first_size = 0usize;
+        let mut first_at = 0usize;
+        let limit = self.buf.len() - (self.buf.len() % ALIGN);
+        let mut steps = 0usize;
+        // Bounded, for the same reason every walk in this file is: a corrupt size word turns the loop into an
+        // infinite one, and a hang says nothing.
+        while at + HEADER + CANARY <= limit && steps <= limit / ALIGN {
+            steps += 1;
+            let size = self.read_size(at);
+            if size < HEADER + CANARY || !size.is_multiple_of(ALIGN) || at + size > limit {
+                damaged = damaged.saturating_add(1);
+                if first_size == 0 {
+                    first_size = size;
+                    first_at = at;
+                }
+                break;
+            }
+            blocks = blocks.saturating_add(1);
+            // SAFETY: `size` was just validated to lie inside the buffer.
+            let found = unsafe {
+                core::ptr::read_unaligned(self.buf.as_ptr().add(at + size - CANARY) as *const usize)
+            };
+            if found != Self::canary_for(at) {
+                damaged = damaged.saturating_add(1);
+                if first_size == 0 {
+                    first_size = size.saturating_sub(HEADER + CANARY);
+                    first_at = at;
+                }
+            }
+            at += size;
+        }
+        (damaged, blocks, first_size, first_at)
+    }
+
+    /// `(usable_size, offset)` of the last block found with a damaged canary -- the block some consumer wrote past.
+    pub fn last_damaged(&self) -> (usize, usize) {
+        (self.last_damaged_size, self.last_damaged_offset)
     }
 
     /// Walk the free list and count blocks that fail the sanity check, without modifying anything. The entry
@@ -433,6 +535,52 @@ mod smp_size_tests {
     /// The security manager's state block: `smp_alloc_data` asks for 0x160 bytes and then writes all of it. If this
     /// allocator hands back a block that cannot hold what it was asked for, the last bytes land on the next block's
     /// header -- which shows up as a corrupt free list, not as a heap error.
+    /// The canary has to be a control, not a decoration: a caller that writes exactly what it asked for must pass, and
+    /// one byte more must be reported against that block's size. Without the first half, a canary placed one word too
+    /// early would flag every allocation in the system and the report would be worthless.
+    #[test]
+    fn writing_past_a_block_is_reported_against_that_block() {
+        let mut arena = [0u8; 4096];
+        let mut heap = Heap::new(&mut arena);
+
+        let size = 0x160usize;
+        let p = heap.alloc(size);
+        assert!(!p.is_null());
+        unsafe {
+            for i in 0..size {
+                *p.add(i) = 0xa5;
+            }
+        }
+        heap.dealloc(p);
+        assert_eq!(
+            heap.violations(),
+            0,
+            "writing exactly `size` bytes must not be a violation"
+        );
+        assert_eq!(heap.last_damaged(), (0, 0));
+
+        // The near miss: one byte past the end.
+        let q = heap.alloc(size);
+        assert!(!q.is_null());
+        unsafe {
+            for i in 0..=size {
+                *q.add(i) = 0x5a;
+            }
+        }
+        heap.dealloc(q);
+        assert_eq!(heap.violations(), 1, "one byte past the end must be caught");
+        let (damaged_size, offset) = heap.last_damaged();
+        assert!(
+            damaged_size >= size,
+            "the report must name a block at least as large as the one that was overrun, got {damaged_size}"
+        );
+        // Offset zero is legitimate -- it is the arena's first block. What matters is that the offset is inside it.
+        assert!(
+            offset < 4096,
+            "the block's offset must be recorded, got {offset}"
+        );
+    }
+
     #[test]
     fn a_352_byte_allocation_holds_352_bytes() {
         let mut arena = [0u8; 4096];

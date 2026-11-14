@@ -20,7 +20,8 @@ set -uo pipefail
 HOST="${1:-10.10.10.217}"
 USER_NAME="${2:-mvcorrea}"
 ADDR=0x2003F000
-WORDS=20          # 80 bytes: 16 of header + 64 of message (enough for the longest record)
+WORDS=72          # 288 bytes: 16 of header + 272 of message. 64 truncated the record exactly where the
+                  # fields that explain a failure live, which twice produced "no data" where data existed.
 CFG=/tmp/openocd-mg24-mini.cfg
 ATTEMPTS=5
 

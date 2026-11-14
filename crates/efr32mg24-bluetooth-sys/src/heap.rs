@@ -122,6 +122,28 @@ pub fn last_failed_size() -> usize {
     }
 }
 
+/// `(usable_size, offset)` of the last block some caller wrote past.
+pub fn last_damaged() -> (usize, usize) {
+    unsafe {
+        let slot = &*core::ptr::addr_of!(HEAP);
+        match slot.as_ref() {
+            Some(h) => h.last_damaged(),
+            None => (0, 0),
+        }
+    }
+}
+
+/// `(damaged_blocks, total_blocks, first_damaged_size, first_damaged_offset)` for the whole arena.
+pub fn audit() -> (u32, u32, usize, usize) {
+    unsafe {
+        let slot = &*core::ptr::addr_of!(HEAP);
+        match slot.as_ref() {
+            Some(h) => h.audit(),
+            None => (0, 0, 0, 0),
+        }
+    }
+}
+
 /// The largest single allocation still possible.
 pub fn largest_free() -> usize {
     unsafe {
