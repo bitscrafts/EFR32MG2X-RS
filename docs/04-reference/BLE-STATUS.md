@@ -102,12 +102,36 @@ offsets 0 and 2 with no padding possible. That is weaker than measuring `sizeof`
 headers are not in this repository, so there is no C translation unit to compare against. It is written down as the
 weaker claim it is.
 
-**Pairing itself does not complete.** A client sends `Pairing Request` (Secure Connections, NoInputNoOutput) and the
-board answers `Pairing Failed: unspecified reason (0x08)` without sending a `Pairing Response` -- so the abort happens
-before the key exchange, and none of the seven functions is called (the failure recorder stays empty, which is how we
-know). The next step is the security manager's own initialisation: the builtin bonding database stores bonds in NVM3,
-and the abort is consistent with that store not being ready. Nothing about the cryptography has been shown to be at
-fault yet.
+**Pairing itself does not complete**, and the board now says exactly where it stops.
+
+Measured with `scripts/host-pair-probe.py` (a D-Bus client that discovers, connects and pairs, because
+`bluetoothctl pair` silently does nothing when the device is not in BlueZ's cache -- silence that was twice read as a
+firmware fault):
+
+```
+pair: org.bluez.Error.AuthenticationFailed (0.2s)     Paired: False   Bonded: False
+board: gatt c0 notif=0 refused=0 ev=0 se=4/4616 sm=1 h=010603a0 ua=00000000x0 cv=
+                         ^^^^^^^^^^     ^   ^^^^^^^^  ^^^^^^^^^^  ^^^^^^^^^^^^
+                         |              |   |         |           no algorithm was ever refused
+                         |              |   |         last event: connection_closed
+                         |              |   the SM's error code
+                         |              event 4 = bonding_failed
+                         one security-manager event consumed
+```
+
+`4616` = `0x1208` = `SL_STATUS_BT_SMP_UNSPECIFIED_REASON`, matching the `Pairing Failed: 0x08` on the air. Two facts
+narrow it: the SM consumes the pairing request (so it is not refusing the request), and **it never calls any of the
+seven PSA functions** -- the elliptic-curve failure recorder stays empty and no algorithm is refused. The abort is
+therefore inside the security manager's own state machine, before any cryptography, and the cryptography this project
+wrote has not been shown to be at fault at all.
+
+Also measured on the way: with `SL_BT_SM_CONFIGURATION_BONDING_REQUIRED` set, the board refuses a peer that does not
+request a bond (BlueZ's `pair` sends "No bonding") with the same `0x08` before any exchange. Flags are now `SC_ONLY`
+alone; that removed one refusal, not the failure.
+
+Next step, and it needs the blob: find where the security manager returns `0x1208` on the pairing-request path. The
+REA dossier in `_tmp/efr32mg24-rs/rea-dossier/` is the tool for it, and the question is narrow -- which state the SM
+expects to be different before it will proceed.
 
 A defect found on the way: the key table did not store the handle it handed out, so `psa_destroy_key` and any lookup
 guessed `handle n = slot n - 1` -- true only until the first destroy. Slots now carry their id.

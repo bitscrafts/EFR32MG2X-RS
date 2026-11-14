@@ -679,8 +679,12 @@ impl Bluetooth {
     /// `BONDING_REQUIRED` makes the link key persist, and the builtin bonding database stores it in NVM3, so a paired
     /// peer is remembered across a reboot.
     pub fn enable_pairing(&mut self) -> Result<(), BleError> {
-        /// `SL_BT_SM_CONFIGURATION_BONDING_REQUIRED | SL_BT_SM_CONFIGURATION_SC_ONLY`
-        const FLAGS: u8 = 0x02 | 0x04;
+        /// `SL_BT_SM_CONFIGURATION_SC_ONLY`: refuse legacy pairing, accept what the peer asks for otherwise.
+        ///
+        /// `BONDING_REQUIRED` (0x02) is deliberately **not** set. With it, a peer that pairs without requesting a bond
+        /// -- which is what BlueZ sends from `pair` -- gets `Pairing Failed: unspecified reason` before any key
+        /// exchange. Measured on this board: flags 0x02|0x04 refused the client outright; see the doc.
+        const FLAGS: u8 = 0x04;
         /// `sl_bt_sm_io_capability_noinputnooutput`
         const NO_INPUT_NO_OUTPUT: u8 = 0x03;
 

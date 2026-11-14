@@ -75,6 +75,20 @@ use crate::ffi as bt;
 // would need an allocator or a static pool, and the pool would be the same 512 bytes.
 #[allow(clippy::large_enum_variant)]
 pub enum BleEvent {
+    /// A security-manager event: pairing started, a bond was stored, or pairing failed.
+    ///
+    /// # Fields
+    ///
+    /// * `event` — 0 passkey display, 1 passkey request, 2 confirm passkey, 3 bonded, 4 bonding failed,
+    ///   9 confirm bonding
+    /// * `connection` — the connection handle
+    /// * `reason` — the security manager's error code, meaningful for `event == 4`
+    Security {
+        event: u8,
+        connection: u8,
+        reason: u16,
+    },
+
     /// Remote device connected
     ///
     /// # Fields
@@ -255,6 +269,32 @@ impl BleEvent {
                     address_type: data.address_type,
                     is_master: data.master != 0,
                     bonding: data.bonding,
+                })
+            }
+
+            // The security manager. These were unmapped until a pairing attempt failed with nothing to read: the
+            // event reached this parser and its payload was dropped, which is why the abort looked like silence.
+            bt::sl_bt_evt_sm_passkey_display_id
+            | bt::sl_bt_evt_sm_passkey_request_id
+            | bt::sl_bt_evt_sm_confirm_passkey_id
+            | bt::sl_bt_evt_sm_bonded_id
+            | bt::sl_bt_evt_sm_bonding_failed_id
+            | bt::sl_bt_evt_sm_confirm_bonding_id => {
+                let data = unsafe { evt.data.evt_sm_bonding_failed.as_ref() };
+                let event = match event_id {
+                    bt::sl_bt_evt_sm_passkey_display_id => 0u8,
+                    bt::sl_bt_evt_sm_passkey_request_id => 1,
+                    bt::sl_bt_evt_sm_confirm_passkey_id => 2,
+                    bt::sl_bt_evt_sm_bonded_id => 3,
+                    bt::sl_bt_evt_sm_bonding_failed_id => 4,
+                    _ => 9,
+                };
+                // Both `bonded` and `bonding_failed` carry (connection, reason) in that order; the reason field is
+                // only meaningful on failure, and reading it on success costs nothing.
+                Some(BleEvent::Security {
+                    event,
+                    connection: data.connection,
+                    reason: data.reason,
                 })
             }
 

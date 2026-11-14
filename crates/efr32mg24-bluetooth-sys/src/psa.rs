@@ -493,6 +493,9 @@ pub fn stats() -> (usize, u32, u32) {
 const PSA_ALG_CMAC: u32 = 0x03c0_0200;
 /// `PSA_ALG_CTR`
 const PSA_ALG_CTR: u32 = 0x04c0_1000;
+/// `PSA_ALG_ECB_NO_PADDING`. The bonding database wraps the long-term key with this, through
+/// `bondingdb_psa_add_ecb_key`, so a security stack that cannot do it cannot store a bond.
+const PSA_ALG_ECB_NO_PADDING: u32 = 0x0440_4400;
 /// The last algorithm this module was asked for and could not serve, and how many times. Read by `stats()`'s caller
 /// through [`unsupported_algorithm`]; a firmware that pairs badly can be asked what it wanted.
 static mut UNSUPPORTED_ALG: u32 = 0;
@@ -616,6 +619,38 @@ pub unsafe extern "C" fn psa_cipher_encrypt(
     output_size: usize,
     output_length: *mut usize,
 ) -> i32 {
+    if alg == PSA_ALG_ECB_NO_PADDING {
+        let Some(slot) = slot_for(key) else {
+            return PSA_ERROR_INVALID_HANDLE;
+        };
+        if slot.key_len != 16 {
+            return PSA_ERROR_INVALID_ARGUMENT;
+        }
+        // No IV in PSA's ECB one-shot, and the length must be a whole number of blocks.
+        if input.is_null() || output.is_null() || !input_length.is_multiple_of(16) {
+            return PSA_ERROR_INVALID_ARGUMENT;
+        }
+        if output_size < input_length {
+            if !output_length.is_null() {
+                *output_length = input_length;
+            }
+            return PSA_ERROR_BUFFER_TOO_SMALL;
+        }
+        let mut block = [0u8; 16];
+        block.copy_from_slice(&slot.key[..16]);
+        let mut offset = 0usize;
+        while offset < input_length {
+            let mut plain = [0u8; 16];
+            core::ptr::copy_nonoverlapping(input.add(offset), plain.as_mut_ptr(), 16);
+            let cipher = aes_ctr_radio::encrypt_block(&block, &plain);
+            core::ptr::copy_nonoverlapping(cipher.as_ptr(), output.add(offset), 16);
+            offset += 16;
+        }
+        if !output_length.is_null() {
+            *output_length = input_length;
+        }
+        return 0;
+    }
     if alg != PSA_ALG_CTR {
         return record_unsupported(alg);
     }

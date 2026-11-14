@@ -75,6 +75,27 @@ fn push_hex_byte(out: &mut [u8], at: usize, byte: u8) -> usize {
     at + 2
 }
 
+/// Append a literal and advance past it, deriving the length from the literal itself.
+fn push_literal(msg: &mut [u8], at: usize, literal: &[u8]) -> usize {
+    msg[at..at + literal.len()].copy_from_slice(literal);
+    at + literal.len()
+}
+
+/// Append eight uppercase-free hex digits: one fixed width, so a reader never has to guess where a field ends.
+fn push_hex32(msg: &mut [u8], at: usize, value: u32) -> usize {
+    let mut at = at;
+    for shift in [28u32, 24, 20, 16, 12, 8, 4, 0] {
+        let nib = ((value >> shift) % 16) as u8;
+        msg[at] = if nib < 10 {
+            b'0' + nib
+        } else {
+            b'a' + nib - 10
+        };
+        at += 1;
+    }
+    at
+}
+
 fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
     let mut digits = [0u8; 10];
     let mut n = 0;
@@ -252,6 +273,12 @@ fn main() -> ! {
     let mut subs_on: u32 = 0;
     let mut iterations: u32 = 0;
     let mut last_ec_op: u32 = 0;
+    let mut events_seen: u32 = 0;
+    let mut security_events: u32 = 0;
+    // The last security-manager event and its reason code: `bonding_failed` carries the only explanation the board
+    // ever gives for a pairing that does not finish, and the mailbox holds one record, so it is carried forward.
+    let mut last_sec_event: u32 = 0;
+    let mut last_sec_reason: u32 = 0;
     let mut control_writes: u32 = 0;
     let mut control_value = [0u8; 4];
     let mut t_subscribed: u32 = 0;
@@ -318,6 +345,27 @@ fn main() -> ! {
                 // between a demo and something a user can reconnect to.
                 let _ = ble.start_connectable(100, 0);
             }
+            // The security manager's own report. `e=4` is a failure and `r` is its reason code, which is the only
+            // place the board says why a pairing did not finish.
+            Some(BleEvent::Security {
+                event,
+                connection,
+                reason,
+            }) => {
+                security_events += 1;
+                last_sec_event = u32::from(event);
+                last_sec_reason = u32::from(reason);
+                let mut msg = [0u8; 80];
+                let mut at = 0;
+                at = push_literal(&mut msg, at, b"gatt: sec e=");
+                at = push_dec(&mut msg, at, u32::from(event));
+                at = push_literal(&mut msg, at, b" c=");
+                at = push_dec(&mut msg, at, u32::from(connection));
+                at = push_literal(&mut msg, at, b" r=");
+                at = push_dec(&mut msg, at, u32::from(reason));
+                mailbox::write(mailbox::Status::Info, &msg[..at]);
+            }
+
             Some(BleEvent::GattWrite {
                 attribute, value, ..
             }) => {
@@ -438,22 +486,39 @@ fn main() -> ! {
             delay.delay_ms(10);
         }
 
-        if notified % 10 == 0 && notified > 0 {
-            let mut msg = [0u8; 64];
+        // Written whether or not a client is subscribed: a board with no client is otherwise silent, and "silent"
+        // cannot be told apart from "wedged" when a pairing attempt leaves it without one.
+        //
+        // The format is built by two helpers and never by hand-counted offsets. Three defects in this project came
+        // from a literal written with one length and advanced by another, and the check that catches them only sees
+        // `copy_from_slice`, so the counting is kept in one place.
+        if iterations % 2000 == 0 {
+            let mut msg = [0u8; 128];
             let mut at = 0;
-            msg[at..at + 6].copy_from_slice(b"gatt c");
-            at += 6;
+            at = push_literal(&mut msg, at, b"gatt c");
             at = push_dec(&mut msg, at, counter);
-            msg[at..at + 7].copy_from_slice(b" notif=");
-            at += 7;
+            at = push_literal(&mut msg, at, b" notif=");
             at = push_dec(&mut msg, at, notified);
-            msg[at..at + 9].copy_from_slice(b" refused=");
-            at += 9;
+            at = push_literal(&mut msg, at, b" refused=");
             at = push_dec(&mut msg, at, refused);
-            // What the board believes the client wrote. The only way to tell "the write arrived" from "the host
-            // answered its own cache" is to have the board say the bytes out loud.
-            msg[at..at + b" cv=".len()].copy_from_slice(b" cv=");
-            at += b" cv=".len();
+            at = push_literal(&mut msg, at, b" ev=");
+            at = push_dec(&mut msg, at, events_seen);
+            at = push_literal(&mut msg, at, b" se=");
+            at = push_dec(&mut msg, at, last_sec_event);
+            at = push_literal(&mut msg, at, b"/");
+            at = push_dec(&mut msg, at, last_sec_reason);
+            at = push_literal(&mut msg, at, b" sm=");
+            at = push_dec(&mut msg, at, security_events);
+            // What the board believes the client wrote, and what the cryptography layer was asked for. Both are the
+            // difference between "nothing happened" and "something happened and was refused".
+            let (alg, refusals) = efr32mg24_bluetooth_sys::psa::unsupported_algorithm();
+            at = push_literal(&mut msg, at, b" h=");
+            at = push_hex32(&mut msg, at, efr32mg24_bluetooth_sys::last_event_header());
+            at = push_literal(&mut msg, at, b" ua=");
+            at = push_hex32(&mut msg, at, alg);
+            at = push_literal(&mut msg, at, b"x");
+            at = push_dec(&mut msg, at, refusals);
+            at = push_literal(&mut msg, at, b" cv=");
             for byte in control_value {
                 at = push_hex_byte(&mut msg, at, byte);
             }
