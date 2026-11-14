@@ -43,6 +43,9 @@ pub mod fault;
 
 #[cfg(feature = "ble")]
 pub use ble::{BleError, BleEvent, Bluetooth, CharHandle, GapAdBuilder};
+// A BSP that builds a GATT service needs the descriptor types, and making it depend on the `-sys` crate directly would
+// put two BLE layers in one manifest. Re-exporting keeps the stack a detail of this crate.
+pub use efr32mg24_bluetooth_sys::gatt_db;
 
 #[cfg(feature = "rail")]
 compile_error!(

@@ -32,6 +32,7 @@ efr32mg24-radio ble_rail_then_stack stack
 xiao-mg24-bsp module_ble_beacon sense stack
 xiao-mg24-bsp module_ble_motion sense stack
 xiao-mg24-bsp module_ble_fall sense stack
+xiao-expansion-base-bsp base_ble_env_gatt stack
 xiao-expansion-base-bsp base_ble_env stack
 efr32mg24-hal hal_led_blink rt
 "

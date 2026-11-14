@@ -47,5 +47,9 @@ name = "base_fall_detector"
 path = "examples/fall_detector/main.rs"
 
 [[example]]
+name = "base_ble_env_gatt"
+required-features = ["stack"]
+
+[[example]]
 name = "base_ble_env"
 required-features = ["stack"]

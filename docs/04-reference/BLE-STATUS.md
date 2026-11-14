@@ -36,6 +36,53 @@ Three things this table is careful about, each of which had gone wrong before:
 - **A silent example is not a dead one.** `module_ble_fall` writes nothing to the mailbox and transmits normally; the
   table says `(silent)` and puts the payload in the evidence column.
 
+## The BME680 on a phone
+
+`xiao-expansion-base-bsp/examples/base_ble_env_gatt.rs` publishes the carrier's sensor as the **standard**
+Environmental Sensing service, so a generic phone app labels and decodes the values with no profile document, no app of
+ours and no parsing:
+
+```
+service  0x181A  Environmental Sensing
+  0x2A6E  Temperature   sint16, 0.01 °C     read + notify
+  0x2A6F  Humidity      uint16, 0.01 %      read + notify
+  0x2A6D  Pressure      uint32, 0.1 Pa      read + notify
+```
+
+Verified from the host with `scripts/host-env-verify.py`:
+
+```
+connect: successful
+characteristics discovered: 4
+  0000181a-0000-1000-8000-00805f9b34fb
+  00002a6d-0000-1000-8000-00805f9b34fb
+  00002a6e-0000-1000-8000-00805f9b34fb
+  00002a6f-0000-1000-8000-00805f9b34fb
+reads:
+  00002a6e   dd0c       32.93 °C
+  00002a6f   7e18       62.70 %
+  00002a6d   888a0100   101.00 hPa
+notifications: 10
+  last 0xdf0c  32.95 °C
+== VERDICT: PASS
+```
+
+### On the phone
+
+1. nRF Connect (or any generic BLE explorer), scan: the board appears as **`xiao-mg24-env`**.
+2. Connect. The service list shows *Environmental Sensing*.
+3. Open it: *Temperature*, *Humidity* and *Pressure* with their units. Read gives the current value; tapping notify
+   shows them change every two seconds.
+
+Three defects stood between the first version and that, and each is a lesson worth keeping:
+
+- **The advertisement was not connectable.** `start_advertising` sends a non-connectable PDU; a phone sees the name,
+  connects, and the attempt never completes. It is `start_connectable` for anything a client must use.
+- **The example never re-advertised.** A connectable advertiser stops when a central connects, so the board was
+  reachable exactly once and then silent while its mailbox still said "advertising". It now handles `Disconnected`.
+- **A record builder added an offset that was already advanced** (`at += push(..)`, where `push` returns the new
+  offset). The panic was `slice_index_fail` -- found by reading the program counter, not by guessing.
+
 ## The one thing that does not work: pairing
 
 `SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT` is **off, deliberately**. With it enabled, every pairing request ended in

@@ -48,6 +48,21 @@ pub struct Characteristic {
     /// makes `read` work.
     pub max_len: u16,
 }
+/// One characteristic carrying a **standard 16-bit** UUID.
+///
+/// The reason this exists: a phone shows a 128-bit custom characteristic as hex, and shows `0x2A6E` as *Temperature* in
+/// degrees Celsius. A sensor product wants the second one -- the values arrive decoded, without an app and without a
+/// profile document.
+#[derive(Debug, Clone, Copy)]
+pub struct Characteristic16 {
+    /// The UUID as the spec writes it (`0x2A6E`), not the byte order on the wire; the stack reverses it.
+    pub uuid: u16,
+    /// Bitmask of [`PROP_READ`], [`PROP_WRITE`] and [`PROP_NOTIFY`].
+    pub properties: u16,
+    /// Buffer size the stack allocates for the value; zero means user-managed, which reads back nothing.
+    pub max_len: u16,
+}
+
 /// `SL_BT_GATTDB_CHARACTERISTIC_READ`.
 pub const PROP_READ: u16 = 0x02;
 /// `SL_BT_GATTDB_CHARACTERISTIC_WRITE`.
@@ -136,6 +151,84 @@ pub fn add_service(
         return Err(BleError::BgapiError(status as u16));
     }
 
+    let status = unsafe { bt::sl_bt_gattdb_commit(session) };
+    if status != 0 {
+        return Err(BleError::BgapiError(status as u16));
+    }
+
+    Ok(ServiceHandles {
+        service,
+        characteristics: handles,
+    })
+}
+
+/// Add a primary service with a **16-bit** UUID and standard 16-bit characteristics.
+///
+/// Same session semantics as [`add_service`]: nothing is committed unless every step succeeds, so a failure leaves the
+/// database as it was rather than publishing a service a client cannot use.
+pub fn add_service_uuid16(
+    uuid: u16,
+    characteristics: &[Characteristic16],
+) -> Result<ServiceHandles, BleError> {
+    let mut session: u16 = 0;
+    let status = unsafe { bt::sl_bt_gattdb_new_session(&mut session) };
+    if status != 0 {
+        return Err(BleError::BgapiError(status as u16));
+    }
+
+    // Bluetooth's UUIDs are little-endian on the wire, so the two bytes go out reversed from how the spec writes them.
+    let uuid_bytes = uuid.to_le_bytes();
+    let mut service: u16 = 0;
+    let status = unsafe {
+        bt::sl_bt_gattdb_add_service(
+            session,
+            PRIMARY_SERVICE,
+            0,
+            2, // uuid_len: a 16-bit UUID, not a 128-bit one
+            uuid_bytes.as_ptr(),
+            &mut service,
+        )
+    };
+    if status != 0 {
+        return Err(BleError::BgapiError(status as u16));
+    }
+
+    let mut handles: heapless::Vec<u16, 8> = heapless::Vec::new();
+    for spec in characteristics {
+        let value_type = if spec.max_len == 0 {
+            USER_MANAGED_VALUE
+        } else {
+            FIXED_LENGTH_VALUE
+        };
+        let uuid_value = bt::sl_bt_uuid_16_t {
+            data: spec.uuid.to_le_bytes(),
+        };
+        let mut handle: u16 = 0;
+        let status = unsafe {
+            bt::sl_bt_gattdb_add_uuid16_characteristic(
+                session,
+                service,
+                spec.properties,
+                0, // no security requirement: an unpaired client may read
+                0, // no option flags
+                uuid_value,
+                value_type,
+                spec.max_len,
+                0, // no initial value
+                core::ptr::null(),
+                &mut handle,
+            )
+        };
+        if status != 0 {
+            return Err(BleError::BgapiError(status as u16));
+        }
+        let _ = handles.push(handle);
+    }
+
+    let status = unsafe { bt::sl_bt_gattdb_start_service(session, service) };
+    if status != 0 {
+        return Err(BleError::BgapiError(status as u16));
+    }
     let status = unsafe { bt::sl_bt_gattdb_commit(session) };
     if status != 0 {
         return Err(BleError::BgapiError(status as u16));
