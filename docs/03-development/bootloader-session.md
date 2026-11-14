@@ -1,4 +1,11 @@
 # Bootloader Testing Session Summary
+
+> **Note (2026-11-14)**: the bootloader work described here is finished, and the flashing helpers written for it
+> (`flash-mass-erase.sh`, `flash-bootloader-test.sh`, `erase_and_flash.sh`, `flash-app-only.sh`) have been retired:
+> they bypass the load-range guard. `scripts/flash.sh` is the only flashing path -- it refuses to write below
+> `0x08006000` and verifies the image by reading it back. This document stays as the record of how the bootloader
+> was recovered.
+
 **Date**: January 25, 2026
 **Status**: Bootloader flashing works, but prevents application flashing
 

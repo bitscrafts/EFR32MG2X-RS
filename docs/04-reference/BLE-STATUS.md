@@ -187,7 +187,7 @@ follows is a per-example table, each row with the evidence that produced it and 
 ## The matrix, measured 2026-11-14
 
 The rule for a row: the board's own mailbox is **not** evidence. A row is PASS only when something outside the board
-(a host capture, a client, or a register read over SWD) shows the effect. `scripts/ble-example-matrix.sh` runs one
+(a host capture, a client, or a register read over SWD) shows the effect. `scripts/ble-matrix-all.sh` runs one
 example and prints the build range, the mailbox and the host capture together, so the two cannot drift apart.
 
 | Example | State | External evidence |
@@ -206,7 +206,7 @@ example and prints the build range, the mailbox and the host capture together, s
 **The instrument was wrong twice in this session, and both times it hid working firmware.** First a host capture with
 no self-test (a window in which nothing arrived proved nothing); then a name search, which reported "nothing on air"
 for `base_ble_env`, `module_ble_motion` and `module_ble_fall` -- all three were transmitting manufacturer data and have
-no name to find. The criterion is now the board's address and its payload, and `scripts/ble-example-matrix.sh` prints
+no name to find. The criterion is now the board's address and its payload, and `scripts/ble-matrix-all.sh` prints
 all three, so "no name" cannot be read as "no signal" again.
 
 One firmware defect did come out of that chase, and it was real: `module_ble_motion` wrote a record only when the
@@ -512,7 +512,7 @@ this configuration.
 - `crates/efr32mg24-radio/examples/ble_boot_probe.rs` — one flow, eight trace words, a reporting HardFault handler,
   and every diagnostic slot cleared before the run.
 - `crates/efr32mg24-rail-sys/examples/rail_ble_config_probe.rs` — proves the channel table alone, without the stack.
-- `scripts/ble-run-and-report.sh`, `scripts/ble-examples-status.sh`, `scripts/read-mailbox.sh`.
+- `scripts/ble-matrix-all.sh`, `scripts/ble-matrix-all.sh`, `scripts/read-mailbox.sh`.
 
 **The instrument that lied was the probe itself.** It grew by patch until it called `stack_init::start` twice, and
 the second call's trace overwrote the first call's, so a stage that had failed read as a stage that had passed. It
@@ -521,7 +521,7 @@ produced two false readings before the slots were cleared at boot.
 
 ## The thirteen examples
 
-`scripts/ble-examples-status.sh` builds all thirteen for `thumbv8m.main-none-eabihf`; none loads below
+`scripts/ble-matrix-all.sh` builds all thirteen for `thumbv8m.main-none-eabihf`; none loads below
 `0x08006000`, which is the bootloader's floor.
 
 - **Proven on the board:** `rail_ble_tx` (advertising, three receivers), `rail_caps` (PHY capabilities),
