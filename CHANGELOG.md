@@ -5,6 +5,35 @@ All notable changes to the EFR32MG24 HAL will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-11-14
+
+### Fixed
+
+#### The published documentation said things the tree contradicted (2026-11-14)
+
+`efr32mg2x-hal 0.1.0` reached crates.io with a README announcing "Phase 5 Tier 2 - USART Complete, I2C/SPI/Timers
+Next" while `i2c`, `spi` and `timer` were all implemented, linking a `docs/PHASE2_PLAN.md` that does not exist, and
+contradicting itself 180 lines further down with "Phase 2 Complete". `efr32mg2x-pac 0.1.0` shipped seven bring-up
+records from January 2026 that still claimed "blink timing issue remains" — the blink has since been measured at
+1.02 Hz. Eleven per-module READMEs inside `hal/src/` said "Planned" for peripherals that exist and carry public
+functions. Licence links pointed at `../LICENSE-*`, outside the package, so they rendered as dead links on the
+crates.io page.
+
+Both crates republished as 0.1.1 with documentation derived from the tree: the HAL README now lists which of the 20
+drivers were measured on the board, which are only exercised by an example, and which no example reaches at all — and
+names the two that carry defects (hardware `i2c`, whose `CMD.START` leaves `STATE=0xd7`; and `sysrtc`, whose counter
+is not read back correctly). The PAC keeps only the crate documentation, the generated example list and the two
+flashing procedures; the bring-up diary moved to `docs/99-archive/pac-bring-up/`.
+
+### Added
+
+#### A check that refuses to publish a package the tree contradicts
+
+`scripts/check-publishable.py` runs `cargo package --list` and reads the package the way a stranger does: every
+relative README link must resolve inside the package, every `include_str!` must point at a packaged file, and
+state-claim phrases that shipped falsehoods are refused. It is wired into `scripts/gate.sh`. The lesson is the one this
+project keeps relearning: a check that compiles is not a check that reads.
+
 ## [Unreleased]
 
 ### Added
