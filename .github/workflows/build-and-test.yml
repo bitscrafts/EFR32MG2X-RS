@@ -47,6 +47,17 @@ jobs:
           set -o pipefail
           bash scripts/gate.sh 2>&1 | tee gate.log
 
+      - name: Upload the per-crate example logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-example-logs
+          path: |
+            /tmp/gate-examples-*.log
+            /tmp/gate.log
+          if-no-files-found: ignore
+          retention-days: 7
+
       - name: Upload the gate log
         if: always()
         uses: actions/upload-artifact@v4

@@ -104,7 +104,13 @@ for dir in $CRATES; do
     # next person to reproduce the build by hand -- and on a CI runner they often cannot.
     fail "$pkg: examples do not build"
     echo "--- first errors from /tmp/gate-examples-$pkg.log:"
-    grep -E "^error(\[|:)" -A4 "/tmp/gate-examples-$pkg.log" | head -20 | sed 's/^/      /'
+    if grep -qE "^error(\[|:)" "/tmp/gate-examples-$pkg.log"; then
+      grep -E "^error(\[|:)" -A4 "/tmp/gate-examples-$pkg.log" | head -20 | sed 's/^/      /'
+    else
+      # Not every failure announces itself with "error:": a build script that panics, a missing
+      # tool, or a linker that dies all read differently. Print the tail rather than nothing.
+      tail -20 "/tmp/gate-examples-$pkg.log" | sed 's/^/      /'
+    fi
   fi
   # A hardware crate whose API nothing builds is a crate whose API is not tested. Only the
   # crates that own pins are held to this; the PAC is exercised by its own 19 examples and
