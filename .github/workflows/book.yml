@@ -2,6 +2,10 @@ name: Book (PDF)
 
 # The book is built from the same sources as the code, so it is built on every push rather than shipped
 # as an opaque blob: a chapter that stops compiling is a chapter that has rotted.
+#
+# The compile runs inside the same TeX Live image the bench uses, not in a hand-assembled apt package
+# list. The first attempt did the latter and died on the third missing .sty -- a runner whose TeX differs
+# from the bench proves nothing about the book, it proves something about the runner.
 on:
   push:
     branches: [master, main]
@@ -20,29 +24,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install XeLaTeX and the packages the book uses
-        # kaobook, tikz, the fonts and the shell-escape helpers all come from these; texlive-xetex alone is
-        # not enough, and the failure then appears a hundred pages into the compile.
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            texlive-xetex texlive-latex-extra texlive-fonts-extra texlive-fonts-recommended \
-            texlive-science texlive-lang-english latexmk poppler-utils
-
       - name: Check the sources before compiling
-        working-directory: book
-        run: python3 check-tex.py
+        run: python3 book/check-tex.py
 
-      - name: Compile
-        working-directory: book/latex
+      - name: Compile twice so the contents and cross-references settle
         run: |
-          xelatex -shell-escape -interaction=nonstopmode main.tex > pass1.log 2>&1 || true
-          xelatex -shell-escape -interaction=nonstopmode main.tex > pass2.log 2>&1 || {
-            echo "--- second pass failed:"; tail -60 pass2.log; exit 1; }
-          pdfinfo main.pdf | tee pdfinfo.txt
-          pages=$(awk '/^Pages:/ {print $2}' pdfinfo.txt)
-          echo "pages=${pages}"
-          test "${pages:-0}" -gt 100 || { echo "implausible page count: ${pages}"; exit 1; }
+          docker run --rm -v "$PWD":/work -w /work/book/latex \
+            docker.io/texlive/texlive:latest \
+            sh -c 'xelatex -shell-escape -interaction=nonstopmode main.tex > pass1.log 2>&1; \
+                   xelatex -shell-escape -interaction=nonstopmode main.tex > pass2.log 2>&1; \
+                   tail -3 pass2.log; ls -l main.pdf'
+
+      - name: Refuse an implausible result
+        # A LaTeX run can exit 0 and still produce a title page with no book behind it. The "Output
+        # written on main.pdf (N pages)" line is the compiler's own count.
+        run: |
+          pages=$(sed -n 's/.*Output written on main\.pdf (\([0-9]*\) pages.*/\1/p' book/latex/pass2.log | tail -1)
+          echo "pages=${pages:-none}"
+          test -n "${pages}" || { echo "no page count: the compile did not finish"; tail -40 book/latex/pass2.log; exit 1; }
+          test "${pages}" -gt 100 || { echo "implausible page count: ${pages}"; exit 1; }
 
       - name: Upload the PDF
         uses: actions/upload-artifact@v4
@@ -51,13 +51,11 @@ jobs:
           path: book/latex/main.pdf
           retention-days: 90
 
-      - name: Upload the LaTeX log when it fails
+      - name: Upload the LaTeX logs when it fails
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: book-latex-log
-          path: |
-            book/latex/*.log
-            book/latex/*.txt
+          path: book/latex/*.log
           if-no-files-found: ignore
           retention-days: 7
