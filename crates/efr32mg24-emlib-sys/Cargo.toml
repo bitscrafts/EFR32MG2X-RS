@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-emlib-sys"
+name = "efr32mg2x-emlib-sys"
 version = "0.1.0"
 edition = "2021"
 description = "The three emlib units the EFR32MG24 radio blobs link against (Silicon Labs, Zlib)"
@@ -13,5 +13,8 @@ cc = "1.0"
 [dev-dependencies]
 # The example needs a board to read the DWT counter and a delay to measure the clock against. That is
 # a dev-dependency on purpose: nothing in the radio path should depend on the HAL.
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
 panic-halt = "0.2"
+
+[lib]
+name = "efr32mg24_emlib_sys"

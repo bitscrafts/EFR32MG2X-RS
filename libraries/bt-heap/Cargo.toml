@@ -1,10 +1,14 @@
 [package]
-name = "bt-heap"
+name = "efr32mg2x-bt-heap"
 version = "0.1.0"
 edition = "2021"
-description = "A small first-fit heap for the Bluetooth stack, with no std and no external crates"
+description = "A first-fit heap for the Silicon Labs Bluetooth stack: no_std, no allocator dependencies, canaries and an allocation ring for debugging"
 license = "MIT"
-publish = false
+repository.workspace = true
+authors.workspace = true
+keywords = ['embedded', 'no-std', 'heap', 'bluetooth']
+categories = ["embedded", "no-std"]
+readme = "README.md"
 
 [lib]
 name = "bt_heap"

@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-pac"
+name = "efr32mg2x-pac"
 version.workspace = true
 edition = "2021"
 license.workspace = true
@@ -8,6 +8,14 @@ authors.workspace = true
 description = "Peripheral Access Crate for EFR32MG24 microcontrollers"
 keywords = ["arm", "cortex-m", "efr32", "silabs", "embedded"]
 categories = ["embedded", "hardware-support", "no-std"]
+# The SVD is the input to svd2rust, not an input to the build: 5.7 MB that every user would download
+# and never read.
+exclude = ["svd/"]
+
+[lib]
+# The package name is the crates.io name; this is what `use` sees. Kept explicit so a rename of the
+# package can never silently break every dependent's import.
+name = "efr32mg24_pac"
 
 [dependencies]
 cortex-m = { workspace = true }

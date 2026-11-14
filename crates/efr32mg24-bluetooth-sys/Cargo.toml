@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-bluetooth-sys"
+name = "efr32mg2x-bluetooth-sys"
 version = "0.1.0"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 edition = "2021"
@@ -10,21 +10,24 @@ readme = "README.md"
 keywords = ["efr32", "bluetooth", "ble", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
+[lib]
+name = "efr32mg24_bluetooth_sys"
+
 [dependencies]
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
-aes-ctr-radio = { path = "../../libraries/aes-ctr-radio" }
-aes-modes = { path = "../../libraries/aes-modes" }
+efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
+aes-ctr-radio = { package = "efr32mg2x-aes-ctr-radio", path = "../../libraries/aes-ctr-radio" }
+aes-modes = { package = "efr32mg2x-aes-modes", path = "../../libraries/aes-modes" }
 # P-256 for the security manager's LE Secure Connections: ECDH and public-key export, in Rust.
 p256 = { version = "0.13", default-features = false, features = ["ecdh"] }
-efr32mg24-emlib-sys = { path = "../efr32mg24-emlib-sys" }
-bt-heap = { path = "../../libraries/bt-heap" }
+efr32mg24-emlib-sys = { package = "efr32mg2x-emlib-sys", path = "../efr32mg24-emlib-sys" }
+bt-heap = { package = "efr32mg2x-bt-heap", path = "../../libraries/bt-heap" }
 # AES-CTR for the controller, in Rust: libraries/aes-ctr-radio holds the implementation and its
 # FIPS-197 test, so the crypto is testable here instead of trusted as a vendor blob.
 # The CORE_* helpers the vendor blobs reference; compiled once for the whole workspace.
-cmsis-stubs = { path = "../cmsis-stubs" }
+cmsis-stubs = { package = "efr32mg2x-cmsis-stubs", path = "../cmsis-stubs" }
 # The Bluetooth controller is built on RAIL: its chip layer calls RAIL_ConfigAntenna and friends.
 # This is the vendor's own layering, discovered by the linker rather than by a document.
-efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys" }
+efr32mg24-rail-sys = { package = "efr32mg2x-rail-sys", path = "../efr32mg24-rail-sys" }
 # Core types for FFI
 cty = "0.2"
 
@@ -33,14 +36,14 @@ heapless = "0.8"
 embedded-hal = "1.0"
 # Register access for the Secure Engine TRNG: the PAC carries the SVD-generated types, so no register offset
 # is ever written by hand in this crate.
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac" }
 
 [dev-dependencies]
 # Required for examples
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac" }
 
 [build-dependencies]
 cc = "1"

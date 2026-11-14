@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-hal"
+name = "efr32mg2x-hal"
 version.workspace = true
 edition = "2021"
 license.workspace = true
@@ -9,8 +9,11 @@ description = "Hardware Abstraction Layer for EFR32MG24 microcontrollers"
 keywords = ["arm", "cortex-m", "efr32", "silabs", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
+[lib]
+name = "efr32mg24_hal"
+
 [dependencies]
-efr32mg24-pac = { path = "../efr32mg24-pac", version = "0.1.0" }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac", version = "0.1.0" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 embedded-hal = { workspace = true }
 critical-section = { workspace = true }

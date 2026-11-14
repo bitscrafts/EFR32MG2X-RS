@@ -1,9 +1,14 @@
 [package]
-name = "motion-detection"
+name = "efr32mg2x-motion-detection"
 version = "0.1.0"
 edition = "2021"
-description = "Hardware-free motion classification for accelerometer data (fall detection)"
+description = "Fall and motion detection from an accelerometer stream: thresholds, hysteresis and a test suite calibrated on recorded drops"
 license = "MIT"
-publish = false
+repository.workspace = true
+authors.workspace = true
+keywords = ['embedded', 'no-std', 'sensors', 'motion']
+categories = ["embedded", "no-std"]
+readme = "README.md"
 
-[dependencies]
+[lib]
+name = "motion_detection"

@@ -25,6 +25,109 @@ fn sha256_file(path: &std::path::Path) -> Result<String, std::io::Error> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+// ---------------------------------------------------------------------------------------------------------------
+// Vendored inputs, fetched at build time.
+//
+// The published crate does not carry the RAIL archive or its headers: they are Silicon Labs' (MSLA), and a
+// crates.io package that ships them would be redistributing vendor binaries, on top of the ten-megabyte limit this
+// crate would blow. So `cargo install` / `cargo build` pulls them from the project's own repository at a pinned
+// commit, verifies the archive's SHA-256, and extracts only this crate's subtrees.
+//
+// The alternative -- failing and telling the user to unpack the Gecko SDK by hand -- is what the crate did before,
+// and it is the reason a clean clone could not build. A build that needs a manual step nobody documents is a build
+// that only works for its author.
+const VENDOR_COMMIT: &str = "eefde4498a9dc5dd8d55f6023965d566c863f2f5";
+const VENDOR_URL: &str = "https://codeload.github.com/bitscrafts/EFR32MG2X-RS/tar.gz/";
+const VENDOR_TARBALL_SHA256: &str =
+    "ee1a61ee2262a9c91655e2fee35f11e01aef00542cd4cc0705641f1912b05905";
+
+fn ensure_vendor(manifest_dir: &std::path::Path) {
+    let have = manifest_dir.join("vendor/rail/rail.h").exists()
+        && manifest_dir
+            .join("blobs/efr32mg24b220/librail_efr32xg24_gcc_release.a")
+            .exists();
+    if have {
+        return;
+    }
+    if VENDOR_COMMIT.starts_with("PINNED") {
+        println!("cargo:warning=RAIL vendor files are missing and no commit is pinned; building without them");
+        return;
+    }
+
+    // One download serves every crate on the machine: the cache is keyed by commit, not by crate.
+    let cache = env::var("CARGO_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|_| env::temp_dir())
+        .join("efr32mg2x-vendor")
+        .join(VENDOR_COMMIT);
+    let tarball = cache.join("repo.tar.gz");
+    std::fs::create_dir_all(&cache).expect("cannot create the vendor cache");
+
+    if !tarball.exists() {
+        println!(
+            "cargo:warning=fetching the RAIL archive and headers from {}{}",
+            VENDOR_URL, VENDOR_COMMIT
+        );
+        let status = std::process::Command::new("curl")
+            .args(["-sSL", "-o"])
+            .arg(&tarball)
+            .arg(format!("{}{}", VENDOR_URL, VENDOR_COMMIT))
+            .status()
+            .unwrap_or_else(|e| panic!("curl is required to fetch the vendored RAIL files: {e}"));
+        assert!(status.success(), "downloading the vendor archive failed");
+    }
+
+    let got = sha256_file(&tarball).expect("cannot read the downloaded archive");
+    assert_eq!(
+        got,
+        VENDOR_TARBALL_SHA256,
+        "vendor archive checksum mismatch:\n  expected {VENDOR_TARBALL_SHA256}\n  got      {got}\n\
+         Delete {tarball:?} and rebuild; do not use an archive that does not match.",
+        tarball = tarball
+    );
+
+    // Extract only this crate's trees: the archive holds the whole repository.
+    let prefix = "EFR32MG2X-RS-"; // the tar root is <repo>-<sha>/
+    let status = std::process::Command::new("tar")
+        .current_dir(&cache)
+        .args(["-xzf"])
+        .arg(&tarball)
+        .arg("--strip-components=1")
+        .arg("-C")
+        .arg(&cache)
+        .args([
+            format!("{prefix}{VENDOR_COMMIT}/crates/efr32mg24-rail-sys/vendor"),
+            format!("{prefix}{VENDOR_COMMIT}/crates/efr32mg24-rail-sys/blobs"),
+        ])
+        .status()
+        .unwrap_or_else(|e| panic!("tar is required to unpack the vendor archive: {e}"));
+    assert!(status.success(), "extracting the vendor archive failed");
+
+    let src = cache.join("crates/efr32mg24-rail-sys");
+    for sub in ["vendor", "blobs"] {
+        copy_tree(&src.join(sub), &manifest_dir.join(sub));
+    }
+    println!("cargo:warning=vendored RAIL files installed from commit {VENDOR_COMMIT}");
+}
+
+/// Recursive copy: `fs::copy` needs an existing parent, and the crate has no subtree until this runs.
+fn copy_tree(from: &std::path::Path, to: &std::path::Path) {
+    std::fs::create_dir_all(to).expect("cannot create the vendor directory");
+    for entry in std::fs::read_dir(from).expect("cannot read the vendor source directory") {
+        let entry = entry.expect("cannot read a vendor entry");
+        let target = to.join(entry.file_name());
+        if entry
+            .file_type()
+            .expect("cannot stat a vendor entry")
+            .is_dir()
+        {
+            copy_tree(&entry.path(), &target);
+        } else {
+            std::fs::copy(entry.path(), &target).expect("cannot copy a vendor file");
+        }
+    }
+}
+
 fn main() {
     // Get the target architecture
     let target = env::var("TARGET").unwrap();
@@ -33,6 +136,8 @@ fn main() {
     if target.starts_with("thumbv") {
         // Path to the binary blob directory (use absolute path for cross-compilation)
         let manifest_dir = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
+        // Nothing below this line can work without the vendor files, so make sure they are here first.
+        ensure_vendor(&manifest_dir);
         let blob_dir = manifest_dir.join("blobs/efr32mg24b220");
 
         // Check if blob exists (won't exist initially, that's OK)

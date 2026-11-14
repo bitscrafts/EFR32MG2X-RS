@@ -1,13 +1,17 @@
 [package]
-name = "aes-modes"
+name = "efr32mg2x-aes-modes"
 version = "0.1.0"
 edition = "2021"
-description = "AES-CCM* (Bluetooth's variant) and AES-CMAC, in pure Rust, with no hardware"
+description = "AES-CMAC, AES-CTR and AES-ECB on top of a caller-supplied block cipher: no_std, RFC 4493 vectors in the tests"
 license = "MIT"
-publish = false
+repository.workspace = true
+authors.workspace = true
+keywords = ['embedded', 'no-std', 'crypto', 'aes', 'cmac']
+categories = ["embedded", "no-std"]
+readme = "README.md"
 
 [lib]
 name = "aes_modes"
 
 [dependencies]
-aes-ctr-radio = { path = "../aes-ctr-radio" }
+aes-ctr-radio = { package = "efr32mg2x-aes-ctr-radio", path = "../aes-ctr-radio", version = "0.1.0" }

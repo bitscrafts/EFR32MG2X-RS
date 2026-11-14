@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-bootloader"
+name = "efr32mg2x-bootloader"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
@@ -9,6 +9,9 @@ authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 [[bin]]
 name = "efr32mg24-bootloader"
 path = "src/main.rs"
+
+[lib]
+name = "efr32mg24_bootloader"
 
 [dependencies]
 # Minimal dependencies for bootloader

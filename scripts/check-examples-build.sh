@@ -19,32 +19,32 @@ BUILT=0
 
 # package example features...
 EXAMPLES="
-efr32mg24-pac          pac_led_blink            rt
-efr32mg24-pac          pac_bme680               rt
-efr32mg24-pac          pac_env_display          rt
-efr32mg24-pac          pac_rtc_read             rt
-efr32mg24-pac          pac_oled_hello           rt
-efr32mg24-hal          hal_led_blink            rt
-efr32mg24-hal          hal_mic_level            rt
-efr32mg24-hal          hal_imu_read             rt
-efr32mg24-hal          hal_timer0_pwm           rt
-efr32mg24-radio        ble_beacon               ble stack
-efr32mg24-radio        ble_scanner              ble stack
-efr32mg24-radio        ble_advertise_custom     ble stack
-efr32mg24-radio        ble_gatt                 ble gatt stack
-efr32mg24-radio        ble_diag                 ble stack diag
-efr32mg24-radio        ble_boot_probe           stack
-efr32mg24-radio        ble_rail_then_stack      stack
-xiao-mg24-bsp          module_led_blink         sense
-xiao-mg24-bsp          module_ble_beacon        sense stack
-xiao-mg24-bsp          module_ble_motion        sense stack
-xiao-mg24-bsp          module_ble_fall          sense stack
-xiao-mg24-bsp          module_mic_level         sense
-xiao-mg24-bsp          module_imu               sense
-xiao-expansion-base-bsp base_led_blink
-xiao-expansion-base-bsp base_ble_env            stack
-xiao-expansion-base-bsp base_ble_env_gatt       stack
-xiao-expansion-base-bsp base_env_display
+efr32mg2x-pac          pac_led_blink            rt
+efr32mg2x-pac          pac_bme680               rt
+efr32mg2x-pac          pac_env_display          rt
+efr32mg2x-pac          pac_rtc_read             rt
+efr32mg2x-pac          pac_oled_hello           rt
+efr32mg2x-hal          hal_led_blink            rt
+efr32mg2x-hal          hal_mic_level            rt
+efr32mg2x-hal          hal_imu_read             rt
+efr32mg2x-hal          hal_timer0_pwm           rt
+efr32mg2x-radio        ble_beacon               ble stack
+efr32mg2x-radio        ble_scanner              ble stack
+efr32mg2x-radio        ble_advertise_custom     ble stack
+efr32mg2x-radio        ble_gatt                 ble gatt stack
+efr32mg2x-radio        ble_diag                 ble stack diag
+efr32mg2x-radio        ble_boot_probe           stack
+efr32mg2x-radio        ble_rail_then_stack      stack
+efr32mg2x-xiao-bsp          module_led_blink         sense
+efr32mg2x-xiao-bsp          module_ble_beacon        sense stack
+efr32mg2x-xiao-bsp          module_ble_motion        sense stack
+efr32mg2x-xiao-bsp          module_ble_fall          sense stack
+efr32mg2x-xiao-bsp          module_mic_level         sense
+efr32mg2x-xiao-bsp          module_imu               sense
+efr32mg2x-expansion-base-bsp base_led_blink
+efr32mg2x-expansion-base-bsp base_ble_env            stack
+efr32mg2x-expansion-base-bsp base_ble_env_gatt       stack
+efr32mg2x-expansion-base-bsp base_env_display
 "
 
 printf '%-46s %-6s\n' "example" "build"

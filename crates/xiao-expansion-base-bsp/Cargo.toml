@@ -1,5 +1,5 @@
 [package]
-name = "xiao-expansion-base-bsp"
+name = "efr32mg2x-expansion-base-bsp"
 version = "0.1.0"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 edition = "2021"
@@ -14,10 +14,13 @@ categories = ["embedded", "hardware-support", "no-std"]
 # its OLED, its environmental sensor, its real-time clock, its buzzer and its button.
 # It depends on the module crate; the module knows nothing about it.
 
+[lib]
+name = "xiao_expansion_base_bsp"
+
 [dependencies]
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
-efr32mg24-pac = { path = "../efr32mg24-pac" }
-xiao-mg24-bsp = { path = "../xiao-mg24-bsp" }
+efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac" }
+xiao-mg24-bsp = { package = "efr32mg2x-xiao-bsp", path = "../xiao-mg24-bsp" }
 
 cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }
@@ -27,9 +30,9 @@ heapless = "0.8"
 
 [dev-dependencies]
 # Only the two BLE examples: the carrier's users should not inherit three MSLA blobs.
-efr32mg24-radio = { path = "../efr32mg24-radio" }
+efr32mg24-radio = { package = "efr32mg2x-radio", path = "../efr32mg24-radio" }
 panic-halt = "0.2"
-motion-detection = { path = "../../libraries/motion-detection" }
+motion-detection = { package = "efr32mg2x-motion-detection", path = "../../libraries/motion-detection" }
 
 [features]
 stack = ["efr32mg24-radio/stack"]  # BLE examples: the link-layer handler lives behind this feature

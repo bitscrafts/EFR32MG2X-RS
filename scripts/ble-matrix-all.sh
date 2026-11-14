@@ -22,19 +22,19 @@ WINDOW="${WINDOW:-12}"
 # Features are **space separated**, and `read` hands the remainder of the line to the last variable. `ble+stack` is
 # not feature syntax: cargo reads it as one unknown feature and every example "fails to build for a missing feature".
 EXAMPLES="
-efr32mg24-radio ble_beacon ble stack
-efr32mg24-radio ble_scanner ble stack
-efr32mg24-radio ble_advertise_custom ble stack
-efr32mg24-radio ble_gatt ble gatt stack
-efr32mg24-radio ble_diag ble stack diag
-efr32mg24-radio ble_boot_probe stack
-efr32mg24-radio ble_rail_then_stack stack
-xiao-mg24-bsp module_ble_beacon sense stack
-xiao-mg24-bsp module_ble_motion sense stack
-xiao-mg24-bsp module_ble_fall sense stack
-xiao-expansion-base-bsp base_ble_env_gatt stack
-xiao-expansion-base-bsp base_ble_env stack
-efr32mg24-hal hal_led_blink rt
+efr32mg2x-radio ble_beacon ble stack
+efr32mg2x-radio ble_scanner ble stack
+efr32mg2x-radio ble_advertise_custom ble stack
+efr32mg2x-radio ble_gatt ble gatt stack
+efr32mg2x-radio ble_diag ble stack diag
+efr32mg2x-radio ble_boot_probe stack
+efr32mg2x-radio ble_rail_then_stack stack
+efr32mg2x-xiao-bsp module_ble_beacon sense stack
+efr32mg2x-xiao-bsp module_ble_motion sense stack
+efr32mg2x-xiao-bsp module_ble_fall sense stack
+efr32mg2x-expansion-base-bsp base_ble_env_gatt stack
+efr32mg2x-expansion-base-bsp base_ble_env stack
+efr32mg2x-hal hal_led_blink rt
 "
 
 APPEND="${APPEND:-0}"

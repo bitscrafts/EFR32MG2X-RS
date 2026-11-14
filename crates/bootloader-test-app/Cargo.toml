@@ -1,13 +1,16 @@
 [package]
-name = "bootloader-test-app"
+name = "efr32mg2x-bootloader-test-app"
 version = "0.1.0"
 edition = "2021"
+
+[lib]
+name = "bootloader_test_app"
 
 [dependencies]
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac" }
 
 [profile.release]
 debug = true

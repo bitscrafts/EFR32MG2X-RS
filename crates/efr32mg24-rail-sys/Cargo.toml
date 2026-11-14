@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-rail-sys"
+name = "efr32mg2x-rail-sys"
 version = "0.1.0"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 edition = "2021"
@@ -12,18 +12,21 @@ categories = ["embedded", "hardware-support", "no-std"]
 
 links = "efr32mg24_rail"
 
+[lib]
+name = "efr32mg24_rail_sys"
+
 [dependencies]
 # emlib supplies the CMU/EMU/SYSTEM functions the RAIL blob references.
-efr32mg24-emlib-sys = { path = "../efr32mg24-emlib-sys" }
+efr32mg24-emlib-sys = { package = "efr32mg2x-emlib-sys", path = "../efr32mg24-emlib-sys" }
 # The same helpers, the same definitions, shared with the Bluetooth stack.
-cmsis-stubs = { path = "../cmsis-stubs" }
+cmsis-stubs = { package = "efr32mg2x-cmsis-stubs", path = "../cmsis-stubs" }
 # Core types for FFI
 cty = "0.2"
 
 [dev-dependencies]
 # Examples need a board, a delay and a way to report: the HAL provides the first two, and the
 # mailbox module in the module BSP provides the third.
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 panic-halt = "0.2"

@@ -1,5 +1,5 @@
 [package]
-name = "xiao-mg24-bsp"
+name = "efr32mg2x-xiao-bsp"
 version = "0.1.0"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 edition = "2021"
@@ -10,10 +10,13 @@ readme = "README.md"
 keywords = ["xiao", "efr32", "mg24", "embedded", "no-std"]
 categories = ["embedded", "hardware-support", "no-std"]
 
+[lib]
+name = "xiao_mg24_bsp"
+
 [dependencies]
 # HAL dependencies
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac" }
 
 # Cortex-M dependencies
 cortex-m = { workspace = true }
@@ -29,15 +32,15 @@ critical-section = { workspace = true }
 heapless = "0.8"
 
 # Radio protocol implementations
-efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys", optional = true }  # Phase D2 complete
+efr32mg24-bluetooth-sys = { package = "efr32mg2x-bluetooth-sys", path = "../efr32mg24-bluetooth-sys", optional = true }  # Phase D2 complete
 # efr32mg24-zigbee-sys = { workspace = true, optional = true }     # Phase D3
 
 [dev-dependencies]
 # Only for `module_ble_beacon`: the radio stack is three MSLA blobs, and a user of a GPIO must not
 # inherit them. The example opts in; the crate does not.
-efr32mg24-radio = { path = "../efr32mg24-radio" }
+efr32mg24-radio = { package = "efr32mg2x-radio", path = "../efr32mg24-radio" }
 # The classifier is hardware-free policy: the BLE fall example is an application of it.
-motion-detection = { path = "../../libraries/motion-detection" }
+motion-detection = { package = "efr32mg2x-motion-detection", path = "../../libraries/motion-detection" }
 panic-halt = "0.2"
 
 [features]

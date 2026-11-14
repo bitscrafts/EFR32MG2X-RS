@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg24-radio"
+name = "efr32mg2x-radio"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,12 +9,15 @@ readme = "README.md"
 keywords = ["efr32", "mg24", "bluetooth", "ble", "rail"]
 categories = ["embedded", "hardware-support", "no-std"]
 
+[lib]
+name = "efr32mg24_radio"
+
 [dependencies]
-efr32mg24-rail-sys = { path = "../efr32mg24-rail-sys" }
+efr32mg24-rail-sys = { package = "efr32mg2x-rail-sys", path = "../efr32mg24-rail-sys" }
 # The two vendor stacks, as generated bindings plus their binary blobs.
-efr32mg24-bluetooth-sys = { path = "../efr32mg24-bluetooth-sys" }
+efr32mg24-bluetooth-sys = { package = "efr32mg2x-bluetooth-sys", path = "../efr32mg24-bluetooth-sys" }
 # The HAL is here for one thing only: a delay the stack can use while it boots.
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
 
 cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }

@@ -1,10 +1,14 @@
 [package]
-name = "aes-ctr-radio"
+name = "efr32mg2x-aes-ctr-radio"
 version = "0.1.0"
 edition = "2021"
-description = "AES-128 CTR as the Bluetooth stack needs it, in pure Rust, with no hardware"
+description = "AES-CTR for radio payloads: the counter convention the Bluetooth stack expects, no_std"
 license = "MIT"
-publish = false
+repository.workspace = true
+authors.workspace = true
+keywords = ['embedded', 'no-std', 'crypto', 'aes', 'radio']
+categories = ["embedded", "no-std"]
+readme = "README.md"
 
 [lib]
 name = "aes_ctr_radio"

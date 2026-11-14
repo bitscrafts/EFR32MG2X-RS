@@ -57,7 +57,13 @@ CRATES=$(ls -d crates/*/ libraries/*/ 2>/dev/null | sed 's:/*$::')
 #   efr32mg24-bootloader, bootloader-test-app     separate workspaces, excluded from this
 #                                                one on purpose
 SKIP="efr32mg24-bluetooth-sys efr32mg24-rail-sys efr32mg24-bootloader bootloader-test-app"
+pkg_name() {
+  # The crates.io name lives in the manifest; the directory keeps its old name. Read it, never infer it.
+  sed -n 's/^name *= *"\([^"]*\)"/\1/p' "$1/Cargo.toml" | head -1
+}
+
 features_for() {
+  # Keyed by directory basename on purpose: the crates.io name may change, the directory may not.
   case "$1" in
     efr32mg24-pac|efr32mg24-hal) echo "--features rt" ;;
     *) echo "" ;;
@@ -66,10 +72,11 @@ features_for() {
 
 echo "=== clippy, zero warnings ==="
 for dir in $CRATES; do
-  pkg=$(basename "$dir")
-  case " $SKIP " in *" $pkg "*) continue ;; esac
+  pkg=$(pkg_name "$dir")
+  # The skip list is keyed by directory: a rename must not resurrect a crate that is deliberately not gated.
+  case " $SKIP " in *" $(basename "$dir") "*) continue ;; esac
   [ -f "$dir/Cargo.toml" ] || continue
-  extra=$(features_for "$pkg")
+  extra=$(features_for "$(basename "$dir")")
   out=$(cargo clippy --release --target "$TARGET" -p "$pkg" $extra 2>&1)
   # `cargo:warning=` from a build script is echoed as "warning: <crate>@<version>: ..." and is an
   # INFORMATIVE message, not a lint. Counting those made this check fail crates whose own code had
@@ -86,10 +93,11 @@ done
 
 echo "=== examples build ==="
 for dir in $CRATES; do
-  pkg=$(basename "$dir")
-  case " $SKIP " in *" $pkg "*) continue ;; esac
+  pkg=$(pkg_name "$dir")
+  # The skip list is keyed by directory: a rename must not resurrect a crate that is deliberately not gated.
+  case " $SKIP " in *" $(basename "$dir") "*) continue ;; esac
   [ -f "$dir/Cargo.toml" ] || continue
-  extra=$(features_for "$pkg")
+  extra=$(features_for "$(basename "$dir")")
   count=$(ls "$dir/examples/"*.rs 2>/dev/null | wc -l)
   # A domain crate's examples run on the host: they are how its API is exercised without a
   # board, and building them for the embedded target would be the wrong question.
@@ -224,8 +232,9 @@ echo "=== host tests: domain crates ==="
 for dir in libraries/*/; do
   [ -f "${dir}Cargo.toml" ] || continue
   name=$(basename "$dir")
+  pkg=$(pkg_name "$dir")
 
-  if cargo test -p "$name" --target "$HOST" >"/tmp/gate-$name.log" 2>&1; then
+  if cargo test -p "$pkg" --target "$HOST" >"/tmp/gate-$name.log" 2>&1; then
     n=$(grep -oE '[0-9]+ passed' "/tmp/gate-$name.log" | head -1)
     pass "$name: host tests (${n:-passed})"
   else
