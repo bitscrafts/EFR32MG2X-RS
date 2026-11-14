@@ -32,7 +32,7 @@ panic-halt = "0.2"
 motion-detection = { path = "../../libraries/motion-detection" }
 
 [features]
-stack = []  # BLE examples: see docs/04-reference/BLE-BRINGUP-CHAIN.md
+stack = ["efr32mg24-radio/stack"]  # BLE examples: the link-layer handler lives behind this feature
 default = []
 
 [[example]]

@@ -134,13 +134,13 @@ fn main() -> ! {
             sequence = sequence.wrapping_add(1);
             let mut msg = [0u8; 64];
             let mut at = 0;
-            msg[at..at + 12].copy_from_slice(b"base ble: t=");
+            msg[at..at + b"base ble: t=".len()].copy_from_slice(b"base ble: t=");
             at += 12;
             at = push_dec(&mut msg, at, reading.temperature_centi_c.unsigned_abs());
-            msg[at..at + 5].copy_from_slice(b"c p=");
+            msg[at..at + b"c p=".len()].copy_from_slice(b"c p=");
             at += 5;
             at = push_dec(&mut msg, at, reading.pressure_hpa.unsigned_abs());
-            msg[at..at + 6].copy_from_slice(b"hpa n=");
+            msg[at..at + b"hpa n=".len()].copy_from_slice(b"hpa n=");
             at += 6;
             at = push_dec(&mut msg, at, advertised);
             mailbox::write(mailbox::Status::Pass, &msg[..at]);

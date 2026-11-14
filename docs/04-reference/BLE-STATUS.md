@@ -4,9 +4,32 @@ Updated 2026-11-13. Every number below came from the board, not from a datasheet
 
 ## One line
 
-**All three BLE directions now work on the board: it advertises with a name, it scans and decodes what it hears, and a
-real client connects to it.** What it cannot yet do is *serve* a GATT attribute, because the dynamic GATT database
-component is not available in this build (see the last update for the measurement).
+**Advertising, scanning and the data path are measured on the board; serving a GATT attribute is not, and two sensor
+examples do not run at all.** "BLE works" is the kind of sentence this section exists to avoid: what follows is a
+per-example table, each row with the evidence that produced it and its date.
+
+## The matrix, measured 2026-11-14
+
+The rule for a row: the board's own mailbox is **not** evidence. A row is PASS only when something outside the board
+(a host capture, a client, or a register read over SWD) shows the effect. `scripts/ble-example-matrix.sh` runs one
+example and prints the build range, the mailbox and the host capture together, so the two cannot drift apart.
+
+| Example | State | External evidence |
+|---|---|---|
+| `ble_beacon` | **PASS** | host `btmon`: `Name (complete): xiao-mg24`, flags 0x06, 14 bytes, `E4:0A:75:13:3E:E0`, -85 dBm |
+| `ble_scanner` | **PASS** | hears the host's own advertiser by address: `scan: 90:de:80:81:44:56 rssi=-75 len=13`. **Control**: with the host's advertising off the same image reports a different device (`49:7a:43:ea:f3:f0`) and never that address |
+| `ble_advertise_custom` | **PASS** | host decodes the payload: `Company: ... (741)` = 0x02E5, `Data[9]: 01010000010eca3919` -- version, device id, fw 0.1, and a live cycle counter |
+| `ble_gatt` | **BLOCKED** | advertises as `xiao-mg24-gatt`; the host connects (`Connection successful`) and a phone sees it, and a client listing characteristics gets **zero**: the dynamic GATT database cannot be enabled (see the GATT table above) |
+| `module_ble_beacon` | **PASS** | after forwarding the BSP's `stack` feature to `efr32mg24-radio/stack`: `xiao=8` reports in the host capture, -87 dBm |
+| `base_ble_env` | **PASS**, data only | env frame on air at the board's address: `Data[10]: 010024ff1200f2030904`. It carries no name by design, so `xiao=` is 0 and the payload is the evidence |
+| `module_ble_motion` | **FAIL** | no mailbox record and nothing on air; halted PC is inside `delay_ms` next to the bit-bang I2C, which is consistent with the IMU init retrying without bound instead of returning `ImuError` |
+| `module_ble_fall` | **FAIL** | same shape: no record, nothing on air |
+| `hal_led_blink` | **PASS** | PA7 (`0x5003C040` bit 7) sampled over SWD without halting: `0x80 -> 0x00 -> 0x80` -- the LED physically blinks |
+| `bt_version`, `hal_mic_level`, `module_mic_level`, `rail_ble_tx`, `rail_ble_rx`, `rail_caps`, `ble_boot_probe` | build-verified | three of them (`bt_version`, `hal_mic_level`, `module_mic_level`) had message-buffer panics that would have hit on first run; fixed, and `scripts/check-copy-len.py` now runs in the gate |
+
+`module_ble_motion` and `module_ble_fall` are **not** "almost working": they never reach their first mailbox write, so
+nothing is known about their BLE path at all. Their sensor init is the wall, and it is the same wall
+(`delay_ms` / bit-bang I2C) for both.
 
 ## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
 

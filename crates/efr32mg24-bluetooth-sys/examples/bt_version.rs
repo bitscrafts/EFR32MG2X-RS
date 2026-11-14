@@ -84,14 +84,14 @@ fn main() -> ! {
     let mut msg = [0u8; 64];
     let mut at = 0;
     if status != 0 {
-        msg[at..at + 12].copy_from_slice(b"bt version: ");
+        msg[at..at + b"bt version: ".len()].copy_from_slice(b"bt version: ");
         at += 12;
         at = push_dec(&mut msg, at, status);
         mailbox::write(mailbox::Status::Fail, &msg[..at]);
     } else {
         // A version of 0.0.0 from a blob that links would mean the stack answered nothing, which
         // is not "version zero" -- it is "this call did not reach the stack".
-        msg[at..at + 9].copy_from_slice(b"bt ver: ");
+        msg[at..at + b"bt ver: ".len()].copy_from_slice(b"bt ver: ");
         at += 9;
         at = push_dec(&mut msg, at, u32::from(major));
         msg[at] = b'.';
@@ -100,7 +100,7 @@ fn main() -> ! {
         msg[at] = b'.';
         at += 1;
         at = push_dec(&mut msg, at, u32::from(patch));
-        msg[at..at + 5].copy_from_slice(b" bld=");
+        msg[at..at + b" bld=".len()].copy_from_slice(b" bld=");
         at += 5;
         at = push_dec(&mut msg, at, u32::from(build));
         mailbox::write(

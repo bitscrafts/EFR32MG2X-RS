@@ -170,14 +170,14 @@ fn main() -> ! {
                 last_moving = moving;
                 let mut msg = [0u8; 64];
                 let mut at = 0;
-                msg[at..at + 12].copy_from_slice(b"motion: |a|=");
+                msg[at..at + b"motion: |a|=".len()].copy_from_slice(b"motion: |a|=");
                 at += 12;
                 at = push_dec(&mut msg, at, mag.unsigned_abs());
-                msg[at..at + 5].copy_from_slice(b" mg ");
+                msg[at..at + b" mg ".len()].copy_from_slice(b" mg ");
                 at += 4;
                 msg[at..at + 7].copy_from_slice(if moving { b"moving " } else { b"still  " });
                 at += 7;
-                msg[at..at + 3].copy_from_slice(b"n=");
+                msg[at..at + b"n=".len()].copy_from_slice(b"n=");
                 at += 2;
                 at = push_dec(&mut msg, at, frames);
                 mailbox::write(

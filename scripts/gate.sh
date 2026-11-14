@@ -36,6 +36,18 @@ else
   fail "cargo fmt --all --check (run: cargo fmt --all)"
 fi
 
+# `msg[at..at + N].copy_from_slice(b"...")` with N that does not match the literal compiles and panics on the board.
+# It happened three times in one night (`" len="` six into five, `"gatt: no attrs s"` fifteen into sixteen, `"c p="`
+# five into four), and every instance was found by flashing a firmware and reading a mailbox that never changed.
+# It costs milliseconds here, which is the whole argument for putting it in the gate rather than in a note.
+echo "=== message buffers ==="
+if python3 scripts/check-copy-len.py crates/ >/tmp/gate-copy-len.log 2>&1; then
+  pass "copy_from_slice lengths ($(tail -1 /tmp/gate-copy-len.log))"
+else
+  fail "copy_from_slice length mismatch"
+  sed -n '1,8p' /tmp/gate-copy-len.log | sed 's/^/        /'
+fi
+
 # Every crate in the workspace gets checked, discovered rather than listed: a hardcoded list
 # silently stops covering the crate that was added last, which is the one that needs it most.
 CRATES=$(ls -d crates/*/ libraries/*/ 2>/dev/null | sed 's:/*$::')

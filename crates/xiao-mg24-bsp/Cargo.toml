@@ -41,7 +41,7 @@ motion-detection = { path = "../../libraries/motion-detection" }
 panic-halt = "0.2"
 
 [features]
-stack = []  # BLE examples: see docs/04-reference/BLE-BRINGUP-CHAIN.md
+stack = ["efr32mg24-radio/stack"]  # BLE examples: the link-layer handler lives behind this feature
 default = []
 # The Sense variant is the same PCB with more components fitted: the IMU and the analog
 # microphone. Same board, fewer parts — so a feature, not a crate.

@@ -116,16 +116,16 @@ fn main() -> ! {
             let mut buf = [0u8; 64];
             buf[..4].copy_from_slice(b"pwm ");
             let mut at = 4;
-            buf[at..at + 4].copy_from_slice(b"rms=");
+            buf[at..at + b"rms=".len()].copy_from_slice(b"rms=");
             at += 4;
             at = push_dec(&mut buf, at, level.rms);
-            buf[at..at + 4].copy_from_slice(b" pk=");
+            buf[at..at + b" pk=".len()].copy_from_slice(b" pk=");
             at += 4;
             at = push_dec(&mut buf, at, level.peak);
-            buf[at..at + 4].copy_from_slice(b" n=");
+            buf[at..at + b" n=".len()].copy_from_slice(b" n=");
             at += 3;
             at = push_dec(&mut buf, at, level.samples);
-            buf[at..at + 5].copy_from_slice(b" 1k0=");
+            buf[at..at + b" 1k0=".len()].copy_from_slice(b" 1k0=");
             at += 5;
             at = push_dec(&mut buf, at, led.frequency_hz());
             mailbox::write(

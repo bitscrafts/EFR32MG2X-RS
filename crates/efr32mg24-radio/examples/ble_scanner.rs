@@ -230,10 +230,16 @@ fn main() -> ! {
                     let mut at = 0;
                     msg[at..at + 6].copy_from_slice(b"scan: ");
                     at += 6;
-                    // Address is in the controller's reverse byte order; printing it in that order
-                    // is what a phone's scanner shows, which makes the two comparable.
-                    for i in 0..6 {
-                        if i > 0 {
+                    // The controller hands the address least-significant byte first; every scanner a user compares
+                    // against -- a phone, `bluetoothctl`, `btmon` -- prints it most-significant first. This loop used
+                    // to print the controller's order and claim it matched a phone's, and the board then reported the
+                    // host as `56:44:81:80:de:90` when its address is `90:DE:80:81:44:56`: correct reception, a
+                    // displayed address nobody could match to a device.
+                    for i in (0..6).rev() {
+                        // The separator belongs between printed bytes, not at an index: the ascending version of this
+                        // loop used `if i > 0`, which in descending order puts a colon *before* the first byte and none
+                        // before the last (`:90:de:80:81:4456`).
+                        if i != 5 {
                             msg[at] = b':';
                             at += 1;
                         }

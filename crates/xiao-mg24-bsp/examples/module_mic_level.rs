@@ -71,13 +71,13 @@ fn main() -> ! {
     let mut buf = [0u8; 64];
     let mut at = 4;
     buf[..6].copy_from_slice(b"mic ");
-    buf[at..at + 4].copy_from_slice(b"rms=");
+    buf[at..at + b"rms=".len()].copy_from_slice(b"rms=");
     at += 4;
     at = push_dec(&mut buf, at, u32::from(window.rms));
-    buf[at..at + 4].copy_from_slice(b" pk=");
+    buf[at..at + b" pk=".len()].copy_from_slice(b" pk=");
     at += 4;
     at = push_dec(&mut buf, at, u32::from(window.peak));
-    buf[at..at + 4].copy_from_slice(b" n=");
+    buf[at..at + b" n=".len()].copy_from_slice(b" n=");
     at += 3;
     at = push_dec(&mut buf, at, u32::from(window.samples));
 
