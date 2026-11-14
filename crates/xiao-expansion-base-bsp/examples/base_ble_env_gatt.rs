@@ -260,6 +260,13 @@ fn main() -> ! {
                 at = push(&mut msg, at, b"@");
                 at = push_dec(&mut msg, at, *offset as u32);
             }
+            // A block freed twice is the mechanism that would explain a buffer with two owners; it is counted apart
+            // from the damage because it is a cause and the damage is an effect.
+            let (df_count, df_at) = efr32mg24_radio::heap_double_frees();
+            at = push(&mut msg, at, b" df=");
+            at = push_dec(&mut msg, at, df_count);
+            at = push(&mut msg, at, b"@");
+            at = push_dec(&mut msg, at, df_at as u32);
             let (damaged_size, damaged_at) = efr32mg24_radio::heap_last_damaged();
             at = push(&mut msg, at, b" ld=");
             at = push_dec(&mut msg, at, damaged_size as u32);

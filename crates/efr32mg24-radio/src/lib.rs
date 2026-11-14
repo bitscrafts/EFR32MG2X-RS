@@ -49,6 +49,8 @@ pub use efr32mg24_bluetooth_sys::gatt_db;
 
 /// `(damaged, total, first_size, first_offset)` for the whole arena, walked linearly.
 pub use efr32mg24_bluetooth_sys::heap::audit as heap_audit;
+/// `(count, first_offset)` of frees of a block that was already free.
+pub use efr32mg24_bluetooth_sys::heap::double_frees as heap_double_frees;
 /// The largest single block the heap can still serve.
 pub use efr32mg24_bluetooth_sys::heap::largest_free as heap_largest_free;
 /// `(usable_size, offset)` of the last block found with a damaged canary.
@@ -58,6 +60,8 @@ pub use efr32mg24_bluetooth_sys::heap::recent as heap_recent;
 /// `(in_use, failures, violations)` from the stack's heap. Re-exported so a BSP can report the heap's health without
 /// depending on the `-sys` crate.
 pub use efr32mg24_bluetooth_sys::heap::stats as heap_stats;
+/// `(generated, exported, agreed)`: how far a pairing got through the elliptic-curve calls.
+pub use efr32mg24_bluetooth_sys::psa_ec::call_counts as psa_ec_counts;
 
 #[cfg(feature = "rail")]
 compile_error!(

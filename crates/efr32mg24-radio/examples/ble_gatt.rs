@@ -611,6 +611,15 @@ fn main() -> ! {
             let (alg, refusals) = efr32mg24_bluetooth_sys::psa::unsupported_algorithm();
             at = push_literal(&mut msg, at, b" h=");
             at = push_hex32(&mut msg, at, efr32mg24_bluetooth_sys::last_event_header());
+            // How far the security manager got: generate, export, agree. A failure after the export and before the
+            // agreement is a different defect from one at the agreement, and the reason codes are undocumented here.
+            let (gen, exported, agreed) = efr32mg24_bluetooth_sys::psa_ec::call_counts();
+            at = push_literal(&mut msg, at, b" pg=");
+            at = push_dec(&mut msg, at, gen);
+            at = push_literal(&mut msg, at, b" pe=");
+            at = push_dec(&mut msg, at, exported);
+            at = push_literal(&mut msg, at, b" pa=");
+            at = push_dec(&mut msg, at, agreed);
             at = push_literal(&mut msg, at, b" ua=");
             at = push_hex32(&mut msg, at, alg);
             at = push_literal(&mut msg, at, b"x");

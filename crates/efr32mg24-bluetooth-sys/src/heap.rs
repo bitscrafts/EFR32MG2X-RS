@@ -133,6 +133,17 @@ pub fn last_damaged() -> (usize, usize) {
     }
 }
 
+/// `(count, first_offset)` of frees of a block that was already free -- a use-after-free signature.
+pub fn double_frees() -> (u32, usize) {
+    unsafe {
+        let slot = &*core::ptr::addr_of!(HEAP);
+        match slot.as_ref() {
+            Some(h) => h.double_frees(),
+            None => (0, 0),
+        }
+    }
+}
+
 /// The last few allocations, newest first, as `(requested_size, offset)`.
 pub fn recent() -> [(usize, usize); bt_heap::RECENT] {
     unsafe {

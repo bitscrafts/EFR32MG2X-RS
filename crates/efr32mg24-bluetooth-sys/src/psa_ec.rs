@@ -51,6 +51,14 @@ const PSA_ERROR_INVALID_HANDLE: i32 = -136;
 /// read off the board instead of guessed at. `(operation, value)`: operation 1 = generate, 2 = export public,
 /// 3 = agreement, 4 = attributes; value is the status code, or the key type for a refused generate.
 static mut EC_GENERATED: u32 = 0;
+static mut EC_EXPORTED: u32 = 0;
+static mut EC_AGREED: u32 = 0;
+
+/// `(key pairs generated, public keys exported, agreements computed)`. A pairing that fails after the export and before
+/// the agreement is a different defect from one that fails in the agreement, and the codes are undocumented.
+pub fn call_counts() -> (u32, u32, u32) {
+    unsafe { (EC_GENERATED, EC_EXPORTED, EC_AGREED) }
+}
 
 /// How many P-256 key pairs `psa_generate_key` has produced. A pairing attempt that leaves this at zero never reached
 /// the cryptography.
@@ -240,6 +248,7 @@ pub unsafe fn export_public_key(
     if !data_length.is_null() {
         *data_length = bytes.len();
     }
+    unsafe { EC_EXPORTED = EC_EXPORTED.wrapping_add(1) };
     0
 }
 
@@ -293,6 +302,7 @@ pub unsafe fn raw_key_agreement(
     if !output_length.is_null() {
         *output_length = 32;
     }
+    unsafe { EC_AGREED = EC_AGREED.wrapping_add(1) };
     0
 }
 

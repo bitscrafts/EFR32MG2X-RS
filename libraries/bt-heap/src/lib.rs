@@ -44,7 +44,7 @@ const HEADER: usize = 8;
 /// fixed here; sixteen bytes of slack absorbs that write and keeps the free list intact, while a larger overrun still
 /// destroys the canary and is reported. The alternative -- a product whose heap dies when a phone connects -- is worse
 /// than eight wasted bytes per allocation.
-const SLACK: usize = 64;
+const SLACK: usize = 256;
 
 /// A word written at the end of every block, past the last byte the caller may use. `dealloc` checks it, so an overrun
 /// is reported against **the block that was overrun** -- its size and offset -- instead of only being noticed later as a
@@ -86,6 +86,11 @@ pub struct Heap<'a> {
     /// damaged, this is what ties the block to the size that was asked for -- and therefore to the call site.
     recent: [(usize, usize); RECENT],
     recent_at: usize,
+    /// Frees of a block that was **already free**. The first block to be freed twice is spliced into the free list
+    /// twice, which hands the same memory to two owners -- and a use after free is what a write past one caller's
+    /// buffer looks like from the neighbour's side.
+    double_frees: u32,
+    first_double_free: usize,
 }
 
 impl<'a> Heap<'a> {
@@ -103,6 +108,8 @@ impl<'a> Heap<'a> {
             last_damaged_offset: 0,
             recent: [(0, 0); RECENT],
             recent_at: 0,
+            double_frees: 0,
+            first_double_free: 0,
         };
         if len >= HEADER + LINK + ALIGN {
             heap.write_size(0, len);
@@ -195,6 +202,9 @@ impl<'a> Heap<'a> {
                     let tail = at + need;
                     self.write_size(tail, leftover);
                     self.write_next(tail, next);
+                    // The remainder is a free block and gets a canary like any other: without it `audit()` reads the
+                    // tail's last word as damage, which is the same false alarm that free blocks had.
+                    self.write_canary(tail, leftover);
                     self.write_size(at, need);
                     match prev {
                         Some(p) => self.write_next(p, Some(tail)),
@@ -248,6 +258,26 @@ impl<'a> Heap<'a> {
             // Not one of ours, or the header was overwritten. Counting is better than corrupting the list.
             self.failures = self.failures.saturating_add(1);
             return;
+        }
+
+        // **Already free?** Then this block is being released twice, and inserting it again would put one address in
+        // the list twice: two owners, one buffer. Counted and refused rather than corrupted.
+        let mut probe = self.free;
+        let mut steps = 0usize;
+        let cap = self.buf.len() / (HEADER + LINK + ALIGN) + 8;
+        while let Some(c) = probe {
+            if c == offset {
+                self.double_frees = self.double_frees.saturating_add(1);
+                if self.first_double_free == 0 {
+                    self.first_double_free = offset;
+                }
+                return;
+            }
+            steps += 1;
+            if steps > cap {
+                break;
+            }
+            probe = self.read_next(c);
         }
 
         // Insert in address order, then merge with both neighbours. Address order is what makes coalescing
@@ -405,6 +435,11 @@ impl<'a> Heap<'a> {
             *slot = self.recent[(self.recent_at + RECENT - 1 - i) % RECENT];
         }
         out
+    }
+
+    /// `(count, first_offset)` of frees of a block that was already free.
+    pub fn double_frees(&self) -> (u32, usize) {
+        (self.double_frees, self.first_double_free)
     }
 
     /// `(usable_size, offset)` of the last block found with a damaged canary -- the block some consumer wrote past.
@@ -645,6 +680,26 @@ mod smp_size_tests {
             offset < 4096,
             "the block's offset must be recorded, got {offset}"
         );
+    }
+
+    /// A block freed twice must be counted and refused, not spliced twice: two entries for one offset means two owners
+    /// of the same memory, which is what a use after free looks like.
+    #[test]
+    fn a_double_free_is_counted_and_refused() {
+        let mut arena = [0u8; 4096];
+        let mut heap = Heap::new(&mut arena);
+        let p = heap.alloc(128);
+        assert!(!p.is_null());
+        heap.dealloc(p);
+        heap.dealloc(p);
+        let (count, offset) = heap.double_frees();
+        assert_eq!(count, 1, "the second free must be recognised");
+        assert!(offset < 4096, "the offset must be recorded, got {offset}");
+        // The list must still hand out distinct blocks.
+        let a = heap.alloc(64);
+        let b = heap.alloc(64);
+        assert_ne!(a, b, "two allocations must never return the same address");
+        assert_eq!(heap.audit().0, 0);
     }
 
     /// The slack is what keeps an eight-byte overrun from destroying the free list: the canary must survive it, and the

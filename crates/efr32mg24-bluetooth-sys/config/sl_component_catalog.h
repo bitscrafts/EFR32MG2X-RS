@@ -32,6 +32,13 @@
 // stays in the crate, tested and verified on the board (P-256 key generation, export, ECDH), so re-enabling is a
 // catalogue change plus the free-list defect -- not a rewrite.
 //
+// **Off in the product configuration.** The heap defect that used to make this fatal is fixed (see the slack in
+// `libraries/bt-heap`), and with the fix a pairing attempt gets past the allocation and dies with SMP reason 0x0B -- a
+// DHKey-check failure reported with **zero** elliptic-curve calls made (the counters in `psa_ec` say generate=0,
+// export=0, agree=0), so the peer is the one declaring the failure and the security manager never reached the crypto.
+// Pairing is not needed for the GATT product that is delivered and verified, and a component that fails halfway should
+// not be in the product build.
+//
 // #define SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT 1
 // #define SL_CATALOG_BLUETOOTH_FEATURE_BUILTIN_BONDING_DATABASE_PRESENT 1
 /* The dynamic GATT database: enabled, and the reason it was blocked for a day.

@@ -98,6 +98,43 @@ The PSA layer it needs is written, committed and **verified on the board** -- P-
 and ECDH (`ec1 pk65 dh1` in the boot record) -- so re-enabling is a catalogue change plus the free-list defect, not a
 rewrite. `scripts/read-memory.sh` and the per-block canaries in `bt-heap` are the instruments for that defect.
 
+## The heap defect is fixed, and what it was worth
+
+The arena used to lose 57 KiB of 64 KiB when a client connected: one block was written past, the write reached the
+next block's size word, and the free list collapsed from 57880 bytes to 72. Measured after the fix, same test:
+
+```
+no client   hf=0 hv=0 hl=57880  ad=0/19
+connected   hf=0 hv=0 hl=53720  ad=0/19  df=0
+```
+
+No failures, no violations, one damaged block at most, and 53 KiB still reachable with a client connected. The fix is
+sixty-four words of slack between every payload and its canary, sized by what the writer actually does: sixteen was
+tried (the write reached the next header anyway), sixty-four (the canary still died), two hundred and fifty-six (clean).
+It is containment, not a repair -- the writer is inside a vendor blob -- and it costs under 4 KiB of a 64 KiB arena.
+
+Three instrument defects were found on the way and each had been giving a confident wrong answer:
+
+- `audit()` called **free** blocks damaged, because they had no canary. It reported "1 of 15 blocks damaged" on a heap
+  that had never served a connection. Free blocks are stamped now.
+- A block created by **splitting** was not stamped either, so the same false alarm came back through the other door.
+- The canary's magic was a 64-bit literal, which does not compile for this 32-bit target while passing the host tests.
+
+Two hypotheses were tested and discarded rather than assumed: a **double free** (counter added, `df=0` every time) and
+a wrong **connection configuration** (`sli_feature_bt_connection_config` is `04 00 fb 00` in the ELF: four connections,
+251-byte data length).
+
+## Pairing: where it stops now
+
+With the heap fixed the pairing gets past the allocation that used to kill it, and stops with `se=4/4619` -- SMP reason
+`0x0B`, a DHKey-check failure -- while **none of the elliptic-curve functions is called**: `pg=0 pe=0 pa=0` in the
+board's own record. So the security manager never generates a key pair, and the failure is declared by the peer, not by
+this firmware. That is the next question, and it is a narrow one: why the security manager does not enter its
+public-key state after accepting the pairing request.
+
+The product build keeps the security manager **off**, because a component that fails halfway does not belong in the
+configuration that was verified on a phone.
+
 ## Known defect: the heap is damaged when a client connects
 
 Measured with the canary and the allocation ring, both added for this:

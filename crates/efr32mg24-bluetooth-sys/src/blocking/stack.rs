@@ -692,8 +692,7 @@ impl Bluetooth {
         if status != 0 {
             return Err(BleError::from(status));
         }
-        // EXPERIMENT: not bondable, to separate "the security manager cannot run" from "it cannot store the bond".
-        let status = unsafe { bt::sl_bt_sm_set_bondable_mode(0) };
+        let status = unsafe { bt::sl_bt_sm_set_bondable_mode(1) };
         if status != 0 {
             return Err(BleError::from(status));
         }
