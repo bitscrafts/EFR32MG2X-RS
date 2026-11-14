@@ -9,6 +9,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+#### Bluetooth on hardware: a phone can use the board (2026-11-14)
+
+The stack integration of January did not transmit. As of today the radio works, and each claim below was measured with
+a second machine watching the air -- the board's own report is never accepted as evidence for a radio claim.
+
+- **Advertising and scanning on the board**: beacon with a complete local name, scanner that decodes a known address,
+  custom manufacturer data, plus `ble_diag`, `ble_boot_probe` and `ble_rail_then_stack` for counters and boot status.
+- **A GATT server a client can use**: client connects, reads a characteristic, writes another, subscribes, and the
+  firmware echoes the written bytes back in its notifications. The echo is the point -- a read-back can be answered from
+  the host's cache; bytes that come back from inside the radio cannot.
+- **Standard Environmental Sensing service** (`crates/efr32mg24-bluetooth-sys` gained 16-bit UUID support in `gatt_db`,
+  so `0x181A` with `0x2A6E` temperature, `0x2A6F` humidity and `0x2A6D` pressure is expressible): a generic phone app
+  labels and decodes the values with no profile document from us.
+- **`base_ble_env_gatt`** (BSP): the carrier's BME680 published over that service, read and notified. Verified on a
+  phone with nRF Connect and byte for byte by `scripts/host-env-verify.py`.
+- **`base_env_display`** (BSP): the BME680's compensated readings on the carrier's OLED, through the HAL only.
+- **PSA crypto layer for the security manager**: P-256 key generation, public-key export and ECDH; AES-CMAC (RFC 4493),
+  AES-CTR and AES-ECB; key attributes. Verified on the board by a startup self-test (`ec1 pk65 dh1`).
+- **Security manager events** are surfaced as `BleEvent::Security` instead of being dropped by the parser, which had
+  made a failing pairing look like silence.
+- **`start_connectable`** in the Bluetooth API. `start_advertising` sends a non-connectable PDU: a phone sees the name,
+  connects, and the attempt never completes, with no error on either side.
+- **Re-advertising after a disconnect**: a connectable advertiser stops when a central connects. Without this the board
+  is reachable exactly once.
+- **`bt-heap`**: per-block canary, allocation ring of the last sizes and offsets, double-free detection, canaries on
+  free blocks and blocks created by splitting, and 256 bytes of slack per block.
+- **Host tools used as evidence**: `scripts/ble-matrix-all.sh` (every BLE example: build, flash, air capture, one table),
+  `scripts/check-examples-build.sh` (all 26 examples with the features they declare), `scripts/clear-mailbox.sh`,
+  `scripts/host-env-verify.py`, `scripts/host-rawscan.sh`, `scripts/where.sh` (program counter of a halted target).
+- **CI**: the gate runs on the runner with the C toolchain the build scripts need; per-crate compiler output is kept and
+  uploaded; the book is compiled in the same TeX image as the bench and its page count checked.
+- **Book**: the built PDF at the repository root as
+  `Implementing-Rust-Support-for-Embedded-Hardware-EFR32MG24.pdf` (168 pages).
+
+### Fixed
+
+- **A 64-byte allocation destroyed 57 KiB of the arena.** A vendor path writes about 136 bytes past a 64-byte allocation;
+  the write landed on the next block's header and made the rest of the arena unreachable. With a client connected the
+  allocator now keeps 53720 bytes instead of 72. The slack is a measurement, not a guess: 16 and 64 were tried and the
+  writer still reached the following header.
+- **`audit()` counted free blocks as damaged.** A free block carried no canary, so a heap that had never served a
+  connection reported "1 of 15 damaged".
+- **`At += push(..)` where `push` already returns the advanced offset** doubled the offset and panicked with
+  `slice_index_fail`; the program counter, not the source, is what found it.
+- **`read-mailbox.sh` truncated the record** at 64 bytes, cutting exactly the fields that explain a failure.
+- **The gate hid why a build failed.** It sent compiler output to `/dev/null` and printed "examples do not build".
+
+### Changed
+
+- **Vendor sources stay out of the repository** (MSLA). The build therefore needs the Silabs SDK trees under
+  `crates/*/vendor`, which is why a clean clone compiles the PAC, HAL and libraries but not the radio or the BSPs.
+- Examples count corrected from 27 to the 26 that `scripts/check-examples-build.sh` verifies; the earlier number came
+  from `cargo build --examples`, which silently skips every example that declares `required-features` -- including all of
+  the Bluetooth ones.
+
 #### Phase D2: Bluetooth 5.3 LE Integration (2026-01-03) - COMPLETE
 
 **D2-BLE.5: Event System**:

@@ -1,8 +1,47 @@
 # EFR32MG24 HAL Development Backlog
 
-**Last Updated**: December 28, 2025
-**Current Sprint**: Phase D2 - Bluetooth 5.3 LE
-**Next Sprint**: Phase D2 Continuation
+**Last Updated**: 2026-11-14
+**Current Sprint**: Phase D2f - Bluetooth pairing and bonding (the last D2 item)
+**Next Sprint**: Phase D2g - BME680 gas resistance, then Phase D3 (Zigbee 3.0)
+
+**State**: the radio works and a phone can use it -- advertising, scanning, connections, GATT read/write/notify, and the
+BME680 published as the standard Environmental Sensing service (`base_ble_env_gatt`). 26 examples compile under
+`scripts/check-examples-build.sh`, 13 of them run on the board via `scripts/ble-matrix-all.sh`, and `scripts/gate.sh`
+reports `VERDICT: PASS`. The Gantt and the phase table live in `README.md`.
+
+---
+
+## Open (in order)
+
+### High Priority
+
+- **D2f: pairing fails before the key exchange.** With the security manager enabled the request is accepted and the
+  bond fails at a DHKey check with `pg=0 pe=0 pa=0` -- none of the PSA entry points were called -- so the fault is in
+  the state machine before key generation, not in the cryptography. The PSA layer (P-256 generate/export/ECDH,
+  AES-CMAC/CTR/ECB) is written and verified on the board. Until this closes, the component stays out of the product
+  build and the limitation is documented in `docs/04-reference/BLE-STATUS.md`.
+- **CI cannot build the vendor-dependent crates.** `**/vendor/**/*.{h,c}` is excluded from git under the Silabs MSLA,
+  so a clean clone has no emlib, Bluetooth stack or RAIL sources and the radio and BSP examples cannot compile on the
+  runner. The PAC, HAL and the domain libraries do build. Options, in order of preference: fetch the public
+  `SiliconLabs/gecko_sdk` in the workflow, commit the vendor trees, or scope the workflow to what builds without them.
+- **D2g: BME680 gas resistance.** The driver reads temperature, pressure, humidity and the variant byte; the heater,
+  `res_heat` and the `par_g*` curves are missing, so the reading that distinguishes a 680 from a 688 is not implemented.
+
+### Medium Priority
+
+- **The advertising rate is unmeasured.** The only adapter available captures about 8% of what is on the air, so counts
+  cannot become a rate without a controllable receiver.
+- **Occasional notification refusals** when a client subscribes and the board pushes at 20 Hz against a 30 ms connection
+  interval.
+- **MTU negotiation and connection parameters** are not addressed.
+
+### Low Priority
+
+- **`psa_get_key_attributes`** writes 36 bytes asserted at compile time, with no C translation unit in the tree to
+  measure `sizeof` -- the weakest claim in the PSA layer.
+- **Pure Rust, no externs**: emlib, the PA tables, channel configuration, NVM3 and the SE manager still bind to vendor
+  code; the MSLA blobs remain at the ABI boundary. Ordered after Bluetooth is closed.
+- **The delay clock runs 2.3x short** (`docs/04-reference/DELAY-CLOCK-DEFECT.md`).
 
 ---
 

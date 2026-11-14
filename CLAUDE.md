@@ -4,7 +4,13 @@
 
 This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silicon Labs EFR32MG24 wireless MCU.
 
-**Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. Next: Phase E (Application Development) / Phase D3 (Zigbee).
+**Status**: the radio works on hardware and a phone can use it -- advertising, scanning, connections, GATT
+read/write/notify, and the BME680 published as the standard Environmental Sensing service (`base_ble_env_gatt`,
+verified with nRF Connect). 26 examples compile under `scripts/check-examples-build.sh` and `scripts/gate.sh` reports
+`VERDICT: PASS`. Open inside Phase D2: **D2f pairing** (the PSA layer is written and verified; the security manager
+fails before the key exchange, so it stays out of the product build) and **D2g BME680 gas resistance**. Next phases:
+D3 (Zigbee) / Phase E (Application Development). The Gantt and the phase table are in `README.md`; the open items with
+their evidence are in `docs/03-development/BACKLOG.md`.
 
 **Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
 
@@ -60,7 +66,7 @@ C3-EMU       = Phase C, Stage 3: Energy Management Unit
 
 ```
 EFR32MG24/
-├── Cargo.toml                      # Workspace root (5 member crates)
+├── Cargo.toml                      # Workspace root (12 member crates)
 ├── crates/efr32mg24-pac/                  # Peripheral Access Crate (register-level)
 │   ├── Cargo.toml
 │   └── src/lib.rs                  # 138,448 lines, 133 peripherals (B220 variant)
@@ -532,7 +538,7 @@ cargo doc --no-deps --features rt --open
 
 ---
 
-**Last Updated**: June 28, 2026
-**Current Phase**: Phase D2 Complete - Bluetooth 5.3 LE Integration done
+**Last Updated**: 2026-11-14
+**Current Phase**: Phase D2 on hardware -- radio and GATT verified, BME680 on a phone; D2f pairing and D2g gas open
 **Current Status**: 12 HAL modules + RAIL FFI + Bluetooth stack + XiaoBle BSP + microphone driver
 **Next Milestone**: Phase D3 (Zigbee 3.0) or Phase E (Application Development)

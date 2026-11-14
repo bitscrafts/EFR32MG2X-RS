@@ -4,6 +4,12 @@
 **Version**: 0.1.0
 **Phase**: Phase D2 Complete - Bluetooth 5.3 LE Integration done (HAL core complete)
 
+**Update 2026-11-14**: the HAL is unchanged; what changed is what sits on top of it. The radio now runs on hardware and
+a phone reads the BME680 over the BSP's Environmental Sensing service, and `base_env_display` shows the same readings on
+the carrier's OLED through the HAL alone. 26 examples compile under `scripts/check-examples-build.sh` and
+`scripts/gate.sh` reports `VERDICT: PASS`; open items (pairing, gas resistance) are listed in
+`docs/03-development/BACKLOG.md`.
+
 > **Note**: The authoritative workspace-wide status lives in
 > [docs/03-development/STATUS.md](../../docs/03-development/STATUS.md).
 > This file tracks HAL-specific implementation details only.
@@ -166,4 +172,4 @@ cargo run --example 08_adc --features rt --release
 
 **Version**: 0.1.0
 **Last Updated**: June 28, 2026
-**Phase**: Phase D2 Complete - HAL core (12 modules) production-ready
+**Phase**: Phase D2 on hardware - HAL core (12 modules) production-ready; radio verified from a phone

@@ -71,3 +71,33 @@ Before writing the GATT path, prove the beacon. It exercises the same stack, the
 antenna and the same boot sequence, and it fails for a strictly smaller set of reasons. A project
 that debugs connectable advertising and beacon advertising at the same time is debugging two things
 at once with one symptom.
+
+\subsection{What a Client Can Prove, and What It Cannot}
+
+A read-back from a client is not evidence that the value crossed the air: the host's Bluetooth daemon
+caches attribute values, and `bluetoothctl` will happily answer a read from that cache. The proof that
+survives the objection is an \emph{echo}: the client writes a characteristic, the firmware copies those
+bytes into a second characteristic and notifies them, and the client compares what it receives with
+what it wrote. Bytes that come back from inside the radio had to cross the link in both directions.
+
+\begin{minted}{text}
+  client: WriteValue 5a a5 d0 b8        ->  characteristic with write
+  board:  cv=5aa5d0b8  (recorded on the board)
+  board:  notify 5a a5 d0 b8 ... (24 times in 12 s)
+  client: Echo PASS: 24 notifications carried the bytes this client wrote
+\end{minted}
+
+Publishing a sensor is then a question of which service to publish it in. A vendor-specific 128-bit
+UUID works, and a generic phone application will show it as bytes; the standard Environmental Sensing
+service (\codeinline{0x181A} with \codeinline{0x2A6E} temperature, \codeinline{0x2A6F} humidity and
+\codeinline{0x2A6D} pressure) is decoded and labelled by any such application, with no profile
+document from us. The cost is that the GATT database builder has to accept 16-bit UUIDs at all: an API
+that only exposes 128-bit UUIDs quietly forces every client to parse bytes.
+
+\subsection{A Connectable Advertiser Stops When Somebody Connects}
+
+The failure that costs an afternoon: the server works for the first client and never again. A
+connectable advertiser stops advertising when a central connects, and unless the
+\codeinline{Disconnected} event restarts it, the board is reachable exactly once. The symptom is
+indistinguishable from a crashed firmware --- the mailbox still says ``advertising'' --- so the
+restart belongs in the event handling, not in a comment.

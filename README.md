@@ -19,6 +19,10 @@ Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Sili
 ```
 --------> This project is under deep implementation process!! use with caution!
 
+- Managed to make pac, hal and bsp examples to work plus initial ble (working with CI).
+- Begin writing the book on supporting new hardware in rust, check it!
+- From our last iteraction (about an year) SILABS was bought! Now TI!
+- Returned to work, bought a new board (i managed to break the swd pads on the old one) and expansion board
 - Managed to unbrick the board, proceed with testing.
 - Almost finished the bluetooth support (easier than i thought) now, comparing other vendors implementation.
 - Silabs forum's topic on the bricked device: https://community.silabs.com/s/question/0D7Vm00000DHJRlKAP
@@ -289,7 +293,7 @@ See detailed PAC documentation:
 
 See [docs/03-development/PLAN.md](docs/03-development/PLAN.md) for the complete development roadmap.
 
-**Current Progress: Phase D2 Complete (Bluetooth 5.3 LE)**
+**Current Progress: Phase D2 on hardware (Bluetooth 5.3 LE verified; D2f pairing and D2g gas open)**
 
 1. **Phase P**: Project Setup, PAC Generation, build system (complete)
 2. **Phase A**: HAL Core - GPIO, CMU, Delay with hardware register access (complete)
@@ -436,7 +440,7 @@ Unless you explicitly state otherwise, any contribution intentionally submitted 
 
 ---
 
-**Project Status**: Phase D2 Complete - Bluetooth 5.3 LE integration done (HAL + RAIL FFI + Bluetooth stack + XiaoBle BSP + microphone driver)
+**Project Status**: Phase D2 on hardware -- Bluetooth verified from a phone as well as from the bench (HAL + RAIL FFI + Bluetooth stack + both BSPs + microphone driver); pairing (D2f) and BME680 gas (D2g) open
 **Last Updated**: 2026-06-28
 **Maintainer**: Marcelo Correa <mvcorrea+github@gmail.com>
 **Repository**: https://github.com/bitscrafts/EFR32MG2X-RS

@@ -4,6 +4,40 @@ Log of significant achievements, milestones, and key decisions throughout the pr
 
 ---
 
+## 2026-11-14: Bluetooth works on hardware, and a phone can use the board
+
+**Milestone**: the Bluetooth work that had been "integrated" since January actually transmits, and a generic phone
+application reads the carrier's sensor over a standard service.
+
+**Achievements**:
+- **Radio verified on the air**, with a second machine as the observer rather than the board's own report: beacon
+  advertising with a complete local name, scanning that decodes a known address, custom manufacturer data, and three
+  diagnostic examples for counters, boot status and crystal frequency.
+- **GATT server usable end to end**: a client connects, reads a characteristic, writes to another, subscribes, and the
+  firmware echoes the written bytes back in its notifications. The echo matters -- a read-back can be answered from the
+  host's cache, bytes that return from inside the radio cannot.
+- **Standard Environmental Sensing service** (`0x181A` with `0x2A6E`, `0x2A6F`, `0x2A6D`), which required 16-bit UUID
+  support in the GATT database builder. `base_ble_env_gatt` publishes the BME680 through it; verified on a phone with
+  nRF Connect and byte for byte by `scripts/host-env-verify.py`.
+- **`base_env_display`**: the same sensor's compensated readings on the carrier's OLED, through the HAL only.
+- **Two defects that made the radio look broken but were instrument faults**: `start_advertising` emits a
+  *non-connectable* PDU (a phone sees the name, connects, and the attempt silently never completes), and a connectable
+  advertiser stops when a central connects and must re-advertise on `Disconnected`.
+- **The arena no longer collapses on connect**: a vendor path writes about 136 bytes into a 64-byte allocation and the
+  write reached the following block's header, taking 57 KiB of 64 KiB out of reach. With 256 bytes of slack per block
+  the allocator keeps 53720 bytes with a client connected, against 72 before.
+- **`bt-heap` grew the instruments that found it**: per-block canary, allocation ring, double-free detection, and
+  canaries on free and split blocks -- the audit had been reporting "1 of 15 damaged" on a heap that had never served a
+  connection, because free blocks carried no canary.
+- **Twelve examples on the matrix** run from one command (`scripts/ble-matrix-all.sh`), each row being build, flash,
+  mailbox record and an air capture from a separate host.
+
+**Open**: pairing and bonding. With the security manager enabled a pairing request is accepted and then fails at a
+DHKey check with no cryptographic call made (`pg=0 pe=0 pa=0`), so the fault is before the key exchange. The PSA layer
+it needs is written and verified on the board. The BME680's gas resistance is also not implemented.
+
+---
+
 ## 2026-01-09: OpenOCD CMSIS-DAP Flashing Workflow Verified
 
 **Milestone**: Complete hardware flashing workflow operational via OpenOCD with CMSIS-DAP interface

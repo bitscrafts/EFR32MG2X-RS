@@ -253,6 +253,8 @@ See [LICENSE](../LICENSE) file for details.
 - [PAC clock and timer notes](04-reference/PAC-CLOCK-AND-TIMER-NOTES.md) - the register orders this die demands
 
 - [Session 2026-11-12](03-development/SESSION-2026-11-12.md) -- radio stacks compile and link, layer audit, nine book chapters
+- [Session 2026-11-14](03-development/SESSION-2026-11-14.md) -- the radio works, the BME680 reaches a phone, and the four defects that were ours
+- [Roadmap Gantt and phase table](../README.md) -- what is done, what is active, what is next
 - [Radio notes](04-reference/RADIO-NOTES.md) -- what the two vendor stacks needed, and the three gaps that remain
 - [Layer audit 2026-11-12](02-architecture/LAYER-AUDIT-2026-11-12.md) -- seven violations the compiler cannot see
 
