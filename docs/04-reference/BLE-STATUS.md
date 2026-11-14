@@ -4,9 +4,9 @@ Updated 2026-11-13. Every number below came from the board, not from a datasheet
 
 ## One line
 
-**Advertising, scanning and the data path are measured on the board; serving a GATT attribute is not, and two sensor
-examples do not run at all.** "BLE works" is the kind of sentence this section exists to avoid: what follows is a
-per-example table, each row with the evidence that produced it and its date.
+**Advertising, scanning and both sensor examples are measured on the board; serving a GATT attribute is not.**
+"BLE works" is the kind of sentence this section exists to avoid, and it was written once here and withdrawn: what
+follows is a per-example table, each row with the evidence that produced it and the date it was measured.
 
 ## The matrix, measured 2026-11-14
 
@@ -20,16 +20,22 @@ example and prints the build range, the mailbox and the host capture together, s
 | `ble_scanner` | **PASS** | hears the host's own advertiser by address: `scan: 90:de:80:81:44:56 rssi=-75 len=13`. **Control**: with the host's advertising off the same image reports a different device (`49:7a:43:ea:f3:f0`) and never that address |
 | `ble_advertise_custom` | **PASS** | host decodes the payload: `Company: ... (741)` = 0x02E5, `Data[9]: 01010000010eca3919` -- version, device id, fw 0.1, and a live cycle counter |
 | `ble_gatt` | **BLOCKED** | advertises as `xiao-mg24-gatt`; the host connects (`Connection successful`) and a phone sees it, and a client listing characteristics gets **zero**: the dynamic GATT database cannot be enabled (see the GATT table above) |
-| `module_ble_beacon` | **PASS** | after forwarding the BSP's `stack` feature to `efr32mg24-radio/stack`: `xiao=8` reports in the host capture, -87 dBm |
-| `base_ble_env` | **PASS**, data only | env frame on air at the board's address: `Data[10]: 010024ff1200f2030904`. It carries no name by design, so `xiao=` is 0 and the payload is the evidence |
-| `module_ble_motion` | **FAIL** | no mailbox record and nothing on air; halted PC is inside `delay_ms` next to the bit-bang I2C, which is consistent with the IMU init retrying without bound instead of returning `ImuError` |
-| `module_ble_fall` | **FAIL** | same shape: no record, nothing on air |
+| `module_ble_beacon` | **PASS** | after forwarding the BSP's `stack` feature to `efr32mg24-radio/stack`: `Name: xiao-mg24-bsp` in the host capture, 8 reports, -87 dBm |
+| `base_ble_env` | **PASS**, data only | env frame on air at the board's address: `Data[10]: 010024ff1200f2030904`; it carries no name by design, so the payload is the evidence, not a name |
+| `module_ble_motion` | **PASS** | board address on air with a 10-byte motion frame: `Data[10]: 01002dff0900f1030604` = version, flag, X `-211`, Y `9`, Z `1009` mg, magnitude `1031`; mailbox `motion: |a|=1029 mg still n=1` |
+| `module_ble_fall` | **PASS** | board address on air with a 12-byte fall frame: `Data[12]: 0100000000000000fffff803` |
 | `hal_led_blink` | **PASS** | PA7 (`0x5003C040` bit 7) sampled over SWD without halting: `0x80 -> 0x00 -> 0x80` -- the LED physically blinks |
 | `bt_version`, `hal_mic_level`, `module_mic_level`, `rail_ble_tx`, `rail_ble_rx`, `rail_caps`, `ble_boot_probe` | build-verified | three of them (`bt_version`, `hal_mic_level`, `module_mic_level`) had message-buffer panics that would have hit on first run; fixed, and `scripts/check-copy-len.py` now runs in the gate |
 
-`module_ble_motion` and `module_ble_fall` are **not** "almost working": they never reach their first mailbox write, so
-nothing is known about their BLE path at all. Their sensor init is the wall, and it is the same wall
-(`delay_ms` / bit-bang I2C) for both.
+**The instrument was wrong twice in this session, and both times it hid working firmware.** First a host capture with
+no self-test (a window in which nothing arrived proved nothing); then a name search, which reported "nothing on air"
+for `base_ble_env`, `module_ble_motion` and `module_ble_fall` -- all three were transmitting manufacturer data and have
+no name to find. The criterion is now the board's address and its payload, and `scripts/ble-example-matrix.sh` prints
+all three, so "no name" cannot be read as "no signal" again.
+
+One firmware defect did come out of that chase, and it was real: `module_ble_motion` wrote a record only when the
+motion flag *changed*, so a board sitting still said nothing at all and looked dead. It now writes once before the
+loop and once with the first frame.
 
 ## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
 

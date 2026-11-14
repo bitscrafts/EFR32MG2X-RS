@@ -97,12 +97,16 @@ fn main() -> ! {
     let mut delay = module.delay();
     let led = module.led();
 
+    // Stage markers. This example never reached its first record, so the only honest way to find the wall was to
+    // write one at each step: a firmware that says nothing leaves "hung before the first line" and "hung at the last"
+    // looking identical, and the previous attempt at this example spent three flashes guessing.
     // The IMU's power gate, then the bus the module already knows.
     module.imu_power().on();
     delay.delay_ms(4);
 
+    let bus = module.imu_bus();
     let mut imu = match Lsm6ds3trc::with_config(
-        module.imu_bus(),
+        bus,
         Config {
             range: AccelRange::G8,
             odr: AccelOdr::Hz416,
@@ -137,7 +141,12 @@ fn main() -> ! {
         }
     };
 
+    // Say the stack is up, before the loop. Measured: this example wrote nothing at all while the board sat still,
+    // because the only record it wrote depended on the motion flag *changing*. A device that is idle and a device
+    // that never booted looked identical from the mailbox.
+    mailbox::write(mailbox::Status::Info, b"motion: adv started");
     let mut last_moving = false;
+    let mut first = true;
     let mut frames: u32 = 0;
 
     loop {
@@ -166,8 +175,9 @@ fn main() -> ! {
             }
 
             // The LED tracks motion, which makes the board readable across a room without a phone.
-            if moving != last_moving {
+            if moving != last_moving || first {
                 last_moving = moving;
+                first = false;
                 let mut msg = [0u8; 64];
                 let mut at = 0;
                 msg[at..at + b"motion: |a|=".len()].copy_from_slice(b"motion: |a|=");
