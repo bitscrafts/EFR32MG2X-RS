@@ -1,0 +1,63 @@
+name: Book (PDF)
+
+# The book is built from the same sources as the code, so it is built on every push rather than shipped
+# as an opaque blob: a chapter that stops compiling is a chapter that has rotted.
+on:
+  push:
+    branches: [master, main]
+    paths:
+      - "book/**"
+      - ".github/workflows/book.yml"
+  pull_request:
+    paths:
+      - "book/**"
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build the book
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install XeLaTeX and the packages the book uses
+        # kaobook, tikz, the fonts and the shell-escape helpers all come from these; texlive-xetex alone is
+        # not enough, and the failure then appears a hundred pages into the compile.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            texlive-xetex texlive-latex-extra texlive-fonts-extra texlive-fonts-recommended \
+            texlive-science texlive-lang-english latexmk poppler-utils
+
+      - name: Check the sources before compiling
+        working-directory: book
+        run: python3 check-tex.py
+
+      - name: Compile
+        working-directory: book/latex
+        run: |
+          xelatex -shell-escape -interaction=nonstopmode main.tex > pass1.log 2>&1 || true
+          xelatex -shell-escape -interaction=nonstopmode main.tex > pass2.log 2>&1 || {
+            echo "--- second pass failed:"; tail -60 pass2.log; exit 1; }
+          pdfinfo main.pdf | tee pdfinfo.txt
+          pages=$(awk '/^Pages:/ {print $2}' pdfinfo.txt)
+          echo "pages=${pages}"
+          test "${pages:-0}" -gt 100 || { echo "implausible page count: ${pages}"; exit 1; }
+
+      - name: Upload the PDF
+        uses: actions/upload-artifact@v4
+        with:
+          name: EFR32MG24-Embedded-Rust-Book
+          path: book/latex/main.pdf
+          retention-days: 90
+
+      - name: Upload the LaTeX log when it fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: book-latex-log
+          path: |
+            book/latex/*.log
+            book/latex/*.txt
+          if-no-files-found: ignore
+          retention-days: 7
