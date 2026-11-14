@@ -51,6 +51,7 @@ a bit, and never a whole register value:
 \begin{minted}{rust}
 // The signature is the rule: there is no way to write DOUT without saying which bit.
 fn write_dout(gpio: &RegisterBlock, port: Port, bit: u8, high: bool)
+// ... (bodies omitted: this listing is about the signature)
 \end{minted}
 
 \subsection{A Second, Quieter Version of the Same Bug}

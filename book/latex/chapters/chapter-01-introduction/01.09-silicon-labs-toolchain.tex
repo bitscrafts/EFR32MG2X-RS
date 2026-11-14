@@ -81,10 +81,12 @@ the board is silent.
 
 Hence the two requirements this project imposes on itself, both mechanical:
 
-\begin{minted}{bash}
-# 1. never let the linker put anything below the bootloader
+\begin{minted}{text}
+/* 1. never let the linker put anything below the bootloader (memory.x) */
 FLASH (rx) : ORIGIN = 0x08006000, LENGTH = 1536K - 24K
+\end{minted}
 
+\begin{minted}{bash}
 # 2. refuse to flash an image that would
 python3 scripts/elf-load-range.py "$ELF"     # load_min must be >= 0x08006000
 \end{minted}

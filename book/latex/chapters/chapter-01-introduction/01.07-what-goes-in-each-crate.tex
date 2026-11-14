@@ -159,6 +159,7 @@ The contract is worth quoting, because it is the whole testability argument in o
 \begin{minted}{rust}
 // [i32; 3] of milligravity, and the interval between samples in microseconds.
 pub fn update_us(&mut self, accel_mg: [i32; 3], dt_us: u32) -> Option<Event>
+// ... (bodies omitted: the listing is about the signature)
 \end{minted}
 
 No sensor type, no bus, no clock. Which is why nine tests run in under a second on a laptop,

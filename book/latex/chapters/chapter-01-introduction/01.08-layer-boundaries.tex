@@ -27,6 +27,7 @@ singleton:
 // Before: the caller has to own the PAC to start a tone.
 pub fn new(dp: &pac::Peripherals, port: Port, pin: u8) -> Option<Self>
 pub fn take(dp: &pac::Peripherals, port: Port, pin: u8) -> Option<Self>
+// ... (bodies omitted: the listing is about the signatures)
 \end{minted}
 
 The signature looks innocent — it is the idiom of every Rust HAL, and it is how exclusivity is
@@ -184,6 +185,7 @@ pub fn new(usart: pac::Usart0S, config: Config, clocks: &FrozenClocks) -> Self
 
 // A violation: the caller receives the registers themselves.
 pub fn new(adc: &pac::iadc0_s::RegisterBlock) -> Result<Self, MicError>
+// ... (bodies omitted: the listing is about the signatures)
 \end{minted}
 
 Both mention \codeinline{pac}. The first is how every Rust HAL on the market works —

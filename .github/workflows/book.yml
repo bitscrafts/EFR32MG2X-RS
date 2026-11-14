@@ -27,6 +27,17 @@ jobs:
       - name: Check the sources before compiling
         run: python3 book/check-tex.py
 
+      - name: Check that the printed code parses
+        # A book about bring-up that prints code nobody compiled is fiction, and the rot is silent: the PDF still
+        # builds and the pages still look right. Fragments are expected to be fragments; the check is that they are
+        # valid ones, and that the abridged listings say so.
+        run: python3 book/check-code-blocks.py
+
+      - name: Check that the references point at something
+        # A \ref with no \label prints "??" and LaTeX carries on, and a path named in prose can point at a file
+        # that was renamed. Both are invisible in the PDF until a reader tries to use them.
+        run: python3 book/check-refs.py
+
       - name: Compile twice so the contents and cross-references settle
         run: |
           docker run --rm -v "$PWD":/work -w /work/book/latex \

@@ -77,9 +77,11 @@ fn set(&mut self, pin: u8, high: bool) {
 }
 
 // Right: the port is part of the state, so choosing a bus chooses the registers.
-match self.pins {
-    Pins::Base => self.portc_dout().write(...),
-    Pins::Imu  => self.portb_dout().write(...),
+fn write(&mut self, high: bool) {
+    match self.pins {
+        Pins::Base => self.portc_dout().write(|w| unsafe { w.dout(high as u32) }),
+        Pins::Imu  => self.portb_dout().write(|w| unsafe { w.dout(high as u32) }),
+    }
 }
 \end{minted}
 

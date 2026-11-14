@@ -62,7 +62,9 @@ structure has to guess, and guessing is what the layer below exists to prevent.
 \begin{minted}{rust}
 // The microSD card's chip select shares a pin on this board. When that driver lands,
 // this facade is where the conflict is refused -- not silently arbitrated.
-pub fn sd(&mut self) -> Result<SdCard<'_>, BoardError>
+pub fn sd(&mut self) -> Result<SdCard<'_>, BoardError> {
+    // ...
+}
 \end{minted}
 
 A facade that resolves a real conflict silently is a facade that produces a bug the user cannot see.
