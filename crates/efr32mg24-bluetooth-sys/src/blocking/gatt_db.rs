@@ -31,6 +31,23 @@ use crate::ffi as bt;
 const PRIMARY_SERVICE: u8 = 0x00;
 /// `sl_bt_gattdb_user_managed_value`: the value lives in the stack's attribute, and this code writes it.
 const USER_MANAGED_VALUE: u8 = 0x03;
+/// `sl_bt_gattdb_fixed_length_value`: the stack keeps a buffer of `maxlen` for the value, so a client can **read** it
+/// without the application answering anything.
+const FIXED_LENGTH_VALUE: u8 = 0x01;
+
+/// One characteristic to add: its UUID, its properties, and the size of the value the stack should keep.
+#[derive(Debug, Clone, Copy)]
+pub struct Characteristic {
+    /// The 128-bit UUID, in the stack's little-endian byte order.
+    pub uuid: [u8; 16],
+    /// Bitmask of [`PROP_READ`], [`PROP_WRITE`] and [`PROP_NOTIFY`].
+    pub properties: u16,
+    /// Buffer size the stack allocates for the value. **Zero means user-managed**, which reads back nothing: a client
+    /// that reads a user-managed characteristic gets whatever the application last wrote with
+    /// `write_attribute`, and a fresh one reads as empty. A non-zero size gives the stack its own buffer, which is what
+    /// makes `read` work.
+    pub max_len: u16,
+}
 /// `SL_BT_GATTDB_CHARACTERISTIC_READ`.
 pub const PROP_READ: u16 = 0x02;
 /// `SL_BT_GATTDB_CHARACTERISTIC_WRITE`.
@@ -67,7 +84,7 @@ impl ServiceHandles {
 /// -- a half-added service is not a state a client can discover.
 pub fn add_service(
     uuid: [u8; 16],
-    characteristics: &[([u8; 16], u16)],
+    characteristics: &[Characteristic],
 ) -> Result<ServiceHandles, BleError> {
     let mut session: u16 = 0;
     let status = unsafe { bt::sl_bt_gattdb_new_session(&mut session) };
@@ -84,20 +101,25 @@ pub fn add_service(
     }
 
     let mut handles: heapless::Vec<u16, 8> = heapless::Vec::new();
-    for (char_uuid, properties) in characteristics {
+    for spec in characteristics {
         // `uuid_128` is the 16 bytes by value, in the stack's little-endian order.
-        let uuid_value: bt::uuid_128 = bt::uuid_128 { data: *char_uuid };
+        let uuid_value: bt::uuid_128 = bt::uuid_128 { data: spec.uuid };
+        let value_type = if spec.max_len == 0 {
+            USER_MANAGED_VALUE
+        } else {
+            FIXED_LENGTH_VALUE
+        };
         let mut handle: u16 = 0;
         let status = unsafe {
             bt::sl_bt_gattdb_add_uuid128_characteristic(
                 session,
                 service,
-                *properties,
+                spec.properties,
                 0, // no security requirement: an unpaired client may use it
                 0, // no option flags
                 uuid_value,
-                USER_MANAGED_VALUE,
-                0, // maxlen is ignored for a user-managed value
+                value_type,
+                spec.max_len,
                 0, // no initial value
                 core::ptr::null(),
                 &mut handle,

@@ -189,6 +189,9 @@ pub fn link_layer_services() -> u32 {
 ///
 /// One call performs one unit of link-layer work if the host asked for it. Events are *not* consumed here: the
 /// application pops them with `sl_bt_pop_event`, which is where it wants them anyway.
+static PUMP_CALLS: AtomicU32 = AtomicU32::new(0);
+static PUMP_CYCLES: AtomicU32 = AtomicU32::new(0);
+
 pub fn pump() {
     // The link layer is *not* serviced here: `PendSV` does it, raised by the host's scheduler callback. A second
     // caller from thread context would run `BTLE_LL_Process` re-entrantly with the exception.
@@ -196,7 +199,30 @@ pub fn pump() {
     // **The host's turn.** Measured: with only the link layer serviced, `sli_bt_system_start_bluetooth` returns 0 and
     // the event queue is still empty (`sl_bt_pop_event` = 45 = `SL_STATUS_NOT_FOUND`), so `system_boot` -- which the
     // start enqueues -- is only delivered once the host runs.
+    //
+    // The cost of this one call is counted, because it is the only call in every application's loop: a loop that runs
+    // at a fraction of the rate the application asks for explains sparse advertising and three notifications where a
+    // hundred were expected, and a rate is a number, not an impression.
+    let started = dwt_cyccnt();
     unsafe { sl_bt_run() };
+    PUMP_CALLS.fetch_add(1, Ordering::Relaxed);
+    PUMP_CYCLES.fetch_add(dwt_cyccnt().wrapping_sub(started), Ordering::Relaxed);
+}
+
+/// `(calls, cycles)` spent inside `sl_bt_run` since boot.
+pub fn pump_cost() -> (u32, u32) {
+    (
+        PUMP_CALLS.load(Ordering::Relaxed),
+        PUMP_CYCLES.load(Ordering::Relaxed),
+    )
+}
+
+/// The DWT cycle counter. Read directly rather than through the HAL: this crate has no HAL dependency, and every
+/// application enables the counter when it takes its delay provider, before it takes a stack.
+#[inline]
+fn dwt_cyccnt() -> u32 {
+    // SAFETY: `DWT->CYCCNT` is a read-only counter at a fixed address once the DWT cycle counter is running.
+    unsafe { core::ptr::read_volatile(0xE000_1004 as *const u32) }
 }
 
 /// Whether an event is waiting to be popped. The application pops it; this only reports.
