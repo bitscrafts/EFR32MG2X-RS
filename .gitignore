@@ -51,6 +51,9 @@ book/**/*.toc
 **/blobs/*.a
 **/blobs/*.o
 **/blobs/*.lib
+# ...except the radio blob the RAIL crate links: without it there is no radio build at all.
+!crates/*/blobs/**
+!crates/*/vendor/**/*.a
 **/vendor/**/*.h
 **/vendor/**/*.c
 # ...except the vendor trees the build genuinely needs. The repository already ships the Silabs binaries these
