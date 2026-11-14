@@ -160,6 +160,9 @@ fn main() -> ! {
         }
     };
 
+    // Pairable before advertising: a client that connects and asks to pair must find the security manager ready.
+    let paired_ready = ble.enable_pairing().is_ok();
+
     // A name and one service UUID: 2 + 8 + 2 + 5 = 17 of the 31 bytes a legacy PDU carries.
     if ble.set_device_name("xiao-mg24-gatt").is_err() || ble.add_service_uuid(SERVICE_UUID).is_err()
     {
@@ -207,6 +210,22 @@ fn main() -> ! {
         msg[at..at + 20].copy_from_slice(b"gatt: adv waiting a=");
         at += 20;
         at = push_dec(&mut msg, at, if counter_handle.is_some() { 1 } else { 0 });
+        // **Say whether this firmware can do the cryptography pairing needs**, before a client tries to. Two freshly
+        // generated P-256 key pairs must agree on the same secret; if they do not, the fault is here and not in the
+        // peer, and the record says so at boot instead of during a pairing attempt.
+        let (ec_ok, public_len, agree) = efr32mg24_bluetooth_sys::psa_ec::self_test();
+        msg[at..at + 3].copy_from_slice(b" ec");
+        at += 3;
+        at = push_dec(&mut msg, at, if ec_ok { 1 } else { 0 });
+        msg[at..at + 3].copy_from_slice(b" pk");
+        at += 3;
+        at = push_dec(&mut msg, at, public_len as u32);
+        msg[at..at + 3].copy_from_slice(b" dh");
+        at += 3;
+        at = push_dec(&mut msg, at, if agree { 1 } else { 0 });
+        msg[at..at + 3].copy_from_slice(b" sm");
+        at += 3;
+        at = push_dec(&mut msg, at, if paired_ready { 1 } else { 0 });
         #[cfg(feature = "diag")]
         {
             msg[at..at + b" d1".len()].copy_from_slice(b" d1");
@@ -232,6 +251,7 @@ fn main() -> ! {
     // notifications it asked for actually went out.
     let mut subs_on: u32 = 0;
     let mut iterations: u32 = 0;
+    let mut last_ec_op: u32 = 0;
     let mut control_writes: u32 = 0;
     let mut control_value = [0u8; 4];
     let mut t_subscribed: u32 = 0;
@@ -385,6 +405,21 @@ fn main() -> ! {
         }
 
         iterations += 1;
+        // If the security manager refused a key operation, say which one and what it was handed. A pairing attempt
+        // that ends in "unspecified reason" on the client leaves nothing else behind.
+        let (op, value) = efr32mg24_bluetooth_sys::psa_ec::last_failure();
+        if op != 0 && op != last_ec_op {
+            last_ec_op = op;
+            let mut msg = [0u8; 48];
+            let mut at = 0;
+            msg[at..at + 12].copy_from_slice(b"gatt: ec op=");
+            at += 12;
+            at = push_dec(&mut msg, at, op);
+            msg[at..at + 3].copy_from_slice(b" v=");
+            at += 3;
+            at = push_dec(&mut msg, at, value);
+            mailbox::write(mailbox::Status::Info, &msg[..at]);
+        }
         if connected && subscribed && counter_handle.is_some() {
             counter += 1;
             // **Eight bytes: the counter and the client's own value.** A client that writes four bytes and then

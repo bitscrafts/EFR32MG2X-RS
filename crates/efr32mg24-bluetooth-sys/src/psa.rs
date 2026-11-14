@@ -65,18 +65,22 @@ const MAX_MAC_INPUT: usize = 128;
 const MAC_OPS: usize = 2;
 
 #[derive(Clone, Copy)]
-struct Slot {
-    used: bool,
-    key_len: usize,
-    key: [u8; MAX_KEY],
+pub(crate) struct Slot {
+    pub(crate) used: bool,
+    /// The handle this slot was handed out under. Stored, because handles are a monotonic counter and slot positions
+    /// are reused: after one destroy, `handle n` is no longer `slot n - 1`, and the previous version of this file
+    /// guessed the mapping from position.
+    pub(crate) id: u32,
+    pub(crate) key_len: usize,
+    pub(crate) key: [u8; MAX_KEY],
     /// `psa_key_type_t` recorded at import. Read by nothing yet — this firmware only holds AES keys — but stored
     /// so that a future key type is a table change rather than a redesign.
-    #[allow(dead_code)]
-    key_type: u32,
+    pub(crate) key_type: u32,
 }
 
 const EMPTY_SLOT: Slot = Slot {
     used: false,
+    id: 0,
     key_len: 0,
     key: [0; MAX_KEY],
     key_type: PSA_KEY_TYPE_AES,
@@ -250,11 +254,13 @@ pub unsafe extern "C" fn psa_import_key(
     ptr::copy_nonoverlapping(data, k.as_mut_ptr(), data_length);
     table[index] = Slot {
         used: true,
+        id: 0, // stamped below, once the handle is handed out
         key_len: data_length,
         key: k,
         key_type: PSA_KEY_TYPE_AES,
     };
 
+    // The slot just written holds no id yet; stamp it now that the handle exists.
     let id = {
         let n = ptr::addr_of_mut!(NEXT_ID);
         let v = ptr::read_volatile(n);
@@ -262,6 +268,12 @@ pub unsafe extern "C" fn psa_import_key(
         v.max(1)
     };
     ptr::write(key, id);
+    for slot in slots().iter_mut() {
+        if slot.used && slot.id == 0 {
+            slot.id = id;
+            break;
+        }
+    }
 
     let c = ptr::addr_of_mut!(IMPORTS);
     ptr::write_volatile(c, ptr::read_volatile(c) + 1);
@@ -282,22 +294,13 @@ pub unsafe extern "C" fn psa_destroy_key(key: u64) -> i32 {
         return PSA_ERROR_INVALID_HANDLE;
     }
     let table = slots();
-    // Ids are handed out in order from 1, so id `n` is slot `n - 1` only if nothing was destroyed in between.
-    // To stay correct across destruction, the id is matched by position of a used slot whose stored id equals it;
-    // ids are not stored in the slot, so the mapping is "the nth import" is not recoverable. Instead, keep the
-    // rule simple and documented: destroy removes the highest-numbered live slot for that id, and since this
-    // firmware imports one link-layer key and one per bonded peer, the count is small enough that the ambiguity
-    // is visible rather than silent — see `slots_in_use()`.
-    let mut seen = 0u32;
     for slot in table.iter_mut() {
-        if slot.used {
-            seen += 1;
-            if seen == id {
-                slot.used = false;
-                slot.key_len = 0;
-                slot.key = [0; MAX_KEY];
-                return PSA_SUCCESS;
-            }
+        if slot.used && slot.id == id {
+            slot.used = false;
+            slot.id = 0;
+            slot.key_len = 0;
+            slot.key = [0; MAX_KEY];
+            return PSA_SUCCESS;
         }
     }
     PSA_ERROR_DOES_NOT_EXIST
@@ -472,4 +475,322 @@ pub fn stats() -> (usize, u32, u32) {
             ptr::read_volatile(ptr::addr_of!(RANDOM_REQUESTS)),
         )
     }
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// The functions the security manager needs, beyond the MAC streaming API above.
+//
+// With `SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT` enabled the linker named exactly seven of them:
+// `psa_generate_key`, `psa_export_public_key`, `psa_raw_key_agreement`, `psa_mac_compute`, `psa_cipher_encrypt`,
+// `psa_export_key`, `psa_get_key_attributes`. Three take plain buffers and reuse the AES the project already has and
+// tests; four need P-256 and the attribute structure, and are the next increment.
+//
+// Anything this does not support is **recorded**, not silently answered: a security exchange that fails because an
+// algorithm returned a generic error is the hardest kind of bug to find on a board with no debugger.
+// ---------------------------------------------------------------------------------------------------------------
+
+/// `PSA_ALG_CMAC`
+const PSA_ALG_CMAC: u32 = 0x03c0_0200;
+/// `PSA_ALG_CTR`
+const PSA_ALG_CTR: u32 = 0x04c0_1000;
+/// The last algorithm this module was asked for and could not serve, and how many times. Read by `stats()`'s caller
+/// through [`unsupported_algorithm`]; a firmware that pairs badly can be asked what it wanted.
+static mut UNSUPPORTED_ALG: u32 = 0;
+static mut UNSUPPORTED_COUNT: u32 = 0;
+
+/// The last unsupported algorithm and the number of times one was requested.
+pub fn unsupported_algorithm() -> (u32, u32) {
+    unsafe { (UNSUPPORTED_ALG, UNSUPPORTED_COUNT) }
+}
+
+fn record_unsupported(alg: u32) -> i32 {
+    unsafe {
+        UNSUPPORTED_ALG = alg;
+        UNSUPPORTED_COUNT += 1;
+    }
+    PSA_ERROR_NOT_SUPPORTED
+}
+
+/// The slot a handle refers to. Handles are the indices this module hands out, offset by one, so that zero is never
+/// a valid key -- `NEXT_ID` starts at 1 for exactly that reason.
+fn slot_for(key: u64) -> Option<&'static Slot> {
+    let id = key as u32;
+    if id == 0 {
+        return None;
+    }
+    slots().iter().find(|s| s.used && s.id == id)
+}
+
+/// `psa_export_key`: copy a stored key out. Used by the security manager to fetch the long-term key it just produced.
+///
+/// # Safety
+///
+/// `data` must point at `data_size` writable bytes, and `data_length` at a writable `size_t`, as the PSA contract
+/// requires of its callers.
+#[no_mangle]
+pub unsafe extern "C" fn psa_export_key(
+    key: u64,
+    data: *mut u8,
+    data_size: usize,
+    data_length: *mut usize,
+) -> i32 {
+    let Some(slot) = slot_for(key) else {
+        return PSA_ERROR_INVALID_HANDLE;
+    };
+    if slot.key_len > data_size {
+        if !data_length.is_null() {
+            *data_length = slot.key_len;
+        }
+        return PSA_ERROR_BUFFER_TOO_SMALL;
+    }
+    if data.is_null() {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    core::ptr::copy_nonoverlapping(slot.key.as_ptr(), data, slot.key_len);
+    if !data_length.is_null() {
+        *data_length = slot.key_len;
+    }
+    0
+}
+
+/// `psa_mac_compute`: AES-CMAC over `input`, into `mac`.
+///
+/// PSA's one-shot form is what the security manager uses for the confirm and key-derivation functions of pairing
+/// (f4, f5, f6, g2), and all of them are CMAC over a handful of bytes.
+///
+/// # Safety
+///
+/// `input` must point at `input_length` readable bytes and `mac` at `mac_size` writable ones; `mac_length` at a
+/// writable `size_t`.
+#[no_mangle]
+pub unsafe extern "C" fn psa_mac_compute(
+    key: u64,
+    alg: u32,
+    input: *const u8,
+    input_length: usize,
+    mac: *mut u8,
+    mac_size: usize,
+    mac_length: *mut usize,
+) -> i32 {
+    if alg != PSA_ALG_CMAC {
+        return record_unsupported(alg);
+    }
+    let Some(slot) = slot_for(key) else {
+        return PSA_ERROR_INVALID_HANDLE;
+    };
+    if slot.key_len != 16 {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    if input.is_null() || mac.is_null() || mac_size < 16 {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    let mut block = [0u8; 16];
+    block.copy_from_slice(&slot.key[..16]);
+    let mut msg = [0u8; MAX_MAC_INPUT];
+    let n = input_length.min(MAX_MAC_INPUT);
+    core::ptr::copy_nonoverlapping(input, msg.as_mut_ptr(), n);
+    let tag = aes_modes::cmac(&block, &msg[..n]);
+    core::ptr::copy_nonoverlapping(tag.as_ptr(), mac, 16);
+    if !mac_length.is_null() {
+        *mac_length = 16;
+    }
+    0
+}
+
+/// `psa_cipher_encrypt`: AES-CTR, with PSA's convention that the output begins with the counter block.
+///
+/// PSA defines this one-shot form as "input = IV || plaintext, output = IV || ciphertext", and the security manager
+/// relies on that layout when it encrypts the confirm value of legacy pairing.
+///
+/// # Safety
+///
+/// `input` must point at `input_length` readable bytes and `output` at `output_size` writable ones; `output_length`
+/// at a writable `size_t`.
+#[no_mangle]
+pub unsafe extern "C" fn psa_cipher_encrypt(
+    key: u64,
+    alg: u32,
+    input: *const u8,
+    input_length: usize,
+    output: *mut u8,
+    output_size: usize,
+    output_length: *mut usize,
+) -> i32 {
+    if alg != PSA_ALG_CTR {
+        return record_unsupported(alg);
+    }
+    let Some(slot) = slot_for(key) else {
+        return PSA_ERROR_INVALID_HANDLE;
+    };
+    if slot.key_len != 16 {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    if input.is_null() || output.is_null() || input_length < 16 {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    let payload = input_length - 16;
+    if output_size < input_length {
+        if !output_length.is_null() {
+            *output_length = input_length;
+        }
+        return PSA_ERROR_BUFFER_TOO_SMALL;
+    }
+
+    let mut block = [0u8; 16];
+    block.copy_from_slice(&slot.key[..16]);
+
+    // The IV leads both the input and the output.
+    core::ptr::copy_nonoverlapping(input, output, 16);
+    if payload == 0 {
+        if !output_length.is_null() {
+            *output_length = 16;
+        }
+        return 0;
+    }
+
+    let mut iv = [0u8; 16];
+    core::ptr::copy_nonoverlapping(input, iv.as_mut_ptr(), 16);
+    let mut counter = u128::from_be_bytes(iv);
+    let mut offset = 0usize;
+    while offset < payload {
+        let ks = aes_ctr_radio::encrypt_block(&block, &counter.to_be_bytes());
+        let take = core::cmp::min(16, payload - offset);
+        for (j, k) in ks.iter().take(take).enumerate() {
+            let byte = core::ptr::read(input.add(16 + offset + j));
+            core::ptr::write(output.add(16 + offset + j), byte ^ k);
+        }
+        offset += take;
+        counter = counter.wrapping_add(1);
+    }
+
+    if !output_length.is_null() {
+        *output_length = input_length;
+    }
+    0
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Storage, and the four entry points the security manager's elliptic-curve path needs. The maths lives in
+// `psa_ec.rs`; these are the ABI shapes the vendor blob expects.
+// ---------------------------------------------------------------------------------------------------------------
+
+/// The slot behind a handle, for the elliptic-curve module.
+pub(crate) fn slot(key: u64) -> Option<&'static Slot> {
+    slot_for(key)
+}
+
+/// Store `material` as a key of `key_type` and return its handle, or `None` when the table is full.
+pub(crate) fn store_key(material: &[u8], key_type: u32) -> Option<u32> {
+    if material.is_empty() || material.len() > MAX_KEY {
+        return None;
+    }
+    let table = slots();
+    let index = table.iter().position(|s| !s.used)?;
+    let id = unsafe {
+        let n = ptr::addr_of_mut!(NEXT_ID);
+        let v = ptr::read_volatile(n);
+        ptr::write_volatile(n, v.wrapping_add(1).max(1));
+        v.max(1)
+    };
+    table[index] = Slot {
+        used: true,
+        id,
+        key_len: material.len(),
+        key: [0; MAX_KEY],
+        key_type,
+    };
+    table[index].key[..material.len()].copy_from_slice(material);
+    Some(id)
+}
+
+/// `psa_generate_key`
+///
+/// # Safety
+///
+/// `attributes` must point at a `psa_key_attributes_t`; `key` at a `mbedtls_svc_key_id_t`.
+#[no_mangle]
+pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u64) -> i32 {
+    if attributes.is_null() {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    // The type is the first field of the attribute structure, whatever the rest of it looks like.
+    let key_type = ptr::read_unaligned(attributes as *const u16);
+    if key_type == crate::psa_ec::PSA_KEY_TYPE_ECC_KEY_PAIR_P256 {
+        return crate::psa_ec::generate_ecc_key(
+            attributes as *const crate::psa_ec::KeyAttributes,
+            key,
+        );
+    }
+    // An AES key: the size is in bits, second field.
+    let bits = ptr::read_unaligned(attributes.add(2) as *const u16);
+    let len = (bits / 8) as usize;
+    if len != 16 && len != 32 {
+        record_unsupported(key_type.into());
+        return PSA_ERROR_NOT_SUPPORTED;
+    }
+    let mut material = [0u8; 32];
+    let status = psa_generate_random(material.as_mut_ptr(), len);
+    if status != 0 {
+        return status;
+    }
+    match store_key(&material[..len], PSA_KEY_TYPE_AES) {
+        Some(id) => {
+            if !key.is_null() {
+                *key = u64::from(id);
+            }
+            0
+        }
+        None => -143, // PSA_ERROR_INSUFFICIENT_MEMORY
+    }
+}
+
+/// `psa_get_key_attributes`
+///
+/// # Safety
+///
+/// `attributes` must point at a `psa_key_attributes_t`.
+#[no_mangle]
+pub unsafe extern "C" fn psa_get_key_attributes(key: u64, attributes: *mut u8) -> i32 {
+    crate::psa_ec::key_attributes(key, attributes as *mut crate::psa_ec::KeyAttributes)
+}
+
+/// `psa_export_public_key`
+///
+/// # Safety
+///
+/// `data` must point at `data_size` writable bytes.
+#[no_mangle]
+pub unsafe extern "C" fn psa_export_public_key(
+    key: u64,
+    data: *mut u8,
+    data_size: usize,
+    data_length: *mut usize,
+) -> i32 {
+    crate::psa_ec::export_public_key(key, data, data_size, data_length)
+}
+
+/// `psa_raw_key_agreement`
+///
+/// # Safety
+///
+/// `peer_key` must point at `peer_key_length` readable bytes; `output` at `output_size` writable ones.
+#[no_mangle]
+pub unsafe extern "C" fn psa_raw_key_agreement(
+    alg: u32,
+    private_key: u64,
+    peer_key: *const u8,
+    peer_key_length: usize,
+    output: *mut u8,
+    output_size: usize,
+    output_length: *mut usize,
+) -> i32 {
+    crate::psa_ec::raw_key_agreement(
+        alg,
+        private_key,
+        peer_key,
+        peer_key_length,
+        output,
+        output_size,
+        output_length,
+    )
 }

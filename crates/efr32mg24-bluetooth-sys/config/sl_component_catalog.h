@@ -25,6 +25,9 @@
 #define SL_CATALOG_BLUETOOTH_FEATURE_ADVERTISER_PRESENT 1
 #define SL_CATALOG_BLUETOOTH_FEATURE_GATT_PRESENT 1
 #define SL_CATALOG_BLUETOOTH_FEATURE_GATT_SERVER_PRESENT 1
+// Security manager and bonding: pairing, encryption, and a key store that survives a reboot.
+#define SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT 1
+#define SL_CATALOG_BLUETOOTH_FEATURE_BUILTIN_BONDING_DATABASE_PRESENT 1
 /* The dynamic GATT database: enabled, and the reason it was blocked for a day.
  *
  * Turning it on made `sli_bt_system_start_bluetooth` return `SL_STATUS_TIMEOUT` and `system_boot` never arrived, which

@@ -77,6 +77,7 @@ pub mod heap;
 pub use efr32mg24_rail_sys as rail;
 /// PSA Crypto: key slots and CMAC, which is all the host stack asks of it.
 pub mod psa;
+pub mod psa_ec;
 /// RAIL's assertion callback: a failure that reports instead of looping.
 pub mod rail_assert;
 /// Hardware entropy: the Secure Engine's TRNG, through the mailbox.

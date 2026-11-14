@@ -66,6 +66,52 @@ That closes the question the previous version of this section got wrong: the adv
 `-87 dBm` these examples read is the same number the RAIL-only test produced, from a dongle sitting inside a metal case
 a few metres away -- not a consequence of a low duty cycle.
 
+## Update 2026-11-14: the security manager links, P-256 works on the board, pairing does not complete
+
+Enabling `SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT` and the builtin bonding database made the linker name exactly
+seven missing PSA functions:
+
+```
+psa_cipher_encrypt  psa_export_key  psa_export_public_key  psa_generate_key
+psa_get_key_attributes  psa_mac_compute  psa_raw_key_agreement
+```
+
+All seven are now in this crate, in Rust:
+
+| group | implementation | state |
+|---|---|---|
+| `psa_mac_compute` | AES-CMAC over `libraries/aes-modes` (RFC 4493, tested there) | built |
+| `psa_cipher_encrypt` | AES-CTR with PSA's `input = IV \|\| plaintext` convention, over `libraries/aes-ctr-radio` | built |
+| `psa_export_key` | copy from the key slot table | built |
+| `psa_generate_key`, `psa_export_public_key`, `psa_raw_key_agreement`, `psa_get_key_attributes` | P-256 via the `p256` crate, with an RNG over the SE's TRNG | **verified on the board** |
+
+The boot record says what the firmware can do:
+
+```
+gatt: adv waiting a=1 ec1 pk65 dh1 sm1
+                     ^^^  ^^^^  ^^^  ^^^
+                     |    |     |    security manager configured and bondable
+                     |    |     two freshly generated key pairs agree on the same secret
+                     |    public key is the 65-byte uncompressed point
+                     P-256 key generation works
+```
+
+`psa_get_key_attributes` writes a 36-byte structure whose layout is asserted at compile time
+(`size_of::<KeyAttributes>() == 36`) and whose two fields the security manager reads -- `type` and `bits` -- sit at
+offsets 0 and 2 with no padding possible. That is weaker than measuring `sizeof` against the C compiler: the PSA
+headers are not in this repository, so there is no C translation unit to compare against. It is written down as the
+weaker claim it is.
+
+**Pairing itself does not complete.** A client sends `Pairing Request` (Secure Connections, NoInputNoOutput) and the
+board answers `Pairing Failed: unspecified reason (0x08)` without sending a `Pairing Response` -- so the abort happens
+before the key exchange, and none of the seven functions is called (the failure recorder stays empty, which is how we
+know). The next step is the security manager's own initialisation: the builtin bonding database stores bonds in NVM3,
+and the abort is consistent with that store not being ready. Nothing about the cryptography has been shown to be at
+fault yet.
+
+A defect found on the way: the key table did not store the handle it handed out, so `psa_destroy_key` and any lookup
+guessed `handle n = slot n - 1` -- true only until the first destroy. Slots now carry their id.
+
 ## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
 
 `ble_scanner` reports advertisements: `scan: 56:44:81:80:de:90 rssi=-76 len=13 n=4`. Three independent defects sat

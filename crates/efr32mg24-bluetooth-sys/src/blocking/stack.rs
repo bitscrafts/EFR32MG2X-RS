@@ -670,6 +670,31 @@ impl Bluetooth {
         Ok(())
     }
 
+    /// Make this device pairable and bondable, with LE Secure Connections only.
+    ///
+    /// The board has no display and no keyboard, so the pairing method is Just Works: the client is authenticated by
+    /// the ECDH exchange and not by a passkey. `SC_ONLY` refuses legacy pairing, which is the one that can be broken
+    /// with a sniffer; a product that cannot do Secure Connections should fail loudly rather than fall back.
+    ///
+    /// `BONDING_REQUIRED` makes the link key persist, and the builtin bonding database stores it in NVM3, so a paired
+    /// peer is remembered across a reboot.
+    pub fn enable_pairing(&mut self) -> Result<(), BleError> {
+        /// `SL_BT_SM_CONFIGURATION_BONDING_REQUIRED | SL_BT_SM_CONFIGURATION_SC_ONLY`
+        const FLAGS: u8 = 0x02 | 0x04;
+        /// `sl_bt_sm_io_capability_noinputnooutput`
+        const NO_INPUT_NO_OUTPUT: u8 = 0x03;
+
+        let status = unsafe { bt::sl_bt_sm_configure(FLAGS, NO_INPUT_NO_OUTPUT) };
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        let status = unsafe { bt::sl_bt_sm_set_bondable_mode(1) };
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        Ok(())
+    }
+
     /// Set connection state (manual tracking)
     ///
     /// Updates the internal connection state. This is typically called

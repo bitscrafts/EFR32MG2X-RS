@@ -14,6 +14,8 @@ categories = ["embedded", "hardware-support", "no-std"]
 efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
 aes-ctr-radio = { path = "../../libraries/aes-ctr-radio" }
 aes-modes = { path = "../../libraries/aes-modes" }
+# P-256 for the security manager's LE Secure Connections: ECDH and public-key export, in Rust.
+p256 = { version = "0.13", default-features = false, features = ["ecdh"] }
 efr32mg24-emlib-sys = { path = "../efr32mg24-emlib-sys" }
 bt-heap = { path = "../../libraries/bt-heap" }
 # AES-CTR for the controller, in Rust: libraries/aes-ctr-radio holds the implementation and its
