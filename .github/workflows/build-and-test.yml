@@ -40,7 +40,9 @@ jobs:
         # the radio and BSP crates fail, which looks like a broken repository rather than a bare runner.
         run: |
           sudo apt-get update
-          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libclang-dev
+          # libnewlib-arm-none-eabi is a separate package on Ubuntu: without it the vendor C files fail on
+          # <string.h>, which reads like a broken repository rather than a bare runner.
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libnewlib-arm-none-eabi libclang-dev
 
       - name: Run the gate
         run: |
