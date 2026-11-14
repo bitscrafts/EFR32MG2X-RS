@@ -11,6 +11,10 @@ this says what a real client sees. Neither is evidence alone.
 Two traps it exists to avoid, both of which produced false verdicts here:
   * `gdbus call --method StartNotify` runs as its own short-lived process and BlueZ drops the subscription when that
     client goes away, writing the CCC descriptor back to 0. The connection has to stay open, so this uses python-dbus.
+  * BlueZ only creates a device object after its own scan has seen it (a raw `hcitool lescan` does not count), and a
+    scan client killed by a timeout leaves discovery stuck: the next attempt answers `org.bluez.Error.InProgress` for
+    ever. `sudo hciconfig hci0 reset` then `bluetoothctl --timeout 13 scan on` clears it. Reset touches the BLE side of
+    the dongle only -- its Wi-Fi side carries the network, and nothing here may power the controller down.
   * a read-back can be answered from BlueZ's cache. The verdict that matters is the echo: the firmware repeats the
     bytes the client wrote inside its notifications, and bytes that come back can only have crossed the link.
 
