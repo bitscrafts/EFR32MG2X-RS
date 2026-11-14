@@ -53,6 +53,13 @@ book/**/*.toc
 **/blobs/*.lib
 **/vendor/**/*.h
 **/vendor/**/*.c
+# ...except the vendor trees the build genuinely needs. The repository already ships the Silabs binaries these
+# headers describe (the controller, host and NVM3 archives) and the whole v4.4.5 emlib source, so withholding the
+# headers left a clone that could not build its own radio or BSP crates -- a repository that compiles only on the
+# machine where the SDK happens to be unpacked.
+!crates/efr32mg24-emlib-sys/vendor/**
+!crates/efr32mg24-bluetooth-sys/vendor/**
+!crates/efr32mg24-rail-sys/vendor/**
 
 # Local temp work must not land in the repository
 _tmp/
