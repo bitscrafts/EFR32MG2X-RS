@@ -39,3 +39,7 @@ panic-halt = "0.2"
 # The fall detector is written as a project (main + app + ui + recorded), not a
 # single file, because the whole application lives there.
 
+
+[package.metadata.docs.rs]
+targets = ["thumbv8m.main-none-eabihf"]
+rustdoc-args = ["--cfg", "docsrs"]

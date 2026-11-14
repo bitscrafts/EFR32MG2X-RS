@@ -1,3 +1,4 @@
+#![doc = include_str!("../docs/crate-doc.md")]
 #![no_std]
 #![deny(missing_docs)]
 
