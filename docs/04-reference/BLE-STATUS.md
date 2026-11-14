@@ -190,9 +190,32 @@ Two instrument defects had to be fixed to read any of this:
 - The canary's magic word was 64-bit, which is an out-of-range literal on this 32-bit target -- it compiled on the
   host tests and failed on the board.
 
-Next step: read the arena around offsets 5256 and 5456 over SWD and compare the damaged headers with the allocated
-sizes; the block of 64 usable bytes that takes 65 is the classic 65-byte uncompressed ECC point written into a
-64-byte buffer.
+### The free list is the casualty, and the walk says so
+
+A summary taken at the moment of failure:
+
+```
+gatt: end ... se=4/4616 ec=0 lf=448 ad=2/10 b=264@5256 r=16@5480,8@5456,16@5424
+```
+
+`lf=448` is the allocation that failed; `hl=272` (from the periodic record) is the largest block the free list can
+still offer; `hp=7472` is what is in use -- out of a **65536-byte** arena. So 56 KiB is unreachable: the free list is
+broken, not full.
+
+Two things were learned about the instrument itself:
+
+- **An offline dump races with the target.** Reading the arena over SWD in one call and interpreting it in another
+  lets the firmware keep allocating in between, so a block header read at one instant belongs to a different block
+  layout at the next. The `audit()` taken *inside* the firmware, in one instant, is the only reliable version, and the
+  SWD dump was abandoned for that reason.
+- **The linear walk misaligns after the first damaged header.** `b=264@5256` claims a 280-byte block at 5256, while
+  the allocation ring reports live 16- and 8-byte blocks at 5424, 5456 and 5480 -- inside that span. When the chain is
+  broken, every size read after the break is a payload word being read as a header, so the walk's *first* damaged
+  entry is trustworthy and the rest is not.
+
+Next step, and it is the one that names the writer: when `sl_malloc` fails, dump the **free list itself** -- offsets
+and sizes, in order -- into the mailbox. The first link that is not consistent is the block somebody wrote past, and it
+is found without depending on the walk's alignment.
 
 A defect found on the way: the key table did not store the handle it handed out, so `psa_destroy_key` and any lookup
 guessed `handle n = slot n - 1` -- true only until the first destroy. Slots now carry their id.

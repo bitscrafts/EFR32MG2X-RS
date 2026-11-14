@@ -133,6 +133,17 @@ pub fn last_damaged() -> (usize, usize) {
     }
 }
 
+/// The last few allocations, newest first, as `(requested_size, offset)`.
+pub fn recent() -> [(usize, usize); bt_heap::RECENT] {
+    unsafe {
+        let slot = &*core::ptr::addr_of!(HEAP);
+        match slot.as_ref() {
+            Some(h) => h.recent(),
+            None => [(0, 0); bt_heap::RECENT],
+        }
+    }
+}
+
 /// `(damaged_blocks, total_blocks, first_damaged_size, first_damaged_offset)` for the whole arena.
 pub fn audit() -> (u32, u32, usize, usize) {
     unsafe {

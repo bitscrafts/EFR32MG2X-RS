@@ -51,6 +51,10 @@ const CANARY_MAGIC: usize = 0xcafe_babe;
 /// base. Written and read through raw pointers, so the type exists only to size it correctly.
 const LINK: usize = core::mem::size_of::<Option<usize>>();
 
+/// How many recent allocations are remembered. Enough to cover a pairing exchange's working set, small enough to fit in
+/// the record the board publishes.
+pub const RECENT: usize = 6;
+
 /// A bounded heap over a borrowed buffer.
 pub struct Heap<'a> {
     buf: &'a mut [u8],
@@ -68,6 +72,10 @@ pub struct Heap<'a> {
     /// that names the overrunning consumer: blocks are handed out per call site, so the size identifies it.
     last_damaged_size: usize,
     last_damaged_offset: usize,
+    /// `(requested_size, offset)` of the last few allocations, oldest first. When a block's canary is later found
+    /// damaged, this is what ties the block to the size that was asked for -- and therefore to the call site.
+    recent: [(usize, usize); RECENT],
+    recent_at: usize,
 }
 
 impl<'a> Heap<'a> {
@@ -83,6 +91,8 @@ impl<'a> Heap<'a> {
             last_failed_size: 0,
             last_damaged_size: 0,
             last_damaged_offset: 0,
+            recent: [(0, 0); RECENT],
+            recent_at: 0,
         };
         if len >= HEADER + LINK + ALIGN {
             heap.write_size(0, len);
@@ -188,6 +198,8 @@ impl<'a> Heap<'a> {
                     self.write_size(at, block_size);
                 }
                 self.write_canary(at, self.read_size(at));
+                self.recent[self.recent_at] = (size, at);
+                self.recent_at = (self.recent_at + 1) % RECENT;
                 self.in_use += need;
                 // The payload starts after the header; the header keeps the size for `dealloc`.
                 return unsafe { self.buf.as_mut_ptr().add(at + HEADER) };
@@ -361,6 +373,15 @@ impl<'a> Heap<'a> {
             at += size;
         }
         (damaged, blocks, first_size, first_at)
+    }
+
+    /// The remembered allocations, newest first.
+    pub fn recent(&self) -> [(usize, usize); RECENT] {
+        let mut out = [(0usize, 0usize); RECENT];
+        for (i, slot) in out.iter_mut().enumerate() {
+            *slot = self.recent[(self.recent_at + RECENT - 1 - i) % RECENT];
+        }
+        out
     }
 
     /// `(usable_size, offset)` of the last block found with a damaged canary -- the block some consumer wrote past.

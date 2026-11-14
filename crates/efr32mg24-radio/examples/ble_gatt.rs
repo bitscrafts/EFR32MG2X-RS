@@ -302,7 +302,7 @@ fn main() -> ! {
                     // 160, not 64: this is the widest record in the tree (nine label/value pairs, two of them
                     // five-digit ticks) and the first version was 64, which panicked on the bounds check and left the
                     // mailbox holding the *previous* record -- so the summary looked like it had never been written.
-                    let mut msg = [0u8; 256];
+                    let mut msg = [0u8; 288];
                     let mut at = 0;
                     msg[at..at + 9].copy_from_slice(b"gatt: end");
                     at += 9;
@@ -321,7 +321,11 @@ fn main() -> ! {
                     // The summary is the record that survives a disconnect, and a failed pairing *is* a disconnect:
                     // the security manager's event, then the close, then this. Anything written between them is
                     // overwritten, so these numbers live here.
-                    let (_, hf_sum, hv_sum) = efr32mg24_bluetooth_sys::heap::stats();
+                    //
+                    // `ad` is the arena audited in one instant (a linear walk, not via the free list); `b` is the first
+                    // damaged block; `r` is the last three allocations, newest first, which tie a damaged block to the
+                    // size that was asked for and therefore to the call site.
+                    let (bad, total, bad_size, bad_at) = efr32mg24_bluetooth_sys::heap::audit();
                     at = push_literal(&mut msg, at, b" se=");
                     at = push_dec(&mut msg, at, last_sec_event);
                     at = push_literal(&mut msg, at, b"/");
@@ -332,22 +336,30 @@ fn main() -> ! {
                         at,
                         efr32mg24_bluetooth_sys::psa_ec::generated_count(),
                     );
-                    at = push_literal(&mut msg, at, b" hf=");
-                    at = push_dec(&mut msg, at, hf_sum);
-                    at = push_literal(&mut msg, at, b" hv=");
-                    at = push_dec(&mut msg, at, hv_sum);
                     at = push_literal(&mut msg, at, b" lf=");
                     at = push_dec(
                         &mut msg,
                         at,
                         efr32mg24_bluetooth_sys::heap::last_failed_size() as u32,
                     );
-                    // Which block was written past. The size names the call site that allocates it.
-                    let (damaged_size, damaged_at) = efr32mg24_bluetooth_sys::heap::last_damaged();
-                    at = push_literal(&mut msg, at, b" ld=");
-                    at = push_dec(&mut msg, at, damaged_size as u32);
+                    at = push_literal(&mut msg, at, b" ad=");
+                    at = push_dec(&mut msg, at, bad);
+                    at = push_literal(&mut msg, at, b"/");
+                    at = push_dec(&mut msg, at, total);
+                    at = push_literal(&mut msg, at, b" b=");
+                    at = push_dec(&mut msg, at, bad_size as u32);
                     at = push_literal(&mut msg, at, b"@");
-                    at = push_dec(&mut msg, at, damaged_at as u32);
+                    at = push_dec(&mut msg, at, bad_at as u32);
+                    at = push_literal(&mut msg, at, b" r=");
+                    let ring = efr32mg24_bluetooth_sys::heap::recent();
+                    for (i, (size, offset)) in ring.iter().take(3).enumerate() {
+                        if i > 0 {
+                            at = push_literal(&mut msg, at, b",");
+                        }
+                        at = push_dec(&mut msg, at, *size as u32);
+                        at = push_literal(&mut msg, at, b"@");
+                        at = push_dec(&mut msg, at, *offset as u32);
+                    }
                     at = push_literal(&mut msg, at, b" wr=");
                     at = push_dec(&mut msg, at, control_writes);
                     at += 5;
