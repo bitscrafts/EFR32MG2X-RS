@@ -97,10 +97,14 @@ for dir in $CRATES; do
     libraries/*) example_target="$HOST" ;;
     *)          example_target="$TARGET" ;;
   esac
-  if cargo build --release --target "$example_target" -p "$pkg" $extra --examples >/dev/null 2>&1; then
+  if cargo build --release --target "$example_target" -p "$pkg" $extra --examples >/tmp/gate-examples-$pkg.log 2>&1; then
     pass "$pkg: $count examples"
   else
+    # Keep the compiler's own words. A gate that reports "do not build" without saying why forces the
+    # next person to reproduce the build by hand -- and on a CI runner they often cannot.
     fail "$pkg: examples do not build"
+    echo "--- first errors from /tmp/gate-examples-$pkg.log:"
+    grep -E "^error(\[|:)" -A4 "/tmp/gate-examples-$pkg.log" | head -20 | sed 's/^/      /'
   fi
   # A hardware crate whose API nothing builds is a crate whose API is not tested. Only the
   # crates that own pins are held to this; the PAC is exercised by its own 19 examples and

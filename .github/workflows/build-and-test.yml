@@ -34,6 +34,14 @@ jobs:
       # cannot fail, and built examples without the features they require.
       # Run once, keep the full log, and let the step's exit status be the gate's verdict. Running it twice to print a
       # summary would double the CI time for a tail of output that the first run already produced.
+      - name: Install the C toolchain the build scripts need
+        # The crates that wrap the vendor blobs generate bindings with bindgen (libclang) and compile
+        # the CMSIS stubs for the target (arm-none-eabi-gcc). Without these the PAC and HAL build and
+        # the radio and BSP crates fail, which looks like a broken repository rather than a bare runner.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-arm-none-eabi libclang-dev
+
       - name: Run the gate
         run: |
           set -o pipefail

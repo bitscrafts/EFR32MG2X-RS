@@ -1,5 +1,13 @@
 # EFR32MG24 Rust Support
 
+[![Build and Test](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/build-and-test.yml/badge.svg?branch=master)](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/build-and-test.yml)
+[![Code Quality](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/quality-checks.yml/badge.svg?branch=master)](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/quality-checks.yml)
+[![Documentation](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/docs.yml/badge.svg?branch=master)](https://bitscrafts.github.io/EFR32MG2X-RS/)
+[![License](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-blue.svg)](#license)
+![no_std](https://img.shields.io/badge/no__std-supported-success.svg)
+![Target](https://img.shields.io/badge/target-thumbv8m.main--none--eabihf-informational.svg)
+[![Cortex-M33](https://img.shields.io/badge/Cortex--M33-EFR32MG24B220-lightgrey.svg)](https://www.silabs.com/wireless/zigbee/efr32mg24-series-2-socs)
+
 ![XIAO MG24 Sense on the XIAO Expansion Base](docs/images/xiao-mg24-sense.jpg)
 
 *XIAO MG24 Sense in the XIAO Expansion Base running `base_env_display`: the panel carries the BME680's compensated
