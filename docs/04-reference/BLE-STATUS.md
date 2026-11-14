@@ -50,9 +50,21 @@ measures the scanner's duty cycle.
 What survives: an advertising report seen twice **75 ms apart** (beacon) and **76 ms apart** (`ble_advertise_custom`)
 shows the interval is in the right order; the per-second totals do not.
 
-To measure a rate on this bench, the receiver has to be controllable -- a second board running `ble_scanner` with a
-known window, or the host with `bluetoothd` stopped. Neither is in place, so **the advertising rate is unmeasured**, and
-that is the honest state rather than a number produced by an instrument that cannot see.
+**The receiver saturates, and that is measurable.** With `bluetoothd` stopped and the scan parameters set directly
+(`LE Set Scan Parameters`, window = interval = 0x30, then `LE Set Scan Enable`), the same window gives the beacon
+**19 reports in 11 s** and the neighbours **130**. If the five neighbours around this desk advertise at the usual
+100 ms -- 30 packets per second each, since every event goes out on three channels -- the adapter is capturing about
+**8% of what is on the air**. Applying that factor, the beacon's 19 reports correspond to roughly 22 packets/s, about
+seven advertising events per second, which is what a 100 ms interval produces.
+
+So the counts in this section are a property of the adapter, not of the firmware, and no arrangement of
+`hcitool`/`bluetoothctl` commands changes it: `hcitool lescan` overwrites the scan parameters that were just set, and
+`LE Set Scan Enable` by hand still leaves the controller capturing a fraction. A rate measured on this bench would need
+a second board as the receiver, with its window under this project's control.
+
+That closes the question the previous version of this section got wrong: the advertising is not starved, and the
+`-87 dBm` these examples read is the same number the RAIL-only test produced, from a dongle sitting inside a metal case
+a few metres away -- not a consequence of a low duty cycle.
 
 ## Update 2026-11-13 (night): the scanner works, and the GATT gap is named
 

@@ -158,6 +158,11 @@ fn main() -> ! {
             delay.delay_ms(20);
             led.off();
         } else {
+            // Sleep, and note what that costs: the stack's timers are polled by this project because the SYSRTC compare
+            // interrupt does not fire yet, so a loop parked in `wfi` only advances them when an interrupt arrives.
+            // Replacing this with a 1 ms poll was tried and made no measurable difference to the on-air rate -- the
+            // receiver saturates long before the transmitter does (see BLE-STATUS.md), so the experiment could not
+            // answer the question and the power cost stayed.
             cortex_m::asm::wfi();
         }
     }
