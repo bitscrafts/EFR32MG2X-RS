@@ -8,6 +8,7 @@ authors.workspace = true
 description = "Peripheral Access Crate for EFR32MG24 microcontrollers"
 keywords = ["arm", "cortex-m", "efr32", "silabs", "embedded"]
 categories = ["embedded", "hardware-support", "no-std"]
+readme = "README.md"
 # The SVD is the input to svd2rust, not an input to the build: 5.7 MB that every user would download
 # and never read.
 exclude = ["svd/"]
@@ -43,3 +44,9 @@ panic-halt = "0.2"
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 
 [build-dependencies]
+
+[package.metadata.docs.rs]
+# A bare `cargo doc` on the host builds the crate but the target is the interesting part: docs.rs must use the
+# Cortex-M33 target, and `docsrs` is what the generated `cfg_attr(docsrs, ...)` expects.
+targets = ["thumbv8m.main-none-eabihf"]
+rustdoc-args = ["--cfg", "docsrs"]
