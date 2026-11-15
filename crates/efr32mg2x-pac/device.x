@@ -2,7 +2,7 @@
 /* This file is included by link.x from cortex-m-rt */
 
 /* Provides weak aliases for device-specific interrupt handlers */
-/* The PAC crate (efr32mg24-pac) provides the actual interrupt vectors */
+/* The PAC crate (efr32mg2x-pac) provides the actual interrupt vectors */
 
 /* Gecko Bootloader Application Properties Support */
 /* The bootloader requires vector table word 13 (offset 0x34) to point to ApplicationProperties_t */

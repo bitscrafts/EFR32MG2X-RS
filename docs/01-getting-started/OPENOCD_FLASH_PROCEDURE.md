@@ -176,7 +176,7 @@ openocd -f interface/cmsis-dap.cfg -f efr32mg24.cfg -c "..."
 
 ### Memory Configuration
 
-**Cargo.toml** (efr32mg24-pac):
+**Cargo.toml** (efr32mg2x-pac):
 ```toml
 [dependencies]
 cortex-m-rt = "0.7"
@@ -205,7 +205,7 @@ _stack_start = ORIGIN(RAM) + LENGTH(RAM);
 
 ```bash
 # Step 1: Build firmware
-cd efr32mg24-pac
+cd efr32mg2x-pac
 cargo build --release --example blink --features rt
 
 # Step 2: Generate hex file

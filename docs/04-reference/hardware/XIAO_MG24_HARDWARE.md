@@ -160,7 +160,7 @@ The B220 variant SVD file has been successfully extracted from the Silicon Labs 
 - **Pack**: SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2
 - **Pack Date**: October 6, 2025
 - **Download URL**: https://www.keil.arm.com/packs/geckoplatform_efr32mg24_dfp-siliconlabs/devices/
-- **SVD File**: `crates/efr32mg24-pac/svd/EFR32MG24B220F1536IM48.svd`
+- **SVD File**: `crates/efr32mg2x-pac/svd/EFR32MG24B220F1536IM48.svd`
 
 ### Complete Device Coverage
 
@@ -168,7 +168,7 @@ The pack includes SVD files for **41 EFR32MG24 variants**:
 - **27 A-series** variants (original silicon)
 - **14 B-series** variants (newer silicon revision)
 
-See `crates/efr32mg24-pac/svd/README.md` for complete device list and details.
+See `crates/efr32mg2x-pac/svd/README.md` for complete device list and details.
 
 ## Next Steps
 

@@ -32,7 +32,7 @@ echo ""
 # Check 2: Clippy on PAC (allow warnings for generated code)
 echo -e "${YELLOW}2️⃣  Running Clippy on PAC...${NC}"
 # Suppress Cargo.toml warnings from dependencies
-if cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf 2>&1 | grep -v "default-features" | tail -5; then
+if cargo clippy -p efr32mg2x-pac --target thumbv8m.main-none-eabihf 2>&1 | grep -v "default-features" | tail -5; then
     echo -e "${GREEN}✅ PAC Clippy completed${NC}"
 else
     echo -e "${RED}❌ PAC Clippy failed${NC}"
@@ -53,7 +53,7 @@ echo ""
 
 # Check 4: Build PAC
 echo -e "${YELLOW}4️⃣  Building PAC (this may take ~2 minutes)...${NC}"
-if cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release --quiet; then
+if cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf --release --quiet; then
     echo -e "${GREEN}✅ PAC build succeeded${NC}"
 else
     echo -e "${RED}❌ PAC build failed${NC}"

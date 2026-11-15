@@ -41,7 +41,7 @@ Created minimal Rust test application with:
 - Generated: `test-app.hex` at address 0x08004000
 
 **Key Issues Solved**:
-- PAC path: Changed from `../../efr32mg24-pac` to `../efr32mg24-pac`
+- PAC path: Changed from `../../efr32mg2x-pac` to `../efr32mg2x-pac`
 - Critical section: Added `features = ["critical-section-single-core"]` to cortex-m
 - WDOG API: Field access, not method call (`wdog0_ns` not `wdog0_ns()`)
 
@@ -144,7 +144,7 @@ peripherals.wdog0_ns.en().write(|w| w.en().clear_bit());
 cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg2x-pac = { path = "../efr32mg2x-pac" }
 ```
 
 ### 2. crates/bootloader-test-app/src/main.rs

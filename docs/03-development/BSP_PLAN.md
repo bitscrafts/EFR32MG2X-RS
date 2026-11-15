@@ -20,7 +20,7 @@ The HAL should remain **device-generic** for all EFR32MG24 variants, while BSPs 
 
 ```
 EFR32MG2X-RS/
-├── crates/efr32mg24-pac/              # Device PAC (B220, A020, etc.)
+├── crates/efr32mg2x-pac/              # Device PAC (B220, A020, etc.)
 ├── crates/efr32mg24-hal/              # Generic HAL for all EFR32MG24
 │   ├── src/
 │   │   ├── clock/              # Generic clock management

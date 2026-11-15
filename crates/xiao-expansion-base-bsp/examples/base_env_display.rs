@@ -1,7 +1,7 @@
 //! Environment display: temperature, pressure and humidity from the BME68x on
 //! the Expansion Base, drawn on the base's OLED — **through the HAL only**.
 //!
-//! This is the HAL twin of `efr32mg24-pac/examples/pac_env_display.rs`, and the
+//! This is the HAL twin of `efr32mg2x-pac/examples/pac_env_display.rs`, and the
 //! pair is the differential test: both write the same values to the same
 //! mailbox, so any disagreement between them is a HAL bug, not a sensor quirk.
 //!

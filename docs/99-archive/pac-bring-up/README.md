@@ -10,6 +10,6 @@ remains", which was true in January 2026 and is false now: `pac_timer_blink` was
 
 Read them as a diary, not as documentation. The current state lives in:
 
-- `crates/efr32mg24-pac/docs/crate-doc.md` — what the crate is, and what the SVD does not tell you
-- `crates/efr32mg24-pac/docs/examples.md` — every example, generated from the files
+- `crates/efr32mg2x-pac/docs/crate-doc.md` — what the crate is, and what the SVD does not tell you
+- `crates/efr32mg2x-pac/docs/examples.md` — every example, generated from the files
 - `docs/03-development/STATUS.md` — the workspace's authoritative status

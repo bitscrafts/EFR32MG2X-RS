@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 
 CRATES = {
     "efr32mg2x-pac": {
-        "dir": "crates/efr32mg24-pac",
+        "dir": "crates/efr32mg2x-pac",
         # Phrases that shipped a false status to crates.io. Any of them inside the package is a failure.
         "required": [r"0x08006000", r"--nmagic"],
         "forbidden": [

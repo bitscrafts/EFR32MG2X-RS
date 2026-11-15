@@ -147,7 +147,7 @@ None of the four ecosystems has that shape, so the mapping is by analogy, not by
 
 ```text
 crates/                              the hardware stack: one dependency direction
-  efr32mg24-pac/                     registers
+  efr32mg2x-pac/                     registers
   efr32mg24-hal/                     drivers + a bit-banged I2C that takes pins; no wiring
   xiao-mg24-bsp/                     the module: LED; feature "sense": IMU + microphone
   xiao-expansion-base-bsp/           the base: OLED, BME68x, RTC, buzzer, button, Grove, SD

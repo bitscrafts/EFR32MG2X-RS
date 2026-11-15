@@ -16,7 +16,7 @@ These examples demonstrate **protocol stack usage**, not HAL-level abstractions:
 │  efr32mg24-hal                          │ ← Basic Peripherals Only
 │  - Clocks, GPIO, SPI, I2C, timers      │   (no BLE)
 ├─────────────────────────────────────────┤
-│  efr32mg24-pac                          │ ← Register Access
+│  efr32mg2x-pac                          │ ← Register Access
 │  - Direct hardware registers           │
 └─────────────────────────────────────────┘
 ```

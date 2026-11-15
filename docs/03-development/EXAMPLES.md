@@ -10,7 +10,7 @@ belongs to.
 
 | prefix | crate | what it means |
 |---|---|---|
-| `pac_` | `efr32mg24-pac` | register-level proof of concept; pins are named inline on purpose |
+| `pac_` | `efr32mg2x-pac` | register-level proof of concept; pins are named inline on purpose |
 | `hal_` | `efr32mg24-hal` | one HAL module and the pins it is given |
 | `module_` | `xiao-mg24-bsp` | the XIAO module on the desk, no carrier underneath |
 | `base_` | `xiao-expansion-base-bsp` | a device that is on the Expansion Base |
@@ -21,9 +21,9 @@ prevent, and it is deliberate at those two levels: the point of a `pac_` example
 registers, and the point of a `hal_` example is the driver. The wiring that must not be
 repeated lives in the two BSP crates, once.
 
-## `efr32mg24-pac` — chip level (19)
+## `efr32mg2x-pac` — chip level (19)
 
-`cortex-m-rt` + `efr32mg24-pac` + `panic_halt`, nothing else. Several exist because a
+`cortex-m-rt` + `efr32mg2x-pac` + `panic_halt`, nothing else. Several exist because a
 HAL-level failure needed a second opinion at the lowest level.
 
 | example | what it proves |
@@ -94,7 +94,7 @@ bash scripts/gate.sh    # VERDICT: PASS — pac 19, hal 2, module 4, base 7 (+1)
 
 | Level | Examples | What it proves | Why not here |
 |---|---|---|---|
-| `efr32mg24-pac` | — | — | the radio is a blob; there are no registers to write |
+| `efr32mg2x-pac` | — | — | the radio is a blob; there are no registers to write |
 | `efr32mg24-hal` | — | — | a HAL that depended on MSLA blobs would tax every GPIO user |
 | `efr32mg24-bluetooth-sys` | `bt_version` | the bindings, the blobs and the CMSIS stubs link | — |
 | `efr32mg24-radio` | `ble_beacon`, `ble_advertise_custom`, `ble_scanner` | the stack, both directions, and a framed payload | `ble_gatt` waits on PSA crypto |

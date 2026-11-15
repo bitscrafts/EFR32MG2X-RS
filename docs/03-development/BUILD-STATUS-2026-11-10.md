@@ -5,7 +5,7 @@ target `thumbv8m.main-none-eabihf`, `gcc-arm-none-eabi` 14.2 installed.
 
 | crate | build | note |
 |---|---|---|
-| `efr32mg24-pac` | OK | |
+| `efr32mg2x-pac` | OK | |
 | `efr32mg24-hal` (`--features rt`) | OK | |
 | `efr32mg24-rail-sys` | OK | |
 | `xiao-mg24-bsp` (lib) | OK | |

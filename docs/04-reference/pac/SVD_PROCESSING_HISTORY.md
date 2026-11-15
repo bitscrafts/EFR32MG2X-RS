@@ -100,7 +100,7 @@ cargo install form
 
 ```
 EFR32MG24/
-├── crates/efr32mg24-pac/
+├── crates/efr32mg2x-pac/
 │   ├── Cargo.toml
 │   ├── build.rs
 │   ├── memory.x
@@ -114,7 +114,7 @@ EFR32MG24/
 #### 2. Generate PAC
 
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 
 # Generate from SVD
 svd2rust -i svd/EFR32MG24A020F1536GM48.svd \
@@ -152,7 +152,7 @@ cargo fmt
 
 ```toml
 [package]
-name = "efr32mg24-pac"
+name = "efr32mg2x-pac"
 version = "0.1.0"
 edition = "2021"  # Important: Use 2021, not 2024
 license = "MIT OR Apache-2.0"
@@ -245,7 +245,7 @@ warning[E0133]: call to unsafe function is unsafe and requires unsafe block
 **Use Edition 2021**: The PAC compiles cleanly with edition = "2021" in Cargo.toml.
 
 ```toml
-# crates/efr32mg24-pac/Cargo.toml
+# crates/efr32mg2x-pac/Cargo.toml
 [package]
 edition = "2021"  # Not 2024
 
@@ -304,7 +304,7 @@ Errors:        0
 
 ```bash
 # PAC compiles
-cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf
+cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf
 # ✅ Success
 
 # HAL compiles (with PAC dependency)
@@ -335,7 +335,7 @@ cargo install svd2rust --locked --force
 
 **Verify structure**:
 ```bash
-crates/efr32mg24-pac/
+crates/efr32mg2x-pac/
 ├── svd/
 │   └── EFR32MG24A020F1536GM48.svd  # Must exist
 └── src/

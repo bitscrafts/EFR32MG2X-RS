@@ -258,7 +258,7 @@ bootloader has started HFXO, or after the Clocks::new bug is fixed.
   `crates/efr32mg24-hal/examples/02_blink.rs`
 - Recovery hex: `crates/efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex`
 - PAC blink_xiao (verified working, uses HFRCO only):
-  `crates/efr32mg24-pac/examples/blink_xiao.rs`
+  `crates/efr32mg2x-pac/examples/blink_xiao.rs`
 - Quick flash guide: `docs/01-getting-started/QUICK_FLASH_GUIDE.md`
 - Hardware details: `docs/04-reference/hardware/XIAO_MG24_HARDWARE.md`
 

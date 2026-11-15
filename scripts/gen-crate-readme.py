@@ -7,8 +7,8 @@ structure claiming "2,634 files" when the tree has 2,633, and an example that di
 value the tree already knew. The prose stays in the template, where a human writes it once; the numbers come from the
 manifest, the source, and the measured hardware results.
 
-    python3 scripts/gen-crate-readme.py crates/efr32mg24-pac            # render
-    python3 scripts/gen-crate-readme.py crates/efr32mg24-pac --check    # fail if out of date
+    python3 scripts/gen-crate-readme.py crates/efr32mg2x-pac            # render
+    python3 scripts/gen-crate-readme.py crates/efr32mg2x-pac --check    # fail if out of date
 """
 import csv
 import re

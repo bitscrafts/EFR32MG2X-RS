@@ -67,7 +67,7 @@ The EFR32MG24 flash:
 # Flash Arduino bootloader + blink example (known working)
 openocd -f interface/cmsis-dap.cfg -f ../efr32mg24.cfg \
   -c "init" \
-  -c "program ../efr32mg24-pac/arduino_blink.hex verify" \
+  -c "program ../efr32mg2x-pac/arduino_blink.hex verify" \
   -c "reset run" \
   -c "exit"
 ```
@@ -159,7 +159,7 @@ Every flash command includes `verify`:
 ### Quick Recovery: Flash Arduino Firmware
 ```bash
 # Get back to known-good state
-cd efr32mg24-pac
+cd efr32mg2x-pac
 openocd -f interface/cmsis-dap.cfg -f ../efr32mg24.cfg \
   -c "init" \
   -c "program arduino_blink.hex verify" \

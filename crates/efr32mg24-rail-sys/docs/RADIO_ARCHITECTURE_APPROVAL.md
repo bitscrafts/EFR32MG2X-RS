@@ -69,7 +69,7 @@ efr32mg24-hal/src/radio/
 
 ```
 EFR32MG24/
-├── efr32mg24-pac/              # Existing (no changes)
+├── efr32mg2x-pac/              # Existing (no changes)
 ├── efr32mg24-hal/              # Existing (add radio/ module)
 │   └── src/radio/              # NEW: Generic radio traits
 │

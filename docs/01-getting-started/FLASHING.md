@@ -38,7 +38,7 @@ images are built in this container and copied over.
 
 ```bash
 # 1. build (in the container)
-cargo build --release -p efr32mg24-pac --example blink_xiao --features rt
+cargo build --release -p efr32mg2x-pac --example blink_xiao --features rt
 
 # 2. dry run: address range + probe check, nothing written
 scripts/flash.sh \

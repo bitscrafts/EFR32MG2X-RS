@@ -237,7 +237,7 @@ The HAL provides an optional `rt` feature for runtime support:
 
 ```toml
 [features]
-rt = ["efr32mg24-pac/rt", "cortex-m-rt"]
+rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
 ```
 
 **When enabled:**
@@ -268,7 +268,7 @@ cortex-m = { features = ["critical-section-single-core"] }
 graph TD
     APP[Application] --> HAL[efr32mg24-hal]
     APP --> RT[cortex-m-rt]
-    HAL --> PAC[efr32mg24-pac]
+    HAL --> PAC[efr32mg2x-pac]
     HAL --> CM[cortex-m + critical-section]
     HAL --> EH[embedded-hal]
     PAC --> CM
@@ -278,7 +278,7 @@ graph TD
 
 **Crate Roles:**
 - **efr32mg24-hal**: High-level hardware abstractions
-- **efr32mg24-pac**: Low-level peripheral register access
+- **efr32mg2x-pac**: Low-level peripheral register access
 - **cortex-m-rt**: Startup code and linker script
 - **cortex-m**: Core Cortex-M functionality and critical sections
 - **embedded-hal**: Trait definitions for portable drivers

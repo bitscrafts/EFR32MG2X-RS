@@ -478,7 +478,7 @@ EFR32MG24/
 ├── .gitignore                      # Git ignore (includes .archive/)
 ├── .archive/                       # Timestamped documentation backups
 │
-├── crates/efr32mg24-pac/                  # PAC Crate (B220 variant)
+├── crates/efr32mg2x-pac/                  # PAC Crate (B220 variant)
 │   ├── Cargo.toml
 │   ├── src/lib.rs                  # Generated PAC (138,448 lines, 133 peripherals)
 │   └── svd/                        # All 41 device SVD files

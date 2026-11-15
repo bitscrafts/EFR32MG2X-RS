@@ -10,7 +10,7 @@
 ```
 EFR32MG24/
 ├── Cargo.toml                    # Workspace configuration
-├── efr32mg24-pac/                # Peripheral Access Crate
+├── efr32mg2x-pac/                # Peripheral Access Crate
 │   ├── Cargo.toml
 │   └── src/
 ├── efr32mg24-hal/                # Hardware Abstraction Layer
@@ -124,7 +124,7 @@ unsupported proc macro punctuation character '{'
 **Issue**: Initial confusion about folder structure - where to place SVD files and how to organize workspace.
 
 **Resolution**:
-- Created workspace with two members: `efr32mg24-pac` and `efr32mg24-hal`
+- Created workspace with two members: `efr32mg2x-pac` and `efr32mg24-hal`
 - SVD files placed in `efr32mg24-hal/svd/` (20 files, 172 MB total)
 - Workspace Cargo.toml created with shared dependencies
 
@@ -293,7 +293,7 @@ debug = true           # Keep debug info for easier debugging
 ## Open Questions
 
 1. **TrustZone Handling**: How should we expose secure vs non-secure peripherals?
-   - Option A: Separate PAC crates (efr32mg24-pac-s, efr32mg24-pac-ns)
+   - Option A: Separate PAC crates (efr32mg2x-pac-s, efr32mg2x-pac-ns)
    - Option B: Feature flags
    - Option C: Single PAC with typestate pattern
 
@@ -330,7 +330,7 @@ debug = true           # Keep debug info for easier debugging
 ### Configuration Files
 
 1. **Workspace Cargo.toml**: Root workspace configuration
-2. **efr32mg24-pac/Cargo.toml**: PAC crate (needs dependencies)
+2. **efr32mg2x-pac/Cargo.toml**: PAC crate (needs dependencies)
 3. **efr32mg24-hal/Cargo.toml**: HAL crate (placeholder)
 
 ---

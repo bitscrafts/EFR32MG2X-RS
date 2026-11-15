@@ -57,7 +57,7 @@ wget https://www.keil.arm.com/packs/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025
 curl -O https://www.keil.arm.com/packs/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack
 ```
 
-**Downloaded to**: `crates/efr32mg24-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
+**Downloaded to**: `crates/efr32mg2x-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
 
 ### Step 3: Verify Pack File
 
@@ -92,7 +92,7 @@ unzip -l SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack | grep "\.svd" | 
 
 **Command Used**:
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 
 # Extract all SVD files to svd/ folder
 # -o: overwrite files without prompting
@@ -273,7 +273,7 @@ Each SVD file contains:
 ### Generating PAC from B220 SVD
 
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 
 # Generate PAC for XIAO MG24 Sense
 svd2rust -i svd/EFR32MG24B220F1536IM48.svd \
@@ -302,7 +302,7 @@ svd2rust -i svd/EFR32MG24B210F1536IM48.svd \
 ### Current Structure
 
 ```
-crates/efr32mg24-pac/
+crates/efr32mg2x-pac/
 ├── svd/
 │   ├── README.md                           # SVD inventory documentation
 │   ├── EFR32MG24A010F1024IM40.svd         # A-series variants (27 files)
@@ -330,7 +330,7 @@ crates/efr32mg24-pac/
 3. **Updates**: Compare with future pack versions
 4. **Documentation**: Shows exact source and version
 
-**Location**: `crates/efr32mg24-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
+**Location**: `crates/efr32mg2x-pac/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.2025.6.2.pack`
 
 ### Future Updates
 
@@ -338,7 +338,7 @@ To update SVD files when new pack versions are released:
 
 ```bash
 # Download new pack
-cd efr32mg24-pac
+cd efr32mg2x-pac
 wget https://www.keil.arm.com/packs/SiliconLabs.GeckoPlatform_EFR32MG24_DFP.YYYY.M.V.pack
 
 # Extract to temporary folder

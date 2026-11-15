@@ -81,7 +81,7 @@ sequencer for a network.
 
 ## The example in this repository
 
-`crates/efr32mg24-pac/examples/pac_mvp_add.rs` — the smallest honest exercise:
+`crates/efr32mg2x-pac/examples/pac_mvp_add.rs` — the smallest honest exercise:
 `out[k] = a[k] + b[k]` over eight fp16 elements, one instruction, one loop, three
 arrays, with the expected sum computed by the CPU so a wrong program cannot pass.
 

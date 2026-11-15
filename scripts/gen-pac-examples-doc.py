@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Generate crates/efr32mg24-pac/docs/examples.md from the examples themselves.
+# Generate crates/efr32mg2x-pac/docs/examples.md from the examples themselves.
 #
 # The list is generated because a hand-written list of 27 examples goes stale the first time one is renamed, and a
 # documentation page that names examples which no longer exist is worse than no page. The gate runs this with --check,
@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-CRATE = ROOT / "crates" / "efr32mg24-pac"
+CRATE = ROOT / "crates" / "efr32mg2x-pac"
 OUT = CRATE / "docs" / "examples.md"
 
 HEAD = """## Examples

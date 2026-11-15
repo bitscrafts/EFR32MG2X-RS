@@ -22,7 +22,7 @@ uses SYSRTC over PRS to sync its own timer across EM2. So whatever is learned he
 The single most expensive fact of this exercise: **four sources disagree, and only the silicon is
 authoritative.**
 
-| Register | PAC (`efr32mg24-pac`) | Vendor header (`offsetof`) | RAIL blob (disassembly) | Measured on the board |
+| Register | PAC (`efr32mg2x-pac`) | Vendor header (`offsetof`) | RAIL blob (disassembly) | Measured on the board |
 |---|---|---|---|---|
 | `CMU.SYSRTC0CLKCTRL` | 0x1DC | **0x240** | – | **0x240 works**: CLKSEL reads back 1 with LFRCO, 3 with ULFRCO |
 | `SYSRTC.EN_SET` | – | **0x1004** | – | **0x1004 works**: `EN` reads 1; 0x1000 is `IPVERSION_SET` (read-only) and leaves `EN=0` |
@@ -106,10 +106,10 @@ peripheral is behind it.
 
 ## The instruments (reusable, and this is the part that saved the most time)
 
-- `crates/efr32mg24-pac/examples/pac_sysrtc_gates.rs` — cumulative log (each fact appended, whole text
+- `crates/efr32mg2x-pac/examples/pac_sysrtc_gates.rs` — cumulative log (each fact appended, whole text
   republished) so a later fault or hang cannot erase the earlier markers; a `HardFault` handler that writes
   the stacked PC, `CFSR` and `BFAR` into a **second** mailbox slot.
-- `crates/efr32mg24-pac/examples/pac_sysrtc_raw.rs` — raw-pointer replay, to separate PAC bugs from
+- `crates/efr32mg2x-pac/examples/pac_sysrtc_raw.rs` — raw-pointer replay, to separate PAC bugs from
   hardware behaviour.
 - `scripts/read-mailbox.sh`, plus the openocd one-liners in this file's history: `mdw 0x2003F000 4` for the
   header, `mdb 0x2003F010 180` for the text.

@@ -67,7 +67,7 @@ C3-EMU       = Phase C, Stage 3: Energy Management Unit
 ```
 EFR32MG24/
 ├── Cargo.toml                      # Workspace root (12 member crates)
-├── crates/efr32mg24-pac/                  # Peripheral Access Crate (register-level)
+├── crates/efr32mg2x-pac/                  # Peripheral Access Crate (register-level)
 │   ├── Cargo.toml
 │   └── src/lib.rs                  # 138,448 lines, 133 peripherals (B220 variant)
 ├── crates/efr32mg24-hal/                  # Hardware Abstraction Layer (driver-level)
@@ -355,7 +355,7 @@ cargo install svd2rust --locked  # v0.37.1
 
 3. **Generate PAC**:
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 
 # Use correct SVD for hardware (B220 for XIAO MG24 Sense)
 svd2rust -i svd/EFR32MG24B220F1536IM48.svd \

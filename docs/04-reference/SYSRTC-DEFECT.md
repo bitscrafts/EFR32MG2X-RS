@@ -64,10 +64,10 @@ and the stack's own `sl_system_init` is not executed here).
 
 ## The instruments this produced (kept in the tree)
 
-- `crates/efr32mg24-pac/examples/pac_sysrtc_gates.rs` — publishes a **cumulative** log (each fact appended and
+- `crates/efr32mg2x-pac/examples/pac_sysrtc_gates.rs` — publishes a **cumulative** log (each fact appended and
   the whole text republished) so a later fault or hang cannot erase the earlier ones, plus a `HardFault`
   handler that writes stacked PC, `CFSR` and `BFAR` into a **second** mailbox slot.
-- `crates/efr32mg24-pac/examples/pac_sysrtc_raw.rs` — raw-pointer variant, used to separate PAC bugs from
+- `crates/efr32mg2x-pac/examples/pac_sysrtc_raw.rs` — raw-pointer variant, used to separate PAC bugs from
   hardware behaviour.
 - The rule these encode: a fault that reports is a diagnosis; a fault that loops is a lost evening. And a
   marker that gets overwritten is not a marker.

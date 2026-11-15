@@ -122,7 +122,7 @@ Application: 0x08004000 - 0x0817FFFF (1520 KB)
 ### Current Status
 
 **Building**: Running `cargo build --release` (in progress)
-- Compiling efr32mg24-pac (takes ~2-3 minutes)
+- Compiling efr32mg2x-pac (takes ~2-3 minutes)
 - Will then compile bootloader
 
 **Expected outcome**:
@@ -261,7 +261,7 @@ Waiting for compilation to complete...
 
 ```
 cargo build --release
-  Compiling efr32mg24-pac...
+  Compiling efr32mg2x-pac...
   [In progress]
 ```
 

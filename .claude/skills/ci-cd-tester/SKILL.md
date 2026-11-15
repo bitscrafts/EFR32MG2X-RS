@@ -710,7 +710,7 @@ jobs:
 
 **PAC** (generated code):
 ```yaml
-- run: cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf
+- run: cargo clippy -p efr32mg2x-pac --target thumbv8m.main-none-eabihf
 ```
 - Allow warnings (generated code has unavoidable issues)
 - Still run clippy to catch major problems
@@ -770,7 +770,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv8m.main-none-eabihf
-      - run: cargo build -p efr32mg24-pac --release
+      - run: cargo build -p efr32mg2x-pac --release
 ```
 
 **Then add features incrementally**:

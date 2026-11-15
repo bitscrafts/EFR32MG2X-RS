@@ -68,7 +68,7 @@
 //! # Flashing
 //!
 //! ```bash
-//! cd efr32mg24-pac
+//! cd efr32mg2x-pac
 //! cargo build --release --example blink_xiao --features rt
 //!
 //! # Flash the app at 0x08006000 (does NOT touch the bootloader at 0x08000000):

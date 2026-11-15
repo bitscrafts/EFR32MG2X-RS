@@ -1,6 +1,6 @@
 # Linker scripts kept out of the published crate
 
-Two files that used to live inside `crates/efr32mg24-pac/` and therefore shipped in every published copy of
+Two files that used to live inside `crates/efr32mg2x-pac/` and therefore shipped in every published copy of
 `efr32mg2x-pac`. They are kept here as a record, not as something to use.
 
 ## `memory_direct.x`

@@ -17,7 +17,7 @@ product build) and **D2g BME680 gas resistance**. All 26 examples compile under 
 ```
 EFR32MG24/
 ├── Cargo.toml                     # Workspace configuration (5 member crates)
-├── crates/efr32mg24-pac/                 # Peripheral Access Crate (B220, 138K lines)
+├── crates/efr32mg2x-pac/                 # Peripheral Access Crate (B220, 138K lines)
 ├── crates/efr32mg24-hal/                 # Hardware Abstraction Layer (12 modules)
 ├── crates/efr32mg24-rail-sys/            # RAIL radio FFI bindings
 ├── crates/efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
@@ -61,7 +61,7 @@ EFR32MG24/
 
 **Achievements**:
 1. Created Cargo workspace with:
-   - `efr32mg24-pac` crate
+   - `efr32mg2x-pac` crate
    - `efr32mg24-hal` crate
    - Shared dependencies configuration
    - Size-optimized release profiles
@@ -107,12 +107,12 @@ EFR32MG24/
 
 **Generation Command**:
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
 ```
 
 **Key Deliverables**:
-- B220 PAC source code in crates/efr32mg24-pac/src/lib.rs
+- B220 PAC source code in crates/efr32mg2x-pac/src/lib.rs
 - A020 PAC preserved in src_backup_a020/ for reference
 - Complete SVD file collection (41 variants)
 
@@ -558,7 +558,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 1. **Try svd2rust v0.30.3** (older, stable version)
    ```bash
    cargo install svd2rust --version 0.30.3 --force
-   cd efr32mg24-pac
+   cd efr32mg2x-pac
    svd2rust -i ../efr32mg24-hal/svd/EFR32MG24A020F1536GM48.svd \
             --target cortex-m -o src
    ```

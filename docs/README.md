@@ -159,7 +159,7 @@ README.md (you are here)
 
 ```bash
 # For Seeed Studio XIAO MG24 Sense
-cd efr32mg24-pac
+cd efr32mg2x-pac
 svd2rust -i svd/EFR32MG24B220F1536IM48.svd \
          --target cortex-m \
          -o src

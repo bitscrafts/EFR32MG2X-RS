@@ -415,7 +415,7 @@ loop {
 Build and test the version with DOUTTGL register:
 
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 cargo build --example blink_unlock_cmu --features rt --release
 arm-none-eabi-objcopy -O ihex \
   ../target/thumbv8m.main-none-eabihf/release/examples/blink_unlock_cmu \

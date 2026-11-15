@@ -64,7 +64,7 @@ Run the same Clippy checks as CI:
 
 ```bash
 # Test PAC clippy (may have warnings we can't fix)
-cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf
+cargo clippy -p efr32mg2x-pac --target thumbv8m.main-none-eabihf
 
 # Test HAL clippy (MUST pass with no warnings)
 cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
@@ -85,7 +85,7 @@ Test all build targets that CI runs:
 
 ```bash
 # 1. Build PAC (takes ~2.6 minutes first time)
-cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
+cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf --release
 
 # 2. Build HAL library
 cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
@@ -149,7 +149,7 @@ cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -
 
 echo ""
 echo "3️⃣  Building PAC..."
-cargo build -p efr32mg24-pac --target thumbv8m.main-none-eabihf --release
+cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf --release
 
 echo ""
 echo "4️⃣  Building HAL and examples..."
@@ -397,7 +397,7 @@ pub fn my_function() {
 **Symptoms**: PAC build takes 2.6 minutes every time
 
 **Solution**:
-- Check if `crates/efr32mg24-pac/src/**` files changed
+- Check if `crates/efr32mg2x-pac/src/**` files changed
 - Cache key includes hash of PAC files
 - Changes invalidate cache (expected behavior)
 - PAC changes are rare after initial setup

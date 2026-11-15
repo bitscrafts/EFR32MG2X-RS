@@ -35,7 +35,7 @@ Understanding build times helps you avoid unnecessary work:
 
 | Package | Lines of Code | Build Time (Clean) | Build Time (Incremental) |
 |---------|---------------|-------------------|--------------------------|
-| **efr32mg24-pac** | 138,448 | ~3-8 minutes | <1s (if untouched) |
+| **efr32mg2x-pac** | 138,448 | ~3-8 minutes | <1s (if untouched) |
 | **efr32mg24-rail-sys** | 3,974 (generated) | ~4m 23s | <1s (if untouched) |
 | **efr32mg24-bluetooth-sys** | 4,307 (generated) | ~25s | <1s (if untouched) |
 | **efr32mg24-hal** | ~4,500 | ~30-60s | <1s (if untouched) |
@@ -115,7 +115,7 @@ cargo build -p efr32mg24-bluetooth-sys
 - Changing bindgen configuration
 - **Never clean for**: Documentation only
 
-### ✅ Clean efr32mg24-pac When:
+### ✅ Clean efr32mg2x-pac When:
 - Regenerating from new SVD file
 - Switching device variants
 - **Never clean for**: Literally anything else (it never changes)

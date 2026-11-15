@@ -35,6 +35,13 @@
 //! program cannot pass: if the MVP did nothing, `out` would stay zero, and if it
 //! read the wrong words the values would differ. The mailbox carries both the
 //! expected and the observed sums.
+//!
+//! Measured on the board, 2026-11-15: the sums come out `exp=396 got=0`, with `STATUS.IDLE` set, `PROGRAMSTATE.PC` at 0,
+//! `LOOP0STATE.CNT` at 0 and the output array's DIM2 index at 1. Every field the program writes now matches the SVD
+//! (the output stream's REGID/STORE/ARRAYID/INCRDIM live at 20/23/24/29, not at the input stream's 0/3/4/9 -- building
+//! it with the input offsets left STORE clear, which was the first defect and is fixed here). Writing INIT and START in
+//! separate accesses, and issuing SWRST before configuring, changed nothing. The remaining question -- why the loads
+//! deliver zeros while the store index advances -- needs the MVP chapter of the reference manual, not another guess.
 
 #![no_std]
 #![no_main]
@@ -267,12 +274,15 @@ fn main() -> ! {
     // CFG0: X = R0, Y = R1, A = R2, Z = R2 (no negate/zero masks).
     mvp.instr0cfg0()
         .write(|w| unsafe { w.bits((1 << 8) | (2 << 16) | (2 << 28)) });
-    // CFG1: load a into R0, load b into R1, store R2 into out, all advancing width.
+    // CFG1: load a into R0, load b into R1, store R2 into out, all advancing dim2.
+    // The three streams do not share a bit layout: input streams sit at 0 and 10, the output stream at 20, and in the
+    // output stream the store bit is 23 and the array id is 24..26. Building it with the input offsets and shifting the
+    // result leaves STORE clear, so the ALU computes and nothing is ever written back -- the arrays read as zeros.
     let stream0 = 0u32 | (1 << 3) | (0 << 4) | (1 << 9);
     let stream1 = 1u32 | (1 << 3) | (1 << 4) | (1 << 9);
-    let ostream = 2u32 | (1 << 3) | (2 << 4) | (1 << 9);
+    let ostream = (2 << 20) | (1 << 23) | (2 << 24) | (1 << 29);
     mvp.instr0cfg1()
-        .write(|w| unsafe { w.bits(stream0 | (stream1 << 10) | (ostream << 20)) });
+        .write(|w| unsafe { w.bits(stream0 | (stream1 << 10) | ostream) });
     // CFG2: opcode, this instruction both opens and closes loop 0, and ends the program.
     mvp.instr0cfg2().write(|w| unsafe {
         w.bits(
@@ -284,9 +294,11 @@ fn main() -> ! {
     });
 
     // ---- run -------------------------------------------------------------
-    // CMD bit 3 is INIT, described in the SVD as an "Initialization Command/Qualifier": it
-    // qualifies the START written in the same access, it is not a separate pass.
-    mvp.cmd().write(|w| w.init().set_bit().start().set_bit());
+    // CMD bit 3 is INIT, "Initialization Command/Qualifier". Writing INIT and START in one access left the sequencer
+    // IDLE with the output array untouched, which is what a run of zero instructions looks like; INIT goes in its own
+    // access, then START.
+    mvp.cmd().write(|w| w.init().set_bit());
+    mvp.cmd().write(|w| w.start().set_bit());
     let mut spin = 0u32;
     while !mvp.status().read().idle().bit_is_set() {
         spin += 1;
@@ -325,11 +337,23 @@ fn main() -> ! {
         }
     }
 
-    let mut msg = [0u8; 64];
-    let mut pos = push_bytes(&mut msg, 0, b"mvp sum exp=");
+    // One record, under the mailbox's 56-byte payload: the three numbers that separate "never started" from "started
+    // and wrote nothing" would not fit beside the sums, so the sums are trimmed to exp/got and the state carries the rest.
+    let mut msg = [0u8; 56];
+    let mut pos = push_bytes(&mut msg, 0, b"mvp exp=");
     pos = push_dec(&mut msg, pos, sum_expected as u32);
     pos = push_bytes(&mut msg, pos, b" got=");
     pos = push_dec(&mut msg, pos, sum_observed as u32);
+    pos = push_bytes(&mut msg, pos, b" pc=");
+    pos = push_dec(&mut msg, pos, mvp.programstate().read().pc().bits() as u32);
+    pos = push_bytes(&mut msg, pos, b" l0=");
+    pos = push_dec(&mut msg, pos, mvp.loop0state().read().cnt().bits() as u32);
+    pos = push_bytes(&mut msg, pos, b" ix2=");
+    pos = push_dec(
+        &mut msg,
+        pos,
+        mvp.array2indexstate().read().dim2index().bits() as u32,
+    );
 
     if ok {
         mailbox::pass(&msg[..pos]);

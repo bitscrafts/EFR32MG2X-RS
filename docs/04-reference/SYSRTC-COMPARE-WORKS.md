@@ -48,7 +48,7 @@ than quietly attempted.
 
 ## How to measure this again
 
-`crates/efr32mg24-pac/examples/pac_sysrtc_compare_flag.rs` publishes, in one short line, the flags after a clear,
+`crates/efr32mg2x-pac/examples/pac_sysrtc_compare_flag.rs` publishes, in one short line, the flags after a clear,
 the flags when they change, and the distance between the counter and the programmed value at that moment. A
 distance of 1 means the comparison is exact. Two things make it work:
 

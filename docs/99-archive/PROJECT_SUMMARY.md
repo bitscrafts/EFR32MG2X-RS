@@ -24,7 +24,7 @@ Create production-ready Rust support for the EFR32MG24 wireless microcontroller 
 - ✅ Size-optimized release profiles
 - ✅ **Workspace compiles successfully!**
 
-### 2. PAC Crate (efr32mg24-pac/)
+### 2. PAC Crate (efr32mg2x-pac/)
 - ✅ Proper Cargo.toml with all metadata
 - ✅ 40 SVD files (20 original + 20 processed)
 - ✅ memory.x linker script (1536K Flash, 256K RAM)
@@ -47,7 +47,7 @@ Create production-ready Rust support for the EFR32MG24 wireless microcontroller 
 - ✅ **CLAUDE.md** - Project instructions for future sessions
 - ✅ **STATUS.md** - Current status and handoff checklist
 - ✅ **PROJECT_SUMMARY.md** - This document
-- ✅ **efr32mg24-pac/README.md** - PAC documentation
+- ✅ **efr32mg2x-pac/README.md** - PAC documentation
 - ✅ **efr32mg24-hal/README.md** - HAL documentation
 
 ### 5. Research & Analysis
@@ -93,7 +93,7 @@ EFR32MG24/                          ✅ Root workspace
 ├── PROJECT_SUMMARY.md              ✅ This file
 ├── about.txt                       ✅ Original goals
 │
-├── efr32mg24-pac/                  ✅ PAC Crate (compiles)
+├── efr32mg2x-pac/                  ✅ PAC Crate (compiles)
 │   ├── Cargo.toml                  ✅ Full configuration
 │   ├── README.md                   ✅ PAC documentation
 │   ├── build.rs                    ✅ Build script
@@ -186,7 +186,7 @@ See [FINDINGS.md](FINDINGS.md#technical-challenges-encountered) for detailed ana
    ```bash
    # Try svdtools approach
    pip3 install svdtools
-   cd efr32mg24-pac
+   cd efr32mg2x-pac
    # Create efr32mg24.yaml patch file
    svd patch efr32mg24.yaml
    svd2rust -i patched.svd --target cortex-m -o src
@@ -231,7 +231,7 @@ See [FINDINGS.md](FINDINGS.md#technical-challenges-encountered) for detailed ana
 | [CLAUDE.md](CLAUDE.md) | Session instructions | ✅ Complete |
 | [STATUS.md](STATUS.md) | Current status | ✅ Complete |
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | This file | ✅ Complete |
-| [efr32mg24-pac/README.md](efr32mg24-pac/README.md) | PAC documentation | ✅ Complete |
+| [efr32mg2x-pac/README.md](efr32mg2x-pac/README.md) | PAC documentation | ✅ Complete |
 | [efr32mg24-hal/README.md](efr32mg24-hal/README.md) | HAL documentation | ✅ Complete |
 
 ---
@@ -250,14 +250,14 @@ cargo build
 cargo build --release
 
 # Build specific crate
-cargo build -p efr32mg24-pac
+cargo build -p efr32mg2x-pac
 cargo build -p efr32mg24-hal
 ```
 
 ### SVD Commands
 ```bash
 # Generate PAC (currently blocked)
-cd efr32mg24-pac
+cd efr32mg2x-pac
 svd2rust -i svd/EFR32MG24A020F1536GM48.svd --target cortex-m -o src
 
 # Analyze SVD

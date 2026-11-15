@@ -32,9 +32,9 @@ When connected via J-Link, use **commander**.
 ### Method 1: Build + flash + run in one step (recommended)
 
 ```bash
-cd efr32mg24-pac
+cd efr32mg2x-pac
 probe-rs run --chip EFR32MG24B220F1536IM48 \
-  crates/efr32mg24-pac/target/thumbv8m.main-none-eabihf/release/examples/blink_xiao
+  crates/efr32mg2x-pac/target/thumbv8m.main-none-eabihf/release/examples/blink_xiao
 ```
 
 `probe-rs run` flashes the ELF at its linked addresses (vector table at
@@ -55,7 +55,7 @@ probe-rs run --chip EFR32MG24B220F1536IM48 \
 
 ```bash
 # 1. Build (the --features rt is required for cortex-m-rt)
-cd efr32mg24-pac
+cd efr32mg2x-pac
 cargo build --release --example blink_xiao --features rt
 
 # 2. Flash + run

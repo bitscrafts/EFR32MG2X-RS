@@ -58,7 +58,7 @@ This project aims to provide first-class Rust support for the Silicon Labs EFR32
 
 ```
 EFR32MG24/
-├── crates/efr32mg24-pac/              # Peripheral Access Crate (register-level)
+├── crates/efr32mg2x-pac/              # Peripheral Access Crate (register-level)
 ├── crates/efr32mg24-hal/              # Hardware Abstraction Layer (driver-level)
 ├── crates/efr32mg24-bluetooth-sys/    # Bluetooth 5.3 LE stack (BGAPI FFI bindings)
 ├── crates/efr32mg24-rail-sys/         # RAIL radio abstraction (FFI bindings)
@@ -128,7 +128,7 @@ gantt
 ### Project Metrics
 
 **Crates**: 12 total
-- efr32mg24-pac (138,448 lines, 133 peripherals)
+- efr32mg2x-pac (138,448 lines, 133 peripherals)
 - efr32mg24-hal (12 peripheral modules)
 - efr32mg24-radio (Bluetooth API, RAIL, diagnostics)
 - efr32mg24-rail-sys (3,974 FFI bindings)
@@ -264,7 +264,7 @@ The PAC has been successfully generated from Silicon Labs official SVD files for
 - Initial SVD files from community repo (A020) didn't match hardware (B220)
 - Obtained official DFP pack with all 41 EFR32MG24 variants
 - Selected correct B220 SVD for XIAO MG24 Sense hardware
-- Previous A020 PAC preserved in `crates/efr32mg24-pac/src_backup_a020/` for reference
+- Previous A020 PAC preserved in `crates/efr32mg2x-pac/src_backup_a020/` for reference
 
 ### PAC Generation Commands
 
@@ -273,7 +273,7 @@ The PAC has been successfully generated from Silicon Labs official SVD files for
 cargo install svd2rust --locked  # v0.37.1
 
 # Generate PAC from SVD
-cd efr32mg24-pac
+cd efr32mg2x-pac
 svd2rust -i svd/EFR32MG24B220F1536IM48.svd \
          --target cortex-m \
          -o src/

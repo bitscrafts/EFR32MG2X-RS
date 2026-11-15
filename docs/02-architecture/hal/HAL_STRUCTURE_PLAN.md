@@ -620,7 +620,7 @@ pub struct Pin<Input<PullUp>> { /* ... */ }
 default = []
 
 # Runtime support
-rt = ["crates/efr32mg24-pac/rt", "cortex-m-rt/device"]
+rt = ["crates/efr32mg2x-pac/rt", "cortex-m-rt/device"]
 
 # Enable async support (requires executor)
 async = ["embassy-executor", "embassy-time"]
@@ -642,7 +642,7 @@ defmt = ["dep:defmt"]  # defmt logging support
 ### Core Dependencies
 ```toml
 [dependencies]
-efr32mg24-pac = { path = "../efr32mg24-pac", version = "0.1.0" }
+efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.0" }
 cortex-m = "0.7.7"
 embedded-hal = "1.0.0"
 critical-section = "1.2.0"

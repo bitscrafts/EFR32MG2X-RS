@@ -16,7 +16,7 @@
 //! ## The layering, stated once
 //!
 //! ```text
-//! efr32mg24-pac    registers, generated from the SVD
+//! efr32mg2x-pac    registers, generated from the SVD
 //!      ↑
 //! efr32mg24-hal    drivers and pin primitives; never names a board's wiring
 //!      ↑

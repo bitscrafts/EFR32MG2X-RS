@@ -21,7 +21,7 @@ cd "$REPO"
 if [[ $# -gt 0 ]]; then
   EXAMPLES=("$@")
 else
-  mapfile -t EXAMPLES < <(ls crates/efr32mg24-pac/examples/*.rs | xargs -n1 basename | sed 's/\.rs$//' | sort)
+  mapfile -t EXAMPLES < <(ls crates/efr32mg2x-pac/examples/*.rs | xargs -n1 basename | sed 's/\.rs$//' | sort)
 fi
 
 [[ -f "$OUT" ]] || printf 'example\tresult\trecord\n' > "$OUT"

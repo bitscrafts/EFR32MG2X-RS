@@ -2098,7 +2098,7 @@ cortex-m = { version = "0.7", features = ["inline-asm"] }
 cortex-m-rt = "0.7"
 
 # Peripheral access (required)
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg2x-pac = { path = "../efr32mg2x-pac" }
 
 # Flash storage (required)
 embedded-storage = "0.3"
@@ -2540,8 +2540,8 @@ fn main() -> ! {
 1. **EFR32MG24 Project Docs**
    - `/docs/RUST_BOOTLOADER_SOLUTION.md` - Current bootloader workaround
    - `/docs/ARDUINO_BOOTLOADER_ANALYSIS.md` - Gecko bootloader analysis
-   - `/efr32mg24-pac/memory.x` - Current memory layout
-   - `/efr32mg24-pac/device.x` - Vector table and interrupts
+   - `/efr32mg2x-pac/memory.x` - Current memory layout
+   - `/efr32mg2x-pac/device.x` - Vector table and interrupts
 
 ---
 

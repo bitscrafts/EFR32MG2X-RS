@@ -61,5 +61,5 @@ These examples serve as:
 
 ## History
 
-- 2026-01-25: Copied from efr32mg24-pac directory
+- 2026-01-25: Copied from efr32mg2x-pac directory
 - 2026-01-25: Verified microphone_volume_with_bootloader.hex working on hardware

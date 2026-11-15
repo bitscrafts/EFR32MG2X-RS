@@ -250,7 +250,7 @@ embedded-hal = "1.0"
 **Dependencies:**
 - `efr32mg24-bluetooth` (Layer 2, NOT -sys!)
 - `efr32mg24-hal` (for GPIO, delay, etc.)
-- `efr32mg24-pac`
+- `efr32mg2x-pac`
 
 **Examples:**
 - `xiao-mg24-bsp`
@@ -262,7 +262,7 @@ embedded-hal = "1.0"
 [dependencies]
 efr32mg24-bluetooth = { version = "0.1", path = "../efr32mg24-bluetooth" }
 efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
-efr32mg24-pac = { path = "../efr32mg24-pac" }
+efr32mg2x-pac = { path = "../efr32mg2x-pac" }
 ```
 
 ---

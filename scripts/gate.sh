@@ -92,7 +92,7 @@ pkg_name() {
 features_for() {
   # Keyed by directory basename on purpose: the crates.io name may change, the directory may not.
   case "$1" in
-    efr32mg24-pac|efr32mg24-hal) echo "--features rt" ;;
+    efr32mg2x-pac|efr32mg24-hal) echo "--features rt" ;;
     *) echo "" ;;
   esac
 }
@@ -181,7 +181,7 @@ echo "=== layer boundaries: the PAC belongs to the PAC, the wiring to a BSP ==="
 # 1. An example may only name the layer it demonstrates. A HAL example that mentions the PAC
 #    is a HAL that failed to hand out what it owns; the caller then has to steal the singleton.
 offenders=$(grep -rln "efr32mg24_pac\|pac::" crates/*/examples/ --include=*.rs 2>/dev/null \
-  | grep -v "^crates/efr32mg24-pac/" \
+  | grep -v "^crates/efr32mg2x-pac/" \
   | grep -v "^crates/efr32mg24-bluetooth-sys/" \
   | grep -v "^crates/efr32mg24-rail-sys/" || true)
 if [ -z "$offenders" ]; then
@@ -231,7 +231,7 @@ done
 #    (`board.delay()`, `hal::dwt`), for the same reason the PAC does: an example that steals one
 #    has no owner for it, and two owners of SysTick is a delay that lies.
 offenders=$(grep -rln "Peripherals::steal" crates/*/examples/ --include=*.rs 2>/dev/null \
-  | grep -v "^crates/efr32mg24-pac/" \
+  | grep -v "^crates/efr32mg2x-pac/" \
   | grep -v "^crates/efr32mg24-bluetooth-sys/" \
   | grep -v "^crates/efr32mg24-rail-sys/" || true)
 if [ -z "$offenders" ]; then

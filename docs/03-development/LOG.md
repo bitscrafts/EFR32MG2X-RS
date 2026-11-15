@@ -514,7 +514,7 @@ it needs is written and verified on the board. The BME680's gas resistance is al
 **Milestone**: Development environment and tooling ready
 
 **Achievements**:
-- Created Cargo workspace with efr32mg24-pac and efr32mg24-hal crates
+- Created Cargo workspace with efr32mg2x-pac and efr32mg24-hal crates
 - Shared dependencies configuration
 - Size-optimized release profiles
 - Installed svd2rust v0.33.4 and form v0.12.1

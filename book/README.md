@@ -576,7 +576,7 @@ book/project/
 │   └── ...
 └── complete-workspace/           # Chapter 16 full project
     ├── Cargo.toml
-    ├── efr32mg24-pac/
+    ├── efr32mg2x-pac/
     ├── efr32mg24-hal/
     └── examples/
 ```
@@ -636,7 +636,7 @@ Show actual commands with expected output:
 
 ```bash
 $ cargo build --release
-   Compiling efr32mg24-pac v0.1.0
+   Compiling efr32mg2x-pac v0.1.0
    Compiling efr32mg24-hal v0.1.0
     Finished release [optimized] target(s) in 2.6m
 ```

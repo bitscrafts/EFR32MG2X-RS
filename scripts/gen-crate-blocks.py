@@ -2,7 +2,7 @@
 """Render the README blocks that must never be written by hand.
 
 The failure this replaces, measured: the PAC's Usage section announced `peripherals.GPIO_S` (the field is `gpio_s`) and
-`pac::CorePeripherals` (absent), pinned `efr32mg24-pac = "0.1.0"` when the package is `efr32mg2x-pac` at another
+`pac::CorePeripherals` (absent), pinned `efr32mg2x-pac = "0.1.0"` when the package is `efr32mg2x-pac` at another
 version, and listed dependencies the crate does not have. Every one of those is a value the manifest or the source
 already knows, so every one of them is generated here and checked by the gate.
 

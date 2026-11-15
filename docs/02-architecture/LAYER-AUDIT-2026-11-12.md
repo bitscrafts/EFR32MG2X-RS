@@ -8,7 +8,7 @@ layer boundary, so a boundary that is not a check is not a boundary.
 ## The rule, stated once
 
 ```text
-efr32mg24-pac    registers, generated
+efr32mg2x-pac    registers, generated
      ↑ only the HAL may hold these
 efr32mg24-hal    drivers + pin primitives; no board wiring
      ↑ only a BSP may hold these

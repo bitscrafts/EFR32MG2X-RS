@@ -66,7 +66,7 @@ efr32mg24-hal/src/radio/
 ```toml
 [features]
 default = []
-rt = ["efr32mg24-pac/rt", "cortex-m-rt"]
+rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
 ```
 
 **For Radio**: Add new feature flags
@@ -176,7 +176,7 @@ pub enum Error {
 **Evidence**:
 ```bash
 $ cargo build --examples --features rt --release
-   Compiling efr32mg24-pac v0.1.0
+   Compiling efr32mg2x-pac v0.1.0
    Compiling efr32mg24-hal v0.1.0
     Finished release [optimized + debuginfo] target(s) in 36.64s
 ```
@@ -286,7 +286,7 @@ fn main() {
 # Root Cargo.toml
 [workspace]
 members = [
-    "efr32mg24-pac",
+    "efr32mg2x-pac",
     "efr32mg24-hal",
     "efr32mg24-rail-sys",        # ADD
     "efr32mg24-bluetooth-sys",   # ADD
