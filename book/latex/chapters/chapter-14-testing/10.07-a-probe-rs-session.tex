@@ -1,0 +1,77 @@
+\section{A probe-rs session, and the three traps in front of it}
+\label{sec:a-probe-rs-session}
+
+\texttt{probe-rs} does four things in one command on this board: it erases and flashes the image, resets the core, attaches
+a debugger, and prints whatever the firmware logs through RTT. On a board with no UART broken out and no pins to spare,
+that last part is the difference between a program you can watch and a program you can only guess at.
+
+\begin{minted}{bash}
+probe-rs run --chip EFR32MG24B220F1536IM48 \
+  target/thumbv8m.main-none-eabihf/release/examples/hal_rtt_hello
+\end{minted}
+
+What came back, on the board, with \texttt{defmt} and a heartbeat loop:
+
+\begin{minted}{text}
+Finished in 0.47s
+1789052999 [INFO ] rtt: heartbeat 0 -- 78 MHz (hal_rtt_hello .../hal_rtt_hello.rs:44)
+1797056423 [INFO ] rtt: heartbeat 1 -- 78 MHz (hal_rtt_hello .../hal_rtt_hello.rs:44)
+\end{minted}
+
+The number is the DWT cycle counter, the level is the record's, and the location is where the record was written --- all of
+it decoded on the host, because with deferred formatting the strings never travel.
+
+\subsection{The three traps, in the order they bit}
+
+\textbf{1. \texttt{-Tdefmt.x}, or the probe finds a version and no section.} The first run failed with
+\texttt{defmt version found, but no `.defmt` section --- check your linker configuration}: the section that carries the
+format strings has to be placed by the \texttt{defmt.x} linker script. Putting it in \texttt{.cargo/config.toml} fixes
+one crate and breaks every other one, because their examples have no \texttt{defmt} build script to supply the file; it
+belongs in the logging crate's \texttt{build.rs}, as
+\texttt{cargo:rustc-link-arg-examples=-Tdefmt.x}, where it reaches that crate's examples and nothing else.
+
+\textbf{2. The panic handler wants a timestamp.} \texttt{panic-probe} prints panics through \texttt{defmt}, and
+\texttt{defmt} refuses to link without \texttt{\_defmt\_timestamp}. The DWT cycle counter is the cheapest real clock
+here, and the way to supply it is a macro invocation, not an attribute:
+
+\begin{minted}{Rust}
+defmt::timestamp!("{=u64}", unsafe {
+    (*cortex_m::peripheral::DWT::PTR).cyccnt.read() as u64
+});
+\end{minted}
+
+The attribute form does not exist in this version, and the counter has to be enabled in \texttt{main} before the first
+record.
+
+\textbf{3. \texttt{DEFMT\_LOG} defaults to \texttt{error}.} With the log level unset, \texttt{info!} and \texttt{warn!}
+are compiled out of the binary entirely, so the board runs correctly, sends nothing, and every layer looks healthy. This
+one is worth knowing because the target side is verifiably fine while it happens --- reading the RTT control block out of
+RAM showed the id string in place, one up channel, \texttt{size = 1024}, both pointers valid, and \texttt{write = 0}:
+
+\begin{minted}{text}
+20000008: 47474553 52205245 00005454 00000000   # "SEGGER RTT"
+20000018: 00000001 00000000 20000000 20000044   # max_up, max_down, name, buffer
+20000028: 00000400 00000000 00000000 00000001   # size, wr=0, rd=0, flags
+\end{minted}
+
+A control block that is perfectly formed and a write index that never moves: the target is initialised and has nothing to
+say, which is a different fault from a broken transport. \texttt{DEFMT\_LOG = "info"} in \texttt{[env]} is the fix.
+
+\subsection{A fourth thing that looks like a fault}
+
+The up channel is non-blocking by design: a record written before the probe has attached is dropped, because there is
+nobody to hand it to. A program that logs once at boot and then sleeps therefore looks silent no matter how correct it
+is. Log a heartbeat instead --- and if a fault kills the program before the probe drains the buffer, that is the case
+where RTT tells you nothing and a debugger does.
+
+\subsection{When the target will not halt}
+
+\texttt{openocd} reported \texttt{target was in unknown state when halt was requested} on the same board in the same
+hour, so the memory read had to come from the probe instead:
+
+\begin{minted}{bash}
+probe-rs read b32 0x20000008 12 --chip EFR32MG24B220F1536IM48
+\end{minted}
+
+Reading memory needs no halt, which makes it the tool of choice for inspecting a running target's own structures --- the
+RTT block above, a mailbox, a ring buffer --- without disturbing what it is doing.
