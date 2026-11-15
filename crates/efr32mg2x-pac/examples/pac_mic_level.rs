@@ -36,6 +36,14 @@
 //! user LED with a software PWM whose duty follows the level — the Arduino demo's
 //! behaviour. The mailbox reports RMS and peak, so a quiet room and a clap are
 //! distinguishable without watching the LED.
+//!
+//! ## The brightness scale, and why it is the blunter one
+//!
+//! `duty = rms * 100 / 200` saturates: a normal room measures rms 570-620 here, so the division passes full scale and the
+//! LED sits at maximum whatever the noise does. A floor-and-span scale was written and measured on 2026-11-15 (floor 520,
+//! span 1500) and it made the LED almost dark in this room (rms 593 -> duty 3). The operator, watching the board, chose
+//! this behaviour instead. If the brightness is ever meant to track the noise, the floor has to come from the room's own
+//! measured background (here ~600) and the span from the gap to a clap (~600), not from a guess.
 //! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
@@ -57,10 +65,6 @@ const PIN_LED: u32 = 1 << 7; // PA7, active low
 const WINDOW: usize = 128;
 /// Software PWM steps per refresh.
 const PWM_STEPS: u32 = 100;
-/// Level at which the LED starts to light: a quiet bench measured rms~500, so this sits just above it.
-const MIC_FLOOR: u32 = 520;
-/// Levels from the floor to this one span the whole brightness range; a clap is far above it.
-const MIC_SPAN: u32 = 1500;
 
 fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
     for b in s {
@@ -324,13 +328,9 @@ fn main() -> ! {
             peak = window_peak;
         }
 
-        // Brightness follows the level, with a floor and a span measured rather than guessed: a quiet bench reads rms~500
-        // and a hand clap goes well past 2000. Below the floor the LED is off; the span covers the gap between the two.
-        let duty = if rms <= MIC_FLOOR {
-            0
-        } else {
-            core::cmp::min(PWM_STEPS, ((rms - MIC_FLOOR) * PWM_STEPS) / MIC_SPAN)
-        };
+        // Brightness follows the level: a quiet room leaves the LED almost off,
+        // a clap lights it fully.
+        let duty = core::cmp::min(PWM_STEPS, (rms * PWM_STEPS) / 200);
         for step in 0..PWM_STEPS {
             if step < duty {
                 dp.gpio_s
@@ -358,10 +358,6 @@ fn main() -> ! {
             pos = push_dec(&mut msg, pos, peak);
             pos = push_bytes(&mut msg, pos, b" n=");
             pos = push_dec(&mut msg, pos, samples_seen);
-            // The duty goes in the record so the level-to-brightness mapping can be checked from the numbers alone, instead
-            // of needing someone to watch the LED and guess.
-            pos = push_bytes(&mut msg, pos, b" duty=");
-            pos = push_dec(&mut msg, pos, duty);
             // A working chain produces samples; silence is a level, not zero
             // samples. Zero samples means the converter never delivered.
             if samples_seen > 0 {
