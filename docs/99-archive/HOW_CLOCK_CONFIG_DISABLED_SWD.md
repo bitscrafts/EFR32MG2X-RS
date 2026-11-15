@@ -2,7 +2,7 @@
 
 **Date**: December 26, 2025
 **Issue**: Clock configuration code disabled SWD debug interface, bricking the device
-**Example**: `efr32mg24-hal/examples/01_clock.rs` (original version without debug preservation)
+**Example**: `efr32mg2x-hal/examples/01_clock.rs` (original version without debug preservation)
 
 ---
 

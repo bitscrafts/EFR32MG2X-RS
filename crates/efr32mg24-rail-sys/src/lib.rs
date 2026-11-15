@@ -17,7 +17,7 @@
 //! - Lifetime management: RAIL handles must outlive their associated resources
 //! - Initialization order: RAIL requires specific initialization sequences
 //!
-//! **Do not use this crate directly.** Use the safe wrapper in `efr32mg24-hal::radio` instead.
+//! **Do not use this crate directly.** Use the safe wrapper in `efr32mg2x-hal::radio` instead.
 //!
 //! # MSLA License
 //!
@@ -58,7 +58,7 @@
 //! }
 //! ```
 //!
-//! **Again: Do not use this API directly. Use `efr32mg24-hal::radio` instead.**
+//! **Again: Do not use this API directly. Use `efr32mg2x-hal::radio` instead.**
 
 // Include the auto-generated bindings from build.rs
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

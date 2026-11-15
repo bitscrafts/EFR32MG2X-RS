@@ -21,7 +21,7 @@ The HAL should remain **device-generic** for all EFR32MG24 variants, while BSPs 
 ```
 EFR32MG2X-RS/
 ├── crates/efr32mg2x-pac/              # Device PAC (B220, A020, etc.)
-├── crates/efr32mg24-hal/              # Generic HAL for all EFR32MG24
+├── crates/efr32mg2x-hal/              # Generic HAL for all EFR32MG24
 │   ├── src/
 │   │   ├── clock/              # Generic clock management
 │   │   ├── gpio/               # Generic GPIO
@@ -74,8 +74,8 @@ EFR32MG2X-RS/
 ```rust
 // crates/xiao-mg24-bsp/src/pins.rs
 
-use efr32mg24_hal::gpio::{self, Pin};
-use efr32mg24_hal::pac;
+use efr32mg2x_hal::gpio::{self, Pin};
+use efr32mg2x_hal::pac;
 
 pub struct Pins {
     pub led: Pin<gpio::PortB, 2, gpio::Output<gpio::PushPull>>,

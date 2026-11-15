@@ -20,8 +20,8 @@
 mod mailbox;
 
 use cortex_m_rt::entry;
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::prelude::*;
+use efr32mg2x_hal::board::Board;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {

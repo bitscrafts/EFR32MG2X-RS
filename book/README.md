@@ -577,7 +577,7 @@ book/project/
 └── complete-workspace/           # Chapter 16 full project
     ├── Cargo.toml
     ├── efr32mg2x-pac/
-    ├── efr32mg24-hal/
+    ├── efr32mg2x-hal/
     └── examples/
 ```
 
@@ -637,7 +637,7 @@ Show actual commands with expected output:
 ```bash
 $ cargo build --release
    Compiling efr32mg2x-pac v0.1.0
-   Compiling efr32mg24-hal v0.1.0
+   Compiling efr32mg2x-hal v0.1.0
     Finished release [optimized] target(s) in 2.6m
 ```
 
@@ -881,8 +881,8 @@ gantt
    - Table of common baud rates
 
    Reference actual EFR32MG24 implementation from:
-   - efr32mg24-hal/src/usart/mod.rs:120-180
-   - efr32mg24-hal/src/usart/types.rs:45-60
+   - efr32mg2x-hal/src/usart/mod.rs:120-180
+   - efr32mg2x-hal/src/usart/types.rs:45-60
 
    Target audience: Intermediate Rust developers
    Tone: Conversational but technical
@@ -908,13 +908,13 @@ gantt
 **Automated Extraction:**
 ```bash
 # Extract specific function
-sed -n '100,150p' efr32mg24-hal/src/gpio/mod.rs
+sed -n '100,150p' efr32mg2x-hal/src/gpio/mod.rs
 
 # Extract with context
-git show HEAD:efr32mg24-hal/src/gpio/mod.rs | sed -n '100,150p'
+git show HEAD:efr32mg2x-hal/src/gpio/mod.rs | sed -n '100,150p'
 
 # Find all implementations of pattern
-rg "pub fn into_output" efr32mg24-hal/src/ -n
+rg "pub fn into_output" efr32mg2x-hal/src/ -n
 ```
 
 **Manual Curation:**
@@ -1081,7 +1081,7 @@ book/
 **Symbolic Links (Optional):**
 ```bash
 # For chapters heavily tied to actual code
-ln -s /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-hal/src/gpio \
+ln -s /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg2x-hal/src/gpio \
       book/project/chapter-03-gpio/src/gpio
 ```
 
@@ -1089,7 +1089,7 @@ ln -s /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/
 ```bash
 # Copy only what we need
 rsync -av --include='*.rs' --include='*.toml' --exclude='*' \
-      efr32mg24-hal/src/gpio/ \
+      efr32mg2x-hal/src/gpio/ \
       book/project/chapter-03-gpio/src/
 ```
 
@@ -1102,7 +1102,7 @@ rsync -av --include='*.rs' --include='*.toml' --exclude='*' \
 /// # Implementation Details
 ///
 /// See [EFR32MG24 Reference Manual, Section 25.3.3](efr32mg24_rm.pdf)
-/// and actual implementation: efr32mg24-hal/src/usart/mod.rs:45-67
+/// and actual implementation: efr32mg2x-hal/src/usart/mod.rs:45-67
 ///
 /// [book: chapter-05-usart, section-05-02]
 ```

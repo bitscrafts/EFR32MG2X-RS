@@ -98,8 +98,8 @@ mod mailbox {
     }
 }
 
-use efr32mg24_hal::prelude::*;
 use efr32mg24_rail_sys as rail;
+use efr32mg2x_hal::prelude::*;
 use mailbox::Status;
 use panic_halt as _;
 
@@ -151,7 +151,7 @@ extern "C" {
 #[no_mangle]
 pub extern "C" fn RAILCb_PaAutoModeDecision(_handle: rail::RAIL_Handle_t) {}
 
-fn stop(delay: &mut efr32mg24_hal::delay::Delay) -> ! {
+fn stop(delay: &mut efr32mg2x_hal::delay::Delay) -> ! {
     loop {
         delay.delay_ms(500);
     }
@@ -159,7 +159,7 @@ fn stop(delay: &mut efr32mg24_hal::delay::Delay) -> ! {
 
 #[no_mangle]
 pub extern "C" fn main() -> ! {
-    let mut board = efr32mg24_hal::board::Board::take().unwrap();
+    let mut board = efr32mg2x_hal::board::Board::take().unwrap();
     let mut delay = board.delay();
 
     // The radio is clocked from the crystal, not from the internal oscillator. Starting it is not enough:
@@ -298,7 +298,7 @@ pub extern "C" fn main() -> ! {
     unsafe { rail::RAIL_SetTxFifo(handle, tx_buf.as_mut_ptr(), 0, 64) };
     mailbox::write(Status::Info, b"tx: fifo ok");
 
-    unsafe { efr32mg24_hal::dwt::start() };
+    unsafe { efr32mg2x_hal::dwt::start() };
 
     let mut count = 0u32;
     let mut failures = 0u32;
@@ -360,8 +360,8 @@ pub extern "C" fn main() -> ! {
 
         // 30 ms at the crystal's rate, measured on the cycle counter because the HAL's Delay is
         // calibrated for a clock that is no longer the system clock.
-        let t0 = efr32mg24_hal::dwt::cycles();
-        while efr32mg24_hal::dwt::since(t0) < 39_000 * 30 {
+        let t0 = efr32mg2x_hal::dwt::cycles();
+        while efr32mg2x_hal::dwt::since(t0) < 39_000 * 30 {
             core::hint::spin_loop();
         }
     }

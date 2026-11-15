@@ -24,7 +24,7 @@ bash scripts/ble-matrix-all.sh /tmp/matrix.md "xiao"       # a subset, by label
 | `xiao-mg24-bsp/module_ble_motion` | ok | ok | **yes** | `Data[10]` with three axis samples |
 | `xiao-mg24-bsp/module_ble_fall` | ok | ok | **yes** | `Data[12]: 0100000000000000ffff1604` |
 | `xiao-expansion-base-bsp/base_ble_env` | ok | ok | **yes** | `Data[9]` with temperature and pressure |
-| `efr32mg24-hal/hal_led_blink` | ok | ok | n/a | drives PA7, the control that the board runs this code |
+| `efr32mg2x-hal/hal_led_blink` | ok | ok | n/a | drives PA7, the control that the board runs this code |
 
 Three things this table is careful about, each of which had gone wrong before:
 

@@ -161,9 +161,9 @@ script that checks formatting and tests, so that it runs when nothing else does:
 # 1. An example may only name the layer it demonstrates.
 grep -rln 'efr32mg24_pac|pac::' crates/*/examples/ | grep -v '^crates/efr32mg24-pac/'
 # 2. A BSP must not re-export the PAC.
-grep -rln 'pub use efr32mg24_pac' crates/*/src/ | grep -v '^crates/efr32mg24-hal/'
+grep -rln 'pub use efr32mg24_pac' crates/*/src/ | grep -v '^crates/efr32mg2x-hal/'
 # 3. The HAL must not put a register block in a public signature.
-grep -rqE 'pub (fn|const fn) [^\n]*::RegisterBlock' crates/efr32mg24-hal/src/
+grep -rqE 'pub (fn|const fn) [^\n]*::RegisterBlock' crates/efr32mg2x-hal/src/
 # 4. No example may steal a core peripheral.
 grep -rln 'Peripherals::steal' crates/*/examples/
 # 5. Every crate carries at least one example of its own level.

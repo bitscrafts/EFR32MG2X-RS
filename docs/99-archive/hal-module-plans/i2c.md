@@ -75,7 +75,7 @@ The driver automatically calculates the correct CLKDIV value based on the config
 ### Basic Initialization
 
 ```rust
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     clock::{Clocks, ClockConfig, HfxoConfig},
     i2c::{I2c0, Config, Speed},
     pac,

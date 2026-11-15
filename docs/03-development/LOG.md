@@ -283,9 +283,9 @@ it needs is written and verified on the board. The BME680's gas resistance is al
 - Updated phase terminology from "Phase 5" to "Phase A/B" across all documentation
 - Archived 4 obsolete documentation files to .archive/ with timestamps:
   - docs/DOCUMENTATION_AUDIT.md
-  - efr32mg24-hal/docs/PHASE2_PLAN.md
-  - efr32mg24-hal/docs/PHASE5_TIER3_PLAN.md
-  - efr32mg24-hal/docs/PHASE_A_IMPLEMENTATION_STATUS.md
+  - efr32mg2x-hal/docs/PHASE2_PLAN.md
+  - efr32mg2x-hal/docs/PHASE5_TIER3_PLAN.md
+  - efr32mg2x-hal/docs/PHASE_A_IMPLEMENTATION_STATUS.md
 - Enhanced Rust Embedded Orchestrator with mandatory pre-commit documentation audit
 - Implemented markdown-based project management (Option 4: Docs-Based)
 - Created docs/BACKLOG.md (Kanban-style task board)
@@ -514,7 +514,7 @@ it needs is written and verified on the board. The BME680's gas resistance is al
 **Milestone**: Development environment and tooling ready
 
 **Achievements**:
-- Created Cargo workspace with efr32mg2x-pac and efr32mg24-hal crates
+- Created Cargo workspace with efr32mg2x-pac and efr32mg2x-hal crates
 - Shared dependencies configuration
 - Size-optimized release profiles
 - Installed svd2rust v0.33.4 and form v0.12.1

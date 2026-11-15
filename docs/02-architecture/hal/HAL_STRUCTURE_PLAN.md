@@ -42,7 +42,7 @@ This document outlines the structure and implementation strategy for the EFR32MG
 ## Crate Structure (Current Implementation)
 
 ```
-crates/efr32mg24-hal/
+crates/efr32mg2x-hal/
 ├── Cargo.toml
 ├── README.md
 ├── memory.x                # Linker memory layout (1536 KB Flash, 256 KB RAM)
@@ -604,7 +604,7 @@ Each module must include:
 /// # Examples
 ///
 /// ```no_run
-/// # use efr32mg24_hal::gpio::*;
+/// # use efr32mg2x_hal::gpio::*;
 /// let pin = gpioa.pa0.into_pull_up_input();
 /// if pin.is_high() {
 ///     // Pin is high

@@ -6,7 +6,7 @@
 //! mailbox, so any disagreement between them is a HAL bug, not a sensor quirk.
 //!
 //! The example names no PAC type. Everything it touches comes from
-//! `efr32mg24_hal`:
+//! `efr32mg2x_hal`:
 //!
 //! - [`Board`] — peripherals plus the bus clocks already enabled,
 //! - [`Ssd1306`] — the panel driver, generic over the I2C transport,

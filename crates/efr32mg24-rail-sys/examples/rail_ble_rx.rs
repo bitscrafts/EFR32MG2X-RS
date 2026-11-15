@@ -24,9 +24,9 @@
 
 use core::ptr;
 
-use efr32mg24_hal::entry;
-use efr32mg24_hal::prelude::*;
 use efr32mg24_rail_sys as rail;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
@@ -42,7 +42,7 @@ const STATUS_OK: u32 = 0;
 
 #[entry]
 fn main() -> ! {
-    let board = efr32mg24_hal::board::Board::take().expect("board");
+    let board = efr32mg2x_hal::board::Board::take().expect("board");
     let mut delay = board.delay();
 
     mailbox::write(Status::Info, b"rx: entered main");
@@ -228,13 +228,13 @@ pub extern "C" fn RAILCb_AssertFailed(
     }
 }
 
-fn stop(delay: &mut efr32mg24_hal::delay::Delay) -> ! {
+fn stop(delay: &mut efr32mg2x_hal::delay::Delay) -> ! {
     loop {
         delay.delay_ms(1000);
     }
 }
 
-fn report_u32(delay: &mut efr32mg24_hal::delay::Delay, prefix: &[u8], value: u32) {
+fn report_u32(delay: &mut efr32mg2x_hal::delay::Delay, prefix: &[u8], value: u32) {
     let mut msg = [0u8; 48];
     let mut at = 0;
     mailbox::push(&mut msg, &mut at, prefix);

@@ -451,18 +451,18 @@ git commit -m "Update markdown" # or git checkout .
 ```bash
 # Update all module READMEs from "Phase 5" to "Phase A"
 bash .claude/skills/markdown-edit/scripts/bulk-update.sh \
-  "crates/efr32mg24-hal/src/*/README.md" "Phase 5" "Phase A" --dry-run
+  "crates/efr32mg2x-hal/src/*/README.md" "Phase 5" "Phase A" --dry-run
 
 # Review, then apply
 bash .claude/skills/markdown-edit/scripts/bulk-update.sh \
-  "crates/efr32mg24-hal/src/*/README.md" "Phase 5" "Phase A"
+  "crates/efr32mg2x-hal/src/*/README.md" "Phase 5" "Phase A"
 ```
 
 ### Use Case 2: Add Breaking Change Notice
 
 ```bash
 # Add warning to top of API section in all READMEs
-for file in crates/efr32mg24-hal/src/*/README.md; do
+for file in crates/efr32mg2x-hal/src/*/README.md; do
   bash .claude/skills/markdown-edit/scripts/prepend-to-section.sh \
     "$file" 2 "API" "⚠️ **Breaking Changes in v0.2.0**\n"
 done
@@ -523,7 +523,7 @@ bash .claude/skills/markdown-edit/scripts/smart-replace.sh \
 
 # This won't change:
 ```rust
-use efr32mg24_hal::HAL;  // ← Code block, skipped
+use efr32mg2x_hal::HAL;  // ← Code block, skipped
 ```
 
 # But WILL change:

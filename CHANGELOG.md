@@ -315,7 +315,7 @@ a second machine watching the air -- the board's own report is never accepted as
 
 **Documentation**:
 - Updated all module READMEs with Phase 2 implementation status
-- Created efr32mg24-hal/docs/PHASE2_PLAN.md documenting completion
+- Created efr32mg2x-hal/docs/PHASE2_PLAN.md documenting completion
 - Reorganized documentation (only README.md in roots, all docs in docs/ folders)
 - Updated workspace-level PLAN.md and STATUS.md
 
@@ -356,7 +356,7 @@ a second machine watching the air -- the board's own report is never accepted as
 
 ### Changed
 - Modified `.cargo/config.toml` to only use `-Tlink.x` (removed `-Tmemory.x`)
-- Updated `efr32mg24-hal/Cargo.toml` to enable `critical-section-single-core` feature
+- Updated `efr32mg2x-hal/Cargo.toml` to enable `critical-section-single-core` feature
 - Removed memory.x from PAC crate (HAL now provides it)
 
 ## [0.1.0] - 2025-12-XX (Planned Initial Release)
@@ -463,7 +463,7 @@ rustflags = ["-C", "link-arg=-Tlink.x"]
 2. Enable `rt` feature:
 ```toml
 [dependencies]
-efr32mg24-hal = { version = "0.1", features = ["rt"] }
+efr32mg2x-hal = { version = "0.1", features = ["rt"] }
 cortex-m-rt = "0.7"
 ```
 

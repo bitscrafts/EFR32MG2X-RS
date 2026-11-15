@@ -207,7 +207,7 @@ MIT OR Apache-2.0
 ## See Also
 
 - [efr32mg24-rail-sys](../efr32mg24-rail-sys) - RAIL FFI bindings (Phase D1 complete)
-- [efr32mg24-hal](../efr32mg24-hal) - Hardware Abstraction Layer
+- [efr32mg2x-hal](../efr32mg2x-hal) - Hardware Abstraction Layer
 - [efr32mg2x-pac](../efr32mg2x-pac) - Peripheral Access Crate
 
 ---

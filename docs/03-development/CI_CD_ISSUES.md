@@ -9,7 +9,7 @@ This document tracks common CI/CD failures and their solutions to prevent recurr
 ## Issue #1: UTF-8 Encoding Errors
 
 **Date**: December 19, 2025
-**File**: `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
+**File**: `crates/efr32mg2x-hal/examples/07_timer_pwm.rs`
 
 ### Problem
 
@@ -61,8 +61,8 @@ for duty in 0..=100u8 {
 
 **Date**: December 19, 2025
 **Files**:
-- `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
-- `crates/efr32mg24-hal/src/adc/mod.rs`
+- `crates/efr32mg2x-hal/examples/07_timer_pwm.rs`
+- `crates/efr32mg2x-hal/src/adc/mod.rs`
 
 ### Problem
 
@@ -105,15 +105,15 @@ cargo fmt --all -- --check || {
 
 **Date**: December 19, 2025
 **Files**:
-- `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
-- `crates/efr32mg24-hal/examples/08_adc.rs`
+- `crates/efr32mg2x-hal/examples/07_timer_pwm.rs`
+- `crates/efr32mg2x-hal/examples/08_adc.rs`
 
 ### Problem
 
 Build errors:
 ```
 error[E0599]: no method named `freeze` found for enum `Result`
-error[E0599]: no method named `delay_ms` found for struct `efr32mg24_hal::delay::Delay`
+error[E0599]: no method named `delay_ms` found for struct `efr32mg2x_hal::delay::Delay`
 ```
 
 ### Root Cause
@@ -140,7 +140,7 @@ let frozen_clocks = clocks.freeze(cmu);
 
 **Delay API** - Import prelude:
 ```rust
-use efr32mg24_hal::prelude::*;  // Brings DelayNs trait into scope
+use efr32mg2x_hal::prelude::*;  // Brings DelayNs trait into scope
 ```
 
 ### Prevention
@@ -154,12 +154,12 @@ use efr32mg24_hal::prelude::*;  // Brings DelayNs trait into scope
 ## Issue #4: Missing Trait Imports
 
 **Date**: December 19, 2025
-**File**: `crates/efr32mg24-hal/examples/07_timer_pwm.rs`
+**File**: `crates/efr32mg2x-hal/examples/07_timer_pwm.rs`
 
 ### Problem
 
 ```
-error[E0599]: no method named `delay_ms` found for struct `efr32mg24_hal::delay::Delay`
+error[E0599]: no method named `delay_ms` found for struct `efr32mg2x_hal::delay::Delay`
 = help: items from traits can only be used if the trait is in scope
 help: trait `DelayNs` which provides `delay_ms` is implemented but not in scope
 ```
@@ -172,7 +172,7 @@ help: trait `DelayNs` which provides `delay_ms` is implemented but not in scope
 
 Always import the prelude in examples:
 ```rust
-use efr32mg24_hal::prelude::*;
+use efr32mg2x_hal::prelude::*;
 ```
 
 ### Prevention
@@ -183,7 +183,7 @@ use efr32mg24_hal::prelude::*;
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     // ... specific imports ...
     prelude::*,  // ALWAYS include this
 };
@@ -204,7 +204,7 @@ cargo fmt --all
 cargo fmt --all -- --check
 
 # 3. Run clippy with deny warnings
-cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings
+cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings
 
 # 4. Build all examples
 cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release

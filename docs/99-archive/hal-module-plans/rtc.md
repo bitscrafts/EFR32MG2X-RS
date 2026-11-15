@@ -5,7 +5,7 @@
 **Stage**: 1 (Counter-Based Timekeeping)
 **Status**: Production-Ready (Stage 1)
 
-**Module**: `efr32mg24_hal::rtc`
+**Module**: `efr32mg2x_hal::rtc`
 **Version**: 0.1.0
 
 ---
@@ -154,7 +154,7 @@ Simple type alias for clarity in function signatures.
 ### Example 1: Basic Counter Read
 
 ```rust
-use efr32mg24_hal::{rtc::Rtc, pac};
+use efr32mg2x_hal::{rtc::Rtc, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 
@@ -171,7 +171,7 @@ let seconds = rtc.ticks_to_seconds(ticks);
 ### Example 2: Set Alarm (5 Seconds)
 
 ```rust
-use efr32mg24_hal::{rtc::Rtc, pac};
+use efr32mg2x_hal::{rtc::Rtc, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let mut rtc = Rtc::new(dp.sysrtc0_ns);
@@ -197,7 +197,7 @@ rtc.clear_alarm_flag();
 ### Example 3: Periodic Wake-Up
 
 ```rust
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     clock::{Clocks, ClockConfig, HfxoConfig, LfxoConfig},
     rtc::Rtc,
     emu::{Emu, Em2Config, VoltageScale},
@@ -253,7 +253,7 @@ loop {
 ### Example 4: Alarm with Current Time Offset
 
 ```rust
-use efr32mg24_hal::{rtc::Rtc, pac};
+use efr32mg2x_hal::{rtc::Rtc, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let mut rtc = Rtc::new(dp.sysrtc0_ns);
@@ -273,7 +273,7 @@ rtc.clear_alarm_flag();
 ### Example 5: Millisecond Precision Timing
 
 ```rust
-use efr32mg24_hal::{rtc::Rtc, pac};
+use efr32mg2x_hal::{rtc::Rtc, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let mut rtc = Rtc::new(dp.sysrtc0_ns);
@@ -718,8 +718,8 @@ When contributing to this module:
 
 ## License
 
-This module is part of efr32mg24-hal, licensed under MIT OR Apache-2.0.
+This module is part of efr32mg2x-hal, licensed under MIT OR Apache-2.0.
 
 ---
 
-<!-- META: last_updated=2025-12-27 version=0.1.0 status=production-ready phase=C stage=1 identifier=C4-RTC maintained-by=efr32mg24-hal -->
+<!-- META: last_updated=2025-12-27 version=0.1.0 status=production-ready phase=C stage=1 identifier=C4-RTC maintained-by=efr32mg2x-hal -->

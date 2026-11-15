@@ -41,12 +41,12 @@
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::dwt;
-use efr32mg24_hal::entry;
-use efr32mg24_hal::pin::Port;
-use efr32mg24_hal::prelude::*;
 use efr32mg24_radio::Bluetooth;
+use efr32mg2x_hal::board::Board;
+use efr32mg2x_hal::dwt;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::pin::Port;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]

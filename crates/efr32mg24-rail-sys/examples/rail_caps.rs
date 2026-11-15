@@ -11,9 +11,9 @@
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::entry;
-use efr32mg24_hal::prelude::*;
 use efr32mg24_rail_sys as rail;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
@@ -30,7 +30,7 @@ extern "C" {
 
 #[entry]
 fn main() -> ! {
-    let board = efr32mg24_hal::board::Board::take().expect("board");
+    let board = efr32mg2x_hal::board::Board::take().expect("board");
     let mut delay = board.delay();
 
     // A capability answer does not need an initialised radio, but asking after init is the honest
@@ -150,7 +150,7 @@ fn main() -> ! {
     }
 }
 
-fn stop(delay: &mut efr32mg24_hal::delay::Delay) -> ! {
+fn stop(delay: &mut efr32mg2x_hal::delay::Delay) -> ! {
     loop {
         delay.delay_ms(1000);
     }

@@ -314,7 +314,7 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // running, its `CFG` write faults at `0x500a_800c`. Clocked and disabled is the only state that satisfies both.
     //
     // It belongs here because every caller needs it: an example that forgot it looks exactly like a radio failure.
-    efr32mg24_hal::sysrtc::Sysrtc::enable_clocks(&*efr32mg2x_pac::CmuNs::ptr());
+    efr32mg2x_hal::sysrtc::Sysrtc::enable_clocks(&*efr32mg2x_pac::CmuNs::ptr());
 
     // **The crystal first -- before anything that touches the radio.**
     //

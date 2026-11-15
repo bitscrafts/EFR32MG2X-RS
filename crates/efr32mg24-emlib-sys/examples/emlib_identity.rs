@@ -14,8 +14,8 @@
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::entry;
-use efr32mg24_hal::prelude::*;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
@@ -27,7 +27,7 @@ use efr32mg24_emlib_sys::{emlib_chip_revision, emlib_sysclk_hz, emlib_unique_id}
 
 #[entry]
 fn main() -> ! {
-    let board = efr32mg24_hal::board::Board::take().expect("board");
+    let board = efr32mg2x_hal::board::Board::take().expect("board");
     let _delay = board.delay();
 
     mailbox::write(Status::Info, b"id: entered main");

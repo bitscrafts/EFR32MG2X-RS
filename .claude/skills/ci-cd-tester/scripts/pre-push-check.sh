@@ -43,7 +43,7 @@ echo ""
 # Check 3: Clippy on HAL (strict - no warnings allowed in HAL code only)
 echo -e "${YELLOW}3️⃣  Running Clippy on HAL (strict)...${NC}"
 # Use --no-deps to check only HAL code, not dependencies (PAC)
-if cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings 2>&1 | grep -v "default-features"; then
+if cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings 2>&1 | grep -v "default-features"; then
     echo -e "${GREEN}✅ HAL Clippy passed (no warnings)${NC}"
 else
     echo -e "${RED}❌ HAL Clippy failed - fix all warnings${NC}"
@@ -63,7 +63,7 @@ echo ""
 
 # Check 5: Build HAL
 echo -e "${YELLOW}5️⃣  Building HAL library...${NC}"
-if cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release --quiet; then
+if cargo build -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --release --quiet; then
     echo -e "${GREEN}✅ HAL build succeeded${NC}"
 else
     echo -e "${RED}❌ HAL build failed${NC}"
@@ -73,7 +73,7 @@ echo ""
 
 # Check 6: Build examples
 echo -e "${YELLOW}6️⃣  Building all examples...${NC}"
-if cargo build --manifest-path crates/efr32mg24-hal/Cargo.toml --examples --features rt --target thumbv8m.main-none-eabihf --release --quiet; then
+if cargo build --manifest-path crates/efr32mg2x-hal/Cargo.toml --examples --features rt --target thumbv8m.main-none-eabihf --release --quiet; then
     echo -e "${GREEN}✅ All examples built successfully${NC}"
 else
     echo -e "${RED}❌ Example build failed${NC}"
@@ -83,7 +83,7 @@ echo ""
 
 # Check 7: Documentation
 echo -e "${YELLOW}7️⃣  Building documentation...${NC}"
-DOC_OUTPUT=$(cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --quiet 2>&1)
+DOC_OUTPUT=$(cargo doc --no-deps -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --quiet 2>&1)
 if echo "$DOC_OUTPUT" | grep -qi "warning"; then
     echo -e "${RED}❌ Documentation has warnings:${NC}"
     echo "$DOC_OUTPUT" | grep -i "warning"

@@ -85,7 +85,7 @@ This module uses direct hardware register access for precise control:
 ### Basic Memory-to-Memory Transfer
 
 ```rust
-use efr32mg24_hal::{dma::Dma, pac};
+use efr32mg2x_hal::{dma::Dma, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let mut dma = Dma::new(dp.ldma_s);
@@ -138,7 +138,7 @@ ch0.transfer(&src_large, &mut dst_large)?;
 ## Error Handling
 
 ```rust
-use efr32mg24_hal::dma::DmaError;
+use efr32mg2x_hal::dma::DmaError;
 
 match ch0.transfer(&src, &mut dst) {
     Ok(()) => {

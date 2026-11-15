@@ -7,7 +7,7 @@ crate documentation) rather than recalled; the source is named for each.
 
 ## The question
 
-This workspace had grown into one story: `efr32mg24-hal` contained a `board` module with the
+This workspace had grown into one story: `efr32mg2x-hal` contained a `board` module with the
 Expansion Base's pins, `xiao-mg24-bsp` contained a facade for the same base, and examples
 that need only the module sat beside examples that need both boards. Three specific questions
 came out of that:
@@ -148,7 +148,7 @@ None of the four ecosystems has that shape, so the mapping is by analogy, not by
 ```text
 crates/                              the hardware stack: one dependency direction
   efr32mg2x-pac/                     registers
-  efr32mg24-hal/                     drivers + a bit-banged I2C that takes pins; no wiring
+  efr32mg2x-hal/                     drivers + a bit-banged I2C that takes pins; no wiring
   xiao-mg24-bsp/                     the module: LED; feature "sense": IMU + microphone
   xiao-expansion-base-bsp/           the base: OLED, BME68x, RTC, buzzer, button, Grove, SD
   efr32mg24-bluetooth-sys/           bindings

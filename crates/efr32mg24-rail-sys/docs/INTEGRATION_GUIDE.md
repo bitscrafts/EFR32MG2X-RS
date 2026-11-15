@@ -488,7 +488,7 @@ match sha256_file(&blob_path) {
 //! - Lifetime management: RAIL handles must outlive resources
 //! - Initialization order: RAIL requires specific init sequences
 //!
-//! **Do not use this crate directly.** Use `efr32mg24-hal::radio` instead.
+//! **Do not use this crate directly.** Use `efr32mg2x-hal::radio` instead.
 ```
 
 **Safety Categories**:
@@ -530,7 +530,7 @@ match sha256_file(&blob_path) {
 //! }
 //! ```
 //!
-//! **Do not use this API directly. Use `efr32mg24-hal::radio` instead.**
+//! **Do not use this API directly. Use `efr32mg2x-hal::radio` instead.**
 ```
 
 **User Guidance**:
@@ -649,7 +649,7 @@ After completing integration, verify:
 
 ## Next Steps
 
-1. **Create safe HAL wrapper** (`efr32mg24-hal::radio`)
+1. **Create safe HAL wrapper** (`efr32mg2x-hal::radio`)
 2. **Test on hardware** (XIAO MG24 Sense)
 3. **Add protocol support** (BLE, Zigbee, Thread)
 4. **Multi-device support** (MG25, MG27, MG28)

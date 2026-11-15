@@ -33,7 +33,7 @@ Create production-ready Rust support for the EFR32MG24 wireless microcontroller 
 - ✅ Stub lib.rs (compiles, awaiting generation)
 - ✅ Comprehensive README.md
 
-### 3. HAL Crate (efr32mg24-hal/)
+### 3. HAL Crate (efr32mg2x-hal/)
 - ✅ Proper Cargo.toml with PAC dependency
 - ✅ Stub lib.rs with PAC re-export
 - ✅ docs/ folder for documentation
@@ -48,7 +48,7 @@ Create production-ready Rust support for the EFR32MG24 wireless microcontroller 
 - ✅ **STATUS.md** - Current status and handoff checklist
 - ✅ **PROJECT_SUMMARY.md** - This document
 - ✅ **efr32mg2x-pac/README.md** - PAC documentation
-- ✅ **efr32mg24-hal/README.md** - HAL documentation
+- ✅ **efr32mg2x-hal/README.md** - HAL documentation
 
 ### 5. Research & Analysis
 - ✅ Comprehensive research on existing EFR32 Rust support
@@ -104,7 +104,7 @@ EFR32MG24/                          ✅ Root workspace
 │   ├── svd/                        ✅ 20 original SVD files
 │   └── svd_fixed/                  ✅ 20 processed SVD files
 │
-├── efr32mg24-hal/                  ✅ HAL Crate (compiles)
+├── efr32mg2x-hal/                  ✅ HAL Crate (compiles)
 │   ├── Cargo.toml                  ✅ Full configuration
 │   ├── README.md                   ✅ HAL documentation
 │   ├── docs/                       ✅ Documentation folder
@@ -232,7 +232,7 @@ See [FINDINGS.md](FINDINGS.md#technical-challenges-encountered) for detailed ana
 | [STATUS.md](STATUS.md) | Current status | ✅ Complete |
 | [PROJECT_SUMMARY.md](PROJECT_SUMMARY.md) | This file | ✅ Complete |
 | [efr32mg2x-pac/README.md](efr32mg2x-pac/README.md) | PAC documentation | ✅ Complete |
-| [efr32mg24-hal/README.md](efr32mg24-hal/README.md) | HAL documentation | ✅ Complete |
+| [efr32mg2x-hal/README.md](efr32mg2x-hal/README.md) | HAL documentation | ✅ Complete |
 
 ---
 
@@ -251,7 +251,7 @@ cargo build --release
 
 # Build specific crate
 cargo build -p efr32mg2x-pac
-cargo build -p efr32mg24-hal
+cargo build -p efr32mg2x-hal
 ```
 
 ### SVD Commands

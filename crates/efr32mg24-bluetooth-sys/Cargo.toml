@@ -14,7 +14,7 @@ categories = ["embedded", "hardware-support", "no-std"]
 name = "efr32mg24_bluetooth_sys"
 
 [dependencies]
-efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg2x-hal = { package = "efr32mg2x-hal", path = "../efr32mg2x-hal", features = ["rt"] }
 aes-ctr-radio = { package = "efr32mg2x-aes-ctr-radio", path = "../../libraries/aes-ctr-radio" }
 aes-modes = { package = "efr32mg2x-aes-modes", path = "../../libraries/aes-modes" }
 # P-256 for the security manager's LE Secure Connections: ECDH and public-key export, in Rust.

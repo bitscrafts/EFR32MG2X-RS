@@ -57,7 +57,7 @@ stays out of the product build until that is answered.
 
 ```
 crates/efr32mg2x-pac              registers
-crates/efr32mg24-hal              drivers + pin/bus primitives; no board pins anywhere
+crates/efr32mg2x-hal              drivers + pin/bus primitives; no board pins anywhere
 crates/xiao-mg24-bsp              the module: LED; feature "sense": IMU + microphone
 crates/xiao-expansion-base-bsp    the base: OLED, BME68x, RTC, buzzer, button
 libraries/motion-detection        domain policy: [i32;3] + dt_us -> Event, zero dependencies

@@ -5,7 +5,7 @@
 **Stage**: 1 (EM0-EM2 Transitions)
 **Status**: Production-Ready (Stage 1)
 
-**Module**: `efr32mg24_hal::emu`
+**Module**: `efr32mg2x_hal::emu`
 **Version**: 0.1.0
 
 ---
@@ -156,7 +156,7 @@ All fallible operations return `Result<(), Error>`.
 ### Example 1: Basic Sleep Mode (EM1)
 
 ```rust
-use efr32mg24_hal::{emu::Emu, pac};
+use efr32mg2x_hal::{emu::Emu, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let emu = Emu::new(dp.emu_s);
@@ -173,7 +173,7 @@ emu.enter_em1();
 ### Example 2: Deep Sleep with Voltage Scaling (EM2)
 
 ```rust
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     emu::{Emu, Em2Config, VoltageScale},
     pac,
 };
@@ -202,7 +202,7 @@ emu.enter_em2(config).expect("Failed to enter EM2");
 ### Example 3: Voltage Scaling for EM0/EM1
 
 ```rust
-use efr32mg24_hal::{emu::{Emu, VoltageScale}, pac};
+use efr32mg2x_hal::{emu::{Emu, VoltageScale}, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let emu = Emu::new(dp.emu_s);
@@ -223,7 +223,7 @@ emu.set_em01_voltage_scale(VoltageScale::Vscale2)
 ### Example 4: Status Queries
 
 ```rust
-use efr32mg24_hal::{emu::Emu, pac};
+use efr32mg2x_hal::{emu::Emu, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 let emu = Emu::new(dp.emu_s);
@@ -250,7 +250,7 @@ if emu.is_locked() {
 ### Example 5: Periodic Sleep Pattern
 
 ```rust
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     clock::{Clocks, ClockConfig, HfxoConfig},
     delay::Delay,
     emu::Emu,
@@ -602,8 +602,8 @@ When contributing to this module:
 
 ## License
 
-This module is part of efr32mg24-hal, licensed under MIT OR Apache-2.0.
+This module is part of efr32mg2x-hal, licensed under MIT OR Apache-2.0.
 
 ---
 
-<!-- META: last_updated=2025-12-27 version=0.1.0 status=production-ready phase=C stage=1 identifier=C3-EMU maintained-by=efr32mg24-hal -->
+<!-- META: last_updated=2025-12-27 version=0.1.0 status=production-ready phase=C stage=1 identifier=C3-EMU maintained-by=efr32mg2x-hal -->

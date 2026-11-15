@@ -102,7 +102,7 @@ Most SPI devices use **Mode 0** or **Mode 3**. Check your device datasheet.
 ### Basic Initialization
 
 ```rust
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     clock::{Clocks, ClockConfig, HfxoConfig},
     spi::{Spi0, Spi1, Spi2, Config, Mode},
     pac,
@@ -190,7 +190,7 @@ let spi_mode3 = Spi0::new(
 ### LSB-First Bit Order
 
 ```rust
-use efr32mg24_hal::spi::BitOrder;
+use efr32mg2x_hal::spi::BitOrder;
 
 // Configure for LSB-first transmission
 let config = Config::new(Mode::Mode0, 1_000_000)

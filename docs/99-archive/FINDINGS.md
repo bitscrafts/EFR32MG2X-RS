@@ -13,7 +13,7 @@ EFR32MG24/
 ├── efr32mg2x-pac/                # Peripheral Access Crate
 │   ├── Cargo.toml
 │   └── src/
-├── efr32mg24-hal/                # Hardware Abstraction Layer
+├── efr32mg2x-hal/                # Hardware Abstraction Layer
 │   ├── Cargo.toml
 │   ├── src/
 │   └── svd/                      # SVD files from Silicon Labs
@@ -43,7 +43,7 @@ EFR32MG24/
 **Primary Source**: GitHub repository `silabs-EricB/cortex-debug-dp-efr32mg24`
 - Contains 20 SVD files for different EFR32MG24 variants
 - File sizes: 8.3 MB (1024KB flash) to 9.0 MB (1536KB flash variants)
-- All files successfully cloned to `efr32mg24-hal/svd/`
+- All files successfully cloned to `efr32mg2x-hal/svd/`
 
 **Alternative Sources**:
 1. ARM Keil Device Family Pack (GeckoPlatform_EFR32MG24_DFP)
@@ -124,8 +124,8 @@ unsupported proc macro punctuation character '{'
 **Issue**: Initial confusion about folder structure - where to place SVD files and how to organize workspace.
 
 **Resolution**:
-- Created workspace with two members: `efr32mg2x-pac` and `efr32mg24-hal`
-- SVD files placed in `efr32mg24-hal/svd/` (20 files, 172 MB total)
+- Created workspace with two members: `efr32mg2x-pac` and `efr32mg2x-hal`
+- SVD files placed in `efr32mg2x-hal/svd/` (20 files, 172 MB total)
 - Workspace Cargo.toml created with shared dependencies
 
 **Lesson Learned**: Follow established patterns (stm32-rs, nrf-rs) for multi-crate embedded projects.
@@ -242,7 +242,7 @@ debug = true           # Keep debug info for easier debugging
 3. **Create initial patch file** (YAML):
    ```yaml
    # efr32mg24.yaml
-   _svd: efr32mg24-hal/svd/EFR32MG24A010F1536IM48.svd
+   _svd: efr32mg2x-hal/svd/EFR32MG24A010F1536IM48.svd
 
    # Patches will go here
    ```
@@ -331,7 +331,7 @@ debug = true           # Keep debug info for easier debugging
 
 1. **Workspace Cargo.toml**: Root workspace configuration
 2. **efr32mg2x-pac/Cargo.toml**: PAC crate (needs dependencies)
-3. **efr32mg24-hal/Cargo.toml**: HAL crate (placeholder)
+3. **efr32mg2x-hal/Cargo.toml**: HAL crate (placeholder)
 
 ---
 

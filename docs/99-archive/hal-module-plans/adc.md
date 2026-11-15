@@ -86,7 +86,7 @@ adc/
 ## Usage Example
 
 ```rust
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     clock::{Clocks, ClockConfig, HfxoConfig},
     adc::{Adc, Config, Channel, Reference},
     pac,

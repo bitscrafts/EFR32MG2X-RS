@@ -5,7 +5,7 @@
 **Stage**: 3
 **Status**: Production-Ready
 
-**Module**: `efr32mg24_hal::delay`
+**Module**: `efr32mg2x_hal::delay`
 **Status**: Fully Implemented
 **Version**: 0.1.0
 
@@ -42,7 +42,7 @@ graph LR
 ### Basic Delay Operations
 
 ```rust
-use efr32mg24_hal::{clock::Clocks, delay::Delay, pac};
+use efr32mg2x_hal::{clock::Clocks, delay::Delay, pac};
 use embedded_hal::delay::DelayNs;
 
 let cp = cortex_m::Peripherals::take().unwrap();

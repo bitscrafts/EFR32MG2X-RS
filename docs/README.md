@@ -347,7 +347,7 @@ All documents should include:
 - **Milestone history**: [LOG.md](LOG.md) (achievement log)
 - **Hardware details**: [hardware/XIAO_MG24_HARDWARE.md](hardware/XIAO_MG24_HARDWARE.md)
 - **PAC issues**: [pac/](pac/) folder
-- **HAL status**: [../efr32mg24-hal/docs/STATUS.md](../efr32mg24-hal/docs/STATUS.md)
+- **HAL status**: [../efr32mg2x-hal/docs/STATUS.md](../efr32mg2x-hal/docs/STATUS.md)
 - **HAL planning**: [hal/HAL_STRUCTURE_PLAN.md](hal/HAL_STRUCTURE_PLAN.md)
 - **Backup workflow**: [../.archive/README.md](../.archive/README.md)
 

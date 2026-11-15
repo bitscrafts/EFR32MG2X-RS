@@ -6,7 +6,7 @@ Low-level FFI bindings to Silicon Labs RAIL (Radio Abstraction Interface Layer) 
 
 **This crate provides raw, unsafe FFI bindings. Do not use directly.**
 
-Use the safe wrapper in `efr32mg24-hal::radio` instead.
+Use the safe wrapper in `efr32mg2x-hal::radio` instead.
 
 ## What is RAIL?
 
@@ -155,7 +155,7 @@ Use the safe wrapper:
 ```rust
 // DON'T use efr32mg24-rail-sys directly
 // DO use the safe HAL instead:
-use efr32mg24_hal::radio::ble::{BleAdvertiser, XiaoBle};
+use efr32mg2x_hal::radio::ble::{BleAdvertiser, XiaoBle};
 
 let mut ble = XiaoBle::new(/* ... */)?;
 ble.start_advertising()?;
@@ -313,7 +313,7 @@ Comprehensive documentation is available in the `docs/` directory:
 ## Internal Use Only
 
 This crate is used internally by:
-- `efr32mg24-hal::radio` - Safe HAL abstractions
+- `efr32mg2x-hal::radio` - Safe HAL abstractions
 - `efr32mg24-bluetooth-sys` - BLE stack bindings
 - `efr32mg24-zigbee-sys` - Zigbee stack bindings
 

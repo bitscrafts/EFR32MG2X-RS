@@ -18,7 +18,7 @@
 //! ```text
 //! efr32mg2x-pac    registers, generated from the SVD
 //!      ↑
-//! efr32mg24-hal    drivers and pin primitives; never names a board's wiring
+//! efr32mg2x-hal    drivers and pin primitives; never names a board's wiring
 //!      ↑
 //! this crate       which pin the LED is on, which bus the IMU is on, which gate powers it
 //!      ↑
@@ -52,8 +52,8 @@ pub use module::Module;
 // The HAL is re-exported because a BSP that hides the chip entirely is a BSP that cannot be
 // used for anything its author did not anticipate. The PAC deliberately is not: an application
 // holding the PAC can reconfigure what this crate claims to own.
-pub use efr32mg24_hal as hal;
+pub use efr32mg2x_hal as hal;
 
 // What an example needs to start a binary, re-exported so that an example names only this crate.
 // (`hal` is re-exported whole below; these two are the pieces every example uses.)
-pub use efr32mg24_hal::{entry, prelude};
+pub use efr32mg2x_hal::{entry, prelude};

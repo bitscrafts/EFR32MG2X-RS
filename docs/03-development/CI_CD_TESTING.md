@@ -67,7 +67,7 @@ Run the same Clippy checks as CI:
 cargo clippy -p efr32mg2x-pac --target thumbv8m.main-none-eabihf
 
 # Test HAL clippy (MUST pass with no warnings)
-cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
+cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
 ```
 
 **Expected Output**:
@@ -88,10 +88,10 @@ Test all build targets that CI runs:
 cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf --release
 
 # 2. Build HAL library
-cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release
+cargo build -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --release
 
 # 3. Build all examples
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo build --examples --features rt --target thumbv8m.main-none-eabihf --release
 cd ..
 
@@ -109,13 +109,13 @@ Verify rustdoc builds without warnings:
 
 ```bash
 # Build documentation (what CI checks)
-cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf
+cargo doc --no-deps -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf
 
 # Check for warnings in output
-cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf 2>&1 | grep -i warning
+cargo doc --no-deps -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf 2>&1 | grep -i warning
 
 # Open docs locally to preview
-cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --open
+cargo doc --no-deps -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --open
 ```
 
 **Expected Output**:
@@ -145,7 +145,7 @@ cargo fmt --all -- --check
 
 echo ""
 echo "2️⃣  Running Clippy on HAL..."
-cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
+cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
 
 echo ""
 echo "3️⃣  Building PAC..."
@@ -153,11 +153,11 @@ cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf --release
 
 echo ""
 echo "4️⃣  Building HAL and examples..."
-cargo build -p efr32mg24-hal --examples --features rt --target thumbv8m.main-none-eabihf --release
+cargo build -p efr32mg2x-hal --examples --features rt --target thumbv8m.main-none-eabihf --release
 
 echo ""
 echo "5️⃣  Building documentation..."
-cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf 2>&1 | tee /tmp/doc-output.txt
+cargo doc --no-deps -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf 2>&1 | tee /tmp/doc-output.txt
 if grep -qi "warning" /tmp/doc-output.txt; then
     echo "❌ Documentation has warnings"
     exit 1
@@ -203,7 +203,7 @@ Build docs exactly as the workflow does:
 ```bash
 # Simulate the docs workflow
 cargo doc --no-deps \
-  -p efr32mg24-hal \
+  -p efr32mg2x-hal \
   --features rt \
   --target thumbv8m.main-none-eabihf \
   --release
@@ -212,10 +212,10 @@ cargo doc --no-deps \
 cat > target/thumbv8m.main-none-eabihf/doc/index.html << 'EOF'
 <!DOCTYPE html>
 <html><head>
-<meta http-equiv="refresh" content="0; url=efr32mg24_hal/index.html">
+<meta http-equiv="refresh" content="0; url=efr32mg2x_hal/index.html">
 <title>Redirecting...</title>
 </head><body>
-<p>Redirecting to <a href="efr32mg24_hal/index.html">documentation</a>...</p>
+<p>Redirecting to <a href="efr32mg2x_hal/index.html">documentation</a>...</p>
 </body></html>
 EOF
 
@@ -343,10 +343,10 @@ warning: unused variable: `foo`
 **Solution**:
 ```bash
 # Run clippy to see all warnings
-cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf
+cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf
 
 # Fix each warning, then test again
-cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
+cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
 ```
 
 **Common Fixes**:
@@ -365,7 +365,7 @@ error[E0425]: cannot find value `x` in this scope
 **Solution**:
 ```bash
 # Test build locally
-cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf
+cargo build -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf
 
 # Fix compilation errors
 # Commit and push
@@ -498,7 +498,7 @@ Track build times and optimize:
 time cargo build --workspace --features rt --target thumbv8m.main-none-eabihf --release
 
 # Profile specific package
-cargo build -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --release --timings
+cargo build -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --release --timings
 
 # Open timing report
 open target/cargo-timings/cargo-timing.html
@@ -574,7 +574,7 @@ git push
 ```bash
 # Before every push
 cargo fmt --all -- --check
-cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
+cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf -- -D warnings
 cargo build --workspace --features rt --target thumbv8m.main-none-eabihf --release
 
 # Security checks
@@ -582,7 +582,7 @@ cargo audit
 cargo outdated
 
 # Documentation
-cargo doc --no-deps -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --open
+cargo doc --no-deps -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --open
 ```
 
 ### GitHub URLs

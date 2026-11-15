@@ -109,8 +109,8 @@ embedded-hal-nb trait implementations:
 ### Basic Initialization
 
 ```rust
-use efr32mg24_hal::usart::{Usart0, Config};
-use efr32mg24_hal::clock::Clocks;
+use efr32mg2x_hal::usart::{Usart0, Config};
+use efr32mg2x_hal::clock::Clocks;
 
 let dp = pac::Peripherals::take().unwrap();
 let clocks = Clocks::new(dp.CMU_S);
@@ -122,7 +122,7 @@ let mut usart = Usart0::new(dp.USART0_S, Config::default(), &clocks);
 ### Custom Configuration
 
 ```rust
-use efr32mg24_hal::usart::{Config, DataBits, Parity, StopBits};
+use efr32mg2x_hal::usart::{Config, DataBits, Parity, StopBits};
 
 let config = Config::new(9600)
     .data_bits(DataBits::Eight)

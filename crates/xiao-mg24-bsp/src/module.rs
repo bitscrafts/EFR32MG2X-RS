@@ -17,14 +17,14 @@
 //! Nothing here knows about the Expansion Base. If you own the base, depend on
 //! `xiao-expansion-base-bsp` as well, which depends on this crate.
 
-use efr32mg24_hal::board::Board as HalBoard;
-use efr32mg24_hal::delay::Delay;
-use efr32mg24_hal::pin::{Output, Port};
+use efr32mg2x_hal::board::Board as HalBoard;
+use efr32mg2x_hal::delay::Delay;
+use efr32mg2x_hal::pin::{Output, Port};
 
 #[cfg(feature = "sense")]
-use efr32mg24_hal::bus::{BitBangI2c, Bus};
+use efr32mg2x_hal::bus::{BitBangI2c, Bus};
 #[cfg(feature = "sense")]
-use efr32mg24_hal::microphone::{MicError, Microphone};
+use efr32mg2x_hal::microphone::{MicError, Microphone};
 
 /// The module: its peripherals, taken once.
 pub struct Module {
@@ -65,7 +65,7 @@ impl Module {
             // SAFETY: SysTick is used by nothing else in this workspace; see the note on the
             // same call in the Expansion Base facade.
             unsafe { cortex_m::Peripherals::steal().SYST },
-            efr32mg24_hal::clock::DEFAULT_SYSCLK_HZ,
+            efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ,
         )
     }
 

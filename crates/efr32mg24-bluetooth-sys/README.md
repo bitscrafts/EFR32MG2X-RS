@@ -217,7 +217,7 @@ Actual Bluetooth functionality requires both blob and headers.
 
 ```rust
 // Use safe abstractions instead
-use efr32mg24_hal::radio::ble::BleAdvertiser;
+use efr32mg2x_hal::radio::ble::BleAdvertiser;
 use xiao_mg24_bsp::XiaoBle;
 
 fn main() {
@@ -255,7 +255,7 @@ This crate provides **unsafe** FFI bindings. All functions are marked `unsafe` b
 5. **State Machine**: Incorrect state transitions cause undefined behavior
 
 **Never use these bindings directly.** Use safe wrappers:
-- `efr32mg24-hal::radio::ble` - Safe generic traits
+- `efr32mg2x-hal::radio::ble` - Safe generic traits
 - `xiao-mg24-bsp::XiaoBle` - Safe concrete implementation
 
 ## Memory Requirements
@@ -299,7 +299,7 @@ User Application
     ↓
 xiao-mg24-bsp (XiaoBle)
     ↓ implements
-efr32mg24-hal::radio::ble (BleAdvertiser trait)
+efr32mg2x-hal::radio::ble (BleAdvertiser trait)
     ↓ uses
 efr32mg24-bluetooth-sys (this crate - unsafe FFI)
     ↓ links
@@ -414,7 +414,7 @@ Contributions welcome! Please ensure:
 1. **Never commit blobs or headers** (`.gitignore` prevents this)
 2. Test on multiple platforms (macOS, Linux, Windows)
 3. Update SHA256 hash if supporting newer Gecko SDK
-4. Maintain compatibility with `efr32mg24-hal`
+4. Maintain compatibility with `efr32mg2x-hal`
 
 ## Resources
 

@@ -13,7 +13,7 @@ Silicon Labs' `sl_sleeptimer` ships **two** backends, `sl_sleeptimer_hal_sysrtc.
 uses SYSRTC over PRS to sync its own timer across EM2. So whatever is learned here is shared property:
 
 - if the timer is written as a Bluetooth-specific shim, Zigbee would need a second driver for the same
-  peripheral — the reason it lives in `efr32mg24-hal::sysrtc` instead;
+  peripheral — the reason it lives in `efr32mg2x-hal::sysrtc` instead;
 - if SYSRTC stays broken, the fallback (TIMER0) has to be honest about what it costs, because the cost is
   paid by all three: no EM2/EM3, so no deep sleep.
 
@@ -101,7 +101,7 @@ because the stack converts through `ms_to_tick`/`tick64_to_ms`.
   (the backend registers an EM1 requirement), a rate that is not 32768 Hz (so `get_timer_frequency` and
   `get_clock_accuracy` must tell the truth), and the callback runs in the timer ISR exactly as with SYSRTC.
 
-Either way the API stays `efr32mg24_hal::sysrtc::Sysrtc`, so the protocol modules do not learn which
+Either way the API stays `efr32mg2x_hal::sysrtc::Sysrtc`, so the protocol modules do not learn which
 peripheral is behind it.
 
 ## The instruments (reusable, and this is the part that saved the most time)

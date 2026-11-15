@@ -238,11 +238,11 @@ The EFR32MG24 Rust project has **successfully completed Phase D2** (Bluetooth 5.
 
 **Documentation**:
 - [x] All Phase C module READMEs with comprehensive documentation
-- [x] crates/efr32mg24-hal/src/adc/README.md (308 lines)
-- [x] crates/efr32mg24-hal/src/dma/README.md (300+ lines)
-- [x] crates/efr32mg24-hal/src/emu/README.md (420+ lines)
-- [x] crates/efr32mg24-hal/src/rtc/README.md (580+ lines)
-- [x] crates/efr32mg24-hal/src/wdog/README.md (400+ lines)
+- [x] crates/efr32mg2x-hal/src/adc/README.md (308 lines)
+- [x] crates/efr32mg2x-hal/src/dma/README.md (300+ lines)
+- [x] crates/efr32mg2x-hal/src/emu/README.md (420+ lines)
+- [x] crates/efr32mg2x-hal/src/rtc/README.md (580+ lines)
+- [x] crates/efr32mg2x-hal/src/wdog/README.md (400+ lines)
 - [x] Documentation backup workflow (.archive folder)
 - [x] Zero build warnings across all modules and examples
 
@@ -483,7 +483,7 @@ EFR32MG24/
 │   ├── src/lib.rs                  # Generated PAC (138,448 lines, 133 peripherals)
 │   └── svd/                        # All 41 device SVD files
 │
-├── crates/efr32mg24-hal/                  # HAL Crate (12 production-ready modules)
+├── crates/efr32mg2x-hal/                  # HAL Crate (12 production-ready modules)
 │   ├── Cargo.toml
 │   ├── memory.x / device.x / build.rs
 │   ├── src/
@@ -618,7 +618,7 @@ For next developer/session:
 
 ```bash
 # Build HAL library
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo build --features rt --release
 
 # Build all examples

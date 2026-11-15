@@ -23,8 +23,8 @@ cargo build              # Now rebuilds PAC (~8 min)
 
 ```bash
 # Clean only the package you're working on
-cargo clean -p efr32mg24-hal
-cargo build -p efr32mg24-hal
+cargo clean -p efr32mg2x-hal
+cargo build -p efr32mg2x-hal
 ```
 
 ---
@@ -38,7 +38,7 @@ Understanding build times helps you avoid unnecessary work:
 | **efr32mg2x-pac** | 138,448 | ~3-8 minutes | <1s (if untouched) |
 | **efr32mg24-rail-sys** | 3,974 (generated) | ~4m 23s | <1s (if untouched) |
 | **efr32mg24-bluetooth-sys** | 4,307 (generated) | ~25s | <1s (if untouched) |
-| **efr32mg24-hal** | ~4,500 | ~30-60s | <1s (if untouched) |
+| **efr32mg2x-hal** | ~4,500 | ~30-60s | <1s (if untouched) |
 | **xiao-mg24-bsp** | ~500 | <10s | <1s (if untouched) |
 
 **Total clean workspace build**: ~8-14 minutes
@@ -52,13 +52,13 @@ Understanding build times helps you avoid unnecessary work:
 
 ```bash
 # 1. Clean only the HAL package
-cargo clean -p efr32mg24-hal
+cargo clean -p efr32mg2x-hal
 
 # 2. Build only the HAL package
-cargo build -p efr32mg24-hal
+cargo build -p efr32mg2x-hal
 
 # 3. Or build with examples
-cargo build -p efr32mg24-hal --examples
+cargo build -p efr32mg2x-hal --examples
 ```
 
 **Build time**: ~30-60 seconds (PAC and -sys crates reused from cache)
@@ -82,7 +82,7 @@ cargo build -p xiao-mg24-bsp
 cargo build --example 14_radio_ble_beacon
 
 # Or build all examples
-cargo build --examples -p efr32mg24-hal
+cargo build --examples -p efr32mg2x-hal
 ```
 
 **Build time**: <5 seconds per example (incremental)
@@ -103,7 +103,7 @@ cargo build -p efr32mg24-bluetooth-sys
 
 ## When to Clean Each Package
 
-### ✅ Clean efr32mg24-hal When:
+### ✅ Clean efr32mg2x-hal When:
 - Adding new peripheral modules
 - Modifying existing HAL code
 - Changing HAL Cargo.toml dependencies
@@ -146,7 +146,7 @@ Cargo's incremental compilation is smart. It tracks:
 cargo build --example 14_radio_ble_beacon
 
 # Build specific package
-cargo build -p efr32mg24-hal
+cargo build -p efr32mg2x-hal
 
 # Build specific binary
 cargo build --bin my-binary
@@ -159,7 +159,7 @@ cargo build --bin my-binary
 cargo build --dry-run
 
 # Check without building
-cargo check -p efr32mg24-hal
+cargo check -p efr32mg2x-hal
 ```
 
 **cargo check** is much faster than **cargo build** for catching errors.
@@ -172,7 +172,7 @@ cargo check -p efr32mg24-hal
 
 ```bash
 # 1. Create the example file
-touch crates/efr32mg24-hal/examples/14_radio_ble_beacon.rs
+touch crates/efr32mg2x-hal/examples/14_radio_ble_beacon.rs
 
 # 2. Write the code
 # ... edit file ...
@@ -187,7 +187,7 @@ cargo build --example 14_radio_ble_beacon --release
 
 ```bash
 # 1. Edit the example
-# ... edit crates/efr32mg24-hal/examples/06_spi.rs ...
+# ... edit crates/efr32mg2x-hal/examples/06_spi.rs ...
 
 # 2. Rebuild just that example
 cargo build --example 06_spi
@@ -203,10 +203,10 @@ cargo build --example 06_spi
 
 ```bash
 # You edited a README.md
-vim crates/efr32mg24-hal/src/gpio/README.md
+vim crates/efr32mg2x-hal/src/gpio/README.md
 
 # DON'T DO THIS:
-cargo clean -p efr32mg24-hal  # ❌ Unnecessary
+cargo clean -p efr32mg2x-hal  # ❌ Unnecessary
 
 # DO THIS:
 cargo build  # ✅ No rebuild needed (docs don't affect compilation)
@@ -231,7 +231,7 @@ cargo build  # ✅ Incremental build (<3 seconds if nothing changed)
 cargo build --workspace  # ❌ Rebuilds everything
 
 # DO THIS:
-cargo build -p efr32mg24-hal  # ✅ Just the package you need
+cargo build -p efr32mg2x-hal  # ✅ Just the package you need
 ```
 
 ---
@@ -242,7 +242,7 @@ cargo build -p efr32mg24-hal  # ✅ Just the package you need
 
 ```bash
 # Fast error checking (no codegen)
-cargo check -p efr32mg24-hal
+cargo check -p efr32mg2x-hal
 
 # Build time: ~10 seconds vs ~60 seconds for full build
 ```
@@ -330,7 +330,7 @@ For GitHub Actions or other CI:
     key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
 # Build only what's needed
-- run: cargo build -p efr32mg24-hal --examples
+- run: cargo build -p efr32mg2x-hal --examples
 ```
 
 **First CI run**: ~8-14 minutes
@@ -342,12 +342,12 @@ For GitHub Actions or other CI:
 
 | Situation | Command | Build Time |
 |-----------|---------|------------|
-| Changed HAL code | `cargo clean -p efr32mg24-hal && cargo build -p efr32mg24-hal` | ~60s |
+| Changed HAL code | `cargo clean -p efr32mg2x-hal && cargo build -p efr32mg2x-hal` | ~60s |
 | Added new example | `cargo build --example 14_radio_ble_beacon` | <5s |
 | Modified example | `cargo build --example 14_radio_ble_beacon` | <3s |
 | Changed docs only | `cargo build` (no clean!) | <1s |
 | Changed BSP | `cargo clean -p xiao-mg24-bsp && cargo build -p xiao-mg24-bsp` | ~10s |
-| Check for errors | `cargo check -p efr32mg24-hal` | ~10s |
+| Check for errors | `cargo check -p efr32mg2x-hal` | ~10s |
 | Full workspace | `cargo build --workspace` | ~60s (incremental) |
 
 **Golden Rule**: When in doubt, **don't clean**. Let Cargo's incremental compilation do its job.

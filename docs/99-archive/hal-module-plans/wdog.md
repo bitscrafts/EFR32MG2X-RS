@@ -5,7 +5,7 @@
 **Stage**: 1 (Basic Watchdog Functionality)
 **Status**: Production-Ready (Stage 1)
 
-**Module**: `efr32mg24_hal::wdog`
+**Module**: `efr32mg2x_hal::wdog`
 **Version**: 0.1.0
 
 ---
@@ -164,7 +164,7 @@ Currently minimal - most operations are infallible once watchdog is configured c
 ### Example 1: Basic Watchdog (Recommended)
 
 ```rust
-use efr32mg24_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
+use efr32mg2x_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 
@@ -189,7 +189,7 @@ loop {
 ### Example 2: Production Configuration with Lock
 
 ```rust
-use efr32mg24_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
+use efr32mg2x_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 
@@ -214,7 +214,7 @@ loop {
 ### Example 3: Development-Friendly Configuration
 
 ```rust
-use efr32mg24_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
+use efr32mg2x_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 
@@ -234,7 +234,7 @@ loop {
 ### Example 4: Warning Mode (Testing)
 
 ```rust
-use efr32mg24_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
+use efr32mg2x_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
 
 let dp = pac::Peripherals::take().unwrap();
 
@@ -260,7 +260,7 @@ loop {
 ### Example 5: Health Check Pattern (Production)
 
 ```rust
-use efr32mg24_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
+use efr32mg2x_hal::{wdog::{Wdog, WdogConfig, TimeoutPeriod}, pac};
 
 fn system_healthy() -> bool {
     // Check critical invariants:
@@ -691,8 +691,8 @@ When contributing to this module:
 
 ## License
 
-This module is part of efr32mg24-hal, licensed under MIT OR Apache-2.0.
+This module is part of efr32mg2x-hal, licensed under MIT OR Apache-2.0.
 
 ---
 
-<!-- META: last_updated=2025-12-27 version=0.1.0 status=production-ready phase=C stage=1 identifier=C5-WDOG maintained-by=efr32mg24-hal expert-review=B+ -->
+<!-- META: last_updated=2025-12-27 version=0.1.0 status=production-ready phase=C stage=1 identifier=C5-WDOG maintained-by=efr32mg2x-hal expert-review=B+ -->

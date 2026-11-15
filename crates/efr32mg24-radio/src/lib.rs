@@ -9,7 +9,7 @@
 //! efr32mg24-radio          this crate: a safe surface over the vendor stacks, and the buffers
 //!      ↑                   they assume (event queue, advertising data, GATT table)
 //! efr32mg24-bluetooth-sys  bindings generated from `sl_bt_api.h` + the three MSLA blobs
-//! efr32mg24-hal            clock, delay, pins — the parts the stack asks for at boot
+//! efr32mg2x-hal            clock, delay, pins — the parts the stack asks for at boot
 //! ```
 //!
 //! It is a sibling of the HAL rather than a module inside it, for one reason: the Bluetooth stack

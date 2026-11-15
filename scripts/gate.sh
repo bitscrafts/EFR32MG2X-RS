@@ -92,7 +92,7 @@ pkg_name() {
 features_for() {
   # Keyed by directory basename on purpose: the crates.io name may change, the directory may not.
   case "$1" in
-    efr32mg2x-pac|efr32mg24-hal) echo "--features rt" ;;
+    efr32mg2x-pac|efr32mg2x-hal) echo "--features rt" ;;
     *) echo "" ;;
   esac
 }
@@ -192,7 +192,7 @@ fi
 
 # 2. A BSP must not re-export the PAC. An application holding it can reconfigure what the board
 #    claimed to own, and every layer above becomes advisory.
-offenders=$(grep -rln "pub use efr32mg24_pac" crates/*/src/ 2>/dev/null | grep -v "^crates/efr32mg24-hal/" || true)
+offenders=$(grep -rln "pub use efr32mg24_pac" crates/*/src/ 2>/dev/null | grep -v "^crates/efr32mg2x-hal/" || true)
 if [ -z "$offenders" ]; then
   pass "no BSP re-exports the PAC"
 else
@@ -201,7 +201,7 @@ fi
 
 # 3. The HAL must not put a register block in a public signature. The moment it does, every
 #    caller needs a PAC handle to use a driver.
-if grep -rqE "pub (fn|const fn) [^\n]*pac::[a-z0-9_]*::RegisterBlock" crates/efr32mg24-hal/src/ 2>/dev/null; then
+if grep -rqE "pub (fn|const fn) [^\n]*pac::[a-z0-9_]*::RegisterBlock" crates/efr32mg2x-hal/src/ 2>/dev/null; then
   fail "the HAL exposes a register block in a public signature"
 else
   pass "the HAL exposes no register block publicly"
@@ -241,11 +241,11 @@ else
 fi
 
 
-# 6. A BSP example names only its own crate. Reaching for `efr32mg24_hal::` inside a BSP
+# 6. A BSP example names only its own crate. Reaching for `efr32mg2x_hal::` inside a BSP
 #    example makes it an example of the layer below, living in the wrong crate -- the same
 #    defect as a HAL example that names the PAC. The BSP re-exports the HAL, so the path
 #    `xiao_mg24_bsp::hal::...` is available and keeps the name in the right crate.
-offenders=$(grep -rln "efr32mg24_hal::\|efr32mg24_pac::" crates/*-bsp/examples/ 2>/dev/null || true)
+offenders=$(grep -rln "efr32mg2x_hal::\|efr32mg24_pac::" crates/*-bsp/examples/ 2>/dev/null || true)
 if [ -z "$offenders" ]; then
   pass "BSP examples name only their own crate"
 else

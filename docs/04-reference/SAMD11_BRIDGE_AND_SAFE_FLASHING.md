@@ -204,7 +204,7 @@ Extra Operating Current (mA): 0
 - ✅ Integrated with cargo
 - ✅ Fast and reliable
 
-**Configuration** (`crates/efr32mg24-hal/.cargo/config.toml`):
+**Configuration** (`crates/efr32mg2x-hal/.cargo/config.toml`):
 
 ```toml
 [build]
@@ -509,11 +509,11 @@ graph TD
 
 ```bash
 # Step 1: Create minimal recovery firmware
-# File: crates/efr32mg24-hal/examples/00_recovery.rs
+# File: crates/efr32mg2x-hal/examples/00_recovery.rs
 # (See code example below)
 
 # Step 2: Flash recovery firmware FIRST
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo run --example 00_recovery --features rt --release
 
 # Step 3: Verify it works
@@ -551,7 +551,7 @@ cargo run --example XX_name --features rt --release
 
 ### Recovery Firmware Template
 
-Create `crates/efr32mg24-hal/examples/00_recovery.rs`:
+Create `crates/efr32mg2x-hal/examples/00_recovery.rs`:
 
 ```rust
 //! Minimal Recovery Firmware for XIAO MG24 Sense
@@ -569,7 +569,7 @@ Create `crates/efr32mg24-hal/examples/00_recovery.rs`:
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_hal::pac;
+use efr32mg2x_hal::pac;
 use panic_halt as _;
 
 #[entry]

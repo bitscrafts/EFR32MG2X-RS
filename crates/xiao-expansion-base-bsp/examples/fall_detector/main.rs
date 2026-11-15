@@ -19,7 +19,7 @@
 //! ## Run
 //!
 //! ```text
-//! cargo build --release -p efr32mg24-hal --features rt --example fall-detector
+//! cargo build --release -p efr32mg2x-hal --features rt --example fall-detector
 //! scripts/flash.sh <elf> --confirm
 //! ```
 //!

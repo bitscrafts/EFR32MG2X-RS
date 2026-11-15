@@ -57,7 +57,7 @@ whose examples already under-report their own duration is worse than a documente
 
 ## Where this is referenced
 
-- `crates/efr32mg24-hal/src/delay/mod.rs` — `with_sysclk`, `delay_us`, `DelayNs`
+- `crates/efr32mg2x-hal/src/delay/mod.rs` — `with_sysclk`, `delay_us`, `DelayNs`
 - `crates/efr32mg24-emlib-sys/examples/emlib_clock.rs` — the check that found it
 - Book chapter 5 (`05.04-delay-without-lying.tex`) — written from this, now with a second case
 

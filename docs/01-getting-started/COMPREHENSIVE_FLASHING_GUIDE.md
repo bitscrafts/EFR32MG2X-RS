@@ -31,7 +31,7 @@
 probe-rs list
 
 # Flash recovery firmware (SAFEST)
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo run --example 00_recovery --features rt --release
 
 # Check USB connection
@@ -255,7 +255,7 @@ fn flash_elf_safely(elf_path: &str) -> Result<()> {
 
 ### Configuration (Already Set Up)
 
-**File**: `crates/efr32mg24-hal/.cargo/config.toml`
+**File**: `crates/efr32mg2x-hal/.cargo/config.toml`
 
 ```toml
 [build]
@@ -493,7 +493,7 @@ cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR
 # shutdown command invoked
 
 # 4. If successful, immediately flash recovery firmware
-cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg24-hal
+cd /Users/${FLASH_USER:-$(id -un)}/Private/20250626_rust_projects/2025-10-29/EFR32MG24/efr32mg2x-hal
 cargo run --example 00_recovery --features rt --release
 ```
 
@@ -1029,7 +1029,7 @@ commander device info --device EFR32MG24B220F1536IM48 --serialno 440048205
 
 ```bash
 # Build recovery firmware first
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo build --example 00_recovery --features rt --release
 
 # Convert ELF to Intel HEX (required for Commander)
@@ -1058,7 +1058,7 @@ commander verify 00_recovery.hex \
 probe-rs list
 
 # Flash recovery firmware via CMSIS-DAP
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo run --example 00_recovery --features rt --release
 ```
 
@@ -1314,7 +1314,7 @@ fn main() -> ! {
 
 **Recovery Firmware Created**:
 
-`crates/efr32mg24-hal/examples/00_recovery.rs` - The SAFEST possible firmware:
+`crates/efr32mg2x-hal/examples/00_recovery.rs` - The SAFEST possible firmware:
 
 - Does nothing except preserve debug access
 - Debug is ALWAYS preserved (not just in `#[cfg(debug_assertions)]`)
@@ -1361,7 +1361,7 @@ fn main() -> ! {
 
 ```bash
 # Step 1: Flash recovery firmware FIRST (before anything else)
-cd efr32mg24-hal
+cd efr32mg2x-hal
 cargo run --example 00_recovery --features rt --release
 
 # Step 2: Verify it works
@@ -1419,7 +1419,7 @@ jobs:
 
       - name: Check all examples have debug preservation
         run: |
-          for example in crates/efr32mg24-hal/examples/*.rs; do
+          for example in crates/efr32mg2x-hal/examples/*.rs; do
             # Skip 00_recovery.rs (always preserves debug)
             if [[ "$example" == *"00_recovery.rs" ]]; then
               continue
@@ -1443,7 +1443,7 @@ jobs:
 
       - name: Check no examples disable debug in release
         run: |
-          if grep -r "clken.*clear\|swd.*clear" crates/efr32mg24-hal/examples/; then
+          if grep -r "clken.*clear\|swd.*clear" crates/efr32mg2x-hal/examples/; then
             echo "❌ ERROR: Example may disable debug clocks!"
             exit 1
           fi

@@ -18,7 +18,7 @@ product build) and **D2g BME680 gas resistance**. All 26 examples compile under 
 EFR32MG24/
 ├── Cargo.toml                     # Workspace configuration (5 member crates)
 ├── crates/efr32mg2x-pac/                 # Peripheral Access Crate (B220, 138K lines)
-├── crates/efr32mg24-hal/                 # Hardware Abstraction Layer (12 modules)
+├── crates/efr32mg2x-hal/                 # Hardware Abstraction Layer (12 modules)
 ├── crates/efr32mg24-rail-sys/            # RAIL radio FFI bindings
 ├── crates/efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
 ├── crates/xiao-mg24-bsp/                 # Board Support Package (XIAO MG24 Sense)
@@ -62,7 +62,7 @@ EFR32MG24/
 **Achievements**:
 1. Created Cargo workspace with:
    - `efr32mg2x-pac` crate
-   - `efr32mg24-hal` crate
+   - `efr32mg2x-hal` crate
    - Shared dependencies configuration
    - Size-optimized release profiles
 2. Installed required tools:
@@ -384,7 +384,7 @@ pub use emu_ns::EMU_NS;  // Non-secure by default
 
 **Structure**:
 ```
-crates/efr32mg24-hal/
+crates/efr32mg2x-hal/
 ├── src/
 │   ├── lib.rs
 │   ├── gpio.rs           # GPIO implementation
@@ -559,7 +559,7 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
    ```bash
    cargo install svd2rust --version 0.30.3 --force
    cd efr32mg2x-pac
-   svd2rust -i ../efr32mg24-hal/svd/EFR32MG24A020F1536GM48.svd \
+   svd2rust -i ../efr32mg2x-hal/svd/EFR32MG24A020F1536GM48.svd \
             --target cortex-m -o src
    ```
 

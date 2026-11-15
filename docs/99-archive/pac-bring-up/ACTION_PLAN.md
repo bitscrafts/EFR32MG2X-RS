@@ -401,7 +401,7 @@ loop {
 - [ ] Can replicate on any EFR32MG24
 
 ### Ideal Success (Phase 4)
-- [ ] Create `efr32mg24-hal` crate with working GPIO
+- [ ] Create `efr32mg2x-hal` crate with working GPIO
 - [ ] SysTick-based delay implementation
 - [ ] All peripherals initialized correctly
 - [ ] Published documentation and examples

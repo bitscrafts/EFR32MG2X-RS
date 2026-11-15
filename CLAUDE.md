@@ -70,7 +70,7 @@ EFR32MG24/
 ├── crates/efr32mg2x-pac/                  # Peripheral Access Crate (register-level)
 │   ├── Cargo.toml
 │   └── src/lib.rs                  # 138,448 lines, 133 peripherals (B220 variant)
-├── crates/efr32mg24-hal/                  # Hardware Abstraction Layer (driver-level)
+├── crates/efr32mg2x-hal/                  # Hardware Abstraction Layer (driver-level)
 │   ├── Cargo.toml
 │   ├── src/
 │   │   ├── lib.rs                  # 12 public peripheral modules

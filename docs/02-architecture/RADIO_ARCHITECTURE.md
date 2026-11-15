@@ -249,7 +249,7 @@ embedded-hal = "1.0"
 
 **Dependencies:**
 - `efr32mg24-bluetooth` (Layer 2, NOT -sys!)
-- `efr32mg24-hal` (for GPIO, delay, etc.)
+- `efr32mg2x-hal` (for GPIO, delay, etc.)
 - `efr32mg2x-pac`
 
 **Examples:**
@@ -261,7 +261,7 @@ embedded-hal = "1.0"
 ```toml
 [dependencies]
 efr32mg24-bluetooth = { version = "0.1", path = "../efr32mg24-bluetooth" }
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg2x-hal = { path = "../efr32mg2x-hal", features = ["rt"] }
 efr32mg2x-pac = { path = "../efr32mg2x-pac" }
 ```
 
@@ -577,7 +577,7 @@ pub struct CharHandle(pub u16);  // ✗ WRONG!
 
 **Wrong:**
 ```
-crates/efr32mg24-hal/
+crates/efr32mg2x-hal/
 └── src/
     ├── gpio/     ← Peripherals ✓
     ├── spi/      ← Peripherals ✓
@@ -597,7 +597,7 @@ crates/efr32mg24-hal/
 - [ ] Create efr32mg24-zigbee-sys (Layer 1: raw FFI only)
 - [ ] Create efr32mg24-zigbee (Layer 2: safe wrappers)
 - [ ] BSP has minimal XiaoZigbee wrapper (Layer 3)
-- [ ] No Zigbee code in efr32mg24-hal
+- [ ] No Zigbee code in efr32mg2x-hal
 - [ ] Follow 3-layer pattern exactly
 
 ### For Thread (efr32mg24-thread-sys + efr32mg24-thread):
@@ -605,7 +605,7 @@ crates/efr32mg24-hal/
 - [ ] Create efr32mg24-thread-sys (Layer 1: raw FFI only)
 - [ ] Create efr32mg24-thread (Layer 2: safe wrappers)
 - [ ] BSP has minimal XiaoThread wrapper (Layer 3)
-- [ ] No Thread code in efr32mg24-hal
+- [ ] No Thread code in efr32mg2x-hal
 - [ ] Follow 3-layer pattern exactly
 
 ### For Matter (uses Thread underneath):

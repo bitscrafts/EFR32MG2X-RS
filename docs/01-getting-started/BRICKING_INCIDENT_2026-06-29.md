@@ -65,7 +65,7 @@ app cycle continues on every boot, re-locking the debug AP.
 
 ## Root Cause: HAL Clocks::new HFXO Bug
 
-The HAL's `Clocks::new` in `crates/efr32mg24-hal/src/clock/clocks.rs:72-123`
+The HAL's `Clocks::new` in `crates/efr32mg2x-hal/src/clock/clocks.rs:72-123`
 has a **fatal bug** in the HFXO configuration path:
 
 ```rust
@@ -192,7 +192,7 @@ to its default state. The Gecko bootloader would need to be reflashed after.
 
 ### Fix 1: HAL Clocks::new HFXO sequence (CRITICAL)
 
-File: `crates/efr32mg24-hal/src/clock/clocks.rs:72-123`
+File: `crates/efr32mg2x-hal/src/clock/clocks.rs:72-123`
 
 The HFXO configuration must enable HFXO, wait for stabilization, THEN switch
 SYSCLK. The current code switches first and waits second, which is fatal
@@ -253,9 +253,9 @@ bootloader has started HFXO, or after the Clocks::new bug is fixed.
 
 ## File References
 
-- HAL Clocks::new (the bug): `crates/efr32mg24-hal/src/clock/clocks.rs:72-123`
+- HAL Clocks::new (the bug): `crates/efr32mg2x-hal/src/clock/clocks.rs:72-123`
 - HAL 02_blink.rs (the example that bricked the board):
-  `crates/efr32mg24-hal/examples/02_blink.rs`
+  `crates/efr32mg2x-hal/examples/02_blink.rs`
 - Recovery hex: `crates/efr32mg24-bootloader/arduino-working-examples/microphone_volume_with_bootloader.hex`
 - PAC blink_xiao (verified working, uses HFRCO only):
   `crates/efr32mg2x-pac/examples/blink_xiao.rs`

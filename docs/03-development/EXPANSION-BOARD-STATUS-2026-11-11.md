@@ -226,7 +226,7 @@ now starts just under the SWD mailbox page (`0x2003F000`) and the linker gets
 
 ## RTC: the last base device now has a driver
 
-`crates/efr32mg24-hal/src/rtc/pcf8563.rs` — the calendar chip at 0x51, seven bytes
+`crates/efr32mg2x-hal/src/rtc/pcf8563.rs` — the calendar chip at 0x51, seven bytes
 in one transaction (seconds through years, BCD) so a reading cannot straddle a
 rollover. Two behaviours matter more than the register map:
 
@@ -256,7 +256,7 @@ behind it (microSD, Grove UART/ADC, servo), then the radio.
 
 ## Buzzer in the HAL, and two calibration traps
 
-`crates/efr32mg24-hal/src/buzzer.rs` drives the base's piezo on PC03 through TIMER0
+`crates/efr32mg2x-hal/src/buzzer.rs` drives the base's piezo on PC03 through TIMER0
 CC0, reachable as `board.buzzer()`. Silence is `CC0_CTRL.CMOA = none` with the counter
 still running — stopping the timer stops `CNT`, which breaks any wait that uses it.
 

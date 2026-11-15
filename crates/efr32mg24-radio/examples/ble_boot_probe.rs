@@ -24,9 +24,9 @@ use core::ffi::c_void;
 
 use cortex_m_rt::{entry, exception};
 use efr32mg24_bluetooth_sys::sleeptimer;
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::pin::Port;
-use efr32mg24_hal::prelude::*;
+use efr32mg2x_hal::board::Board;
+use efr32mg2x_hal::pin::Port;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 /// What the entropy test found, published for a debugger that can read a symbol address:

@@ -24,9 +24,9 @@
 
 use core::ptr;
 
-use efr32mg24_hal::entry;
-use efr32mg24_hal::prelude::*;
 use efr32mg24_rail_sys as rail;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::prelude::*;
 
 /// The mailbox the examples and `scripts/read-mailbox.sh` share. Declared as a path module so the
 /// file's own `//!` documentation stays inner documentation of the module, where Rust allows it.
@@ -38,7 +38,7 @@ use panic_halt as _;
 
 #[entry]
 fn main() -> ! {
-    let mut board = efr32mg24_hal::board::Board::take().expect("board");
+    let mut board = efr32mg2x_hal::board::Board::take().expect("board");
     let mut delay = board.delay();
 
     mailbox::write(Status::Info, b"rail: entered main");

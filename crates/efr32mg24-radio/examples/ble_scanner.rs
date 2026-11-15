@@ -22,11 +22,11 @@
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::board::Board;
-use efr32mg24_hal::entry;
-use efr32mg24_hal::pin::Port;
-use efr32mg24_hal::prelude::*;
 use efr32mg24_radio::{BleEvent, Bluetooth};
+use efr32mg2x_hal::board::Board;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::pin::Port;
+use efr32mg2x_hal::prelude::*;
 
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
 mod mailbox;

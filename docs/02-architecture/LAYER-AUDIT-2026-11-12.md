@@ -10,7 +10,7 @@ layer boundary, so a boundary that is not a check is not a boundary.
 ```text
 efr32mg2x-pac    registers, generated
      ↑ only the HAL may hold these
-efr32mg24-hal    drivers + pin primitives; no board wiring
+efr32mg2x-hal    drivers + pin primitives; no board wiring
      ↑ only a BSP may hold these
 xiao-*-bsp       which device, which pin, which bus, which power gate
      ↑ only an application may hold these
@@ -119,7 +119,7 @@ Each of those failed at least once during this pass, in this workspace, while ev
   the same as wrong.
 - **The carrier crate entering through the HAL's `Board` rather than through `Module`.** The arrow
   base → module → hal is respected in the manifests, but `expansion_base.rs` constructs
-  `efr32mg24_hal::board::Board` directly. It is a candidate for a later pass: `Module` would need to
+  `efr32mg2x_hal::board::Board` directly. It is a candidate for a later pass: `Module` would need to
   hand out the chip-level board, and the gain is one fewer name in the carrier.
 
 ## The lesson worth keeping

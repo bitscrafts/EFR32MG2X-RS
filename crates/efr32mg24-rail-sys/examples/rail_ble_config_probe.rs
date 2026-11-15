@@ -21,7 +21,7 @@ mod mailbox;
 
 // The HAL brings the device crate in, which supplies the interrupt vector table cortex-m-rt insists on: without a
 // reference to it the link fails with "The interrupt vectors are missing".
-use efr32mg24_hal::board::Board;
+use efr32mg2x_hal::board::Board;
 
 use cortex_m_rt::entry;
 use efr32mg24_rail_sys as rail;

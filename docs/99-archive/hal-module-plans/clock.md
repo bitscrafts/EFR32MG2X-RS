@@ -5,7 +5,7 @@
 **Stage**: 2
 **Status**: Production-Ready
 
-**Module**: `efr32mg24_hal::clock`
+**Module**: `efr32mg2x_hal::clock`
 **Status**: Phase A - Critical Fixes Complete
 **Version**: 0.1.0
 
@@ -140,7 +140,7 @@ graph TD
 ### Basic Configuration with External Crystal (XIAO MG24)
 
 ```rust
-use efr32mg24_hal::clock::{Clocks, ClockConfig, HfxoConfig, LfxoConfig};
+use efr32mg2x_hal::clock::{Clocks, ClockConfig, HfxoConfig, LfxoConfig};
 
 // Configure with XIAO MG24's 39 MHz crystal
 let (clocks, cmu) = Clocks::new(

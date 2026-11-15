@@ -21,8 +21,8 @@
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::entry;
-use efr32mg24_hal::prelude::*;
+use efr32mg2x_hal::entry;
+use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
 /// The mailbox the examples and `scripts/read-mailbox.sh` share.
@@ -36,7 +36,7 @@ use efr32mg24_emlib_sys::{emlib_core_hz, emlib_sysclk_hz};
 
 #[entry]
 fn main() -> ! {
-    let mut board = efr32mg24_hal::board::Board::take().expect("board");
+    let mut board = efr32mg2x_hal::board::Board::take().expect("board");
     let mut delay = board.delay();
 
     mailbox::write(Status::Info, b"emlib: entered main");
@@ -49,10 +49,10 @@ fn main() -> ! {
     // Independent measurement: count cycles across a delay of known length. The delay is 10 ms, so
     // cycles / 10 000 gives Hz without needing to know the clock in advance.
     // DWT is a core debug block: enabling it is a register write, hence unsafe at the call site.
-    unsafe { efr32mg24_hal::dwt::start() };
-    let t0 = efr32mg24_hal::dwt::cycles();
+    unsafe { efr32mg2x_hal::dwt::start() };
+    let t0 = efr32mg2x_hal::dwt::cycles();
     delay.delay_ms(10);
-    let cycles = efr32mg24_hal::dwt::since(t0);
+    let cycles = efr32mg2x_hal::dwt::since(t0);
     let measured = cycles / 10; // cycles per ms = kHz
     mailbox::write(Status::Info, b"emlib: measured");
 

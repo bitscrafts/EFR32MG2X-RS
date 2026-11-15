@@ -30,7 +30,7 @@ loop {
 |---|---|
 | Bindings, blobs, link flags | `efr32mg24-bluetooth-sys` |
 | Boot order, event decoding, advertising data builder | re-exported from the bindings crate |
-| Clock and delay the stack asks for at boot | `efr32mg24-hal`, passed in by the caller |
+| Clock and delay the stack asks for at boot | `efr32mg2x-hal`, passed in by the caller |
 | Which pin the antenna switch is on, whether the radio is powered | a BSP — **not here** |
 
 ## Examples

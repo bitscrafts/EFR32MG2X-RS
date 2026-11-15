@@ -25,7 +25,7 @@
 **Status**: Perfect
 **Evidence**:
 ```
-efr32mg24-hal/src/
+efr32mg2x-hal/src/
 ├── emu/
 │   ├── mod.rs
 │   ├── types.rs
@@ -45,7 +45,7 @@ efr32mg24-hal/src/
 
 **For Radio**: Use SAME pattern
 ```
-efr32mg24-hal/src/radio/
+efr32mg2x-hal/src/radio/
 ├── ble/
 │   ├── mod.rs
 │   ├── types.rs
@@ -177,7 +177,7 @@ pub enum Error {
 ```bash
 $ cargo build --examples --features rt --release
    Compiling efr32mg2x-pac v0.1.0
-   Compiling efr32mg24-hal v0.1.0
+   Compiling efr32mg2x-hal v0.1.0
     Finished release [optimized + debuginfo] target(s) in 36.64s
 ```
 
@@ -209,7 +209,7 @@ xiao-mg24-bsp/              # Create new crate
 **Actions**:
 1. Create xiao-mg24-bsp/ crate directory
 2. Write Cargo.toml with dependencies
-3. Create memory.x (copy from efr32mg24-hal, adjust for board)
+3. Create memory.x (copy from efr32mg2x-hal, adjust for board)
 4. Write Board struct with initialization
 5. Define XIAO pin mappings (19 GPIOs)
 6. Add to workspace members
@@ -217,7 +217,7 @@ xiao-mg24-bsp/              # Create new crate
 **Dependencies**:
 ```toml
 [dependencies]
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg2x-hal = { path = "../efr32mg2x-hal", features = ["rt"] }
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 ```
@@ -287,7 +287,7 @@ fn main() {
 [workspace]
 members = [
     "efr32mg2x-pac",
-    "efr32mg24-hal",
+    "efr32mg2x-hal",
     "efr32mg24-rail-sys",        # ADD
     "efr32mg24-bluetooth-sys",   # ADD
     "efr32mg24-zigbee-sys",      # ADD
@@ -409,7 +409,7 @@ Before starting Phase D3-Zigbee:
 5. **Create BSP crate** (parallel to D1-RAIL-sys)
    - Start with basic Board struct
    - Add pin definitions
-   - Move existing examples from efr32mg24-hal/examples/
+   - Move existing examples from efr32mg2x-hal/examples/
 
 ### Long Term (Phase D2+)
 

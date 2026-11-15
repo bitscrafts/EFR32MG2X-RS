@@ -73,7 +73,7 @@ radio-thread = ["radio-rail"]
 // Our proposed Rust architecture
 User Application (.rs examples)
     ↓
-High-Level HAL (efr32mg24-hal radio module)
+High-Level HAL (efr32mg2x-hal radio module)
     ↓
 Safe Wrapper Crates (efr32mg24-bluetooth, efr32mg24-matter)
     ↓
@@ -124,7 +124,7 @@ void loop() {
 
 ```rust
 // Proposed Rust API (similar pattern)
-use efr32mg24_hal::radio::matter::{Matter, MatterLightbulb};
+use efr32mg2x_hal::radio::matter::{Matter, MatterLightbulb};
 
 let mut matter = Matter::new(dp.radio);
 matter.begin()?;
@@ -418,7 +418,7 @@ void loop() {
 **Rust Equivalent** (simplified API):
 
 ```rust
-use efr32mg24_hal::radio::ble::EzBle;
+use efr32mg2x_hal::radio::ble::EzBle;
 
 let mut ble = EzBle::new(dp.radio, "MyDevice")?;
 ble.start_advertising()?;
@@ -477,7 +477,7 @@ EFR32MG24/
 │   │   └── libbluetooth_efr32xg24_gcc_release.a
 │   ├── build.rs
 │   └── src/lib.rs
-└── crates/efr32mg24-hal/
+└── crates/efr32mg2x-hal/
     └── Cargo.toml
         [features]
         radio-bluetooth = ["efr32mg24-bluetooth-sys"]
@@ -524,7 +524,7 @@ _stack_size = 16K;
 _heap_size = 100K;
 ```
 
-**Rust Equivalent** (`crates/efr32mg24-hal/memory.x`):
+**Rust Equivalent** (`crates/efr32mg2x-hal/memory.x`):
 
 ```ld
 /* memory.x for EFR32MG24B220 */
@@ -624,7 +624,7 @@ rail_start_tx(...)?;
 #### 2. **Separate Crates per Protocol**
 
 ```toml
-# crates/efr32mg24-hal/Cargo.toml
+# crates/efr32mg2x-hal/Cargo.toml
 [features]
 radio-bluetooth = ["efr32mg24-bluetooth"]  # Optional BLE
 radio-matter = ["efr32mg24-matter"]        # Optional Matter
@@ -687,7 +687,7 @@ unsafe extern "C" fn c_callback_wrapper() {
 // examples/matter_lightbulb.rs
 #![cfg(feature = "radio-matter")]  // Only compile if feature enabled
 
-use efr32mg24_hal::radio::matter::MatterLightbulb;
+use efr32mg2x_hal::radio::matter::MatterLightbulb;
 
 fn main() -> ! {
     let mut bulb = MatterLightbulb::new()
@@ -725,7 +725,7 @@ fn main() -> ! {
 
 1. **D1.1-RAIL-sys**: Create `efr32mg24-rail-sys` (unsafe FFI, internal use only)
 2. **D1.2-RAIL-safe**: Create `efr32mg24-rail` (safe wrapper, still low-level)
-3. **D1.3-RAIL-HAL**: Integrate into `efr32mg24-hal` (not public API)
+3. **D1.3-RAIL-HAL**: Integrate into `efr32mg2x-hal` (not public API)
 
 **Rationale**: RAIL is too low-level for most users. Protocol stacks (BLE, Matter) are the real APIs.
 
@@ -857,7 +857,7 @@ void bulb_change_cb() {
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal::{
+use efr32mg2x_hal::{
     radio::matter::{Matter, MatterLightbulb},
     gpio::GpioExt,
 };
@@ -933,7 +933,7 @@ void loop() {
 **Rust Equivalent** (proposed):
 
 ```rust
-use efr32mg24_hal::radio::ble::EzBle;
+use efr32mg2x_hal::radio::ble::EzBle;
 use heapless::String;
 
 #[entry]

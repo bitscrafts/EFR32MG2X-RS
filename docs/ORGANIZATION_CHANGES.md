@@ -112,8 +112,8 @@ Historical documents and resolved issues:
 - `/README.md` - Main project README
 - `/docs/03-development/bootloader-session.md` - Scripts references
 - `/xiao-mg24-bsp/examples/README.md` - Hardware guide link
-- `/efr32mg24-hal/src/clock/README.md` - Hardware guide link
-- `/efr32mg24-hal/src/gpio/README.md` - Hardware guide link
+- `/efr32mg2x-hal/src/clock/README.md` - Hardware guide link
+- `/efr32mg2x-hal/src/gpio/README.md` - Hardware guide link
 
 **Verified**: No broken links or references to old structure
 

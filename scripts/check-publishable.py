@@ -31,7 +31,7 @@ CRATES = {
         ],
     },
     "efr32mg2x-hal": {
-        "dir": "crates/efr32mg24-hal",
+        "dir": "crates/efr32mg2x-hal",
         "forbidden": [
             r"Phase \d+ Tier \d+",
             r"Planned next",

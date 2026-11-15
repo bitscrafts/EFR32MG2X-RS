@@ -1,0 +1,45 @@
+[package]
+name = "efr32mg2x-hal"
+version.workspace = true
+edition = "2021"
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+description = "Hardware Abstraction Layer for EFR32MG24 microcontrollers"
+keywords = ["arm", "cortex-m", "efr32", "silabs", "embedded-hal"]
+categories = ["embedded", "hardware-support", "no-std"]
+
+[dependencies]
+efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.0" }
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
+embedded-hal = { workspace = true }
+critical-section = { workspace = true }
+nb = "1.1"
+embedded-hal-nb = "1.0"
+
+[dependencies.cortex-m-rt]
+workspace = true
+optional = true
+
+[features]
+default = ["mg24"]
+# The device, forwarded to the PAC. Turning it off without naming another one fails to compile inside the PAC, which is
+# where the register map lives -- no second guard is needed here.
+mg24 = ["efr32mg2x-pac/mg24"]
+rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
+
+[dev-dependencies]
+# Examples are applications: they may compose the HAL with an algorithm crate.
+# The dependency never goes the other way — the HAL does not know what a fall is.
+cortex-m-rt = { workspace = true, default-features = false }
+panic-halt = "0.2"
+
+[build-dependencies]
+
+# The fall detector is written as a project (main + app + ui + recorded), not a
+# single file, because the whole application lives there.
+
+
+[package.metadata.docs.rs]
+targets = ["thumbv8m.main-none-eabihf"]
+rustdoc-args = ["--cfg", "docsrs"]

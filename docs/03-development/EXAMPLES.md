@@ -11,7 +11,7 @@ belongs to.
 | prefix | crate | what it means |
 |---|---|---|
 | `pac_` | `efr32mg2x-pac` | register-level proof of concept; pins are named inline on purpose |
-| `hal_` | `efr32mg24-hal` | one HAL module and the pins it is given |
+| `hal_` | `efr32mg2x-hal` | one HAL module and the pins it is given |
 | `module_` | `xiao-mg24-bsp` | the XIAO module on the desk, no carrier underneath |
 | `base_` | `xiao-expansion-base-bsp` | a device that is on the Expansion Base |
 | — | `libraries/*` | an example that runs on the host, because the crate has no hardware |
@@ -36,7 +36,7 @@ HAL-level failure needed a second opinion at the lowest level.
 | `pac_buzzer_pwm`, `pac_mic_level` | TIMER0 tone; IADC0 single conversions |
 | `pac_imu_read`, `pac_imu_capture`, `pac_mvp_add` | the IMU at register level; a recording at 400 Hz; the MVP accelerator (does not execute — see `MVP-NOTES`) |
 
-## `efr32mg24-hal` — driver level (2)
+## `efr32mg2x-hal` — driver level (2)
 
 The HAL's own modules, with the pins named by the caller. Nothing here needs the base.
 
@@ -95,7 +95,7 @@ bash scripts/gate.sh    # VERDICT: PASS — pac 19, hal 2, module 4, base 7 (+1)
 | Level | Examples | What it proves | Why not here |
 |---|---|---|---|
 | `efr32mg2x-pac` | — | — | the radio is a blob; there are no registers to write |
-| `efr32mg24-hal` | — | — | a HAL that depended on MSLA blobs would tax every GPIO user |
+| `efr32mg2x-hal` | — | — | a HAL that depended on MSLA blobs would tax every GPIO user |
 | `efr32mg24-bluetooth-sys` | `bt_version` | the bindings, the blobs and the CMSIS stubs link | — |
 | `efr32mg24-radio` | `ble_beacon`, `ble_advertise_custom`, `ble_scanner` | the stack, both directions, and a framed payload | `ble_gatt` waits on PSA crypto |
 | `xiao-mg24-bsp` | `module_ble_beacon` | a module user adds BLE with one dev-dependency | — |
@@ -112,11 +112,11 @@ An example names **only its own crate**:
 
 ```
 pac_*     may name efr32mg2x_pac        and nothing above it
-hal_*     may name efr32mg24_hal        never the PAC, never a board
+hal_*     may name efr32mg2x_hal        never the PAC, never a board
 module_*  may name xiao_mg24_bsp        (its `hal::` re-export included)
 base_*    may name xiao_expansion_base_bsp  (its `hal::` and `module::` re-exports included)
 ```
 
 Both directions are checked by `scripts/gate.sh`: no PAC type outside the PAC crate, and no
-`efr32mg24_hal::` inside a BSP example. The second check was added because fourteen BSP examples named
+`efr32mg2x_hal::` inside a BSP example. The second check was added because fourteen BSP examples named
 the HAL directly — an example of the layer below, living in the wrong crate.

@@ -34,7 +34,7 @@ The PAC contains **138,448 lines** of generated code and takes **3-8 minutes** t
 - efr32mg2x-pac: ~3-8 minutes (138,448 lines)
 - efr32mg24-rail-sys: ~4m 23s (with blob extraction)
 - efr32mg24-bluetooth-sys: ~25s (with blob extraction)
-- efr32mg24-hal: ~30-60s
+- efr32mg2x-hal: ~30-60s
 - xiao-mg24-bsp: <10s
 
 **Total incremental build (no changes)**: <3 seconds
@@ -43,10 +43,10 @@ The PAC contains **138,448 lines** of generated code and takes **3-8 minutes** t
 **Correct Workflow**:
 ```bash
 # Clean only what you're working on
-cargo clean -p efr32mg24-hal
+cargo clean -p efr32mg2x-hal
 
 # Build just that package
-cargo build -p efr32mg24-hal
+cargo build -p efr32mg2x-hal
 
 # Or for examples
 cargo build --example 14_radio_ble_beacon
@@ -54,7 +54,7 @@ cargo build --example 14_radio_ble_beacon
 
 **When to Clean Each Package**:
 - `efr32mg2x-pac`: Almost NEVER (only when regenerating from SVD)
-- `efr32mg24-hal`: When modifying HAL source code (not docs!)
+- `efr32mg2x-hal`: When modifying HAL source code (not docs!)
 - `efr32mg24-*-sys`: When updating blobs or build.rs
 - `xiao-mg24-bsp`: When modifying BSP code
 - **Documentation changes**: NO cleaning needed!

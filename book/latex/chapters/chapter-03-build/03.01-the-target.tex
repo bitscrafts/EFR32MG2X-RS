@@ -64,7 +64,7 @@ which \emph{one} of them pulls \codeinline{cortex-m-rt}:
 rt = ["dep:cortex-m-rt"]
 
 # examples turn it on; there is exactly one #[entry] per binary
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg2x-hal = { path = "../efr32mg2x-hal", features = ["rt"] }
 \end{minted}
 
 Without that split, two crates in one binary each define \codeinline{Reset} and the link fails with a

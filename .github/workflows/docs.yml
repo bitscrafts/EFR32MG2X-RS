@@ -74,11 +74,11 @@ jobs:
           <html lang="en">
           <head>
               <meta charset="utf-8">
-              <meta http-equiv="refresh" content="0; url=efr32mg24_hal/index.html">
+              <meta http-equiv="refresh" content="0; url=efr32mg2x_hal/index.html">
               <title>EFR32MG24 Rust Documentation</title>
           </head>
           <body>
-              <p>Redirecting to <a href="efr32mg24_hal/index.html">efr32mg24_hal documentation</a>...</p>
+              <p>Redirecting to <a href="efr32mg2x_hal/index.html">efr32mg2x_hal documentation</a>...</p>
           </body>
           </html>
           EOF
@@ -90,7 +90,7 @@ jobs:
 
           This site contains the API documentation for the EFR32MG24 Hardware Abstraction Layer (HAL).
 
-          **[View HAL Documentation →](efr32mg24_hal/index.html)**
+          **[View HAL Documentation →](efr32mg2x_hal/index.html)**
 
           ## Project Links
 
@@ -133,4 +133,4 @@ jobs:
       - name: Output documentation URL
         run: |
           echo "📚 Documentation deployed to: ${{ steps.deployment.outputs.page_url }}"
-          echo "📖 HAL docs available at: ${{ steps.deployment.outputs.page_url }}efr32mg24_hal/"
+          echo "📖 HAL docs available at: ${{ steps.deployment.outputs.page_url }}efr32mg2x_hal/"

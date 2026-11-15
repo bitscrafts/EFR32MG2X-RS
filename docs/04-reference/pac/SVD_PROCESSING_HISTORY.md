@@ -308,7 +308,7 @@ cargo build -p efr32mg2x-pac --target thumbv8m.main-none-eabihf
 # ✅ Success
 
 # HAL compiles (with PAC dependency)
-cargo build -p efr32mg24-hal --target thumbv8m.main-none-eabihf
+cargo build -p efr32mg2x-hal --target thumbv8m.main-none-eabihf
 # ✅ Success
 
 # Workspace compiles

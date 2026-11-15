@@ -19,7 +19,7 @@ timer over SYSRTC. On the board, SYSRTC reads `EN=1` and `CLKSEL=LFRCO`, and the
 fault. The next SYSRTC access (`SYNCBUSY` or `CNT`) never returns. This is a read-only analysis: hypotheses
 ranked by likelihood, each with the check that confirms or rules it out. Sources are the vendored SDK in
 `crates/efr32mg24-emlib-sys/vendor/`, the stack blobs in `crates/efr32mg24-bluetooth-sys/blobs/efr32mg24b220/`,
-and `crates/efr32mg24-hal/src/sysrtc.rs`.
+and `crates/efr32mg2x-hal/src/sysrtc.rs`.
 
 ## Three corrections to the record (from the material itself)
 

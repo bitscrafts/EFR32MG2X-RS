@@ -31,13 +31,13 @@
 
 use core::cell::RefCell;
 
-use efr32mg24_hal::board::i2c_static;
-use efr32mg24_hal::bus::{BitBangI2c, Bus, I2cBus, SharedBus};
-use efr32mg24_hal::display::Ssd1306;
-use efr32mg24_hal::pin::{Input, Output, Port};
-use efr32mg24_hal::rtc::pcf8563::Pcf8563;
-use efr32mg24_hal::sensors::bme68x::Bme68x;
-use efr32mg24_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, ImuError, Lsm6ds3trc};
+use efr32mg2x_hal::board::i2c_static;
+use efr32mg2x_hal::bus::{BitBangI2c, Bus, I2cBus, SharedBus};
+use efr32mg2x_hal::display::Ssd1306;
+use efr32mg2x_hal::pin::{Input, Output, Port};
+use efr32mg2x_hal::rtc::pcf8563::Pcf8563;
+use efr32mg2x_hal::sensors::bme68x::Bme68x;
+use efr32mg2x_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, ImuError, Lsm6ds3trc};
 use xiao_mg24_bsp::Module;
 
 /// The XIAO MG24 Sense mounted on the Seeed Expansion Base.
@@ -84,11 +84,11 @@ impl ExpansionBase {
     /// calls `split`. Stealing the handle therefore creates a second view of registers that
     /// nothing else programs. Two delays alive at once would mean two owners of the same
     /// countdown, so the example takes one and keeps it.
-    pub fn delay(&mut self) -> efr32mg24_hal::delay::Delay {
+    pub fn delay(&mut self) -> efr32mg2x_hal::delay::Delay {
         // SAFETY: SysTick is exclusively the delay's; nothing else in this workspace
         // programs it, which is what makes the second view harmless.
         let syst = unsafe { cortex_m::Peripherals::steal().SYST };
-        efr32mg24_hal::delay::Delay::with_sysclk(syst, efr32mg24_hal::clock::DEFAULT_SYSCLK_HZ)
+        efr32mg2x_hal::delay::Delay::with_sysclk(syst, efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ)
     }
 
     /// The user LED (PA7, active low).
@@ -107,7 +107,7 @@ impl ExpansionBase {
     /// The piezo buzzer on PC03 (TIMER0 CC0), calibrated and silent.
     ///
     /// `None` when the timer never reports a running counter.
-    pub fn buzzer(&self) -> Option<efr32mg24_hal::buzzer::Buzzer<'_>> {
+    pub fn buzzer(&self) -> Option<efr32mg2x_hal::buzzer::Buzzer<'_>> {
         self.module.hal().buzzer_on(Port::C, 3)
     }
 
@@ -157,7 +157,7 @@ impl ExpansionBase {
     /// samples it. All of that is board wiring, so it lives here.
     pub fn microphone(
         &mut self,
-    ) -> Result<efr32mg24_hal::microphone::Microphone<'_>, efr32mg24_hal::microphone::MicError>
+    ) -> Result<efr32mg2x_hal::microphone::Microphone<'_>, efr32mg2x_hal::microphone::MicError>
     {
         self.module.hal().output_on(Port::C, 8, false).on();
         self.module.hal().converter().microphone()

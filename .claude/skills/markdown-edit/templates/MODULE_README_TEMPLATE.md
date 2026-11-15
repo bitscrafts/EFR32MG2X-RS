@@ -35,7 +35,7 @@ graph TD
 ## Usage Example
 
 ```rust
-use efr32mg24_hal::module_name::*;
+use efr32mg2x_hal::module_name::*;
 
 fn main() {
     // Example code here
@@ -66,7 +66,7 @@ List of implemented traits:
 
 ```toml
 [dependencies]
-efr32mg24-hal = { version = "0.1", features = ["module_name"] }
+efr32mg2x-hal = { version = "0.1", features = ["module_name"] }
 ```
 
 ## Testing

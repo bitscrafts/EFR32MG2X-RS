@@ -26,7 +26,7 @@ The complete radio module architecture has been:
 ### Final Agreed Structure: Folder-Based Modules
 
 ```
-efr32mg24-hal/src/radio/
+efr32mg2x-hal/src/radio/
 ├── mod.rs              # Radio<STATE>, type-states, common impl
 ├── types.rs            # Common radio types (RadioError, Address)
 ├── README.md           # Radio module overview
@@ -70,7 +70,7 @@ efr32mg24-hal/src/radio/
 ```
 EFR32MG24/
 ├── efr32mg2x-pac/              # Existing (no changes)
-├── efr32mg24-hal/              # Existing (add radio/ module)
+├── efr32mg2x-hal/              # Existing (add radio/ module)
 │   └── src/radio/              # NEW: Generic radio traits
 │
 ├── efr32mg24-rail-sys/         # NEW: RAIL FFI (internal)

@@ -17,7 +17,7 @@ efr32mg24-rail-sys = { package = "efr32mg2x-rail-sys", path = "../efr32mg24-rail
 # The two vendor stacks, as generated bindings plus their binary blobs.
 efr32mg24-bluetooth-sys = { package = "efr32mg2x-bluetooth-sys", path = "../efr32mg24-bluetooth-sys" }
 # The HAL is here for one thing only: a delay the stack can use while it boots.
-efr32mg24-hal = { package = "efr32mg2x-hal", path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg2x-hal = { package = "efr32mg2x-hal", path = "../efr32mg2x-hal", features = ["rt"] }
 
 cortex-m = { workspace = true }
 cortex-m-rt = { workspace = true }

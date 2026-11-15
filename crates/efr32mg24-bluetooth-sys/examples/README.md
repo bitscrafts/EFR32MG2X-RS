@@ -13,7 +13,7 @@ These examples demonstrate **protocol stack usage**, not HAL-level abstractions:
 │  efr32mg24-bluetooth-sys (This Crate)  │ ← BGAPI Protocol Stack
 │  - BLE advertising, GATT, connections  │   (these examples)
 ├─────────────────────────────────────────┤
-│  efr32mg24-hal                          │ ← Basic Peripherals Only
+│  efr32mg2x-hal                          │ ← Basic Peripherals Only
 │  - Clocks, GPIO, SPI, I2C, timers      │   (no BLE)
 ├─────────────────────────────────────────┤
 │  efr32mg2x-pac                          │ ← Register Access
@@ -35,7 +35,7 @@ Each example follows this pattern:
 #![no_std]
 #![no_main]
 
-use efr32mg24_hal as hal;           // For clocks, GPIO initialization
+use efr32mg2x_hal as hal;           // For clocks, GPIO initialization
 use efr32mg24_bluetooth_sys as bt;  // For BLE stack (BGAPI)
 
 #[entry]

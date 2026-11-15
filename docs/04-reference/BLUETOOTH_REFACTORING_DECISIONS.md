@@ -134,7 +134,7 @@ src/
 
 **Option A: Put radio in HAL**
 ```
-crates/efr32mg24-hal/src/
+crates/efr32mg2x-hal/src/
 ├── gpio/
 ├── spi/
 └── radio/           ← BLE, Zigbee, Thread
@@ -151,7 +151,7 @@ crates/efr32mg24-hal/src/
 
 **Option B: Keep radio separate ✅ CHOSEN**
 ```
-crates/efr32mg24-hal/        ← Peripherals only (GPIO, SPI, etc.)
+crates/efr32mg2x-hal/        ← Peripherals only (GPIO, SPI, etc.)
 crates/efr32mg24-bluetooth-sys/  ← Bluetooth (proprietary blob)
 efr32mg24-zigbee-sys/     ← Zigbee (proprietary blob)
 efr32mg24-thread-sys/     ← Thread (proprietary blob)

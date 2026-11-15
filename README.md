@@ -34,7 +34,7 @@ Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Sili
 
 ```
 
-> **Documentation**: https://bitscrafts.github.io/EFR32MG2X-RS/efr32mg24_hal/index.html
+> **Documentation**: https://bitscrafts.github.io/EFR32MG2X-RS/efr32mg2x_hal/index.html
 
 > ✅ **Status**: Bluetooth 5.3 LE works on hardware -- beacon advertising, scanning, connections, a GATT server with
 > read, write and notify, and the BME680 published as the standard Environmental Sensing service, verified on a phone.
@@ -59,7 +59,7 @@ This project aims to provide first-class Rust support for the Silicon Labs EFR32
 ```
 EFR32MG24/
 ├── crates/efr32mg2x-pac/              # Peripheral Access Crate (register-level)
-├── crates/efr32mg24-hal/              # Hardware Abstraction Layer (driver-level)
+├── crates/efr32mg2x-hal/              # Hardware Abstraction Layer (driver-level)
 ├── crates/efr32mg24-bluetooth-sys/    # Bluetooth 5.3 LE stack (BGAPI FFI bindings)
 ├── crates/efr32mg24-rail-sys/         # RAIL radio abstraction (FFI bindings)
 ├── crates/xiao-mg24-bsp/              # Board Support Package (XIAO MG24 Sense)
@@ -129,7 +129,7 @@ gantt
 
 **Crates**: 12 total
 - efr32mg2x-pac (138,448 lines, 133 peripherals)
-- efr32mg24-hal (12 peripheral modules)
+- efr32mg2x-hal (12 peripheral modules)
 - efr32mg24-radio (Bluetooth API, RAIL, diagnostics)
 - efr32mg24-rail-sys (3,974 FFI bindings)
 - efr32mg24-bluetooth-sys (4,307 BGAPI bindings)

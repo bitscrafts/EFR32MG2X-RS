@@ -630,7 +630,7 @@ Use **meaningful, descriptive names** that clearly indicate purpose:
 
 - **Clippy PAC warnings**: Use `--no-deps` flag to check only HAL code
   ```yaml
-  run: cargo clippy -p efr32mg24-hal --no-deps -- -D warnings
+  run: cargo clippy -p efr32mg2x-hal --no-deps -- -D warnings
   ```
 
 **Why**: Warnings hide real issues and become technical debt.
@@ -663,7 +663,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: thumbv8m.main-none-eabihf
-      - run: cargo build -p efr32mg24-hal --release
+      - run: cargo build -p efr32mg2x-hal --release
 ```
 
 **Problematic Pattern**:
@@ -717,7 +717,7 @@ jobs:
 
 **HAL** (hand-written code):
 ```yaml
-- run: cargo clippy -p efr32mg24-hal --features rt --no-deps -- -D warnings
+- run: cargo clippy -p efr32mg2x-hal --features rt --no-deps -- -D warnings
 ```
 - Strict mode: `-D warnings` (deny all warnings)
 - Use `--no-deps` to avoid PAC warnings cascading

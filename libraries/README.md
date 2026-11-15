@@ -38,7 +38,7 @@ Named only to make the boundary concrete — none of these exist yet:
 
 ## What does not belong here
 
-- **Drivers.** Anything that reads or writes a register belongs in `crates/efr32mg24-hal`.
+- **Drivers.** Anything that reads or writes a register belongs in `crates/efr32mg2x-hal`.
 - **Wiring.** Which pin, which address, which power gate: that is a BSP.
 - **Application sequencing.** A state machine that decides *when to sample* and *what to
   display* is the application; the classifier is a function it calls.

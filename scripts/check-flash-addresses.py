@@ -43,7 +43,7 @@ NEVER_PUBLISH = {
     "memory_direct.x", "memory.x.bootloader", "bootloader.x", "test-app-memory.x",
 }
 
-PUBLISHED = {"efr32mg2x-pac": "crates/efr32mg2x-pac", "efr32mg2x-hal": "crates/efr32mg24-hal"}
+PUBLISHED = {"efr32mg2x-pac": "crates/efr32mg2x-pac", "efr32mg2x-hal": "crates/efr32mg2x-hal"}
 
 PAT = re.compile(r"FLASH\s*:\s*ORIGIN\s*=\s*(0x[0-9a-fA-F]+)", re.I)
 

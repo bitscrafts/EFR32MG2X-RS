@@ -39,12 +39,12 @@ crates/efr32mg24-pac/
     \item Re-exported by HAL, users never depend on PAC directly
 \end{itemize}
 
-\subsection{Hardware Abstraction Layer (efr32mg24-hal)}
+\subsection{Hardware Abstraction Layer (efr32mg2x-hal)}
 
 The HAL workspace contains multiple peripheral crates:
 
 \begin{minted}{text}
-crates/efr32mg24-hal/
+crates/efr32mg2x-hal/
 ├── Cargo.toml              # HAL crate metadata
 ├── src/
 │   ├── lib.rs             # Main HAL entry point
@@ -129,7 +129,7 @@ Board-specific abstractions:
 
 \begin{minted}{text}
 xiao-mg24-bsp/
-├── Cargo.toml          # Depends on efr32mg24-hal
+├── Cargo.toml          # Depends on efr32mg2x-hal
 ├── src/
 │   ├── lib.rs         # Board initialization
 │   ├── board.rs       # Board struct
@@ -164,7 +164,7 @@ Each layer can be tested independently:
 Crates can be versioned independently:
 \begin{minted}{text}
 efr32mg24-pac = "0.1.0"      # Hardware revision specific
-efr32mg24-hal = "0.4.2"      # Feature updates
+efr32mg2x-hal = "0.4.2"      # Feature updates
 xiao-mg24-bsp = "0.2.1"      # Board revision specific
 \end{minted}
 

@@ -58,7 +58,7 @@ rustc \
   -C opt-level=z \
   -C lto \
   -C codegen-units=1 \
-  --extern efr32mg24_hal=...rlib \
+  --extern efr32mg2x_hal=...rlib \
   --extern cortex_m=...rlib \
   --extern cortex_m_rt=...rlib \
   -L dependency=target/thumbv8m.main-none-eabihf/release/deps
@@ -84,12 +84,12 @@ rust-lld \
   -flavor gnu \
   symbols.o \
   01_clock.rcgu.o \
-  libefr32mg24_hal.rlib \
+  libefr32mg2x_hal.rlib \
   libcortex_m.rlib \
   libcortex_m_rt.rlib \
   --gc-sections \
   -Tlink.x \
-  -L OUT_DIR_efr32mg24_hal \
+  -L OUT_DIR_efr32mg2x_hal \
   -L OUT_DIR_cortex_m_rt \
   -o 01_clock
 ```
@@ -106,10 +106,10 @@ rust-lld \
 1. **rust-lld loads `link.x`** from cortex-m-rt OUT_DIR
 2. **link.x line 23**: `INCLUDE memory.x`
    - Linker searches for memory.x in search paths
-   - Finds it in efr32mg24-hal OUT_DIR
+   - Finds it in efr32mg2x-hal OUT_DIR
 3. **link.x line 283**: `INCLUDE device.x`
    - Linker searches for device.x
-   - Finds it in efr32mg24-hal OUT_DIR
+   - Finds it in efr32mg2x-hal OUT_DIR
 4. **Linker processes all three scripts** as single unified script
 
 ### Memory Layout Resolution
@@ -266,7 +266,7 @@ cortex-m = { features = ["critical-section-single-core"] }
 
 ```mermaid
 graph TD
-    APP[Application] --> HAL[efr32mg24-hal]
+    APP[Application] --> HAL[efr32mg2x-hal]
     APP --> RT[cortex-m-rt]
     HAL --> PAC[efr32mg2x-pac]
     HAL --> CM[cortex-m + critical-section]
@@ -277,7 +277,7 @@ graph TD
 ```
 
 **Crate Roles:**
-- **efr32mg24-hal**: High-level hardware abstractions
+- **efr32mg2x-hal**: High-level hardware abstractions
 - **efr32mg2x-pac**: Low-level peripheral register access
 - **cortex-m-rt**: Startup code and linker script
 - **cortex-m**: Core Cortex-M functionality and critical sections

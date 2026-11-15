@@ -120,7 +120,7 @@ bulb.set_onoff(true)?;
 │  - Concrete implementations of HAL traits                   │
 │  - Board-specific configuration                             │
 ├─────────────────────────────────────────────────────────────┤
-│  efr32mg24-hal (Hardware Abstraction Layer)                 │
+│  efr32mg2x-hal (Hardware Abstraction Layer)                 │
 │  - Generic radio traits (RadioBle, RadioZigbee)             │
 │  - Generic types (GapAdvertiser, ZigbeeCoordinator)         │
 │  - Peripheral ownership (Radio<STATE>)                      │
@@ -137,7 +137,7 @@ bulb.set_onoff(true)?;
 
 ### HAL Layer (Generic Traits)
 
-**crates/efr32mg24-hal/src/radio/mod.rs**:
+**crates/efr32mg2x-hal/src/radio/mod.rs**:
 ```rust
 /// Generic radio peripheral
 pub struct Radio<STATE> {
@@ -156,7 +156,7 @@ impl Radio<Disabled> {
 }
 ```
 
-**crates/efr32mg24-hal/src/radio/ble.rs** (Generic BLE traits):
+**crates/efr32mg2x-hal/src/radio/ble.rs** (Generic BLE traits):
 ```rust
 /// Generic BLE GAP advertiser trait
 pub trait BleAdvertiser {
@@ -177,7 +177,7 @@ pub trait BleGattServer {
 }
 ```
 
-**crates/efr32mg24-hal/src/radio/zigbee.rs** (Generic Zigbee traits):
+**crates/efr32mg2x-hal/src/radio/zigbee.rs** (Generic Zigbee traits):
 ```rust
 /// Generic Zigbee coordinator trait
 pub trait ZigbeeCoordinator {
@@ -202,7 +202,7 @@ pub trait ZigbeeEndpoint {
 
 **crates/xiao-mg24-bsp/src/radio/ble.rs**:
 ```rust
-use efr32mg24_hal::radio::{Radio, EnabledBle, BleAdvertiser, BleGattServer};
+use efr32mg2x_hal::radio::{Radio, EnabledBle, BleAdvertiser, BleGattServer};
 use efr32mg24_bluetooth_sys as ffi;
 
 /// XIAO MG24 BLE peripheral
@@ -250,7 +250,7 @@ impl BleGattServer for XiaoBle {
 
 **crates/xiao-mg24-bsp/src/radio/zigbee.rs**:
 ```rust
-use efr32mg24_hal::radio::{Radio, EnabledZigbee, ZigbeeCoordinator};
+use efr32mg2x_hal::radio::{Radio, EnabledZigbee, ZigbeeCoordinator};
 use efr32mg24_zigbee_sys as ffi;
 
 /// XIAO MG24 Zigbee coordinator
@@ -299,7 +299,7 @@ use xiao_mg24_bsp::{
     Board,
     radio::zigbee::XiaoZigbeeCoordinator,
 };
-use efr32mg24_hal::radio::ZigbeeCoordinator; // Import trait
+use efr32mg2x_hal::radio::ZigbeeCoordinator; // Import trait
 
 #[entry]
 fn main() -> ! {
@@ -323,7 +323,7 @@ fn main() -> ! {
 **crates/xiao-mg24-bsp/examples/ble_beacon.rs**:
 ```rust
 use xiao_mg24_bsp::radio::ble::XiaoBle;
-use efr32mg24_hal::radio::BleAdvertiser; // Import trait
+use efr32mg2x_hal::radio::BleAdvertiser; // Import trait
 
 #[entry]
 fn main() -> ! {
@@ -461,7 +461,7 @@ Following **nrf-softdevice** and **esp-idf-hal** patterns:
                           │ depends on
 ┌────────────────────────────────────────────────────────┐
 │  Layer 3: HAL Integration                             │
-│  - efr32mg24-hal::radio                                │
+│  - efr32mg2x-hal::radio                                │
 │                                                         │
 │  Integrates radio with existing HAL:                   │
 │  - Clock management (HFXO required)                    │
@@ -524,7 +524,7 @@ fn main() {
 **memory.x modifications** for radio stack requirements:
 
 ```text
-/* crates/efr32mg24-hal/memory.x - Updated for radio support */
+/* crates/efr32mg2x-hal/memory.x - Updated for radio support */
 
 MEMORY
 {
@@ -687,7 +687,7 @@ Radio implementation will follow a **staged rollout** across 5 phases, prioritiz
 
 #### Architecture
 
-**Generic HAL Traits** (crates/efr32mg24-hal/src/radio/ble.rs):
+**Generic HAL Traits** (crates/efr32mg2x-hal/src/radio/ble.rs):
 ```rust
 /// Generic BLE advertiser trait
 pub trait BleAdvertiser {
@@ -778,7 +778,7 @@ impl BleGattServer for XiaoBle { /* ... */ }
 
 #### Architecture
 
-**Generic HAL Traits** (crates/efr32mg24-hal/src/radio/zigbee.rs):
+**Generic HAL Traits** (crates/efr32mg2x-hal/src/radio/zigbee.rs):
 ```rust
 /// Generic Zigbee coordinator trait
 pub trait ZigbeeCoordinator {
@@ -1443,7 +1443,7 @@ Silicon Labs **Master Software License Agreement** (MSLA):
 
 **Our Repository**:
 
-1. **Core HAL** (efr32mg24-hal): `MIT OR Apache-2.0`
+1. **Core HAL** (efr32mg2x-hal): `MIT OR Apache-2.0`
    - No radio code, pure Rust
    - Standard embedded Rust license
 
@@ -1623,7 +1623,7 @@ jobs:
         run: cargo build --package efr32mg24-rail --target thumbv8m.main-none-eabihf
 
       - name: Build HAL with radio feature
-        run: cargo build --package efr32mg24-hal --features radio-rail --target thumbv8m.main-none-eabihf
+        run: cargo build --package efr32mg2x-hal --features radio-rail --target thumbv8m.main-none-eabihf
 
       - name: Run unit tests (host)
         run: cargo test --package efr32mg24-rail --lib
@@ -1647,7 +1647,7 @@ jobs:
 
 Each radio module needs comprehensive README following existing HAL pattern:
 
-**Template** (e.g., `crates/efr32mg24-hal/src/radio/README.md`):
+**Template** (e.g., `crates/efr32mg2x-hal/src/radio/README.md`):
 
 ```markdown
 # Radio Module (D1-RAIL)
@@ -1762,7 +1762,7 @@ EFR32MG24 HAL provides complete 2.4 GHz radio support for:
 
 ```toml
 [dependencies]
-efr32mg24-hal = { version = "0.4", features = ["radio-bluetooth"] }
+efr32mg2x-hal = { version = "0.4", features = ["radio-bluetooth"] }
 ```
 
 Available features:
