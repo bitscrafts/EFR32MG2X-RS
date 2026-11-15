@@ -34,3 +34,8 @@ rustflags = [
 rb = "build --release"
 rr = "run --release"
 size = "size --"
+
+[env]
+# defmt compiles records above the configured level out of the binary entirely. Without this the default is `error`, so
+# `info!` and `warn!` vanish and the RTT buffer stays empty while everything looks correct.
+DEFMT_LOG = "info"

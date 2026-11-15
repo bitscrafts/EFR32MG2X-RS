@@ -33,6 +33,11 @@ rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
 # The dependency never goes the other way — the HAL does not know what a fall is.
 cortex-m-rt = { workspace = true, default-features = false }
 panic-halt = "0.2"
+# Diagnostics for the examples, not a dependency of the HAL: deferred formatting keeps the format strings on the host,
+# and panic-probe prints the panic with a backtrace over the same SWD cable that flashes the board.
+defmt = "1.2"
+defmt-rtt = { version = "1.3", default-features = false }
+panic-probe = { version = "1.0", features = ["print-defmt"] }
 
 [build-dependencies]
 
