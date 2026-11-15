@@ -85,6 +85,11 @@ static APP_PROPERTIES: ApplicationProperties = ApplicationProperties {
 
 #[entry]
 fn main() -> ! {
+    // One line, no module, no dependency: the diagnostic slot belongs to the previous binary until something says
+    // otherwise, and a reader would take its record as this program's own. Measured on 2026-11-15: without this,
+    // `pac_minimal` was reported as "mic rst=ok rms=504" -- the microphone example that had run before it.
+    unsafe { core::ptr::write_volatile(0x2003_F000 as *mut u32, 0) };
+
     let dp = pac::Peripherals::take().unwrap();
 
     // 1. The GPIO clock, gated by bit 26 of CLKEN0 in the secure CMU.

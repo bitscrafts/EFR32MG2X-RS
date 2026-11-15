@@ -14,7 +14,10 @@ Rust for the Silicon Labs EFR32MG2x family. The board this is developed and meas
 ![XIAO MG24 Sense on the XIAO Expansion Base](docs/images/xiao-mg24-sense.jpg)
 
 *XIAO MG24 Sense in the XIAO Expansion Base running `base_env_display`: the panel carries the BME680's compensated
-readings (temperature, pressure, humidity), with the sensor and a microphone breakout beside it.*
+readings (temperature, pressure, humidity), with the sensor and a microphone breakout beside it. Measured and dated
+2026-11-15. The carrier itself was later found faulty — a rail short that heats and silences the module; see
+`docs/01-getting-started/EXPANSION-BASE-SWD-FAULT-2026-11-15.md`) — and is away for replacement, so what was measured with
+it stands on that date and the examples that need it say so until another one is on the bench.*
 
 Rust Peripheral Access Crate (PAC) and Hardware Abstraction Layer (HAL) for Silicon Labs EFR32MG24 wireless SoCs.
 

@@ -1,17 +1,34 @@
 # HANDOFF — EFR32MG2X-RS (XIAO MG24 Sense + Expansion Base)
 
-**State: green, everything below verified on hardware.** Branch `master`, pushed to
-`origin` (`bitscrafts/EFR32MG2X-RS`). Board left running `base_env_display` (BME680 on the panel), then
-`base_ble_env_gatt` (the sensor over Bluetooth).
+**State: green.** Branch `master`, pushed to `origin` (`bitscrafts/EFR32MG2X-RS`). The Expansion Base
+was found faulty on 2026-11-15 and is away for replacement (about a month); that does not remove
+anything already measured with it — those dates stand — and the examples that need the carrier say so
+until another one is on the bench. The board left running `hal_led_blink`, its LED confirmed blinking.
 
-## The ladder, and how far it is built
+## Session 2026-11-15 — the board learns to talk back, and the carrier steps out for a while
 
-```
-PAC   ██████████  registers from the SVD, 26 examples, all measured on hardware
-HAL   ██████████  pins, clocks, I2C, timers, ADC, IMU, microphone, BME680
-RADIO █████████░  advertising, scanning, connections, GATT read/write/notify; pairing open
-BSP   ████████░░  both boards usable: sensor, panel, RTC, buzzer, button; BLE sensor node
-```
+1. **The Expansion Base is faulty and away for replacement.** Seated in it the module's debug port is
+   silent from both probes and both read paths, the application never starts, and a component on the
+   base heats with USB power alone — reproduced on a second host, so host, cable, programmer and
+   firmware are all excluded. With the base removed the module flashes, verifies by read-back and
+   runs. Full evidence and the rail-by-rail procedure: `docs/01-getting-started/EXPANSION-BASE-SWD-FAULT-2026-11-15.md`.
+2. **The board can be watched while it runs.** `defmt` + `defmt-rtt` + `panic-probe` are wired for
+   both crates (`-Tdefmt.x` from each crate's own `build.rs`, `DEFMT_LOG=info`), and the shared mailbox
+   module now sends the same record over RTT — so every example streams live and a fault arrives with
+   a backtrace instead of silence.
+3. **Three causes behind the SYSRTC fault, each with an exact address.** Writing the group registers
+   with the SYSRTC's clock gate still off (`0x500a8068`), then STOP+EN_CLR followed by a CFG write
+   (`0x500a800c`, even with SYNCBUSY polled); the second clock selection is now made with the counter
+   running. Measured: LFRCO 32800 ticks over 19000025 cycles, ULFRCO 992 over 19000020.
+4. **Three examples were reporting another program's result, and are fixed.** `pac_minimal`,
+   `pac_sysrtc_rate` and `pac_sysrtc_trace` never touched the diagnostic slot, so their rows carried
+   whatever the previous binary had written. Every example now invalidates the slot in the first
+   instruction of `main`, and `hal_timer_compare` drains its stale compare flag before claiming a pass.
+5. **One name per crate, and the board hands out its own peripherals.** The PAC and HAL libraries now
+   derive from their package names (`efr32mg2x_pac`, `efr32mg2x_hal`), and the gate's layering rule —
+   no PAC type named outside the PAC crate — is satisfied by `Board::emu()` and `Board::wdog()`.
+6. **Published: not yet.** `crates.io` refuses the name until the deleted-crate cooldown ends
+   (2026-11-16T03:57:22Z); a job is queued for 04:05Z. The HAL stays unpublished by decision.
 
 ## Session 2026-11-14 — Bluetooth closes, and what closed it
 

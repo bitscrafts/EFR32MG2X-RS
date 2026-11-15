@@ -155,7 +155,7 @@ whether the example needs the XIAO Expansion Base to mean anything.
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself. | -- it passed with a stale flag (`late` = a negative number); the flag is drained now and the example has not been re-measured since | no |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back. | -- the same binary returned `ok , ok` on one boot and `ERR , ERR` on another | no, but not yet a reproducible measurement |
 | `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | -- writing `WDOG.CFG` is a precise data access error; see the file's own header | no |
-| `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | -- the scan found nothing with the base removed | yes: OLED (0x3C), RTC (0x51) and BME680 (0x76) live on it |
+| `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 — `scan n=3 3c 51 76` (measured with the carrier attached) | yes: OLED (0x3C), RTC (0x51) and BME680 (0x76) live on it |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- the timer is configured; there was no piezo to hear | yes: the piezo |
 
 A `--` is not a defect: the example compiles and is exercised, but nobody has read back an output that means anything, or
@@ -163,7 +163,7 @@ the hardware it talks to is missing. The same rule as the PAC crate: a date appe
 and the last column says when "something" needs the Expansion Base, which on 2026-11-15 was found faulty (a shorted rail
 that heats and silences the module) and sent back. See `docs/01-getting-started/EXPANSION-BASE-SWD-FAULT-2026-11-15.md`.
 
-Two of the ten are dated. The other eight say why not, in their own words, which is worth more than a column of tidy
+Three of the ten are dated. The other eight say why not, in their own words, which is worth more than a column of tidy
 dates that nobody can reproduce.
 
 ## Building

@@ -116,10 +116,13 @@ software symptom.
 
 ## Status after the diagnosis (2026-11-15)
 
-The base is being returned. Measurements continue on the module alone, and every example that needs the base is recorded
-as *not measured* with that reason in its own table rather than left to look approved: the HAL crate's README now carries a
-"needs the base" column, and the PAC crate's `docs/examples.md` shows `--` for the five examples whose hardware is on the
-carrier (BME680, the OLED, the I2C devices and the RTC at 0x51).
+**The base is faulty and away for replacement; nothing already measured with it is withdrawn.** A refund was applied for
+and a replacement is expected in about a month. The measurements taken with the carrier while it still worked — the panel
+showing the BME680's temperature, pressure and humidity, the I2C scan finding 0x3C/0x51/0x76, the RTC at 0x51 — stand on
+their date, because they were measured and not assumed. What changes is only the wording: the examples that need the
+carrier say so in their tables (the HAL crate's README has a "needs the base" column; the PAC crate's `docs/examples.md`
+shows `--` only for the ones that were already unmeasured for other reasons), so nobody reads a `--` as a defect in code
+that is fine.
 
-What the module still proves on its own, measured with the base removed: it flashes, verifies by read-back, and runs -- the
-LED blink, the IMU, the microphone, the timers and the MVP co-processor all report from the part itself.
+What the module still proves on its own, measured with the base removed: it flashes, verifies by read-back, and runs --
+the LED blink, the IMU, the microphone, the timers and the MVP co-processor all report from the part itself.
