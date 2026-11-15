@@ -93,6 +93,12 @@ pub fn write(status: Status, msg: &[u8]) {
     }
 }
 
+/// Marks the slot empty. Called first thing in main: a stale record from the previous binary would otherwise be read as
+/// this example's own result when the debugger cannot halt the core to clear it.
+pub fn invalidate() {
+    unsafe { core::ptr::write_volatile(MAILBOX_ADDR as *mut u32, 0) };
+}
+
 pub fn info(msg: &[u8]) {
     write(Status::Info, msg);
 }

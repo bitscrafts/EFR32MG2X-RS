@@ -200,6 +200,7 @@ impl Bus<'_> {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     let gpio = &dp.gpio_s;
 

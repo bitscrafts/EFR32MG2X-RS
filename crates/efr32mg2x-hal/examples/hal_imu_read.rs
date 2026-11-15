@@ -73,6 +73,7 @@ fn push_dec(out: &mut [u8], mut at: usize, mut value: i32) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let mut board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
 

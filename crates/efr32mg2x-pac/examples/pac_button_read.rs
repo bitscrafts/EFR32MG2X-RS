@@ -48,6 +48,7 @@ fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
 
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());

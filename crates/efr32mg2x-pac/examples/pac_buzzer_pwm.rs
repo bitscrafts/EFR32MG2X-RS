@@ -87,6 +87,7 @@ fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
 
     // TIMER0 and GPIO must both be clocked before any register is touched;

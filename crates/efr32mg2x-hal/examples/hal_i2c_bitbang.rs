@@ -46,6 +46,7 @@ fn push_hex4(buf: &mut [u8], pos: usize, value: u8) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let board = match Board::take() {
         Some(b) => b,
         None => loop {

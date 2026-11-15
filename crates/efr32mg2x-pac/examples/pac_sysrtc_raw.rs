@@ -111,6 +111,7 @@ pub extern "C" fn HardFault() -> ! {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = match pac::Peripherals::take() {
         Some(d) => d,
         None => loop {

@@ -18,7 +18,6 @@
 
 use core::fmt::Write;
 use efr32mg2x_hal::entry;
-use efr32mg2x_hal::pac;
 use efr32mg2x_hal::wdog::{TimeoutPeriod, Wdog, WdogConfig};
 use panic_probe as _;
 
@@ -55,8 +54,9 @@ impl Write for Buf {
 
 #[entry]
 fn main() -> ! {
-    let dp = match pac::Peripherals::take() {
-        Some(d) => d,
+    mailbox::invalidate();
+    let board = match efr32mg2x_hal::board::Board::take() {
+        Some(b) => b,
         None => loop {
             core::hint::spin_loop();
         },
@@ -71,7 +71,7 @@ fn main() -> ! {
         reset_disable: false,
     };
 
-    let mut wdog = match Wdog::new(dp.wdog0_ns, config) {
+    let mut wdog = match board.wdog(config) {
         Ok(w) => w,
         Err(e) => {
             let mut b = Buf::new();

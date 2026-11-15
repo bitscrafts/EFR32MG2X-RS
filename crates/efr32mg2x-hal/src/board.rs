@@ -42,6 +42,23 @@ impl Board {
         crate::sysrtc::Sysrtc::enable_clocks(&self.dp.cmu_ns);
     }
 
+    /// The energy management unit, handed out through the board like every other peripheral: an example outside this
+    /// crate must not name a PAC type, and the gate enforces that.
+    pub fn emu(&self) -> crate::emu::Emu {
+        // SAFETY: `Board` holds the PAC singletons for the whole program; this hands the EMU out through the board, once,
+        // instead of letting a caller `steal()` it behind the board's back.
+        crate::emu::Emu::new(unsafe { pac::EmuS::steal() })
+    }
+
+    /// The watchdog, configured at construction. Same reason as `emu`: no PAC type crosses the crate boundary.
+    pub fn wdog(
+        &self,
+        config: crate::wdog::WdogConfig,
+    ) -> Result<crate::wdog::Wdog, crate::wdog::Error> {
+        // SAFETY: same as `emu`: the board owns the peripherals and gives this one out exactly once.
+        crate::wdog::Wdog::new(unsafe { pac::Wdog0Ns::steal() }, config)
+    }
+
     /// The tick timer, shared by every protocol stack that may run on this radio.
     ///
     /// SYSRTC is one peripheral, so it is handed out here rather than taken by a stack: a second consumer

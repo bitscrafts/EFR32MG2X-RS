@@ -13,7 +13,6 @@
 use core::fmt::Write;
 use efr32mg2x_hal::emu::{Emu, VoltageScale};
 use efr32mg2x_hal::entry;
-use efr32mg2x_hal::pac;
 use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
@@ -49,13 +48,14 @@ impl Write for Buf {
 
 #[entry]
 fn main() -> ! {
-    let dp = match pac::Peripherals::take() {
-        Some(d) => d,
+    mailbox::invalidate();
+    let board = match efr32mg2x_hal::board::Board::take() {
+        Some(b) => b,
         None => loop {
             core::hint::spin_loop();
         },
     };
-    let emu = Emu::new(dp.emu_s);
+    let emu = board.emu();
 
     let down = emu.set_em01_voltage_scale(VoltageScale::Vscale1);
     let back = emu.set_em01_voltage_scale(VoltageScale::Vscale2);

@@ -232,6 +232,7 @@ impl Bus<'_> {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 

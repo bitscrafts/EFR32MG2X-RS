@@ -71,6 +71,7 @@ impl Line {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let board = match Board::take() {
         Some(b) => b,
         None => loop {

@@ -118,6 +118,7 @@ fn be16(msb: u8, lsb: u8) -> u16 {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
     let bus = i2c_bitbang::Bus::new(&dp.gpio_s);

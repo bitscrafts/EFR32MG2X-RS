@@ -156,6 +156,7 @@ fn delay() {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
 
     // 1. Enable the GPIO clock in the secure CMU (CmuS at 0x4000_8000).

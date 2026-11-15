@@ -213,6 +213,7 @@ fn read_env(bus: &i2c_bitbang::Bus<'_>, addr: u8) -> Option<(i32, i32, i32, u8, 
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     ssd1306::enable_gpio_clock(&dp.cmu_s);
     let bus = i2c_bitbang::Bus::new(&dp.gpio_s);

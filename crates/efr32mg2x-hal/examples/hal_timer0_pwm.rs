@@ -65,6 +65,7 @@ fn push_dec(buf: &mut [u8], mut pos: usize, mut value: u32) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let board = match Board::take() {
         Some(b) => b,
         None => loop {

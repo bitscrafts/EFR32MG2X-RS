@@ -88,6 +88,7 @@ fn push_hex2(buf: &mut [u8], mut pos: usize, value: u8) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     let i2c = &dp.i2c0_s;
 

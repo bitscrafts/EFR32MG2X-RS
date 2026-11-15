@@ -106,6 +106,7 @@ pub extern "C" fn HardFault() -> ! {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let _dp = pac::Peripherals::take().expect("peripherals taken twice");
     unsafe {
         core::ptr::write_volatile(FAULT_SLOT as *mut u32, 0);

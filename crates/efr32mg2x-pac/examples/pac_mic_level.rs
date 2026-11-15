@@ -157,6 +157,7 @@ fn reset(adc: &Iadc) -> bool {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
 
     dp.cmu_s

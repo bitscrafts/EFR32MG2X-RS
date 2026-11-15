@@ -118,6 +118,7 @@ fn sync_wait(bound: u32) -> u32 {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let _dp = match pac::Peripherals::take() {
         Some(d) => d,
         None => loop {

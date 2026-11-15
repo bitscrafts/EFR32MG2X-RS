@@ -350,6 +350,7 @@ fn read_reg(i2c: &I2c, addr: u8, reg: u8) -> (u8, u8) {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s
         .clken0()

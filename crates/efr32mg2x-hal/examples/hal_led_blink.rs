@@ -32,6 +32,7 @@ use defmt_rtt as _;
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let mut board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
 

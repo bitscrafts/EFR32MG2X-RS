@@ -163,6 +163,7 @@ fn fp16_to_int(raw: u16) -> i32 {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
     // The MVP's bus clock lives in CLKEN1, bit 30 ("MVP - Enable Bus Clock").

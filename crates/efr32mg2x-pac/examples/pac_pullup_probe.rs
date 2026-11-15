@@ -64,6 +64,7 @@ fn push_hex8(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = pac::Peripherals::take().unwrap();
     dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 

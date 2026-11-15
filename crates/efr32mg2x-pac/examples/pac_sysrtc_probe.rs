@@ -20,6 +20,7 @@ use defmt_rtt as _;
 
 #[entry]
 fn main() -> ! {
+    mailbox::invalidate();
     let dp = match pac::Peripherals::take() {
         Some(d) => d,
         None => loop {
