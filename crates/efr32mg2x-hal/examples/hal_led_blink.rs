@@ -16,6 +16,8 @@
 //!
 //! Nothing here needs the Expansion Base: PA7 is on the module.
 
+//! VERIFIED ON HARDWARE (2026-11-15) -- mailbox read back `PASS hal: pin primitive drives PA7, 1 Hz`, and the
+//! LED was watched blinking on the bench.
 #![no_std]
 #![no_main]
 

@@ -169,6 +169,42 @@ impl Board {
         let reg = unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) };
         crate::microphone::Converter::new(reg)
     }
+
+    /// The general-purpose ADC, distinct from the microphone's converter.
+    ///
+    /// `Board::converter()` returns the IADC as the microphone uses it; this one hands out the
+    /// channel-oriented driver, so an example outside the PAC never has to name a PAC type.
+    ///
+    /// The oscillator is forced on here for the same reason it is in `converter()`: measured
+    /// 2026-11-15, an IADC whose `IADCCLK` points at a stopped HFRCOEM23 faults on the first
+    /// `CTRL` write, at `0x49004008`.
+    pub fn adc(&self, config: crate::adc::Config) -> crate::adc::Adc {
+        self.run_hfrcoem23();
+        crate::adc::Adc::new(unsafe { pac::Iadc0S::steal() }, config, &self.dp.cmu_s)
+    }
+
+    /// Force HFRCOEM23 on and wait for it, then point `IADCCLK` at it.
+    fn run_hfrcoem23(&self) {
+        self.dp
+            .cmu_s
+            .clken0()
+            .modify(|_r, w| w.hfrcoem23().set_bit());
+        self.dp
+            .hfrcoem23_s
+            .ctrl()
+            .modify(|_r, w| w.forceen().set_bit());
+        let mut spin = 0u32;
+        while !self.dp.hfrcoem23_s.status().read().rdy().bit_is_set() {
+            spin += 1;
+            if spin > 1_000_000 {
+                break;
+            }
+        }
+        self.dp
+            .cmu_s
+            .iadcclkctrl()
+            .modify(|_r, w| w.clksel().hfrcoem23());
+    }
 }
 
 /// A bit-banged bus that outlives the `Board` it came from.

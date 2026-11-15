@@ -33,32 +33,39 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-one modules. All of them are implementations, not skeletons: the smallest has 2 public functions, the largest 18, and
-the only `unimplemented!` in the crate is inside a doc example. What differs is how far each one has been taken.
+Twenty-one modules and 194 public functions. Ten examples. Three of them carry a date, and a date means a record was read
+back off the part — not that the code compiled.
 
-**Watched on the board**
+**Watched on the board (2026-11-15)**
 
-| module | what was measured |
+| example | what came back |
 |---|---|
-| `bus` + `display` + `sensors` | `hal_env_display`: `T=31.68C P=1015hPa H=68.2%` on the OLED, matching the PAC twin within sensor noise |
-| `pin` | the LED toggling, seen |
-| `timer` + `buzzer` | `TOP` calibrated, `CC0_CFG=0x02`, counter climbing — registers confirmed, **no sound heard** (open trace or no buzzer fitted) |
-| `rtc` | `base_rtc` runs |
-| `dwt` | used as the time base by several examples that were run |
+| `hal_led_blink` | `PASS hal: pin primitive drives PA7, 1 Hz`, and the LED was watched blinking |
+| `hal_i2c_bitbang` | `PASS scan n=3 3c 51 76` — the panel, the RTC and the BME680 answered (measured with the Expansion Base fitted) |
+| `hal_rtt_hello` | heartbeats 0..8 read off RTT with `probe-rs` while the core ran |
 
-**Exercised by an example, not yet watched:** `board`, `microphone`, `sysrtc`, `delay`.
+**Ran, and the record says it did not work**
 
-**Implemented, no example reaches it:** `adc`, `clock`, `dma`, `emu`, `i2c`, `pwm`, `spi`, `usart`, `wdog`.
+| example | record |
+|---|---|
+| `hal_mic_level` | `FAIL pwm: TIMER0 is not counting (clock?)` — the level is computed, the hardware PWM path is not |
+| `hal_wdog_feed` | the `CFG` write faults at `0x4b00400c` and `0x5b00400c`; reads work in both windows. See `src/wdog/mod.rs` |
+| `hal_emu_voltage` | `ok , ok` on one boot and `ERR , ERR` on another, same binary — not deterministic, so no date |
+| `hal_timer_compare` | passed with a stale compare flag (`late = 2^32-3200`); the flag is now drained first, and it has not been re-measured since |
+| `hal_imu_read` | no record: the example writes nothing the harness can read |
+| `hal_timer_ticks` | step records only (`step2: sysrtc configured`), never a verdict |
+
+**No example names these:** `adc`, `clock`, `display`, `dma`, `i2c`, `rtc`, `spi`, `usart`. (`timer` and `pwm` are reached
+through `Board::buzzer_on` / `Board::pwm_on` rather than named directly.)
 
 Two of those deserve naming rather than a row in a table:
 
 - `i2c` drives the hardware I2C0 peripheral, and that path has a **documented defect**: after `CMD.START` the state reads
   `0xd7` (BUSY|MASTER|TRANSMITTER|NACKED) and `PSTART` never clears. Every working I2C path in this repository is
   `bus::BitBangI2c`, which is a different module. See `docs/04-reference/I2C0-READ-DEFECT.md`.
-- `sysrtc` had two wrong offsets corrected (CLKCTRL `0x240`, EN_SET `0x1004`) and accepts `EN`, but the counter is not
-  read back correctly.
-
-
+- `clock` carries a bricking warning in its own source (`clock/clocks.rs`): an earlier implementation switched SYSCLK to
+  HFXO before the HFXO was running, which stopped the CPU clock and locked the debug access port. No example touches it yet,
+  on purpose. See `docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md`.
 
 ## Quick Start
 

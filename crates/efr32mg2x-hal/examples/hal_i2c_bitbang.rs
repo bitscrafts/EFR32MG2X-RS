@@ -12,6 +12,8 @@
 //! 2. it drives the Sense module's power gate first (PD5), because an unpowered IMU is
 //!    indistinguishable from an absent one — that is the whole reason the gate exists.
 
+//! VERIFIED ON HARDWARE (2026-11-15) -- mailbox read back `PASS scan n=3 3c 51 76`: the panel, the RTC and the
+//! BME680 answered. Measured with the XIAO Expansion Base fitted; that is where those three devices live.
 #![no_std]
 #![no_main]
 
