@@ -52,12 +52,14 @@ for ex in "${EXAMPLES[@]}"; do
   fi
 
   sleep 3
-  record=$(bash scripts/read-mailbox.sh "$HOST" "$USER_NAME" 2>/dev/null | tail -1)
+  out=$(bash scripts/read-mailbox.sh "$HOST" "$USER_NAME" 2>/dev/null)
+  status=$(printf '%s\n' "$out" | sed -n 's/^seq=[^ ]* status=\([a-zA-Z]*\) len=.*/\1/p' | tail -1)
+  record=$(printf '%s\n' "$out" | tail -1)
   if [[ -z "$record" ]]; then
-    printf 'SEM REGISTO\n'; printf '%s\tno-record\t\n' "$ex" >> "$OUT"
+    printf 'SEM REGISTO\n'; printf '%s\tno-record\t\t\n' "$ex" >> "$OUT"
   else
-    printf '%s\n' "${record:0:60}"
-    printf '%s\trecord\t%s\n' "$ex" "$record" >> "$OUT"
+    printf '%s [%s]\n' "${record:0:56}" "${status:-?}"
+    printf '%s\t%s\t%s\t%s\n' "$ex" "record" "${status:-unknown}" "$record" >> "$OUT"
   fi
 done
 

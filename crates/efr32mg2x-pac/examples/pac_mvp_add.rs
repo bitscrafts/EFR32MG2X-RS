@@ -36,12 +36,17 @@
 //! read the wrong words the values would differ. The mailbox carries both the
 //! expected and the observed sums.
 //!
-//! Measured on the board, 2026-11-15: the sums come out `exp=396 got=0`, with `STATUS.IDLE` set, `PROGRAMSTATE.PC` at 0,
-//! `LOOP0STATE.CNT` at 0 and the output array's DIM2 index at 1. Every field the program writes now matches the SVD
-//! (the output stream's REGID/STORE/ARRAYID/INCRDIM live at 20/23/24/29, not at the input stream's 0/3/4/9 -- building
-//! it with the input offsets left STORE clear, which was the first defect and is fixed here). Writing INIT and START in
-//! separate accesses, and issuing SWRST before configuring, changed nothing. The remaining question -- why the loads
-//! deliver zeros while the store index advances -- needs the MVP chapter of the reference manual, not another guess.
+//! It works, and why it did not is worth keeping. The program was assembled by hand from the SVD, field by field, and
+//! three things were wrong in ways the SVD cannot show. The vendor driver settles all three
+//! (`sl_math_mvp_vector_add_i8` in `sl_mvp.c`, `SLI_MVP_STREAM` in `sl_mvp.h`):
+//!
+//!   - the opcode is ADDC (334 on this part), not ADDR (74);
+//!   - the ALU registers are X = R1, A = R2, Z = R3, not X = R0 / Y = R1 / Z = R2;
+//!   - the loop passes NOINCR. It is the instruction's streams that advance the arrays, one dimension step per element;
+//!     incrementing in the loop *and* in the streams skipped every other element.
+//!
+//! Measured on the board, 2026-11-15: `mvp exp=396 got=396`, PASS -- eight fp16 adds through the co-processor, checked
+//! against the same sum computed by the CPU.
 //! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
@@ -61,8 +66,8 @@ const N: usize = 8;
 /// `sli_mvp_datatype_t`.
 const BASETYPE_BINARY16: u32 = 2;
 
-/// `_MVP_INSTRCFG2_ALUOP_ADDR` in this PAC's enum: real addition of two operands.
-const ALUOP_ADDR: u32 = 74;
+/// `ADDC` (334): the opcode the vendor driver uses for vector add (sl_math_mvp_vector_add_i8).
+const ALUOP_ADDC: u32 = 334;
 
 /// Field shifts, from the SDK's instruction/array/loop structs.
 const DIM_BASETYPE_SHIFT: u32 = 12;
@@ -262,32 +267,27 @@ fn main() -> ! {
         }
     }
 
-    // ---- one loop: N iterations, each advancing dim2 (the "width") --------
-    // INCRDIM bit 2 is the width; the per-array nibble lives at 4*array.
-    let incr_width = 0b0100u32;
-    let incrdims = incr_width | (incr_width << 4) | (incr_width << 8);
-    mvp.loop0cfg().write(|w| unsafe {
-        w.bits(((N as u32 - 1) << LOOP_NUMITERS_SHIFT) | (incrdims << LOOP_INCRDIM_SHIFT))
-    });
+    // ---- one loop: N iterations, no dimension increments -------------------
+    // The SDK's `sl_math_mvp_vector_add_i8` passes SLI_MVP_NOINCR here: the *instruction's streams* are what advance the
+    // arrays, one dimension step per element. This example used to increment dim2 here as well, so every element was
+    // skipped twice.
+    mvp.loop0cfg()
+        .write(|w| unsafe { w.bits((N as u32 - 1) << LOOP_NUMITERS_SHIFT) });
     mvp.loop0rst().write(|w| unsafe { w.bits(0) });
 
-    // ---- the instruction -------------------------------------------------
-    // CFG0: X = R0, Y = R1, A = R2, Z = R2 (no negate/zero masks).
+    // ---- the instruction, built the way the vendor driver builds it --------
+    // ALU: X = R1, A = R2, Z = R3, which is the register set sl_math_mvp_vector_add_i8 uses for the same operation.
     mvp.instr0cfg0()
-        .write(|w| unsafe { w.bits((1 << 8) | (2 << 16) | (2 << 28)) });
-    // CFG1: load a into R0, load b into R1, store R2 into out, all advancing dim2.
-    // The three streams do not share a bit layout: input streams sit at 0 and 10, the output stream at 20, and in the
-    // output stream the store bit is 23 and the array id is 24..26. Building it with the input offsets and shifting the
-    // result leaves STORE clear, so the ALU computes and nothing is ever written back -- the arrays read as zeros.
-    let stream0 = 0u32 | (1 << 3) | (0 << 4) | (1 << 9);
-    let stream1 = 1u32 | (1 << 3) | (1 << 4) | (1 << 9);
-    let ostream = (2 << 20) | (1 << 23) | (2 << 24) | (1 << 29);
-    mvp.instr0cfg1()
-        .write(|w| unsafe { w.bits(stream0 | (stream1 << 10) | ostream) });
-    // CFG2: opcode, this instruction both opens and closes loop 0, and ends the program.
+        .write(|w| unsafe { w.bits((1 << 0) | (2 << 16) | (3 << 28)) });
+    // CFG1, from SLI_MVP_STREAM(s, r, a, i) = ((i << 7) | (a << 4) | 0x8 | r) << (s * 10):
+    //   load0  = stream 0, R1, array 0, INCRDIM2 (0x4) -> 0x209
+    //   load1  = stream 1, R2, array 1, INCRDIM2       -> 0x86800
+    //   store  = stream 2, R3, array 2, INCRDIM2       -> 0x22B00000
+    mvp.instr0cfg1().write(|w| unsafe { w.bits(0x22B8_6A09) });
+    // CFG2: ADDC (334 in this part's enum), loop 0 opens and closes on this instruction, and the program ends here.
     mvp.instr0cfg2().write(|w| unsafe {
         w.bits(
-            (ALUOP_ADDR << CFG2_ALUOP_SHIFT)
+            (ALUOP_ADDC << CFG2_ALUOP_SHIFT)
                 | (1 << 0)   // loop0 begin
                 | (1 << 1)   // loop0 end
                 | CFG2_ENDPROG,
@@ -349,12 +349,29 @@ fn main() -> ! {
     pos = push_dec(&mut msg, pos, mvp.programstate().read().pc().bits() as u32);
     pos = push_bytes(&mut msg, pos, b" l0=");
     pos = push_dec(&mut msg, pos, mvp.loop0state().read().cnt().bits() as u32);
-    pos = push_bytes(&mut msg, pos, b" ix2=");
+    // The index of each array says which side of the instruction actually advanced: three zeros would be "nothing ran",
+    // input indexes without the output one would be "it read and never stored".
+    pos = push_bytes(&mut msg, pos, b" ix=");
+    pos = push_dec(
+        &mut msg,
+        pos,
+        mvp.array0indexstate().read().dim2index().bits() as u32,
+    );
+    pos = push_bytes(&mut msg, pos, b"/");
+    pos = push_dec(
+        &mut msg,
+        pos,
+        mvp.array1indexstate().read().dim2index().bits() as u32,
+    );
+    pos = push_bytes(&mut msg, pos, b"/");
     pos = push_dec(
         &mut msg,
         pos,
         mvp.array2indexstate().read().dim2index().bits() as u32,
     );
+    // Whether the base address the array controller was given survived the run.
+    pos = push_bytes(&mut msg, pos, b" a0cfg=");
+    pos = push_dec(&mut msg, pos, mvp.array0addrcfg().read().bits());
 
     if ok {
         mailbox::pass(&msg[..pos]);

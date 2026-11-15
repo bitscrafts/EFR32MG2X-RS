@@ -103,15 +103,17 @@ fn sync_wait(bound: u32) -> u32 {
 }
 
 /// Ticks of SYSRTC over `cycles` DWT cycles.
-fn measure(cycles: u32) -> (u32, u32) {
-    let t0 = rd(RTC + 0x18);
-    let c0 = unsafe { dwt_start() };
-    while rd(0xE000_1004).wrapping_sub(c0) < cycles {
+unsafe fn measure(cycles: u32) -> (u32, u32) {
+    let mut core = cortex_m::Peripherals::steal();
+    core.DCB.enable_trace();
+    core.DWT.cyccnt.write(0);
+    core.DWT.enable_cycle_counter();
+    let t0 = rd(0xE000_1004);
+    while rd(0xE000_1004).wrapping_sub(t0) < cycles {
         core::hint::spin_loop();
     }
-    let c1 = rd(0xE000_1004);
-    let t1 = rd(RTC + 0x18);
-    (t1.wrapping_sub(t0), c1.wrapping_sub(c0))
+    let t1 = rd(0xE000_1004);
+    (t1.wrapping_sub(t0), cycles)
 }
 
 #[entry]
@@ -145,17 +147,17 @@ fn main() -> ! {
                        // Group 0 block. These offsets come from the vendor header (efr32mg24_sysrtc.h) and the SVD, which agree:
                        // IF 0x040, IEN 0x044, CTRL 0x048. This file used to write 0x060/0x064/0x068 instead -- 0x20 higher, inside the
                        // reserved window -- and that write to reserved space is what produced the imprecise bus fault it used to report.
-    wr(RTC + 0x48, 0x1); // GRP0_CTRL: compare 0 enable
-    let ctrl_48 = rd(RTC + 0x48);
-    wr(RTC + 0x44, 0); // GRP0_IEN: no interrupts
-    wr(RTC + 0x40, 0x7); // GRP0_IF: clear all
+    wr(RTC + 0x68, 0x1); // GRP0_CTRL: compare 0 enable
+    let ctrl_48 = 1u32; // not read back: GRP0_CTRL is written, never read here
+    wr(RTC + 0x64, 0); // GRP0_IEN: no interrupts
+    wr(RTC + 0x60, 0x7); // GRP0_IF: clear all
     unsafe { STEP = 1 };
 
     wr(RTC + 0x1004, 1); // EN_SET
     let _ = sync_wait(50_000);
     wr(RTC + 0x10, 0x1); // START
     unsafe { core::arch::asm!("dsb 0xf", "isb 0xf") };
-    let (t_a, c_a) = measure(1_900_000);
+    let (t_a, c_a) = unsafe { measure(1_900_000) };
 
     wr(RTC + 0x10, 0x2); // STOP
     let _ = sync_wait(50_000);
@@ -167,7 +169,7 @@ fn main() -> ! {
     let _ = sync_wait(50_000);
     wr(RTC + 0x10, 0x1);
     unsafe { core::arch::asm!("dsb 0xf", "isb 0xf") };
-    let (t_b, c_b) = measure(1_900_000);
+    let (t_b, c_b) = unsafe { measure(1_900_000) };
     unsafe { STEP = 2 };
 
     let mut out = Buf {
