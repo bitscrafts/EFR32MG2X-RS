@@ -21,6 +21,9 @@ fn main() {
     println!("cargo:rustc-link-search={}", out.display());
 
     // Rebuild if memory.x or device.x changes
+    // The .defmt section the probe reads the format strings from, for this crate's examples only: in
+    // .cargo/config.toml it would break every other crate's examples, which have no defmt to supply the script.
+    println!("cargo:rustc-link-arg-examples=-Tdefmt.x");
     println!("cargo:rerun-if-changed=memory.x");
     println!("cargo:rerun-if-changed=device.x");
 }

@@ -31,8 +31,9 @@ on the board itself, not merely built -- an example nobody has ever run is an ex
 | `pac_sysrtc_gates` | Does the SYSRTC clock gate live in the secure CMU view, the non-secure one, or both? | 2026-11-15 |
 | `pac_sysrtc_group0_irq` | Which group raises which interrupt line? | 2026-11-15 |
 | `pac_sysrtc_probe` | Which SYSRTC write faults, in the vendor's own order | 2026-11-15 |
-| `pac_sysrtc_rate` | A rate probe that has not survived: it measures SYSRTC ticks per DWT cycle under two clock selections | -- |
+| `pac_sysrtc_rate` | SYSRTC ticks per unit of time, under two clock selections, reported over RTT | 2026-11-15 |
 | `pac_sysrtc_raw` | SYSRTC through raw addresses, with a fault handler that reports instead of hanging | 2026-11-15 |
+| `pac_sysrtc_trace` | The SYSRTC sequence with a log line before and after every write, to see where it dies | 2026-11-15 |
 
 ### One of them, in full: `pac_led_blink_base`
 
