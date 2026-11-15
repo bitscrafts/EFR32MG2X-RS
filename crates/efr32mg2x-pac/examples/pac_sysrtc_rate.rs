@@ -7,6 +7,12 @@
 //! writing those offsets stops pac_sysrtc_dsb earlier than 0x060/0x064/0x068 do. Both questions need the SYSRTC
 //! chapter of the reference manual, not another guess; the four examples keep the offsets the board accepts and say so.
 //!
+//! Bisected further on 2026-11-15, each step measured: the fault happens **before** START (a record written just after
+//! START never appears), it survives removing the group 0 writes entirely, it survives removing the DWT from the
+//! measurement, and the write sequence is byte for byte the one pac_sysrtc_dsb performs -- which passes and reports
+//! COUNTING. What is left is not a difference in the writes, and finding it needs a debugger stepping the two side by
+//! side, not another hypothesis from this side of the wire.
+//!
 //! The file keeps the two original questions below, because they are still the questions:
 //! Both are answered by reading back what was written, plus one rate measurement per clock selection:
 //!
@@ -147,9 +153,9 @@ fn main() -> ! {
                        // Group 0 block. These offsets come from the vendor header (efr32mg24_sysrtc.h) and the SVD, which agree:
                        // IF 0x040, IEN 0x044, CTRL 0x048. This file used to write 0x060/0x064/0x068 instead -- 0x20 higher, inside the
                        // reserved window -- and that write to reserved space is what produced the imprecise bus fault it used to report.
-    wr(RTC + 0x68, 0x1); // GRP0_CTRL: compare 0 enable
+    wr(RTC + 0x68, 0x1); // GRP0_CTRL (offset from the blob's handler, see docs/03-development/BLOB-DISASSEMBLY.md) // GRP0_CTRL: compare 0 enable
     let ctrl_48 = 1u32; // not read back: GRP0_CTRL is written, never read here
-    wr(RTC + 0x64, 0); // GRP0_IEN: no interrupts
+    wr(RTC + 0x64, 0); // GRP0_IEN
     wr(RTC + 0x60, 0x7); // GRP0_IF: clear all
     unsafe { STEP = 1 };
 
@@ -157,6 +163,7 @@ fn main() -> ! {
     let _ = sync_wait(50_000);
     wr(RTC + 0x10, 0x1); // START
     unsafe { core::arch::asm!("dsb 0xf", "isb 0xf") };
+    let _ = sync_wait(50_000);
     let (t_a, c_a) = unsafe { measure(1_900_000) };
 
     wr(RTC + 0x10, 0x2); // STOP
