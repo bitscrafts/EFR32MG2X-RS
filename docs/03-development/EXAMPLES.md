@@ -111,7 +111,7 @@ saying so is part of the catalogue: the radio is not a peripheral you program, i
 An example names **only its own crate**:
 
 ```
-pac_*     may name efr32mg24_pac        and nothing above it
+pac_*     may name efr32mg2x_pac        and nothing above it
 hal_*     may name efr32mg24_hal        never the PAC, never a board
 module_*  may name xiao_mg24_bsp        (its `hal::` re-export included)
 base_*    may name xiao_expansion_base_bsp  (its `hal::` and `module::` re-exports included)

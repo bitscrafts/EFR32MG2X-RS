@@ -866,7 +866,7 @@ use rtt_target::rprintln;
 
 #[entry]
 fn main() -> ! {
-    let dp = efr32mg24_pac::Peripherals::take().unwrap();
+    let dp = efr32mg2x_pac::Peripherals::take().unwrap();
 
     // Initialize Matter
     let mut matter = Matter::new(dp.radio).unwrap();
@@ -938,7 +938,7 @@ use heapless::String;
 
 #[entry]
 fn main() -> ! {
-    let dp = efr32mg24_pac::Peripherals::take().unwrap();
+    let dp = efr32mg2x_pac::Peripherals::take().unwrap();
 
     let mut ble = EzBle::new(dp.radio, "MyDevice").unwrap();
     ble.start_advertising().unwrap();

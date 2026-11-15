@@ -265,7 +265,7 @@ subprocess.run(['python3', 'patch_word13.py', 'firmware.hex',
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_pac as _;
+use efr32mg2x_pac as _;
 use panic_halt as _;
 
 // ApplicationProperties structure (88 bytes with Arduino header)
