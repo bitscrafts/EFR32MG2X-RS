@@ -72,6 +72,11 @@ fn main() -> ! {
     };
     let rtc = board.sysrtc();
 
+    // The compare flag survives a reset in this part's block, so a stale one would be taken as "fired" before the counter
+    // had moved at all. Measured: without this clear the record read `reached == start`, `fired=1` and `late = -3200`
+    // (4294964096 unsigned) -- a pass that proved nothing. Discard whatever is pending before scheduling anything.
+    while rtc.take_compare_event() {}
+
     // 100 ms is 3277 ticks at 32.768 kHz. The wait is bounded by the counter itself: once `now()` passes the
     // deadline, a flag that is still clear is a real failure, not an impatient timeout.
     let start = rtc.now();

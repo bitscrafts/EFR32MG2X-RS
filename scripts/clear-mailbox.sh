@@ -3,19 +3,32 @@
 #
 #   scripts/clear-mailbox.sh [host] [user]
 #
-# The mailbox lives in RAM at 0x2003_F000 and **survives a reset**. An example that only writes it on an event can
-# therefore be read as if it had reported, when what is there belongs to the previous image -- measured on 2026-11-14:
-# after flashing `module_ble_fall`, the mailbox still held `ble_gatt`'s record, complete with the bytes a client had
-# written minutes earlier. Clearing it first turns "stale" into "empty", and empty is obvious.
+# The mailbox lives in RAM at 0x2003_F000 and survives a reset. Examples now invalidate it themselves in the first
+# instruction of `main`, so this script is a belt-and-braces tool for the cases where the image about to run cannot do it
+# (a bare-metal program without the shared module, or a target left running by someone else).
+#
+# It used to swallow openocd's failure and report success while the record was still in RAM, so every caller believed the
+# slot was empty when it was not. The exit status is checked now, and the word "Error" in openocd's output is treated as
+# a failure too, because openocd can print an error and still exit zero.
 #
 # Writes one word inside this project's own diagnostic area; nothing else is touched.
-set -uo pipefail
+set -euo pipefail
 
 HOST="${1:-${FLASH_HOST:-localhost}}"
 USER_NAME="${2:-${FLASH_USER:-$(id -un)}}"
 CFG=/tmp/openocd-mg24-mini.cfg
 MAILBOX=0x2003F000
 
-ssh -n -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \
+if ! out=$(ssh -n -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \
   "sudo -n openocd -f interface/cmsis-dap.cfg -f ${CFG} \
-     -c 'init; halt' -c 'mww ${MAILBOX} 0' -c 'resume; shutdown'" >/dev/null 2>&1
+     -c 'init; halt' -c 'mww ${MAILBOX} 0' -c 'resume; shutdown'" 2>&1); then
+  printf 'clear-mailbox: openocd failed\n%s\n' "$out" >&2
+  exit 1
+fi
+
+case "$out" in
+  *Error*|*error*)
+    printf 'clear-mailbox: openocd reported an error\n%s\n' "$out" >&2
+    exit 1
+    ;;
+esac

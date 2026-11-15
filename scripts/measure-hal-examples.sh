@@ -46,14 +46,9 @@ for ex in "${EXAMPLES[@]}"; do
     printf 'RECUSADO (endereco)\n'; printf '%s\trefused\t\t\n' "$ex" >> "$OUT"; continue
   fi
 
-  FLASH_HOST="$HOST" FLASH_USER="$USER_NAME" bash scripts/clear-mailbox.sh "$HOST" "$USER_NAME" >/dev/null 2>&1
-
-  # The clear is only trusted if it can be seen to have worked: openocd cannot always halt a target whose clocks are
-  # already configured, and the clear then fails silently while the previous record stays in RAM.
-  if [[ -n "$(bash scripts/read-mailbox.sh "$HOST" "$USER_NAME" 2>/dev/null | tail -1)" ]]; then
-    printf 'MAILBOX NAO LIMPOU (registo antigo)\n'
-    printf '%s\tstale-mailbox\t\t\n' "$ex" >> "$OUT"; continue
-  fi
+  # No pre-clear: every example invalidates the slot in the first instruction of main, so a record surviving from the
+  # previous binary is impossible once the new one has booted. Relying on a debugger halt for this made the sweep stop at
+  # the first target openocd could not halt, and said nothing about the example it skipped.
 
   if ! FLASH_HOST="$HOST" FLASH_USER="$USER_NAME" bash scripts/flash.sh "$elf" --confirm --run >"/tmp/flash-$ex.log" 2>&1; then
     printf 'FALHA DE GRAVACAO\n'; printf '%s\tflash-failed\t\t%s\n' "$ex" "$(tail -1 "/tmp/flash-$ex.log")" >> "$OUT"; continue

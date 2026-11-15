@@ -76,6 +76,10 @@ fn start_with(clksel: u32) -> u32 {
 
 #[entry]
 fn main() -> ! {
+    // RTT is the only instrument here, so the shared slot is not written: it has to be invalidated all the same, or a
+    // reader takes the previous binary's record as this one's. Measured on 2026-11-15.
+    unsafe { core::ptr::write_volatile(0x2003_F000 as *mut u32, 0) };
+
     let _dp = match pac::Peripherals::take() {
         Some(d) => d,
         None => loop {
