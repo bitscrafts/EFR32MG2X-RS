@@ -49,6 +49,15 @@ else
   fail "crate docs: $(tail -1 /tmp/gate-examples-doc.log)"
 fi
 
+# Every crate that ships gets its README generated from templates/readme-<name>.tmpl, and the gate refuses a README
+# that has drifted from it. The list of "crates that ship" comes from check-publishable.py, so adding a crate to the
+# published set immediately requires a template for it -- the rule cannot be forgotten, only enforced.
+if python3 scripts/gen-crate-readme.py --all --check >/tmp/gate-readmes.log 2>&1; then
+  pass "docs: every README is generated from its template"
+else
+  fail "docs: $(grep -m1 '^FAIL' /tmp/gate-readmes.log | sed 's/^FAIL //')"
+fi
+
 # What would be published, read the way a stranger reads it. cargo publish --dry-run compiles the package and never
 # looks at it: that is how ef32mg2x-hal 0.1.0 reached crates.io announcing "I2C/SPI/Timers next" with all three in the
 # tree, and linking a docs/PHASE2_PLAN.md that does not exist.
@@ -56,6 +65,15 @@ if PATH="/usr/local/cargo/bin:$PATH" python3 scripts/check-publishable.py >/tmp/
   pass "crates.io: the package says what the tree does"
 else
   fail "crates.io: $(grep -m1 '^  ' /tmp/gate-publishable.log)"
+fi
+
+# Every crate must point at the layer below it: hal -> pac, bsp -> hal and pac. A crate that never
+# names what it is built on reads as though it were standalone, and a reader landing there cannot walk
+# the stack. The rule lives here, not in a habit, because this is the kind of thing that erodes.
+if python3 scripts/check-crate-refs.py >/tmp/gate-crate-refs.log 2>&1; then
+  pass "docs: every crate points at the layer below it"
+else
+  fail "docs: $(grep -m1 '^FAIL' /tmp/gate-crate-refs.log | sed 's/^FAIL //')"
 fi
 
 # Every linker script that can produce an image must start at or above 0x08006000, and a dangerous one must never ship

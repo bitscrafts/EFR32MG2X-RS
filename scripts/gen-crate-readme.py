@@ -253,14 +253,147 @@ BLOCKS = {"generated": block_generated, "usage": None, "features": block_feature
           "linker_script": block_linker_script, "related_crates": block_related}
 
 
+
+# ---------------------------------------------------------------------------------------------
+# Layer blocks: what this crate takes from the crates below it, and what examples it carries.
+#
+# These are generated because they are the two things that rot. A hand-written list of imports goes
+# stale the first time someone adds a `use`, and a hand-written example table goes stale the first
+# time an example is renamed. Both are readable from the tree, so both are read from it.
+# ---------------------------------------------------------------------------------------------
+
+LAYER_OF = {
+    "efr32mg2x-pac": [],
+    "efr32mg2x-hal": ["efr32mg2x-pac"],
+    "efr32mg2x-xiao-bsp": ["efr32mg2x-hal", "efr32mg2x-pac"],
+    "efr32mg2x-expansion-base-bsp": ["efr32mg2x-hal"],
+}
+
+
+def _imports_with_files(crate, lower):
+    """{name: sorted files} of every top-level name this crate takes from `lower`."""
+    import re as _re
+
+    snake = lower.replace("-", "_")
+    alias = snake.split("_")[-1]
+    pats = [
+        _re.compile(rf"\b{snake}::([A-Za-z_][A-Za-z0-9_]*)"),
+        _re.compile(rf"\bcrate::{alias}::([A-Za-z_][A-Za-z0-9_]*)"),
+        _re.compile(rf"(?<![A-Za-z0-9_:]){alias}::([A-Za-z_][A-Za-z0-9_]*)"),
+    ]
+    found = {}
+    for f in sorted((crate / "src").rglob("*.rs")):
+        text = f.read_text()
+        rel = str(f.relative_to(crate))
+        for pat in pats:
+            for m in pat.finditer(text):
+                found.setdefault(m.group(1), set()).add(rel)
+    return {k: sorted(v) for k, v in found.items()}
+
+
+def block_layer_usage(crate):
+    name = field(crate, "name")
+    lowers = LAYER_OF.get(name, [])
+    if not lowers:
+        return ""
+    parts = []
+    for lower in lowers:
+        used = _imports_with_files(crate, lower)
+        parts.append(f"### What this crate uses from `{lower}`\n")
+        if not used:
+            parts.append(
+                f"Nothing directly. This crate reaches `{lower}` through the layer above it; if a type\n"
+                f"from `{lower}` ever appears in this crate's source, the layering has been broken.\n"
+            )
+            continue
+        parts.append("Read from the source, so it cannot drift:\n")
+        parts.append("| what it takes | where it is used |")
+        parts.append("|---|---|")
+        for nm in sorted(used):
+            where = ", ".join(f"`{w}`" for w in used[nm][:3])
+            more = f" (+{len(used[nm]) - 3} more)" if len(used[nm]) > 3 else ""
+            parts.append(f"| `{nm}` | {where}{more} |")
+        parts.append("")
+    return "\n".join(parts)
+
+
+def block_examples_table(crate):
+    """Every example, the first line of its doc header, and the date it was watched if it has one."""
+    import re as _re
+
+    exdir = crate / "examples"
+    if not exdir.is_dir():
+        return "No examples in this crate."
+    rows = []
+    for ex in sorted(exdir.glob("*.rs")):
+        text = ex.read_text()
+        first = next((l[3:].strip() for l in text.splitlines()
+                      if l.startswith("//!") and l[3:].strip() and not l[3:].strip().startswith("#")), "")
+        first = first.replace("|", "\\|")
+        m = _re.search(r"VERIFIED ON HARDWARE \((\d{4}-\d\d-\d\d)\)", text)
+        rows.append(f"| `{ex.name}` | {first} | {m.group(1) if m else '--'} |")
+    head = "| example | what it shows | watched on hardware |\n|---|---|---|"
+    dated = sum(1 for r in rows if not r.endswith("| -- |"))
+    return (f"{len(rows)} examples, **{dated} of them watched on the part**. A `--` in the last column means nobody\n"
+            f"has read a value back off the hardware for it; it does not mean the code is unverified and it does not\n"
+            f"mean it works.\n\n{head}\n" + "\n".join(rows))
+
+
+BLOCKS["layer_usage"] = block_layer_usage
+BLOCKS["examples_table"] = block_examples_table
+
+
+def publishable_dirs():
+    """The crates that go to crates.io, read from check-publishable.py so there is one list, not two."""
+    import importlib.util as _ilu
+
+    spec = _ilu.spec_from_file_location("check_publishable", ROOT / "scripts/check-publishable.py")
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return [ROOT / spec_["dir"] for spec_ in mod.CRATES.values()]
+
+
+def every_rendered_crate():
+    """Publishable crates, plus any crate that already carries its own template (the BSPs do)."""
+    dirs = {p.resolve() for p in publishable_dirs()}
+    for tmpl in (ROOT / "templates").glob("readme-efr32mg2x-*.tmpl"):
+        name = tmpl.stem.replace("readme-", "")
+        for cand in (ROOT / "crates").glob("*"):
+            if field(cand, "name") == name:
+                dirs.add(cand.resolve())
+    return sorted(dirs)
+
+
 def main():
     if len(sys.argv) < 2:
         raise SystemExit(__doc__)
-    crate = Path(sys.argv[1]).resolve()
     check = "--check" in sys.argv
+
+    if "--all" in sys.argv:
+        rc = 0
+        for crate in every_rendered_crate():
+            rc |= render(crate, check)
+        if rc == 0 and check:
+            print("VERDICT: PASS every crate that ships has a README generated from its template")
+        return rc
+
+    crate = Path(sys.argv[1]).resolve()
+    return render(crate, check)
+
+
+def render(crate, check):
     name, version = field(crate, "name"), field(crate, "version")
-    kind = "pac" if "pac" in name else "hal"
-    tpl = (ROOT / f"templates/readme-{kind}.tmpl").read_text()
+    if "pac" in name:
+        kind = "pac"
+    elif "bsp" in name:
+        kind = "bsp"
+    else:
+        kind = "hal"
+    # a crate may carry its own template (the two BSPs do: same kind, different prose)
+    tpl_path = ROOT / f"templates/readme-{name}.tmpl"
+    if not tpl_path.exists():
+        tpl_path = ROOT / f"templates/readme-{kind}.tmpl"
+    tpl = tpl_path.read_text()
 
     for key, fn in BLOCKS.items():
         token = "{{" + key + "}}"

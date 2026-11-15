@@ -28,6 +28,20 @@ export CARGO_TARGET_DIR="/projects/_cache/targets"
 [[ -f "$BRIEF" ]] || { echo "no brief at $BRIEF -- refusing to spend a run with nothing to do"; exit 1; }
 command -v pi >/dev/null || { echo "pi not on PATH -- refusing"; exit 1; }
 
+# A background shell does not inherit the interactive environment, and the first dispatch failed
+# exactly here: `No API key found for provider ollama-cloud`. Load the key from the file that defines
+# it, without ever printing it. Fail loudly rather than launching a run that cannot authenticate.
+if [[ -z "${OLLAMA_API_KEY:-}" ]]; then
+  if grep -q "export OLLAMA_API_KEY" /root/.bashrc 2>/dev/null; then
+    # shellcheck disable=SC1090
+    source /root/.bashrc >/dev/null 2>&1 || true
+  fi
+fi
+if [[ -z "${OLLAMA_API_KEY:-}" ]]; then
+  echo "OLLAMA_API_KEY is not set and could not be loaded from /root/.bashrc -- refusing to launch"
+  exit 1
+fi
+
 resume=0
 session=""
 if [[ "${1:-}" == "-r" || "${1:-}" == "--resume" ]]; then

@@ -1,0 +1,54 @@
+# efr32mg2x-expansion-base-bsp
+
+The board layer for the Seeed XIAO Expansion Base: the 0.96" SSD1306 panel at `0x3C`, the BME680 at
+`0x76`, the PCF8563 RTC at `0x51`, the piezo on `PC03` and the user button on `PC01`.
+
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — the same crates, a clone, a build and a
+guarded flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). They are not published to crates.io: an
+examples-only crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
+
+## Where this crate sits
+
+```
+efr32mg2x-pac            register access
+      |
+efr32mg2x-hal            peripherals, buses and drivers
+      |
+efr32mg2x-xiao-bsp       the module: LED, IMU, microphone
+      |
+efr32mg2x-expansion-base-bsp   <-- this crate: the carrier board the module sits on
+```
+
+It is built on [`efr32mg2x-hal`](https://crates.io/crates/efr32mg2x-hal), and through it on
+[`efr32mg2x-pac`](https://crates.io/crates/efr32mg2x-pac). Nothing here talks to a register directly.
+
+### What this crate uses from `efr32mg2x-hal`
+
+Read from the source, so it cannot drift:
+
+| what it takes | where it is used |
+|---|---|
+| `board` | `src/expansion_base.rs` |
+| `bus` | `src/expansion_base.rs` |
+| `buzzer` | `src/expansion_base.rs` |
+| `clock` | `src/expansion_base.rs` |
+| `delay` | `src/expansion_base.rs` |
+| `display` | `src/expansion_base.rs` |
+| `microphone` | `src/expansion_base.rs` |
+| `pin` | `src/expansion_base.rs` |
+| `rtc` | `src/expansion_base.rs` |
+| `sensors` | `src/expansion_base.rs` |
+
+
+## State, and why nothing here carries a date
+
+Everything in this crate was measured on 2026-11-15 with the base fitted: the panel took a frame, the
+BME680 returned `id=0x61` with real temperature and pressure, the RTC answered at `0x51`.
+
+Then the base failed. It drew current and became hot with the module seated, on two different hosts,
+in a component on the board itself, and with it fitted the module's debug port stopped answering. It
+was returned for a replacement. The code stays because the knowledge stays, but **no example in this
+crate can be measured again until a replacement base arrives** — the devices it drives are not on the
+module.
+
+See `docs/01-getting-started/EXPANSION-BASE-SWD-FAULT-2026-11-15.md` at the workspace root.

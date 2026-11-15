@@ -1,0 +1,234 @@
+# efr32mg2x-hal — HAL for the EFR32MG24 (XIAO MG24 Sense)
+
+High-level, type-safe Hardware Abstraction Layer for EFR32MG24 microcontrollers.
+
+> **Status**: 20 peripheral drivers in the tree. What is measured on the board, and what merely compiles, is listed
+> below rather than summarised in a phase number that has been stale since June 2026.
+
+## Overview
+
+This crate provides high-level, safe abstractions over EFR32MG24 peripherals with embedded-hal v1.0 trait implementations.
+
+### Where this crate sits
+
+```
+efr32mg2x-pac          the register access layer: one type per peripheral, offsets from the SVD
+      |
+efr32mg2x-hal   <--    this crate: peripherals, buses and drivers, no board facts
+      |
+efr32mg2x-xiao-bsp     the board: which pin the LED is on, which pins power the IMU and the microphone
+```
+
+{{layer_usage}}
+
+**Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
+- **CPU**: ARM Cortex-M33 @ 78 MHz with FPU and TrustZone-M
+- **Flash**: 1536 KB
+- **RAM**: 256 KB
+- **Radio**: 2.4 GHz (Bluetooth 5.3, Zigbee, Thread, Matter)
+
+## What is in the tree
+
+Twenty-one modules, each one a peripheral, a bus or a driver:
+
+```
+adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
+i2c  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
+```
+
+The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
+SPI and the timers are here, and USART is here but has never been watched doing anything on the board.
+
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a guarded
+flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). Not published to crates.io: an examples-only
+crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
+
+## What is in the tree, measured
+
+Twenty-one modules and 194 public functions. Ten examples. Three of them carry a date, and a date means a record was read
+back off the part — not that the code compiled.
+
+**Watched on the board (2026-11-15)**
+
+| example | what came back |
+|---|---|
+| `hal_led_blink` | `PASS hal: pin primitive drives PA7, 1 Hz`, and the LED was watched blinking |
+| `hal_i2c_bitbang` | `PASS scan n=3 3c 51 76` — the panel, the RTC and the BME680 answered (measured with the Expansion Base fitted) |
+| `hal_rtt_hello` | heartbeats 0..8 read off RTT with `probe-rs` while the core ran |
+
+**Ran, and the record says it did not work**
+
+| example | record |
+|---|---|
+| `hal_mic_level` | `FAIL pwm: TIMER0 is not counting (clock?)` — the level is computed, the hardware PWM path is not |
+| `hal_wdog_feed` | the `CFG` write faults at `0x4b00400c` and `0x5b00400c`; reads work in both windows. See `src/wdog/mod.rs` |
+| `hal_emu_voltage` | `ok , ok` on one boot and `ERR , ERR` on another, same binary — not deterministic, so no date |
+| `hal_timer_compare` | passed with a stale compare flag (`late = 2^32-3200`); the flag is now drained first, and it has not been re-measured since |
+| `hal_imu_read` | no record: the example writes nothing the harness can read |
+| `hal_timer_ticks` | step records only (`step2: sysrtc configured`), never a verdict |
+
+**No example names these:** `adc`, `clock`, `display`, `dma`, `i2c`, `rtc`, `spi`, `usart`. (`timer` and `pwm` are reached
+through `Board::buzzer_on` / `Board::pwm_on` rather than named directly.)
+
+Two of those deserve naming rather than a row in a table:
+
+- `i2c` drives the hardware I2C0 peripheral, and that path has a **documented defect**: after `CMD.START` the state reads
+  `0xd7` (BUSY|MASTER|TRANSMITTER|NACKED) and `PSTART` never clears. Every working I2C path in this repository is
+  `bus::BitBangI2c`, which is a different module. See `docs/04-reference/I2C0-READ-DEFECT.md`.
+- `clock` carries a bricking warning in its own source (`clock/clocks.rs`): an earlier implementation switched SYSCLK to
+  HFXO before the HFXO was running, which stopped the CPU clock and locked the debug access port. No example touches it yet,
+  on purpose. See `docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md`.
+
+## Quick Start
+
+Add to your `Cargo.toml`:
+
+```toml
+[dependencies]
+efr32mg2x-hal = { version = "0.1.0", features = ["rt"] }
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+panic-halt = "0.2"
+```
+
+### Minimal Example
+
+```rust
+#![no_std]
+#![no_main]
+
+use cortex_m_rt::entry;
+use efr32mg2x_hal::{
+    clock::{Clocks, ClockConfig, HfxoConfig, LfxoConfig},
+    delay::Delay,
+    gpio::GpioExt,
+    pac,
+    prelude::*,
+};
+use panic_halt as _;
+
+#[entry]
+fn main() -> ! {
+    let cp = cortex_m::Peripherals::take().unwrap();
+    let dp = pac::Peripherals::take().unwrap();
+
+    // Configure clocks with XIAO MG24's 39 MHz crystal
+    let clocks = Clocks::new(
+        dp.cmu_s,
+        ClockConfig {
+            hfxo: Some(HfxoConfig::new(39_000_000)),
+            lfxo: Some(LfxoConfig::default()),
+        }
+    ).freeze();
+
+    // Create delay provider
+    let mut delay = Delay::new(cp.SYST, &clocks);
+
+    // Split GPIO into individual pins
+    let gpio = dp.GPIO_S.split();
+    let mut led = gpio.portb.pb2.into_push_pull_output();
+
+    loop {
+        led.set_high().unwrap();
+        delay.delay_ms(500);
+        led.set_low().unwrap();
+        delay.delay_ms(500);
+    }
+}
+```
+
+## Documentation
+
+### Getting Started
+
+- **[docs/](docs/)** - Complete HAL documentation index
+- **Build system and toolchain** — in the repository: `docs/02-guides/HAL-BUILD-SYSTEM.md`
+- **[docs/LINKER_SETUP.md](docs/LINKER_SETUP.md)** - Linker script configuration
+
+### Module Documentation
+
+- **[src/clock/](src/clock/)** - Clock Management Unit (CMU)
+- **[src/pin/](src/pin.rs)** - GPIO digital I/O
+- **[src/delay.rs](src/delay/)** - SysTick-based delays
+
+### API Documentation
+
+Generate complete API documentation:
+
+```bash
+cargo doc --no-deps --features rt --open
+```
+
+## Examples
+
+{{examples_table}}
+
+## Building
+
+### Prerequisites
+
+```bash
+# Install ARM Cortex-M33 target
+rustup target add thumbv8m.main-none-eabihf
+
+# Install probe-rs for flashing (optional)
+cargo install probe-rs-tools
+```
+
+### Build Commands
+
+```bash
+# Check code
+cargo check --features rt
+
+# Build library
+cargo build --features rt --release
+
+# Build examples
+cargo build --examples --features rt
+
+# Run tests
+cargo test --features rt
+```
+
+## Features
+
+- **Safe abstractions**: Zero unsafe code in public API
+- **Type-safe GPIO**: Pin modes enforced at compile time
+- **embedded-hal v1.0**: Compatible with embedded-hal ecosystem
+- **Hardware register access**: Direct manipulation of EFR32MG24 registers
+- **Critical sections**: Safe atomic operations via cortex-m
+- **Modular design**: Clean separation of concerns, all files <400 lines
+
+## Where the state lives
+
+The status groups at the top of this file are the status; there is no second one to drift away from it. The
+workspace-wide authority is `docs/03-development/STATUS.md` in the project repository.
+
+## Staying out of the bootloader
+
+The first 24 KiB of flash (0x08000000-0x08005FFF) hold the Gecko bootloader. An image that lands there bricks the
+board. The linker script in this crate starts at **0x08006000**, and the flags are not optional either:
+
+```toml
+[target.thumbv8m.main-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.x", "-C", "link-arg=--nmagic"]
+```
+
+Without `--nmagic` the linker emits a small segment at 0x08000000 and some flash tools will happily write it. Read the
+lowest load address of the image before flashing and refuse anything below 0x08006000.
+
+## License
+
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://www.apache.org/licenses/LICENSE-2.0.txt))
+- MIT license ([LICENSE-MIT](https://opensource.org/license/mit))
+
+at your option.
+
+---
+
+**Version**: 0.1.0
+**Last Updated**: November 14, 2026
+**Status**: 21 modules in the tree; the measured/unmeasured split is at the top of this file

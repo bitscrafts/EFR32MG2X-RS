@@ -9,6 +9,41 @@ High-level, type-safe Hardware Abstraction Layer for EFR32MG24 microcontrollers.
 
 This crate provides high-level, safe abstractions over EFR32MG24 peripherals with embedded-hal v1.0 trait implementations.
 
+### Where this crate sits
+
+```
+efr32mg2x-pac          the register access layer: one type per peripheral, offsets from the SVD
+      |
+efr32mg2x-hal   <--    this crate: peripherals, buses and drivers, no board facts
+      |
+efr32mg2x-xiao-bsp     the board: which pin the LED is on, which pins power the IMU and the microphone
+```
+
+### What this crate uses from `efr32mg2x-pac`
+
+Read from the source, so it cannot drift:
+
+| what it takes | where it is used |
+|---|---|
+| `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+3 more) |
+| `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
+| `Eusart0S` | `src/spi/mod.rs` |
+| `Eusart1S` | `src/spi/mod.rs` |
+| `I2c0Ns` | `src/i2c/mod.rs` |
+| `I2c1S` | `src/i2c/mod.rs` |
+| `Iadc0S` | `src/adc/mod.rs`, `src/board.rs` |
+| `Interrupt` | `src/sysrtc.rs` |
+| `LdmaS` | `src/dma/mod.rs` |
+| `LdmaxbarS` | `src/dma/mod.rs` |
+| `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
+| `Sysrtc0Ns` | `src/rtc/mod.rs` |
+| `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
+| `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
+| `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
+| `iadc0_s` | `src/board.rs`, `src/microphone.rs` |
+| `timer0_s` | `src/pwm.rs` |
+
+
 **Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)
 - **CPU**: ARM Cortex-M33 @ 78 MHz with FPU and TrustZone-M
 - **Flash**: 1536 KB
@@ -149,29 +184,24 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-Ten examples. The third column is the authority on what has actually been read back off the part, and the fourth says
-whether the example needs the XIAO Expansion Base to mean anything.
+11 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+has read a value back off the hardware for it; it does not mean the code is unverified and it does not
+mean it works.
 
-| Example | What it shows | Watched on hardware | Needs the base |
-| --- | --- | --- | --- |
-| `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 — `hal: pin primitive drives PA7, 1 Hz` (mailbox, and the LED seen blinking) | no |
-| `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 — heartbeats read off RTT with probe-rs while the core ran | no |
-| `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- the run reported no record at all | no |
-| `hal_mic_level.rs` | Shout at the board and the light gets brighter, with hardware PWM. | -- measured FAIL: `pwm: TIMER0 is not counting (clock?)` | no |
-| `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | -- it reports steps, never a verdict: last one was `step2: sysrtc configured` | no |
-| `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself. | -- it passed with a stale flag (`late` = a negative number); the flag is drained now and the example has not been re-measured since | no |
-| `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back. | -- the same binary returned `ok , ok` on one boot and `ERR , ERR` on another | no, but not yet a reproducible measurement |
-| `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | -- writing `WDOG.CFG` is a precise data access error; see the file's own header | no |
-| `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 — `scan n=3 3c 51 76` (measured with the carrier attached) | yes: OLED (0x3C), RTC (0x51) and BME680 (0x76) live on it |
-| `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- the timer is configured; there was no piezo to hear | yes: the piezo |
+| example | what it shows | watched on hardware |
+|---|---|---|
+| `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | -- |
+| `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | -- |
+| `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |
+| `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- |
+| `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
+| `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | -- |
+| `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
+| `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
+| `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | -- |
+| `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | -- |
+| `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | -- |
 
-A `--` is not a defect: the example compiles and is exercised, but nobody has read back an output that means anything, or
-the hardware it talks to is missing. The same rule as the PAC crate: a date appears only when something was measured —
-and the last column says when "something" needs the Expansion Base, which on 2026-11-15 was found faulty (a shorted rail
-that heats and silences the module) and sent back. See `docs/01-getting-started/EXPANSION-BASE-SWD-FAULT-2026-11-15.md`.
-
-Three of the ten are dated. The other eight say why not, in their own words, which is worth more than a column of tidy
-dates that nobody can reproduce.
 
 ## Building
 

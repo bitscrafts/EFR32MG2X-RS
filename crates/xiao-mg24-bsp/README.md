@@ -2,6 +2,59 @@
 
 Board Support Package for **Seeed Studio XIAO MG24 Sense** (EFR32MG24B220F1536IM48-B).
 
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — the same crates, a clone, a build and a
+guarded flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). They are not published to crates.io: an
+examples-only crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
+
+## Where this crate sits
+
+```
+efr32mg2x-pac                   register access: one type per peripheral, offsets from the SVD
+      |
+efr32mg2x-hal                   peripherals, buses and drivers, no board facts
+      |
+efr32mg2x-xiao-bsp   <--        this crate: which pin the LED is on, which pins power the IMU
+                                and the microphone, and the clock the module runs at
+```
+
+### What this crate uses from `efr32mg2x-hal`
+
+Read from the source, so it cannot drift:
+
+| what it takes | where it is used |
+|---|---|
+| `board` | `src/module.rs` |
+| `bus` | `src/module.rs` |
+| `clock` | `src/module.rs` |
+| `delay` | `src/module.rs` |
+| `microphone` | `src/module.rs` |
+| `pin` | `src/module.rs` |
+
+### What this crate uses from `efr32mg2x-pac`
+
+Nothing directly. This crate reaches `efr32mg2x-pac` through the layer above it; if a type
+from `efr32mg2x-pac` ever appears in this crate's source, the layering has been broken.
+
+
+### What this crate uses from `efr32mg2x-hal`
+
+Read from the source, so it cannot drift:
+
+| what it takes | where it is used |
+|---|---|
+| `board` | `src/module.rs` |
+| `bus` | `src/module.rs` |
+| `clock` | `src/module.rs` |
+| `delay` | `src/module.rs` |
+| `microphone` | `src/module.rs` |
+| `pin` | `src/module.rs` |
+
+### What this crate uses from `efr32mg2x-pac`
+
+Nothing directly. This crate reaches `efr32mg2x-pac` through the layer above it; if a type
+from `efr32mg2x-pac` ever appears in this crate's source, the layering has been broken.
+
+
 ## Overview
 
 This crate provides high-level abstractions for the XIAO MG24 Sense development board, including:

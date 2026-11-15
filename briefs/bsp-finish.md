@@ -46,7 +46,13 @@ is board knowledge. Make the board layer single:
 3. `cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg2x-xiao-bsp --features rt --examples`
    succeeds, and it builds **at least ten** examples (list them in your final answer).
 4. `bash scripts/gate.sh` ends with `VERDICT: PASS`.
-5. `git status --porcelain` shows your work, and `git log --oneline -1` is unchanged from when you started
+5. `python3 scripts/check-crate-refs.py` ends with `VERDICT: PASS`. This is not decoration: it reads
+   each crate's source, lists every name it imports from the layer below, and fails if the README does
+   not explain that name. Moving `board` out of the HAL **will** change both lists -- the HAL stops
+   taking `Iadc0S` for it, the BSP starts taking `board::Board` -- so both READMEs have to be updated
+   to match the code, and every crate README must keep pointing at
+   `https://github.com/bitscrafts/efr32mg2x-examples`.
+6. `git status --porcelain` shows your work, and `git log --oneline -1` is unchanged from when you started
    (you committed nothing).
 
 ## How to work
