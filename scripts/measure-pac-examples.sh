@@ -47,6 +47,13 @@ for ex in "${EXAMPLES[@]}"; do
 
   FLASH_HOST="$HOST" FLASH_USER="$USER_NAME" bash scripts/clear-mailbox.sh "$HOST" "$USER_NAME" >/dev/null 2>&1
 
+  # The clear is only trusted if it can be seen to have worked: openocd cannot always halt a target whose clocks are
+  # already configured, and the clear then fails silently while the previous record stays in RAM.
+  if [[ -n "$(bash scripts/read-mailbox.sh "$HOST" "$USER_NAME" 2>/dev/null | tail -1)" ]]; then
+    printf 'MAILBOX NAO LIMPOU (registo antigo)\n'
+    printf '%s\tstale-mailbox\t\t\n' "$ex" >> "$OUT"; continue
+  fi
+
   if ! FLASH_HOST="$HOST" FLASH_USER="$USER_NAME" bash scripts/flash.sh "$elf" --confirm --run >"/tmp/flash-$ex.log" 2>&1; then
     printf 'FALHA DE GRAVACAO\n'; printf '%s\tflash-failed\t%s\n' "$ex" "$(tail -1 "/tmp/flash-$ex.log")" >> "$OUT"; continue
   fi

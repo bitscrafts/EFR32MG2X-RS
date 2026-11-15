@@ -67,7 +67,7 @@ use crate::pac;
 
 /// I2C0 peripheral instance
 pub struct I2c0 {
-    i2c: pac::I2c0S,
+    i2c: pac::I2c0Ns,
 }
 
 /// I2C1 peripheral instance
@@ -89,7 +89,7 @@ impl I2c0 {
     /// ```no_run
     /// let i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), &clocks);
     /// ```
-    pub fn new(i2c: pac::I2c0S, config: Config, clocks: &FrozenClocks) -> Self {
+    pub fn new(i2c: pac::I2c0Ns, config: Config, clocks: &FrozenClocks) -> Self {
         // Enable I2C0 clock in CMU using safe accessor
         clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_, w| w.i2c0().set_bit());

@@ -77,7 +77,7 @@ use crate::pac;
 /// unless explicitly unlocked. Once `lock()` is called, configuration is permanent
 /// until device reset.
 pub struct Wdog {
-    _wdog: pac::Wdog0S,
+    _wdog: pac::Wdog0Ns,
 }
 
 /// Unlock key for WDOG configuration registers
@@ -113,7 +113,7 @@ impl Wdog {
     /// let config = WdogConfig::new(TimeoutPeriod::Cycles2k);
     /// let wdog = Wdog::new(dp.wdog0_s, config)?;
     /// ```
-    pub fn new(wdog: pac::Wdog0S, config: WdogConfig) -> Result<Self, Error> {
+    pub fn new(wdog: pac::Wdog0Ns, config: WdogConfig) -> Result<Self, Error> {
         // Enable WDOG0 clock in CMU
         // SAFETY: We access CMU in a critical section to ensure atomicity.
         // WDOG0 clock enable is a safe operation.
@@ -132,7 +132,7 @@ impl Wdog {
         // SAFETY: We own the WDOG peripheral. CFG register configuration is safe.
         // All field values are validated by the type system (bool/enum).
         critical_section::with(|_cs| {
-            let wdog_ptr = unsafe { &(*pac::Wdog0S::ptr()) };
+            let wdog_ptr = unsafe { &(*pac::Wdog0Ns::ptr()) };
 
             wdog_ptr.cfg().write(|w| unsafe {
                 w.persel()
@@ -158,7 +158,7 @@ impl Wdog {
         // Enable the watchdog peripheral
         // SAFETY: EN register enables the peripheral. Safe operation.
         unsafe {
-            let wdog_ptr = pac::Wdog0S::ptr();
+            let wdog_ptr = pac::Wdog0Ns::ptr();
             (*wdog_ptr).en().write(|w| w.en().set_bit());
         }
 
@@ -184,7 +184,7 @@ impl Wdog {
     /// ```
     pub fn feed(&mut self) {
         // SAFETY: CMD register write is safe. CLEAR bit is write-only command.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.cmd().write(|w| w.clear().cleared());
     }
 
@@ -204,7 +204,7 @@ impl Wdog {
     /// ```
     pub fn lock(&mut self) {
         // SAFETY: LOCK register write is safe. Writing 0 locks the configuration.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.lock().write(|w| unsafe { w.lockkey().bits(0) });
     }
 
@@ -216,7 +216,7 @@ impl Wdog {
     /// to call this unless you locked the configuration and want to change it.
     fn unlock_config() {
         // SAFETY: LOCK register write is safe. Writing UNLOCK_KEY unlocks configuration.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.lock()
             .write(|w| unsafe { w.lockkey().bits(UNLOCK_KEY) });
     }
@@ -236,7 +236,7 @@ impl Wdog {
     /// ```
     pub fn is_locked(&self) -> bool {
         // SAFETY: STATUS register read is safe and non-destructive.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.status().read().lock().bit_is_set()
     }
 
@@ -255,7 +255,7 @@ impl Wdog {
     /// ```
     pub fn is_enabled(&self) -> bool {
         // SAFETY: EN register read is safe and non-destructive.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.en().read().en().bit_is_set()
     }
 
@@ -278,7 +278,7 @@ impl Wdog {
     /// ```
     pub fn timeout_flag(&self) -> bool {
         // SAFETY: IF register read is safe and non-destructive.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.if_().read().tout().bit_is_set()
     }
 
@@ -293,7 +293,7 @@ impl Wdog {
     /// ```
     pub fn clear_timeout_flag(&mut self) {
         // SAFETY: IF register write to clear flags is safe.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
         wdog.if_().write(|w| w.tout().set_bit());
     }
 
@@ -308,7 +308,7 @@ impl Wdog {
     /// * `Err(Error::Locked)` - Timeout waiting for sync (unlikely)
     fn wait_syncbusy() -> Result<(), Error> {
         // SAFETY: SYNCBUSY register read is safe and non-destructive.
-        let wdog = unsafe { &(*pac::Wdog0S::ptr()) };
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
 
         // Timeout: ~100k cycles at 78 MHz = ~1.3ms
         const TIMEOUT_CYCLES: u32 = 100_000;
