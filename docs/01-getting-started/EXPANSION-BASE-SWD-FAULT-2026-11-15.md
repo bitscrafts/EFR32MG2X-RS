@@ -113,3 +113,13 @@ Wires on the S_* group do not reach the MG24, and can disturb the programmer tha
 Before trusting any measurement that needs the base, establish that the debug port answers **with the module seated**.
 If it does not, nothing on the base can be measured, and the board should not be left powered: the heating is not a
 software symptom.
+
+## Status after the diagnosis (2026-11-15)
+
+The base is being returned. Measurements continue on the module alone, and every example that needs the base is recorded
+as *not measured* with that reason in its own table rather than left to look approved: the HAL crate's README now carries a
+"needs the base" column, and the PAC crate's `docs/examples.md` shows `--` for the five examples whose hardware is on the
+carrier (BME680, the OLED, the I2C devices and the RTC at 0x51).
+
+What the module still proves on its own, measured with the base removed: it flashes, verifies by read-back, and runs -- the
+LED blink, the IMU, the microphone, the timers and the MVP co-processor all report from the part itself.
