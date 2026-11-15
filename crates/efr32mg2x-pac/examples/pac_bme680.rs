@@ -34,12 +34,14 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/i2c_bitbang.rs"]
 mod i2c_bitbang;
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 const REG_STATUS: u8 = 0x1D; // also FIELD0: status + press + temp + hum + gas
 const REG_CTRL_MEAS: u8 = 0x74;

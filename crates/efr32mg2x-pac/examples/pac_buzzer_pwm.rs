@@ -29,10 +29,12 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 /// HFRCOEM23 as measured on this board (see the clock notes): the nominal
 /// 20 MHz figure puts every timing claim 5% off.

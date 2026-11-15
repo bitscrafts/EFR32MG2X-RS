@@ -16,10 +16,12 @@
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::dwt;
 use efr32mg2x_hal::entry;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 /// The core runs at 19 MHz on HFRCO out of reset, measured with `emlib_core_hz()` and recorded in
 /// `docs/04-reference/DEVICE-IDENTIFIERS.md`. It is a constant here because the HAL does not depend on

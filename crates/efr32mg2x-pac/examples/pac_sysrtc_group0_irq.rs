@@ -21,9 +21,11 @@
 #[path = "common/mailbox.rs"]
 mod mailbox;
 
+use defmt_rtt as _;
+
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 const RTC: u32 = 0x500A_8000;
 const CMU: u32 = 0x5000_8000;

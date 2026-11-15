@@ -29,10 +29,12 @@ use efr32mg2x_hal::microphone::{Level, Microphone};
 use efr32mg2x_hal::pin::Port;
 use efr32mg2x_hal::prelude::*;
 
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 /// PWM frequency for the LED. 1 kHz is fast enough that the eye integrates the pulses into a
 /// brightness instead of seeing a flicker. The timer's 16-bit TOP sets the *floor* at

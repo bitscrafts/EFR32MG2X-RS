@@ -31,10 +31,12 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 /// Half-bit delay in cycles. ~5 us at 19 MHz; the exact figure only changes the
 /// bus speed, and any value from ~1 us up is within the I2C spec for 100 kHz.

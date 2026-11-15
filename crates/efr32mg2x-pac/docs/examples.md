@@ -51,7 +51,7 @@ on the board itself, not merely built -- an example nobody has ever run is an ex
 #![no_main]
 
 use cortex_m_rt::entry;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/blink.rs"]
 mod blink;
@@ -59,6 +59,7 @@ mod blink;
 const PULSES: u32 = 1;
 const PULSE_ITERS: u32 = 1_000_000;
 const GAP_ITERS: u32 = 0;
+use defmt_rtt as _;
 
 #[entry]
 fn main() -> ! {

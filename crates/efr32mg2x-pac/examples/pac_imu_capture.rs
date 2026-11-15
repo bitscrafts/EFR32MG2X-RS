@@ -32,10 +32,12 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 const HALF_BIT: u32 = 60;
 const PIN_SDA: u32 = 1 << 2; // PB2

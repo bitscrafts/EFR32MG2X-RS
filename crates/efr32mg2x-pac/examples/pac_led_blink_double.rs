@@ -21,7 +21,7 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/blink.rs"]
 mod blink;
@@ -32,6 +32,7 @@ const PULSES: u32 = 2;
 const PULSE_ITERS: u32 = 500_000;
 /// The pause between groups (LED off).
 const GAP_ITERS: u32 = 2_000_000;
+use defmt_rtt as _;
 
 #[entry]
 fn main() -> ! {

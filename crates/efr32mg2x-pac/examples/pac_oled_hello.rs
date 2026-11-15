@@ -23,12 +23,14 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/i2c_bitbang.rs"]
 mod i2c_bitbang;
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 const OLED_ADDR: u8 = 0x3C;
 /// SSD1306 control byte: 0x00 = command stream, 0x40 = data stream.

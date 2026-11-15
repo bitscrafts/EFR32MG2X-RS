@@ -17,10 +17,12 @@ use core::fmt::Write;
 use cortex_m::peripheral::NVIC;
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 static mut STEP: u32 = 0;
 

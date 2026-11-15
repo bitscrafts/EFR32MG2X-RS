@@ -43,10 +43,12 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 const PIN_MIC_EN: u32 = 1 << 8; // PC8
 const PIN_LED: u32 = 1 << 7; // PA7, active low

@@ -14,10 +14,12 @@
 use cortex_m_rt::entry;
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::sysrtc::Sysrtc;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 struct Line {
     buf: [u8; 200],

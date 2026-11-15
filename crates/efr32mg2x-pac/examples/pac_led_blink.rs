@@ -92,7 +92,9 @@ use efr32mg2x_pac as pac;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
-use panic_halt as _;
+
+use defmt_rtt as _;
+use panic_probe as _;
 
 // Gecko Bootloader Application Properties
 // CRITICAL: Must match Arduino format AND official Silicon Labs struct EXACTLY!

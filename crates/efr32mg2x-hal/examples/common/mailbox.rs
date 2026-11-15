@@ -47,6 +47,12 @@ pub enum Status {
 }
 
 /// Write a record to the mailbox using the clear-fill-publish order.
+/// Timestamps for the RTT records. The DWT cycle counter if the example enabled it, and zero otherwise -- a zero says
+/// "nobody set a time base", which is honest, where a made-up number would not be.
+defmt::timestamp!("{=u64}", unsafe {
+    (*cortex_m::peripheral::DWT::PTR).cyccnt.read() as u64
+});
+
 pub fn write(status: Status, msg: &[u8]) {
     let base = MAILBOX_ADDR as *mut u32;
     let len = core::cmp::min(msg.len(), 200);
@@ -54,6 +60,7 @@ pub fn write(status: Status, msg: &[u8]) {
     // Fresh RAM is not zero, so the first record must not inherit whatever the
     // sequence word happens to contain: only continue a sequence if a valid
     // record is already published.
+    let text = core::str::from_utf8(&msg[..len]).unwrap_or("<not utf8>");
     let prev_magic = unsafe { core::ptr::read_volatile(base) };
     let prev_seq = unsafe { core::ptr::read_volatile(base.add(1)) };
     let seq = if prev_magic == MAGIC {
@@ -75,6 +82,14 @@ pub fn write(status: Status, msg: &[u8]) {
         }
         // 3. Publish.
         core::ptr::write_volatile(base, MAGIC);
+    }
+
+    // The same record over RTT. The mailbox is what the batch harness reads after the fact; this is what a person
+    // watching the board sees while it happens, and what survives in the transcript when the example faults later.
+    match status {
+        Status::Pass => defmt::info!("PASS {=str}", text),
+        Status::Fail => defmt::error!("FAIL {=str}", text),
+        Status::Info => defmt::info!("{=str}", text),
     }
 }
 

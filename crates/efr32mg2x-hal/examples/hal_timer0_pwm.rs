@@ -24,10 +24,12 @@ use efr32mg2x_hal::bus::Bus;
 use efr32mg2x_hal::buzzer::DEFAULT_TONE_HZ;
 use efr32mg2x_hal::entry;
 use efr32mg2x_hal::pin::Port;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 fn push_bytes(buf: &mut [u8], mut pos: usize, s: &[u8]) -> usize {
     for b in s {

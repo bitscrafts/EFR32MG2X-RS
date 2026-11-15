@@ -22,10 +22,12 @@ use efr32mg2x_hal::bus::Bus;
 use efr32mg2x_hal::bus::I2cBus;
 use efr32mg2x_hal::entry;
 use efr32mg2x_hal::pin::Port;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 const HEX: &[u8; 16] = b"0123456789abcdef";
 

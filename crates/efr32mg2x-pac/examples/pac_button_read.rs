@@ -18,10 +18,12 @@
 
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 fn push_hex8(buf: &mut [u8], mut pos: usize, value: u32) -> usize {
     const HEX: &[u8; 16] = b"0123456789abcdef";

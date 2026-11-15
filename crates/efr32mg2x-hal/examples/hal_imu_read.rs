@@ -26,10 +26,12 @@ use efr32mg2x_hal::pin::Port;
 use efr32mg2x_hal::prelude::*;
 use efr32mg2x_hal::sensors::lsm6ds3trc::{AccelOdr, AccelRange, Config, Lsm6ds3trc};
 use efr32mg2x_hal::sensors::ImuError;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 /// Report one verdict and stop touching the bus; the mailbox keeps the last message.
 fn report(status: mailbox::Status, parts: &[&[u8]]) {

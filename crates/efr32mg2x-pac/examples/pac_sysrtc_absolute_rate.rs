@@ -18,7 +18,9 @@ use efr32mg2x_pac as pac;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
-use panic_halt as _;
+
+use defmt_rtt as _;
+use panic_probe as _;
 
 const RTC: usize = 0x500A_8000;
 const CMU: usize = 0x5000_8000;

@@ -18,10 +18,12 @@
 use core::fmt::Write;
 use cortex_m_rt::entry;
 use efr32mg2x_pac as pac;
-use panic_halt as _;
+use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
+
+use defmt_rtt as _;
 
 const RTC: usize = 0x500A_8000;
 const CMU: usize = 0x5000_8000;
