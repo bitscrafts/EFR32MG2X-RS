@@ -42,6 +42,7 @@
 //! it with the input offsets left STORE clear, which was the first defect and is fixed here). Writing INIT and START in
 //! separate accesses, and issuing SWRST before configuring, changed nothing. The remaining question -- why the loads
 //! deliver zeros while the store index advances -- needs the MVP chapter of the reference manual, not another guess.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

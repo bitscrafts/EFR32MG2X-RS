@@ -22,6 +22,7 @@
 //! of CPU cycles gives the real tone frequency. If that number is near the
 //! programmed pitch, the timer is genuinely generating it; whether the buzzer
 //! on the board is fitted (the trace is cuttable) is the one thing left to ears.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

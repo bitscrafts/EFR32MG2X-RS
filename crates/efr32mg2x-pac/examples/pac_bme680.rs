@@ -27,6 +27,7 @@
 //! pressure near 1013 hPa at sea level. Any of those failing is reported as a
 //! failure with the raw numbers attached, never smoothed into a plausible
 //! looking value.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

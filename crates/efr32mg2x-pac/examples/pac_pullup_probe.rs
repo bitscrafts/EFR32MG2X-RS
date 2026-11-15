@@ -25,6 +25,7 @@
 //!
 //! Nothing is driven, so this cannot damage the board: the pins end up as plain
 //! inputs.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

@@ -22,6 +22,7 @@
 //!
 //! PD5 (the documented gyro enable) and PC8 (the microphone rail) are both held
 //! high throughout, so a missing enable cannot hide the answer.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

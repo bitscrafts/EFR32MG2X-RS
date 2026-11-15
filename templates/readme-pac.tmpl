@@ -86,9 +86,10 @@ cargo build --release --target thumbv8m.main-none-eabihf
 
 ### Testing
 
-The examples are the test: each one is a program that writes what it measured into the mailbox before printing it, and
-the gate builds all of them. `docs/examples.md` is generated from those files and carries the date each was watched on
-the board, or `--` when it has only been compiled.
+The examples are the test: each one that carries an instrument writes what it measured into the mailbox and reports it
+there, and the gate builds all of them. `examples/pac_minimal.rs` is the exception and deliberately so — it is the
+smallest program that boots, with no helper and no mailbox. `docs/examples.md` is generated from the files themselves
+and carries the date each was watched on the board, or `--` when it has only been compiled.
 
 {{related_crates}}
 

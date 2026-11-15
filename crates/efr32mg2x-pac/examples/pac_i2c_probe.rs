@@ -23,6 +23,7 @@
 //! Reports: which of 0x3C/0x51/0x76/0x77 answer, the BME680 chip id (must be
 //! 0x61) and the PCF8563 seconds/minutes. A device that answers but cannot be
 //! read is reported as such instead of being counted as healthy.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

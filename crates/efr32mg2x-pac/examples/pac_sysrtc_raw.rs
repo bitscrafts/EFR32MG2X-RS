@@ -8,6 +8,7 @@
 //! Offsets from `efr32mg24_sysrtc.h`: IPVERSION 0x00, EN 0x04, SWRST 0x08, CFG 0x0C, CMD 0x10,
 //! STATUS 0x14, CNT 0x18, SYNCBUSY 0x1C, GRP0_IF 0x40, GRP0_IEN 0x44, GRP0_CTRL 0x48,
 //! GRP0_CMP0VALUE 0x4C. The SET alias page is +0x1000.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

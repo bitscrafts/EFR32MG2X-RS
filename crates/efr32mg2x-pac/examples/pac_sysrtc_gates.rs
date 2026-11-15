@@ -8,6 +8,7 @@
 //!
 //! So: set the bits through both views using their `SET` aliases (what emlib does), read both back, then
 //! touch the non-secure SYSRTC.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

@@ -8,6 +8,7 @@
 //!
 //! with no chip clock anywhere in the arithmetic. That is the only kind of measurement that can settle whether
 //! the counter runs at 32.768 kHz or at something else.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

@@ -5,12 +5,15 @@ Sense. The `Peripherals` struct is a singleton: taking it proves at compile time
 same registers.
 
 ```rust
-use efr32mg24_pac::Peripherals;
+use efr32mg2x_pac::Peripherals;
 
-let p = Peripherals::take().unwrap();          // None on a second call: the token is the proof
-p.CMU_S.clken0().modify(|_, w| w.gpio().set_bit());   // gate the GPIO clock
-p.GPIO_S.porta_dout().write(|w| unsafe { w.dout().bits(0x80) });  // PA7 high
+let p = Peripherals::take().unwrap();               // None on a second call: the token is the proof
+p.cmu_s.clken0().modify(|_, w| w.gpio().set_bit());  // gate the GPIO clock
+p.gpio_s.porta_dout().write(|w| unsafe { w.bits(0x80) }); // PA7 high
 ```
+
+The fields are snake_case (`cmu_s`, not `CMU_S`) because `svd2rust` lowercases the peripheral names it reads from the
+SVD; a page that shows the upper-case spelling sends the reader to a compile error.
 
 ## Where this came from, exactly
 
@@ -23,6 +26,8 @@ hand-edited, and regenerating must not be either — the hand-written documentat
 
 | feature | effect |
 |---|---|
+| `mg24` | selects the device: EFR32MG24B220F1536IM48, the part this crate is generated for. On by default, and turning it off without naming another device is a `compile_error!`. |
+| `critical-section` | on by default; pulls the `critical-section` crate so `modify()` can exclude interrupts. The architecture crate supplies the implementation (`cortex-m/critical-section-single-core`). |
 | `rt` | pulls `cortex-m-rt` and gives you the interrupt vector table. Without it the crate is pure register definitions, which is what a bootloader or a test harness wants. |
 
 ## What the SVD does not tell you
@@ -46,13 +51,13 @@ misused (a pin that knows its port, an I2C transfer that owns the bus), and `efr
 `efr32mg2x-expansion-base-bsp` wrap the boards. This crate is the floor, and it is here so that the layers above can
 be read and audited against the silicon.
 
-There are **27 examples** under `examples/`. They cover the LED ladder, the button, the I2C scan, the BME680, the OLED,
-the microphone, the IMU, the RTC, the watchdog and the mailbox that lets a board report what it did with no debugger
-attached.
+The examples under `examples/` cover the LED ladder, the button, the I2C scan, the BME680, the OLED, the microphone, the
+IMU, the RTC, the watchdog and the mailbox that lets a board report what it did with no debugger attached. The list and
+the date each one was watched on the board are generated from the files themselves in `docs/examples.md` — no count is
+written here, because a count in prose is a number that goes stale silently.
 
-An earlier version of this page said all 27 were "verified on hardware". They are not: **one** carries a date in its own
-file of having been watched on the board, and the rest have been compiled. `docs/examples.md` is generated from those
-files and shows the column honestly — treat a `--` there as "built, not watched".
+An earlier version of this page said all of them were "verified on hardware" when one was. The rule that came out of it:
+a date in the file, or a `--` in the generated table, and nothing else counts as watched.
 
 ## Licence
 

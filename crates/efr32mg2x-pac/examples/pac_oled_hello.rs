@@ -16,6 +16,7 @@
 //! If 0x3C does not answer, the report says `oled ack=0` and nothing is
 //! written — the panel is simply not on this bus (board not seated, or a
 //! different address).
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

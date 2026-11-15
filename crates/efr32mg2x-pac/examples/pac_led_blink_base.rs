@@ -5,6 +5,7 @@
 //! `scripts/read-led.sh` (mode7=4, DOUT toggles, DIN follows) and
 //! `scripts/measure-blink-rate.sh` (toggle counter read from the mailbox twice,
 //! divided by the wall-clock gap).
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

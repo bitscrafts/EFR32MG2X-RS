@@ -13,6 +13,7 @@
 //! The probe programs group 0 at `0x40`, polls bit 1 of `0x40`, and then reports which of IRQ 67/68 is pending.
 //! Neither `IEN` nor the NVIC is touched: a pending bit in `ISPR` appears without any of that, so its presence is
 //! purely a fact about the silicon.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

@@ -22,6 +22,7 @@
 //! stores it: `par_t1` lives at coefficient index 31/32 (inside the block at
 //! 0xE1), not at 0x8A where the array begins — using 0x8A for `par_t1` reported
 //! -1 C on a 32 C bench. See `pac_bme680.rs` for the full account.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

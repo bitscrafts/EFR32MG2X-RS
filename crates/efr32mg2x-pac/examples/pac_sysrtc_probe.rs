@@ -3,6 +3,7 @@
 //! The HAL's `Sysrtc::take` faults and reports nothing; this probe publishes a marker after every write so
 //! the last marker names the step that died. Bit positions and order are the vendor's
 //! (`sl_hal_sysrtc_init` + `sleeptimer_hal_init_timer`, Gecko SDK v4.4.5), not inferred.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

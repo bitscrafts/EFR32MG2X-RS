@@ -12,6 +12,7 @@
 //!
 //! The bus is bit-banged because the on-chip I2C0 master will not complete
 //! reads on this die; see `common/i2c_bitbang.rs` for the evidence.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

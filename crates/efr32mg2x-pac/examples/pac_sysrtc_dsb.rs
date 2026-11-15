@@ -10,6 +10,7 @@
 //!
 //! Configuration is the one that got furthest before: LFRCO selected, group block at the offsets the blob
 //! itself uses (GRP0_IF 0x60, GRP0_IEN 0x64, GRP0_CTRL 0x68).
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

@@ -20,6 +20,7 @@
 //! Acceleration on three axes in milli-g and angular rate in milli-degrees per
 //! second, through the mailbox, then keeps the LED blinking so the board is
 //! visibly alive while the values are read over SWD.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

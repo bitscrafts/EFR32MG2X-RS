@@ -197,18 +197,32 @@ def block_linker_script(crate):
 
 
 def block_dependencies(crate):
+    """Every dependency in the manifest, including the ones written as [dependencies.x] tables.
+
+    The table used to read only the inline [dependencies] block, so an optional dependency declared as its own table --
+    critical-section, which is on by default -- was missing from a section that claims to list dependencies.
+    """
     text = (crate / "Cargo.toml").read_text()
+    ws = workspace_versions()
+    rows = []
     m = re.search(r"^\[dependencies\]\n(.*?)(?=^\[|\Z)", text, re.M | re.S)
+    if m:
+        for line in m.group(1).splitlines():
+            line = line.strip()
+            mm = re.match(r"^([A-Za-z0-9_-]+)\s*=\s*(?:\"([^\"]+)\"|\{(.*)\})?", line)
+            if not mm:
+                continue
+            inline = mm.group(3) or ""
+            ver = mm.group(2) or (re.search(r'version\s*=\s*"([^"]+)"', inline) or [None, None])[1] \
+                or ws.get(mm.group(1), "workspace")
+            rows.append((mm.group(1), ver, bool(re.search(r'optional\s*=\s*true', inline))))
+    for mm in re.finditer(r"^\[dependencies\.([A-Za-z0-9_-]+)\]\n(.*?)(?=^\[|\Z)", text, re.M | re.S):
+        body = mm.group(2)
+        ver = (re.search(r'version\s*=\s*"([^"]+)"', body) or [None, None])[1] or ws.get(mm.group(1), "workspace")
+        rows.append((mm.group(1), ver, bool(re.search(r'optional\s*=\s*true', body))))
     out = ["## Dependencies", "", "| crate | version |", "|---|---|"]
-    for line in m.group(1).splitlines():
-        line = line.strip()
-        mm = re.match(r"^([A-Za-z0-9_-]+)\s*=\s*(?:\"([^\"]+)\"|\{(.*)\})?", line)
-        if not mm:
-            continue
-        ws = workspace_versions()
-        ver = mm.group(2) or (re.search(r'version\s*=\s*"([^"]+)"', mm.group(3) or "") or [None, None])[1] \
-            or ws.get(mm.group(1), "workspace")
-        out.append(f"| `{mm.group(1)}` | `{ver}` |")
+    for name, ver, opt in sorted(rows):
+        out.append(f"| `{name}` | `{ver}`{' (optional)' if opt else ''} |")
     return "\n".join(out) + "\n"
 
 
@@ -217,9 +231,18 @@ def block_related(crate):
     members = re.findall(r"^name\s*=\s*\"(efr32mg2x-[a-z0-9-]+)\"", "\n".join(
         (ROOT / "crates" / d / "Cargo.toml").read_text() for d in
         [p.name for p in (ROOT / "crates").iterdir() if (p / "Cargo.toml").exists()]), re.M)
+    self_name = re.search(r'^name\s*=\s*"([^"]+)"', (crate / "Cargo.toml").read_text(), re.M).group(1)
     out = ["## Related Crates", "", "| crate | what it adds |", "|---|---|"]
     for m in sorted(set(members)):
-        out.append(f"| `{m}` | in this workspace |")
+        if m == self_name:
+            continue
+        man = next((p / "Cargo.toml" for p in (ROOT / "crates").iterdir() if (p / "Cargo.toml").exists()
+                    and re.search(r'^name\s*=\s*"' + re.escape(m) + r'"', (p / "Cargo.toml").read_text(), re.M)), None)
+        desc = ""
+        if man:
+            d = re.search(r'^description\s*=\s*"([^"]+)"', man.read_text(), re.M)
+            desc = d.group(1) if d else ""
+        out.append(f"| `{m}` | {desc or 'in this workspace'} |")
     out += ["", "Runnable examples for all of them: <https://github.com/bitscrafts/efr32mg2x-examples>.", ""]
     return "\n".join(out)
 

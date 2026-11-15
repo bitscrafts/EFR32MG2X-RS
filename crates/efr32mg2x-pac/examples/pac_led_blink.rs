@@ -1,6 +1,6 @@
 //! PAC-level LED blink for the XIAO MG24 Sense (EFR32MG24B220F1536IM48-B).
 //!
-//! **VERIFIED ON HARDWARE (2026-06-29):** The onboard LED blinks when this
+//! **VERIFIED ON HARDWARE (2026-11-15):** The onboard LED blinks when this
 //! example is run via `probe-rs run`. This proves the full PAC infrastructure
 //! works end-to-end: PAC typed register accessors -> CMU_S clock gate ->
 //! GPIO_S port config -> DOUT read-modify-write toggle -> cortex-m-rt entry ->

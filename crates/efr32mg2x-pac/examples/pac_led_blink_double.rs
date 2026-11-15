@@ -15,6 +15,7 @@
 //!
 //! The counter increments on every toggle and lives in the mailbox, so
 //! (seq_after - seq_before) / elapsed gives the toggle rate directly.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

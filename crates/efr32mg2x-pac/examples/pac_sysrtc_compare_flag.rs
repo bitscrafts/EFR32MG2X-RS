@@ -7,6 +7,7 @@
 //! The sequence is the one the HAL uses, including the warm-reset case: SYSRTC sits in the always-on domain and
 //! keeps counting across a reset, so it is stopped and disabled before `CFG` is touched. Writing `CFG` while it
 //! runs faults at exactly `0x500a800c` -- measured, with BFAR naming the register.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

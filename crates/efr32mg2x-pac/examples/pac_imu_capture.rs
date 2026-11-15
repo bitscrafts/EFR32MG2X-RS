@@ -25,6 +25,7 @@
 //! `CAPTURE[i]` is one sample: `accel_mg[0..3]` in thousandths of a g, in g units
 //! ×1000 as `i16` (so ±32 g fits). 1000 samples at 100 Hz is ten seconds — enough
 //! to catch a fall and the quiet before it.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

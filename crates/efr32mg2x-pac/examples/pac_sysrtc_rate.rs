@@ -23,7 +23,7 @@ use panic_halt as _;
 #[path = "common/mailbox.rs"]
 mod mailbox;
 
-const RTC: usize = 0x500A_8000;
+const RTC: usize = 0x400A_8000;
 const CMU: usize = 0x5000_8000;
 
 fn rd(addr: usize) -> u32 {
@@ -64,7 +64,8 @@ pub extern "C" fn HardFault() -> ! {
     };
     let _ = write!(
         &mut buf,
-        "FAULT step={} pc={:#010x} cfsr={:#010x} bfar={:#010x}",
+        "FAULT rtc={:#010x} step={} pc={:#010x} cfsr={:#010x} bfar={:#010x}",
+        RTC as u32,
         unsafe { STEP },
         pc,
         cfsr,

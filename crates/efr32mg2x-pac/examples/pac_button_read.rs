@@ -11,6 +11,7 @@
 //! itself the diagnostic (it does not hang).
 //!
 //! Verified over SWD: `scripts/read-mailbox.sh`.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

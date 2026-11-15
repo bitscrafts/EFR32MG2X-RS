@@ -30,6 +30,14 @@ for ex in "${EXAMPLES[@]}"; do
   elf="${ELFDIR}/${ex}"
   printf '%-28s ' "$ex"
 
+  # Build first: this script used to flash whatever ELF the cache happened to hold, so an edit could be measured against
+  # the previous binary and report the old numbers as the new result.
+  if ! CARGO_TARGET_DIR="$TARGET_DIR" PATH="/usr/local/cargo/bin:$PATH" \
+       cargo build --release --target thumbv8m.main-none-eabihf \
+       -p efr32mg2x-pac --features rt --example "$ex" >/tmp/measure-build-"$ex".log 2>&1; then
+    printf 'NAO COMPILA (ver /tmp/measure-build-%s.log)\n' "$ex"
+    printf '%s\tbuild-failed\t\n' "$ex" >> "$OUT"; continue
+  fi
   if [[ ! -f "$elf" ]]; then
     printf 'SEM ELF\n'; printf '%s\tno-elf\t\n' "$ex" >> "$OUT"; continue
   fi

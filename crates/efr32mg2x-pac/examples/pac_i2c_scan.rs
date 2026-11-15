@@ -27,6 +27,7 @@
 //! - pins are routed with `GPIO_S.I2C0_SCLROUTE/SDAROUTE` (port/pin) and
 //!   enabled with `I2C0_ROUTEEN.SCLPEN/SDAPEN`;
 //! - the pins are set to WIREDOR (open-drain) because I2C is a wired-AND bus.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

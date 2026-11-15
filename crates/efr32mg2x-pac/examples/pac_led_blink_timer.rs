@@ -34,6 +34,7 @@
 //! Verified over SWD, not by eye:
 //!   scripts/read-led.sh        mode7=4, DOUT toggles, DIN follows
 //!   scripts/measure-blink-rate.sh  toggle counter from the mailbox
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]

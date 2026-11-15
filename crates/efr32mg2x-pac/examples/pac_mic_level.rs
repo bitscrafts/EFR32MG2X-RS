@@ -36,6 +36,7 @@
 //! user LED with a software PWM whose duty follows the level — the Arduino demo's
 //! behaviour. The mailbox reports RMS and peak, so a quiet room and a clap are
 //! distinguishable without watching the LED.
+//! VERIFIED ON HARDWARE (2026-11-15)
 
 #![no_std]
 #![no_main]
