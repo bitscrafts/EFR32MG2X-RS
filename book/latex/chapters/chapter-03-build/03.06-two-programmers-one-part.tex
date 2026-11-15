@@ -1,0 +1,59 @@
+\section{Two programmers, one part: probe-rs writes, openocd reads}
+\label{sec:two-programmers-one-part}
+
+Both talk to the same onboard CMSIS-DAP bridge (USB \texttt{2886:0062}, serial \texttt{28DB6336} on this board), and the
+project uses them for different jobs on purpose.
+
+\subsection{probe-rs programs}
+
+It knows the Series 2 flash controller, it verifies what it wrote by reading it back, and with \texttt{run} it also
+carries the RTT channel from the previous section. \texttt{scripts/flash.sh} wraps it: refuse first if the image's lowest
+load address is below \texttt{0x08006000}, then write, then \texttt{probe-rs verify} --- a read-back comparison, not the
+programmer's own opinion of its success.
+
+\subsection{openocd reads, and cannot program at all}
+
+The target config this project uses is deliberately minimal:
+
+\begin{minted}{text}
+# NO FLASH DRIVER: this config exists only for MEMORY ACCESS (halt, read RAM
+# and flash, write RAM). It cannot program the part, on purpose -- programming
+# belongs to probe-rs / Simplicity Commander, which know the Series 2 flash
+# controller, and a mistaken flash is how this board was lost before.
+\end{minted}
+
+It is built from OpenOCD's own \texttt{target/swj-dp.tcl} (\texttt{swj\_newdap} then \texttt{dap create}) rather than from
+a stock target file, because the part is a Cortex-M33 with TrustZone and the stock \texttt{efm32} script describes an
+earlier family.
+
+\begin{minted}{bash}
+openocd -f interface/cmsis-dap.cfg -f scripts/openocd-mg24-mini.cfg \
+  -c "init; halt; mdw 0x4003C040 1; resume; shutdown"
+\end{minted}
+
+Why keep a second programmer at all? Because the first one can wedge. A stale DAP response queue makes \texttt{probe-rs}
+refuse the session with \texttt{Command ID in response does not match sent command ID}, and the same probe still answers
+OpenOCD. A read path that does not require unplugging the board and restarting the session is worth the extra config.
+
+\subsection{Two ways to halt nothing}
+
+Measured on the same board, in the same hour:
+
+\begin{minted}{text}
+Warn : [mg24.cpu] target was in unknown state when halt was requested
+Warn : [mg24.cpu] VECTRESET is not supported on this Cortex-M core, using SYSRESETREQ instead.
+\end{minted}
+
+The first arrives when the core is asked to halt from a state the debug port does not recognise --- a running program with
+its clock configuration already changed. The second is OpenOCD telling the truth about the reset it will actually use;
+\texttt{VECTRESET} exists on other Cortex-M cores and not this one.
+
+Neither is fatal, and neither is the interesting lesson. The interesting lesson is that \emph{reading memory needs no halt
+at all}:
+
+\begin{minted}{bash}
+probe-rs read b32 0x20000008 12 --chip EFR32MG24B220F1536IM48
+\end{minted}
+
+That is how the RTT control block was inspected while the firmware kept running --- a running target's own structures, read
+without disturbing what it was doing, which no halt-based method can offer.
