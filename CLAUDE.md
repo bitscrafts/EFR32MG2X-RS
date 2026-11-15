@@ -1,5 +1,18 @@
 # EFR32MG24 Project Instructions
 
+## HARD RULE — no publication without an express order
+
+**Never run `cargo publish`, `cargo yank`, or anything else that writes to crates.io — at any time, for any crate,
+including a `--dry-run` presented as a step towards publishing — unless the user has given an express, explicit order in
+that same conversation.** An ambiguous or enthusiastic line ("podemos publicar", "we could ship this") is not an order;
+ask and wait for a clear yes. Violated on 2026-11-15: an attempt was made on the strength of one ambiguous sentence, after
+the standing instruction had been "publish nothing for now". The upload failed only because the registry token was
+missing; the intent is the defect, not the outcome.
+
+The repository is allowed to *verify* that a package would be publishable — `scripts/check-publishable.py`,
+`gen-crate-readme.py --check`, `cargo package --list` — and the gate runs those. Reading, packaging and listing are fine.
+Sending bytes to crates.io is not.
+
 ## Project Context
 
 This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silicon Labs EFR32MG24 wireless MCU.
