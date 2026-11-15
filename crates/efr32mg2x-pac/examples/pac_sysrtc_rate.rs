@@ -1,5 +1,13 @@
-//! Two questions, one flash: is GRP0_CTRL really at 0x68, and is 0x240 really the clock select?
+//! A rate probe that has not survived: it measures SYSRTC ticks per DWT cycle under two clock selections.
 //!
+//! State, measured 2026-11-15: this example takes an imprecise bus error with BFAR at EN_SET (0x500a9004) on the
+//! non-secure alias and at 0x400a9004 on the secure one. Its write sequence is now identical, register by register, to
+//! pac_sysrtc_dsb -- which passes and reports COUNTING -- so the difference is not in the order of the writes. The
+//! group 0 block is also unsettled: the vendor header and the SVD put GRP0_IF/IEN/CTRL at 0x040/0x044/0x048, and
+//! writing those offsets stops pac_sysrtc_dsb earlier than 0x060/0x064/0x068 do. Both questions need the SYSRTC
+//! chapter of the reference manual, not another guess; the four examples keep the offsets the board accepts and say so.
+//!
+//! The file keeps the two original questions below, because they are still the questions:
 //! Both are answered by reading back what was written, plus one rate measurement per clock selection:
 //!
 //!   - if `CTRL = 1` written at 0x68 reads back 1, the register exists and the group block is where the blob
