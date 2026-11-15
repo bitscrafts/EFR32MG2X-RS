@@ -37,6 +37,28 @@ Order of suspicion: ETA3410 (buck), ETA1038 (boost), ETA6003 (charger).
 Test, with everything unplugged and the module out of the socket: resistance between `SYS_3V3` and `GND` on the base's
 headers, and then `SYS_3V3` under power. Roughly zero ohms, or a rail far below 3.3 V, confirms it.
 
+### The photograph, and the component most likely to be at fault
+
+A close-up of the base's underside shows the three converters the schematic lists: `ETA6003` carries its part number in
+silkscreen, while the buck and the boost are two SOT-23-6 packages marked only with lot codes (`CEPi`, `AICI`), each with
+its inductor and its ceramic capacitors beside it. Which of the two is which cannot be read off the board; it is
+established by measuring the rails, not by squinting at the marks. The SWD pogo pins (`CLK`, `GND`, `RES`) sit on the
+opposite side of the area from the heat, so a pogo bridging two pads of the module is not what is happening.
+
+The cheapest single explanation, and the first thing to test, is a **shorted MLCC**: ceramic capacitors fail short rather
+than open, and a shorted output capacitor puts the rail at zero while the converter beside it does the heating — which
+makes the regulator look like the culprit when the culprit is the capacitor.
+
+Order of work:
+
+1. Confirm which rail is shorted, meter only: `SYS_3V3` to `GND`, then `VBOOST_5V` to `GND`, with the module removed.
+2. Unplug anything on the Grove sockets that lives on the shorted rail and measure again. A Grove module in short is
+   replaceable and gives the base back with no soldering.
+3. To find the capacitor: inject 0.5–1 V at 100–300 mA into the shorted rail from a current-limited supply and apply
+   isopropyl alcohol to that rail's capacitors; the one that dries first is the short. Never inject more than 1 V, and
+   never with the module seated. Measuring capacitors one by one with a meter does not work — on a shorted rail every one
+   of them reads near zero, which is why the injection step exists.
+
 **Conclusion: the base is faulty and needs replacing. The module is not** — it flashed, verified by read-back and ran with
 the base removed, and its blink was confirmed by eye. Until a replacement base exists, the PAC and HAL examples that need
 the base stay without a hardware date; writing dates over their absence would be the exact kind of claim this repository
