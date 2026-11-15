@@ -66,7 +66,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-efr32mg2x-hal = { version = "0.1.3", features = ["rt"] }
+efr32mg2x-hal = { version = "0.1.0", features = ["rt"] }
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
@@ -227,6 +227,6 @@ at your option.
 
 ---
 
-**Version**: 0.1.3
+**Version**: 0.1.0
 **Last Updated**: November 14, 2026
 **Status**: 20 drivers in the tree; the measured/unmeasured split is at the top of this file

@@ -269,7 +269,7 @@ def main():
         rendered = block_usage(crate, name, version) if key == "usage" else fn(crate)
         tpl = tpl.replace(token, rendered.rstrip() + "\n")
 
-    tpl = tpl.replace("{{package}}", name)
+    tpl = tpl.replace("{{package}}", name).replace("{{crate_dir}}", crate.name)
 
     readme = crate / "README.md"
     if check:

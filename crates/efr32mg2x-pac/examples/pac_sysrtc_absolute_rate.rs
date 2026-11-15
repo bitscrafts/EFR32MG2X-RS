@@ -58,7 +58,11 @@ fn main() -> ! {
     let _ = sync_wait(50_000);
 
     wr(RTC + 0x0C, 0); // CFG
-    wr(RTC + 0x68, 0x1); // GRP0_CTRL (blob's group block)
+                       // Group 0 block. Two sources disagree here and the measurement is what settles it: the vendor header
+                       // (efr32mg24_sysrtc.h) and the SVD both place GRP0_IF/IEN/CTRL at 0x040/0x044/0x048, and writing those
+                       // offsets stops this example earlier than the sequence below does; these three -- taken from the vendor
+                       // blob's group block -- are the ones the board accepts. Recorded 2026-11-15, not explained yet.
+    wr(RTC + 0x68, 0x1); // GRP0_CTRL
     wr(RTC + 0x64, 0); // GRP0_IEN
     wr(RTC + 0x60, 0x7); // GRP0_IF clear
 

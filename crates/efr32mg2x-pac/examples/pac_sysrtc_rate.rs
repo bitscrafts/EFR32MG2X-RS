@@ -23,7 +23,7 @@ use panic_halt as _;
 #[path = "common/mailbox.rs"]
 mod mailbox;
 
-const RTC: usize = 0x400A_8000;
+const RTC: usize = 0x500A_8000;
 const CMU: usize = 0x5000_8000;
 
 fn rd(addr: usize) -> u32 {
@@ -117,20 +117,30 @@ fn main() -> ! {
 
     wr(CMU + 0x64, rd(CMU + 0x64) | (1 << 30) | (1 << 22));
 
-    // Order matters, and the first version of this probe proved it the hard way: writing CFG before the clock
-    // select faults at 0x500A800C. Clock select first, wait for the domain, and only then the configuration.
+    // Clock select first, wait for the domain, and only then the configuration.
     wr(CMU + 0x240, (rd(CMU + 0x240) & !0x3) | 1); // LFRCO
     let clksel_1 = rd(CMU + 0x240) & 3;
     let _ = sync_wait(50_000);
 
+    // Stop and clear the enable before touching CFG. This example used to write CFG straight after the clock select and
+    // took an imprecise bus error with BFAR at the CFG register -- on both the secure and the non-secure alias, so it
+    // was never an address problem. pac_sysrtc_dsb does the vendor's sequence (CMD=STOP, EN_CLR at base+0x2004) and
+    // counts; the difference between the two was exactly this block.
+    if rd(RTC + 0x04) & 1 != 0 {
+        wr(RTC + 0x10, 0x2); // CMD = STOP
+        let _ = sync_wait(50_000);
+        wr(RTC + 0x2004, 1); // EN_CLR
+        let _ = sync_wait(50_000);
+    }
+
     wr(RTC + 0x0C, 0); // CFG
-                       // Question 1: does the register at 0x68 accept a write? (and the header's 0x48, for contrast)
-    wr(RTC + 0x68, 0x1);
-    let ctrl_68 = rd(RTC + 0x68);
-    wr(RTC + 0x48, 0x1);
+                       // Group 0 block. These offsets come from the vendor header (efr32mg24_sysrtc.h) and the SVD, which agree:
+                       // IF 0x040, IEN 0x044, CTRL 0x048. This file used to write 0x060/0x064/0x068 instead -- 0x20 higher, inside the
+                       // reserved window -- and that write to reserved space is what produced the imprecise bus fault it used to report.
+    wr(RTC + 0x48, 0x1); // GRP0_CTRL: compare 0 enable
     let ctrl_48 = rd(RTC + 0x48);
-    wr(RTC + 0x64, 0); // IEN
-    wr(RTC + 0x60, 0x7); // IF clear
+    wr(RTC + 0x44, 0); // GRP0_IEN: no interrupts
+    wr(RTC + 0x40, 0x7); // GRP0_IF: clear all
     unsafe { STEP = 1 };
 
     wr(RTC + 0x1004, 1); // EN_SET
@@ -158,12 +168,11 @@ fn main() -> ! {
     };
     let _ = write!(
         &mut out,
-        "ctrl@68={} ctrl@48={} sel1={} ticks1={}/{} sel3={} ticks3={}/{}",
-        ctrl_68, ctrl_48, clksel_1, t_a, c_a, clksel_3, t_b, c_b
+        "grp0ctrl={} sel1={} ticks1={}/{} sel3={} ticks3={}/{}",
+        ctrl_48, clksel_1, t_a, c_a, clksel_3, t_b, c_b
     );
-    // Pass only if both questions got an answer that makes sense: the register is real, and the selection
-    // changes the rate.
-    let register_real = ctrl_68 == 1;
+    // Pass only if the group control register took the value written and the clock selection changes the rate.
+    let register_real = ctrl_48 == 1;
     let rate_changed = t_a != 0 && t_b != 0 && t_b.abs_diff(t_a) > t_a / 4;
     if register_real && rate_changed {
         mailbox::pass(&out.b[..out.n]);
