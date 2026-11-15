@@ -7,9 +7,11 @@ MEMORY
      bootloader and MUST NOT be overwritten by applications. */
   FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
 
-  /* RAM: 256 KB (0x40000 bytes) */
+  /* RAM: 252 KB usable of 256 KB. The top 4 KiB page (0x2003F000..0x2003FFFF) holds the mailbox and the trace
+ * buffers, and the stack grows down from 0x2003F000: claiming 256K here makes the first deep call frame overwrite
+ * the record the instrument reads. Same reservation as the HAL. */
   /* Address: 0x2000_0000 - 0x2003_FFFF */
-  RAM : ORIGIN = 0x20000000, LENGTH = 256K
+  RAM : ORIGIN = 0x20000000, LENGTH = 252K
 }
 
 /* Entry point (from cortex-m-rt) */

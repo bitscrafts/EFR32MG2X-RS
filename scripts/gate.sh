@@ -58,6 +58,14 @@ else
   fail "crates.io: $(grep -m1 '^  ' /tmp/gate-publishable.log)"
 fi
 
+# Every linker script that can produce an image must start at or above 0x08006000, and a dangerous one must never ship
+# inside a published crate. This is the brick check, at the source rather than at the flash command.
+if PATH="/usr/local/cargo/bin:$PATH" python3 scripts/check-flash-addresses.py >/tmp/gate-flash-addr.log 2>&1; then
+  pass "flash: no image can be written into the bootloader"
+else
+  fail "flash: $(grep -m1 '^  ' /tmp/gate-flash-addr.log | sed 's/^  //')"
+fi
+
 if python3 scripts/check-copy-len.py crates/ >/tmp/gate-copy-len.log 2>&1; then
   pass "copy_from_slice lengths ($(tail -1 /tmp/gate-copy-len.log))"
 else

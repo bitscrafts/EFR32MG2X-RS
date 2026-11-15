@@ -140,9 +140,15 @@ Based on the hex file analysis:
 
 ### Rust Bare-Metal Memory Map
 
-For Rust bare-metal applications (see `memory.x`):
-- **Bootloader**: 0x08000000 - 0x08003FFF (16 KB) - Reserved for Gecko bootloader
-- **Application**: 0x08004000 - 0x0817FFFF (1520 KB)
+This board carries the **Gecko bootloader, 24 KiB**, so an application starts at 0x08006000:
+
+- **Bootloader**: 0x08000000 - 0x08005FFF (24 KB) - Gecko, flashed by Seeed, never written by us
+- **Application**: 0x08006000 - 0x0817FFFF (1512 KB)
+
+An earlier version of this file said 16 KB and an application at 0x08004000, which is the layout of a *different*,
+self-written bootloader (`crates/efr32mg24-bootloader/`). Linking an application for that layout and flashing it here
+writes into the live Gecko bootloader and the board stops booting. `scripts/check-flash-addresses.py` now refuses that
+mismatch at the source.
 
 **Note**: Arduino uses a 24 KB bootloader, Rust uses 16 KB reservation. This may need adjustment.
 

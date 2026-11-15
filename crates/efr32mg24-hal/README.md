@@ -203,6 +203,19 @@ cargo test --features rt
 [docs/STATUS.md](docs/STATUS.md) carries the dated status; this README's own summary above is the short version. The
 workspace-wide authority is `docs/03-development/STATUS.md` in the project repository.
 
+## Staying out of the bootloader
+
+The first 24 KiB of flash (0x08000000-0x08005FFF) hold the Gecko bootloader. An image that lands there bricks the
+board. The linker script in this crate starts at **0x08006000**, and the flags are not optional either:
+
+```toml
+[target.thumbv8m.main-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.x", "-C", "link-arg=--nmagic"]
+```
+
+Without `--nmagic` the linker emits a small segment at 0x08000000 and some flash tools will happily write it. Read the
+lowest load address of the image before flashing and refuse anything below 0x08006000.
+
 ## License
 
 Licensed under either of:

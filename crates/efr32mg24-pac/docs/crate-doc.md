@@ -53,3 +53,36 @@ that lets a board report what it did without a debugger attached.
 ## Licence
 
 MIT OR Apache-2.0. The SVD is Silicon Labs'.
+
+## Staying out of the bootloader
+
+The first 24 KiB of flash (`0x08000000`-`0x08005FFF`) belong to the Gecko bootloader. An image that writes there stops
+the board from booting and only a debugger brings it back. Three things have to be true, and the crate can only give
+you the first two:
+
+**1. The linker script.** One is shipped with this crate; use it, or copy its numbers:
+
+```
+FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
+```
+
+**2. The flags.** In `.cargo/config.toml`, for the target:
+
+```toml
+[target.thumbv8m.main-none-eabihf]
+rustflags = ["-C", "link-arg=-Tlink.x", "-C", "link-arg=--nmagic"]
+```
+
+`--nmagic` is not cosmetic. Without it LLD aligns the first segment down to the 64 KiB page boundary and emits a
+372-byte `PT_LOAD` at `0x08000000` — inside the bootloader. `probe-rs` happens to skip that segment; `openocd`,
+Simplicity Commander and any naive loader may not.
+
+**3. Looking before writing.** This part is yours, because no crate can police your flash command. Read the image's
+lowest load address first and refuse anything below `0x08006000`:
+
+```bash
+readelf -lW image.elf | awk '/LOAD/ {print $3}'      # every paddr must be >= 0x08006000
+```
+
+A script that does this for you, and refuses, is in the examples repository:
+<https://github.com/bitscrafts/efr32mg2x-examples> (`elf-load-range.py`).

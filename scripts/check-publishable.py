@@ -20,6 +20,7 @@ CRATES = {
     "efr32mg2x-pac": {
         "dir": "crates/efr32mg24-pac",
         # Phrases that shipped a false status to crates.io. Any of them inside the package is a failure.
+        "required": [r"0x08006000", r"--nmagic"],
         "forbidden": [
             r"Phase \d+ Tier \d+",
             r"I2C/SPI/Timers Next",
@@ -86,6 +87,11 @@ def main():
                     continue
                 if str(rel) not in files:
                     failures.append(f"{name}: {src.name} includes {inc}, which is not in the package")
+
+        readme_text = (d / "README.md").read_text() if (d / "README.md").exists() else ""
+        for need in spec.get("required", []):
+            if not re.search(need, readme_text):
+                failures.append(f"{name}: README never mentions {need}, and this crate ships a linker script")
 
         for doc in list(d.rglob("*.md")):
             body = doc.read_text(errors="ignore")

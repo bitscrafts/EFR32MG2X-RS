@@ -49,6 +49,10 @@ def load_range(path: str) -> tuple[int, int, list[tuple[int, int, int]]]:
     return lo, hi, segments
 
 
+FLASH_FLOOR = 0x08006000
+FLASH_CEILING = 0x08180000
+
+
 def main(argv: list[str]) -> int:
     if len(argv) != 2:
         print("usage: elf-load-range.py <elf>", file=sys.stderr)
@@ -61,6 +65,17 @@ def main(argv: list[str]) -> int:
     print(f"load_min=0x{lo:08X} load_max=0x{hi - 1:08X} size={hi - lo} segments={len(segs)}")
     for paddr, filesz, vaddr in sorted(segs):
         print(f"  seg paddr=0x{paddr:08X} vaddr=0x{vaddr:08X} filesz={filesz}")
+
+    # This printer is also the guard. The first 24 KiB of flash hold the bootloader; an image that reaches into that
+    # range replaces its vector table and the board stops booting, with no way back except a debugger.
+    if lo < FLASH_FLOOR:
+        print(f"REFUSED: this image starts at 0x{lo:08X}, below 0x{FLASH_FLOOR:08X}.", file=sys.stderr)
+        print("Writing it would overwrite the Gecko bootloader and brick the board.", file=sys.stderr)
+        print("Check your memory.x (FLASH ORIGIN) and the -C link-arg=--nmagic flag.", file=sys.stderr)
+        return 1
+    if hi > FLASH_CEILING:
+        print(f"REFUSED: this image runs past 0x{FLASH_CEILING:08X}, the end of flash.", file=sys.stderr)
+        return 1
     return 0
 
 
