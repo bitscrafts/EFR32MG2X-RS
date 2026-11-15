@@ -27,6 +27,10 @@ i2c  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
 The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
 SPI and the timers are here, and USART is here but has never been watched doing anything on the board.
 
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a guarded
+flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). Not published to crates.io: an examples-only
+crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
+
 ## What is in the tree, measured
 
 Twenty modules. All of them are implementations, not skeletons: the smallest has 2 public functions, the largest 18, and
@@ -55,10 +59,6 @@ Two of those deserve naming rather than a row in a table:
   read back correctly.
 
 
-
-**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a flash, one
-crate per layer. Examples are not published to crates.io: an examples-only crate has no binary, so it installs
-only with `--example`, and its crate page renders nothing but the README.
 
 ## Quick Start
 

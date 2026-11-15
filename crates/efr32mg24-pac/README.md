@@ -8,6 +8,10 @@ This crate provides low-level register access to all peripherals of the EFR32MG2
 
 **Status**: ✅ Generated - Modular structure (2,633 files across 104 directories)
 
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a guarded
+flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). Not published to crates.io: an examples-only
+crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
+
 ## Features
 
 - **Device Support**: EFR32MG24B220F1536IM48 (primary target - XIAO MG24 Sense)
