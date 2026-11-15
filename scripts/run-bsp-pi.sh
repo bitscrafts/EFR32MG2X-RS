@@ -67,7 +67,7 @@ fi
 echo "============================================="
 
 if [[ $resume -eq 1 ]]; then
-  exec pi --provider "$PROVIDER" --model "$MODEL" --session "$session" -p "$(cat "$BRIEF")" 2>&1 | tee "$LOG"
+  exec pi --yolo --provider "$PROVIDER" --model "$MODEL" --session "$session" -p "$(cat "$BRIEF")" 2>&1 | tee "$LOG"
 else
-  exec pi --provider "$PROVIDER" --model "$MODEL" -p "$(cat "$BRIEF")" 2>&1 | tee "$LOG"
+  exec pi --yolo --provider "$PROVIDER" --model "$MODEL" -p "$(cat "$BRIEF")" 2>&1 | tee "$LOG"
 fi
