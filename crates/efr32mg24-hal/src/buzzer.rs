@@ -36,7 +36,7 @@
 //! Silence is `CC0_CTRL.CMOA = none` with the timer still counting — measured
 //! failure of the obvious approach.
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 use crate::pin::Port;
 use crate::pwm::Timer0;

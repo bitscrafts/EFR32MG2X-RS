@@ -10,7 +10,7 @@
 //! defines every register this board pokes. What the HAL owns is the sequence
 //! and the defaults that the hardware demands (gate first, then configure).
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 /// Everything an application needs from the XIAO MG24 Sense + Expansion Base.
 pub struct Board {

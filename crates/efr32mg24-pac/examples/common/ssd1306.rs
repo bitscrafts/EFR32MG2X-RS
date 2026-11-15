@@ -23,7 +23,7 @@
 //! The panel cannot be read back over I2C, so "the pixels are right" is the one
 //! claim this driver cannot make; it counts the bytes the controller ACKed.
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 use crate::i2c_bitbang::Bus;
 

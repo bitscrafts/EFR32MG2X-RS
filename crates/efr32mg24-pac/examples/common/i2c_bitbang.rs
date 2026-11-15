@@ -26,7 +26,7 @@
 
 #![allow(dead_code)]
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 /// Half-bit delay in CPU cycles (~5 us at 19 MHz).
 pub const HALF_BIT: u32 = 60;

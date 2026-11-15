@@ -17,7 +17,7 @@
 
 #![allow(dead_code)]
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 #[path = "mailbox.rs"]
 mod mailbox;

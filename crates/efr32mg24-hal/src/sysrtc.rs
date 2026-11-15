@@ -28,7 +28,7 @@
 //! bus clocks, clock select, wait, `CFG`, group config, interrupts off and cleared, `EN_SET`, `CMD = START`.
 //! Every synchronised register is read or written across a `SYNCBUSY` wait.
 
-use efr32mg24_pac::{
+use efr32mg2x_pac::{
     cmu_ns::RegisterBlock as CmuBlock, sysrtc0_ns::RegisterBlock, CmuNs, Sysrtc0Ns,
 };
 
@@ -312,7 +312,7 @@ impl Sysrtc {
     /// default handler, which loops forever.
     pub fn unmask_interrupt(&self) {
         // SAFETY: the caller installs `SYSRTC_APP_IRQHandler` before calling this.
-        unsafe { cortex_m::peripheral::NVIC::unmask(efr32mg24_pac::Interrupt::SYSRTC_APP) };
+        unsafe { cortex_m::peripheral::NVIC::unmask(efr32mg2x_pac::Interrupt::SYSRTC_APP) };
     }
 
     /// Ticks per millisecond at LFRCO, rounded down: 32.768 kHz is not a multiple of 1000, so a thousand

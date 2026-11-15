@@ -13,7 +13,7 @@ categories = ["embedded", "hardware-support", "no-std"]
 name = "efr32mg24_hal"
 
 [dependencies]
-efr32mg24-pac = { package = "efr32mg2x-pac", path = "../efr32mg24-pac", version = "0.1.3" }
+efr32mg2x-pac = { path = "../efr32mg24-pac", version = "0.1.3" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 embedded-hal = { workspace = true }
 critical-section = { workspace = true }
@@ -26,7 +26,7 @@ optional = true
 
 [features]
 default = []
-rt = ["efr32mg24-pac/rt", "cortex-m-rt"]
+rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
 
 [dev-dependencies]
 # Examples are applications: they may compose the HAL with an algorithm crate.

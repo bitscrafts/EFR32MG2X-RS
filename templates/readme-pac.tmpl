@@ -1,106 +1,32 @@
-# efr32mg2x-pac
+# {{package}}
 
-Peripheral Access Crate (PAC) for Silicon Labs EFR32MG24 microcontrollers.
+Peripheral Access Crate (PAC) for the Silicon Labs EFR32MG24, generated from the vendor SVD.
 
 ## Overview
 
 Low-level register access to every peripheral of one part, the **EFR32MG24B220F1536IM48** — the chip on the XIAO MG24
-Sense. Generated from Silicon Labs' CMSIS-SVD for that part with svd2rust; the register map, the field types and the
-doc comments come from the SVD, not from a header file somebody transcribed.
+Sense. Generated from Silicon Labs' CMSIS-SVD for that part with svd2rust; the register map, the field types and the doc
+comments come from the SVD, not from a header file somebody transcribed.
 
-**Generated**: 2,633 files across 104 directories, from `EFR32MG24B220F1536IM48.svd`. One part, one crate: an
-earlier version of this file advertised 20 device variants that do not exist.
+{{generated}}
 
-**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a guarded
-flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). Not published to crates.io: an examples-only
-crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a guarded flash, one
+crate per layer (PAC, HAL, radio, board, Expansion Base). They are not published to crates.io: an examples-only crate has
+no binary, so it installs only with `--example`, and its crate page would render nothing.
 
 {{usage}}
 
-## Features
-
-| feature | what it turns on | default |
-|---|---|---|
-| `rt` | `cortex-m-rt/device` | no |
-| `critical-section` | `dep:critical-section` | yes |
-<!-- /gen:features -->
+{{features}}
 
 {{peripherals}}
 
-
-## Peripherals
-
-103 instances on `Peripherals`, in 46 families. Generated from `src/lib.rs`; every name here
-is a field you can call `.take()` on.
-
-| family | instances |
-|---|---|
-| acmp | `acmp0_ns`, `acmp0_s`, `acmp1_ns`, `acmp1_s` |
-| buram | `buram_ns`, `buram_s` |
-| burtc | `burtc_ns`, `burtc_s` |
-| cmu | `cmu_ns`, `cmu_s` |
-| dcdc | `dcdc_ns`, `dcdc_s` |
-| devinfo | `devinfo` |
-| dmem | `dmem_ns`, `dmem_s` |
-| dpll | `dpll0_ns`, `dpll0_s` |
-| emu | `emu_ns`, `emu_s` |
-| eusart | `eusart0_ns`, `eusart0_s`, `eusart1_ns`, `eusart1_s` |
-| fsrco | `fsrco_ns`, `fsrco_s` |
-| gpcrc | `gpcrc_ns`, `gpcrc_s` |
-| gpio | `gpio_ns`, `gpio_s` |
-| hfrco | `hfrco0_ns`, `hfrco0_s` |
-| hfrcoem | `hfrcoem23_ns`, `hfrcoem23_s` |
-| hfxo | `hfxo0_ns`, `hfxo0_s` |
-| hostmailbox | `hostmailbox_ns`, `hostmailbox_s` |
-| i2c | `i2c0_ns`, `i2c0_s`, `i2c1_ns`, `i2c1_s` |
-| iadc | `iadc0_ns`, `iadc0_s` |
-| icache | `icache0_ns`, `icache0_s` |
-| keyscan | `keyscan_ns`, `keyscan_s` |
-| ldma | `ldma_ns`, `ldma_s` |
-| ldmaxbar | `ldmaxbar_ns`, `ldmaxbar_s` |
-| letimer | `letimer0_ns`, `letimer0_s` |
-| lfrco | `lfrco_ns`, `lfrco_s` |
-| lfxo | `lfxo_ns`, `lfxo_s` |
-| msc | `msc_ns`, `msc_s` |
-| mvp | `mvp_ns`, `mvp_s` |
-| pcnt | `pcnt0_ns`, `pcnt0_s` |
-| prs | `prs_ns`, `prs_s` |
-| radioaes | `radioaes_ns`, `radioaes_s` |
-| scratchpad | `scratchpad_ns`, `scratchpad_s` |
-| semailbox_ns_host | `semailbox_ns_host` |
-| semailbox_s_host | `semailbox_s_host` |
-| smu | `smu_ns`, `smu_s` |
-| smu_ns_cfgns | `smu_ns_cfgns` |
-| smu_s_cfgns | `smu_s_cfgns` |
-| syscfg | `syscfg_ns`, `syscfg_s` |
-| syscfg_ns_cfgns | `syscfg_ns_cfgns` |
-| syscfg_s_cfgns | `syscfg_s_cfgns` |
-| sysrtc | `sysrtc0_ns`, `sysrtc0_s` |
-| timer | `timer0_ns`, `timer0_s`, `timer1_ns`, `timer1_s`, `timer2_ns`, `timer2_s`, `timer3_ns`, `timer3_s`, `timer4_ns`, `timer4_s` |
-| ulfrco | `ulfrco_ns`, `ulfrco_s` |
-| usart | `usart0_ns`, `usart0_s` |
-| vdac | `vdac0_ns`, `vdac0_s`, `vdac1_ns`, `vdac1_s` |
-| wdog | `wdog0_ns`, `wdog0_s`, `wdog1_ns`, `wdog1_s` |
-<!-- /gen:peripherals -->
-
 {{memory_map}}
-
 
 {{module_structure}}
 
-
 ## Generation Process
 
-The PAC in this tree was generated once, before this repository's current
-history, with `svd2rust` 0.37.1 (`--locked`) from
-`svd/EFR32MG24B220F1536IM48.svd`, then split one register per file with
-`form`. The commands below are the shape of that recipe as recorded at the
-time; they were **not** re-run on 2026-11-10, and the flag spelling should be
-checked against the installed `svd2rust` version before anyone relies on them:
-
 ```bash
-cd crates/efr32mg24-pac
-
 # 1. device crate from the SVD
 svd2rust -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m --atomics
 
@@ -112,78 +38,69 @@ cargo fmt
 cargo build --release --target thumbv8m.main-none-eabihf
 ```
 
-`build.rs` then copies `memory.x` and `device.x` into `OUT_DIR` and adds that
-directory to the linker search path, which is what makes `-Tlink.x` resolve the
-memory layout at link time.
-
 ### This crate is one part
 
-`efr32mg2x-pac` is generated from `svd/EFR32MG24B220F1536IM48.svd` and exposes that part's registers. It is not a multi-variant crate:
-an earlier version of this page showed a `--features` list of 20 device variants and an example regeneration command
-for `EFR32MG24A020F1536GM48`, neither of which exists here.
+`{{package}}` is generated from `svd/EFR32MG24B220F1536IM48.svd` and exposes that part's registers. Another part means
+another device feature and its own SVD, not a differently-named package:
 
-Another part means another crate, generated the same way:
-
-```bash
-svd2rust -i svd/<part>.svd --output-dir src/ --atomics --target cortex-m --generic-mod
-cargo fmt
+```toml
+[features]
+mg24 = []                                  # EFR32MG24B220F1536IM48, the part this crate ships
+default = ["mg24", "critical-section"]     # so the ordinary dependency line needs no ceremony
 ```
 
-The rest of this document describes the layout such a crate gets.
+Turning default features off without naming a device fails to compile, deliberately: a register map without a device is
+not a register map.
+
+{{dependencies}}
 
 ## Target Architecture
 
-- **Target Triple**: `thumbv8m.main-none-eabihf`
+- **Target triple**: `thumbv8m.main-none-eabihf`
 - **CPU**: ARM Cortex-M33
-- **FPU**: Single-precision (hardware)
-- **DSP**: Enabled
-- **TrustZone**: Supported
+- **FPU**: single precision, hardware
+- **DSP**: enabled
+- **TrustZone**: supported; peripherals appear twice, as `<name>_s` and `<name>_ns`
 
 {{linker_script}}
 
 ## Safety
 
-This crate provides `unsafe` access to hardware registers. Users must ensure:
-- No data races (use `critical-section` or RTIC)
-- Correct peripheral configuration
-- Proper clock/power management before peripheral access
-- Respect TrustZone security boundaries
+This crate provides `unsafe` access to hardware registers. The caller is responsible for:
+
+- no data races — use `critical-section` or an RTOS
+- configuring a peripheral before touching it
+- enabling the clock or gate that the peripheral needs, in the CMU that owns it (secure or non-secure)
+- respecting the TrustZone boundary: a write through the wrong alias faults at run time
 
 ## Development
 
-### Building from Source
+### Building from source
 
 ```bash
-# Clone repository
 git clone https://github.com/bitscrafts/EFR32MG2X-RS
 cd EFR32MG2X-RS/crates/efr32mg24-pac
-
-# Install target
 rustup target add thumbv8m.main-none-eabihf
-
-# Build
-cargo build --target thumbv8m.main-none-eabihf
+cargo build --release --target thumbv8m.main-none-eabihf
 ```
 
 ### Testing
 
-PAC testing is limited without hardware:
-- Compile tests verify code generation
-- Hardware-in-loop tests require dev kit
-- Register access tests can use QEMU (if supported)
+The examples are the test: each one is a program that writes what it measured into the mailbox before printing it, and
+the gate builds all of them. `docs/examples.md` is generated from those files and carries the date each was watched on
+the board, or `--` when it has only been compiled.
 
 {{related_crates}}
-
 
 ## Resources
 
 - [EFR32MG24 Reference Manual](https://www.silabs.com/documents/public/reference-manuals/)
 - [SVD Specification](https://www.keil.com/pack/doc/CMSIS/SVD/html/)
-- [svd2rust Documentation](https://docs.rs/svd2rust/)
+- [svd2rust documentation](https://docs.rs/svd2rust/)
 
 ## Staying out of the bootloader
 
-The first 24 KiB of flash (0x08000000-0x08005FFF) hold the Gecko bootloader. An image that lands there bricks the
+The first 24 KiB of flash (`0x08000000`-`0x08005FFF`) hold the Gecko bootloader. An image that lands there bricks the
 board. The linker script in this crate starts at **0x08006000**, and the flags are not optional either:
 
 ```toml
@@ -191,8 +108,9 @@ board. The linker script in this crate starts at **0x08006000**, and the flags a
 rustflags = ["-C", "link-arg=-Tlink.x", "-C", "link-arg=--nmagic"]
 ```
 
-Without `--nmagic` the linker emits a small segment at 0x08000000 and some flash tools will happily write it. Read the
-lowest load address of the image before flashing and refuse anything below 0x08006000.
+Without `--nmagic` the linker emits a small segment at `0x08000000` and some flash tools will happily write it. Read the
+lowest load address of the image before flashing and refuse anything below `0x08006000`; `elf-load-range.py` in the
+examples repository does exactly that and returns non-zero.
 
 ## License
 
@@ -202,12 +120,3 @@ Licensed under either of:
 - MIT license ([LICENSE-MIT](https://opensource.org/license/mit))
 
 at your option.
-
----
-
-**Status**: ✅ Generated - Modular Structure Complete
-**Version**: 0.1.3
-**Device**: EFR32MG24B220F1536IM48 (XIAO MG24 Sense)
-**Generated With**: svd2rust 0.37.1 + form
-**Files**: 2,633 Rust files across 104 modules
-**Last Updated**: December 4, 2025

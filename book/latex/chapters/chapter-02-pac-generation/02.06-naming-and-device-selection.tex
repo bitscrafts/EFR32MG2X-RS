@@ -1,0 +1,74 @@
+\section{Naming a crate, and naming a device}
+\label{sec:naming-and-device-selection}
+
+Three names meet in a published crate, and confusing them is how a page ends up telling a reader to install something
+that does not exist.
+
+\begin{description}
+  \item[The package name] is the identity on the registry: \texttt{efr32mg2x-pac}. It is what
+        \texttt{cargo add} takes, what the URL uses, and what cannot be changed later without publishing again.
+  \item[The library name] is what \texttt{use} reads: \texttt{efr32mg2x\_pac}. By default it is the package name with
+        hyphens turned into underscores, which is exactly what a reader expects.
+  \item[The device] is which part's register map you are compiling against. That belongs in a \emph{feature}, not in
+        the crate name.
+\end{description}
+
+\subsection{Why the library name is allowed to differ, and why it should not}
+
+Cargo resolves the name in a \texttt{use} statement from the library target, not from the package. When the dependency
+entry is written with the package's own name, no rename happens and the library name wins; when it is written with a
+different key, that key wins. So a crate called \texttt{efr32mg2x-pac} can export a library called
+\texttt{efr32mg24\_pac}, and the following is correct:
+
+\begin{lstlisting}[language=toml]
+[dependencies]
+efr32mg2x-pac = "0.1.3"        # the package
+\end{lstlisting}
+
+\begin{lstlisting}[language=Rust]
+use efr32mg24_pac as pac;      # the library it exports
+\end{lstlisting}
+
+It compiles. It is also a trap: two different words for the same dependency in the same block of a README, and every
+consumer has to learn which is which. This project did it deliberately for one release --- the package was renamed to
+the family and the library kept the old name so that no dependent's \texttt{use} broke --- and then undid it, because the
+moment to make the two agree is while every published version is yanked and no consumer exists yet.
+
+The rule that follows: \textbf{make them the same}, and if you must differ, say so on the first screen of the README,
+not in a comment halfway down.
+
+\subsection{The device belongs in a feature}
+
+A register map without a device is not a register map. The crate is generated for one part, the
+EFR32MG24B220F1536IM48, and the feature names it:
+
+\begin{lstlisting}[language=toml]
+[features]
+mg24 = []
+default = ["mg24", "critical-section"]
+\end{lstlisting}
+
+Two things make that feature real rather than decorative. It is in \texttt{default}, so the ordinary dependency line
+needs no ceremony. And its absence is an error, not a silent default:
+
+\begin{lstlisting}[language=Rust]
+#[cfg(not(feature = "mg24"))]
+compile_error!("enable a device feature: `mg24` (EFR32MG24B220F1536IM48)");
+\end{lstlisting}
+
+A feature that selects nothing is worse than no feature: it promises a choice and delivers the same binary. The test for
+any feature is whether turning it off changes something a reader can observe --- here, whether the crate compiles at all.
+
+A second part then adds its own SVD, its own register modules behind its own feature, and the crate grows instead of
+forking. Until that part exists, a crate that advertises twenty variants is advertising twenty things it cannot do; this
+project shipped exactly that list, and every name in it was unusable.
+
+\begin{keytakeaways}
+  \item Package name, library name and device are three different things; the first two should read the same, and the
+        third is a feature.
+  \item \texttt{use} resolves to the library target. Understanding that is what makes the two-name trick work, and also
+        what makes it a trap worth refusing.
+  \item A device feature must change the build, or fail the build. Anything else is a promise with no code behind it.
+  \item Rename while the registry has nothing usable of yours: yanked versions cost nothing to break, published ones
+        cost a new version and a paragraph of explanation.
+\end{keytakeaways}

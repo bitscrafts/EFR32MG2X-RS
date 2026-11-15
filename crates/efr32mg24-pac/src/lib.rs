@@ -9,6 +9,10 @@
 // hardware's, so the lint about shadowing `std::ops::Neg::neg` does not apply here.
 #![allow(clippy::should_implement_trait)]
 #[allow(unused_imports)]
+// A register map without a device is not a register map: this crate is generated for one part, and the feature names
+// which. Turning defaults off without choosing a device is a mistake worth failing on.
+#[cfg(not(feature = "mg24"))]
+compile_error!("enable a device feature: `mg24` (EFR32MG24B220F1536IM48)");
 use generic::*;
 #[doc = "Common register and bit access and modify traits"]
 pub mod generic;

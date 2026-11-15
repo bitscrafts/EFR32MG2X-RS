@@ -1,0 +1,75 @@
+\section{What you publish is a claim, and it cannot be edited}
+\label{sec:publishing-is-a-claim}
+
+\subsection{The command that compiles and never reads}
+
+\texttt{cargo publish -{}-dry-run} builds the package. It does not open a single markdown file. Everything a reader of
+the crate page will see --- the README, every \texttt{docs/*.md} that ships inside the package, every file an
+\texttt{include\_str!} drags into the documentation --- goes to the registry unread.
+
+This project published three versions in two hours on the strength of that command passing. What reached the registry:
+
+\begin{itemize}
+  \item a README announcing \emph{``Phase 5 Tier 2 --- USART Complete, I2C/SPI/Timers Next''} while
+        \texttt{i2c}, \texttt{spi} and \texttt{timer} were all implemented, and \emph{``Phase 2 Complete''} 180 lines
+        further down in the same file;
+  \item a link to \texttt{docs/PHASE2\_PLAN.md}, which does not exist;
+  \item a peripheral list with seventeen names that are not modules and thirty-seven modules that are not listed;
+  \item a dependency section inventing \texttt{cortex-m = "0.7.7"} and an optional \texttt{cortex-m-rt = "0.7.3"};
+  \item a linker section printing \texttt{FLASH : ORIGIN = 0x00000000} --- the bootloader's own address, which a reader
+        could copy and brick a board with;
+  \item a usage example reaching \texttt{\#[path = "common/blink.rs"]}, a file that exists only inside this crate's own
+        examples directory;
+  \item eleven per-module READMEs inside \texttt{src/}, written as task plans, announcing ``Planned'' for drivers that
+        ship with public functions.
+\end{itemize}
+
+Every one of those was a value the tree already knew.
+
+\subsection{The check that reads the package}
+
+A dry-run that passes says nothing about the text, so the text needs its own gate. The shape that works is to make the
+registry see the package the way a stranger does:
+
+\begin{lstlisting}[language=bash]
+cargo package --list          # exactly what ships
+\end{lstlisting}
+
+and then refuse on three things: a relative link in the README that does not resolve \emph{inside} the package (a
+reader on the crate page has no parent directory), an \texttt{include\_str!} whose target is not packaged, and a state
+phrase the tree contradicts. Two more checks close the classes this project actually got wrong: the README's title and
+install line must name \emph{this} package at \emph{this} version, and every feature it offers must exist in
+\texttt{[features]}.
+
+\subsection{Generate the volatile parts}
+
+The durable fix is not a better checklist, it is not writing the same fact twice. Anything that comes from the
+manifest, the source or a measurement is generated, and the gate regenerates it to compare:
+
+\begin{lstlisting}[language=bash]
+python3 scripts/gen-crate-readme.py crates/<crate> --check
+\end{lstlisting}
+
+The prose stays in a template, where a human writes it once; the counts, the peripheral names, the dependency versions,
+the memory map and the example list come from the tree.
+
+\subsection{A published version is permanent}
+
+There is no delete. \texttt{cargo yank} removes a version from resolution and leaves it in the record for ever:
+
+\begin{lstlisting}[language=bash]
+cargo yank --version 0.1.0 efr32mg2x-pac
+\end{lstlisting}
+
+Yanking is the right tool for a version whose documentation is wrong or whose package contains something dangerous ---
+early versions of this crate shipped a linker script that wrote at \texttt{0x08000000}. It is not a substitute for
+getting the upload right: the record keeps every version, and only a new one can tell the truth.
+
+\begin{keytakeaways}
+  \item A dry-run compiles the package; it does not read it. The upload is the last cheap moment to look.
+  \item Read what ships, not what the working tree contains: \texttt{cargo package -{}-list} is the list.
+  \item Anything that can be derived is generated, and the gate compares. A hand-written count is a claim with no
+        instrument.
+  \item Versions are permanent. Yank is a filter, not a delete, and the only repair for a wrong page is a new version
+        that is right.
+\end{keytakeaways}

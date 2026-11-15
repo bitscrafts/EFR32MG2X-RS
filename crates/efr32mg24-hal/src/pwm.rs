@@ -27,7 +27,7 @@
 //! the same time. [`Timer0::take`] returns `None` the second time, which makes that a compile-time
 //! discipline rather than a runtime surprise.
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 use crate::pin::{mode, set_mode, Port};
 

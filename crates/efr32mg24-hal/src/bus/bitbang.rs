@@ -17,7 +17,7 @@
 //! always safe, and a sensor refresh does not care about the difference between
 //! 90 kHz and 400 kHz.
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 use super::{BusError, I2cBus};
 use crate::pin::{read_din, read_dout, write_dout, Port};

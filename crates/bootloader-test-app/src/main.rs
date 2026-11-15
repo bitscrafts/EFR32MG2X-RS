@@ -8,7 +8,7 @@
 
 use cortex_m_rt::entry;
 use panic_halt as _;
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 /// Simple delay function (busy-wait)
 /// Configured for 19 MHz HFRCO (default after reset)

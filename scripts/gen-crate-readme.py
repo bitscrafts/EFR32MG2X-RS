@@ -32,6 +32,14 @@ def field(crate, name, default="?"):
     return default
 
 
+def block_generated(crate):
+    files = list((crate / "src").rglob("*.rs"))
+    fams, total = peripheral_families(crate)
+    svd = sorted(p.name for p in (crate / "svd").glob("*.svd"))[0] if (crate / "svd").exists() else "the vendor SVD"
+    return (f"**Generated**: {len(files):,} files across {len({p.parent for p in files})} directories, from "
+            f"`{svd}`. {total} peripheral instances in {len(fams)} families.\n")
+
+
 def block_usage(crate, name, version):
     # An example that reaches a helper with `#[path = "common/x.rs"] mod x;` is correct inside this crate and useless in
     # a README: the reader has no `common/` directory, and that dangling `mod` is exactly the error this block shipped.
@@ -97,7 +105,10 @@ def block_features(crate):
             feats[mm.group(1)] = items
     out = ["## Features", "", "| feature | what it turns on | default |", "|---|---|---|"]
     for f, on in feats.items():
-        out.append(f"| `{f}` | {', '.join('`'+o+'`' for o in on) or '—'} | {'yes' if f in default else 'no'} |")
+        what = ', '.join('`' + o + '`' for o in on)
+        if not what and re.fullmatch(r'mg2[0-9]', f):
+            what = 'the device this crate is generated for'
+        out.append(f"| `{f}` | {what or '—'} | {'yes' if f in default else 'no'} |")
     return "\n".join(out) + "\n"
 
 
@@ -213,7 +224,7 @@ def block_related(crate):
     return "\n".join(out)
 
 
-BLOCKS = {"usage": None, "features": block_features, "peripherals": block_peripherals,
+BLOCKS = {"generated": block_generated, "usage": None, "features": block_features, "peripherals": block_peripherals,
           "memory_map": block_memory_map, "module_structure": block_module_structure,
           "dependencies": block_dependencies,
           "linker_script": block_linker_script, "related_crates": block_related}
@@ -234,6 +245,8 @@ def main():
             continue
         rendered = block_usage(crate, name, version) if key == "usage" else fn(crate)
         tpl = tpl.replace(token, rendered.rstrip() + "\n")
+
+    tpl = tpl.replace("{{package}}", name)
 
     readme = crate / "README.md"
     if check:

@@ -48,7 +48,7 @@ mod types;
 pub use types::{Config, DataBits, Error, Parity, StopBits};
 
 use crate::clock::FrozenClocks;
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 /// USART0 peripheral
 pub struct Usart0 {

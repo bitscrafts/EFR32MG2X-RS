@@ -38,7 +38,7 @@
 
 use core::ffi::c_void;
 
-use efr32mg24_pac::{CmuNs, SemailboxSHost};
+use efr32mg2x_pac::{CmuNs, SemailboxSHost};
 
 /// `SLI_SE_COMMAND_TRNG_GET_RANDOM`, from `sli_se_manager_internal.h`.
 const SLI_SE_COMMAND_TRNG_GET_RANDOM: u32 = 0x0700_0000;

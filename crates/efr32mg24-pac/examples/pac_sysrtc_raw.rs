@@ -15,7 +15,7 @@
 use core::fmt::Write;
 use cortex_m::peripheral::NVIC;
 use cortex_m_rt::entry;
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]

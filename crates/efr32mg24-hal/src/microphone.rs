@@ -27,7 +27,7 @@
 //! with `SINGLESTART` needs no trigger, which is the right starting point for a
 //! level meter. The DMA path belongs later, next to the streaming work.
 
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 
 /// The converter, as the microphone driver needs it.
 ///

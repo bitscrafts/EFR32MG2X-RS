@@ -103,7 +103,7 @@
 //! - `rt` - Include runtime support (startup code, vector table)
 
 // Re-export the PAC
-pub use efr32mg24_pac as pac;
+pub use efr32mg2x_pac as pac;
 
 // HAL modules
 pub mod adc;

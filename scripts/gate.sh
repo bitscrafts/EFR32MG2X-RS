@@ -83,7 +83,9 @@ CRATES=$(ls -d crates/*/ libraries/*/ 2>/dev/null | sed 's:/*$::')
 #                                                one on purpose
 SKIP="efr32mg24-bluetooth-sys efr32mg24-rail-sys efr32mg24-bootloader bootloader-test-app"
 pkg_name() {
-  # The crates.io name lives in the manifest; the directory keeps its old name. Read it, never infer it.
+  # The crates.io name lives in the manifest; the directory keeps its old name. Read it, never infer it. A directory
+  # with no manifest is not a crate: return nothing instead of sending sed after a file that is not there.
+  [ -f "$1/Cargo.toml" ] || return 1
   sed -n 's/^name *= *"\([^"]*\)"/\1/p' "$1/Cargo.toml" | head -1
 }
 

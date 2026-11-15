@@ -21,7 +21,7 @@
 mod mailbox;
 
 use cortex_m_rt::entry;
-use efr32mg24_pac as pac;
+use efr32mg2x_pac as pac;
 use panic_halt as _;
 
 const RTC: u32 = 0x500A_8000;
