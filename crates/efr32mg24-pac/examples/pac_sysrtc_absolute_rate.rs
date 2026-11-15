@@ -14,6 +14,9 @@
 
 use cortex_m_rt::entry;
 use efr32mg24_pac as pac;
+
+#[path = "common/mailbox.rs"]
+mod mailbox;
 use panic_halt as _;
 
 const RTC: usize = 0x500A_8000;
@@ -45,6 +48,9 @@ fn main() -> ! {
         },
     };
 
+    // Record first: if the record never appears, the fault is in the setup below, not in the publishing loop.
+    mailbox::info(b"sysrtc: absolute rate, configuring");
+
     // The order that works: gates, clock select, wait, CFG, group, EN, START, dsb.
     wr(CMU + 0x64, rd(CMU + 0x64) | (1 << 30) | (1 << 22));
     wr(CMU + 0x240, (rd(CMU + 0x240) & !0x3) | 1); // LFRCO
@@ -60,7 +66,9 @@ fn main() -> ! {
     wr(RTC + 0x10, 0x1); // CMD = START
     unsafe { core::arch::asm!("dsb 0xf", "isb 0xf") };
 
-    // Publish forever. The host reads OUT twice with a wall clock between reads.
+    // Publish forever. The host reads OUT twice with a wall clock between reads. The record says what was
+    // configured, so a silent board and a running board are not the same evidence.
+    mailbox::info(b"sysrtc: absolute rate, publishing CNT to OUT");
     wr(OUT, rd(RTC + 0x18));
     loop {
         wr(OUT, rd(RTC + 0x18));

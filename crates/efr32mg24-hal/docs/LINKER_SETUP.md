@@ -1,3 +1,8 @@
+# Linker setup
+
+> The paths below are **repository directories** in the project that builds this crate; the package is
+> `efr32mg2x-hal` and the library is `efr32mg24_hal`. Nothing here is a second name for the crate.
+
 # Linker Script Setup for EFR32MG24 HAL
 
 This document explains the linker script configuration for building ARM Cortex-M33 binaries for the EFR32MG24 microcontroller.
@@ -345,7 +350,7 @@ All binaries are:
 - [cortex-m-rt documentation](https://docs.rs/cortex-m-rt/)
 - [ARM Cortex-M33 Technical Reference Manual](https://developer.arm.com/documentation/100230/)
 - [EFR32MG24 Reference Manual](https://www.silabs.com/documents/public/reference-manuals/efr32xg24-rm.pdf)
-- [Rust Embedded Book - Memory Layout](https://docs.rust-embedded.org/book/start/memory.html)
+- [Rust Embedded Book - Memory Layout](https://docs.rs/cortex-m-rt/latest/cortex_m_rt/)
 
 ## Troubleshooting Checklist
 

@@ -1,0 +1,19 @@
+// Template: the Usage block of a crate README. Rendered by scripts/gen-crate-blocks.py from the manifest and from a
+// real example file, so the crate name, the version and the code can never drift from the tree again.
+//
+// Placeholders: {{package}} {{version}} {{lib}} {{example_path}} {{extra_deps}}
+
+## Usage
+
+Add this to your `Cargo.toml`:
+
+```toml
+[dependencies]
+{{package}} = "{{version}}"
+{{extra_deps}}```
+
+{{name_note}}The smallest program that runs on the board — copied from `{{example_path}}`, which the gate compiles:
+
+```rust,ignore
+{{example_body}}
+```

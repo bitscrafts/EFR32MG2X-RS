@@ -52,7 +52,7 @@ jobs:
             ${{ runner.os }}-clippy-pac-
 
       - name: Run Clippy on PAC (allow generated code warnings)
-        run: cargo clippy -p efr32mg24-pac --target thumbv8m.main-none-eabihf
+        run: cargo clippy -p efr32mg2x-pac --target thumbv8m.main-none-eabihf
 
   clippy-hal:
     name: Clippy - HAL
@@ -79,4 +79,4 @@ jobs:
             ${{ runner.os }}-clippy-hal-
 
       - name: Run Clippy on HAL (strict - no warnings)
-        run: cargo clippy -p efr32mg24-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings
+        run: cargo clippy -p efr32mg2x-hal --features rt --target thumbv8m.main-none-eabihf --no-deps -- -D warnings

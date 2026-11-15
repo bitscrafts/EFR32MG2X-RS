@@ -41,7 +41,7 @@ jobs:
       - name: Build documentation for HAL
         run: |
           cargo doc --no-deps \
-            -p efr32mg24-hal \
+            -p efr32mg2x-hal \
             --features rt \
             --target thumbv8m.main-none-eabihf \
             --release
@@ -60,7 +60,7 @@ jobs:
       - name: Build documentation (with header)
         run: |
           cargo doc --no-deps \
-            -p efr32mg24-hal \
+            -p efr32mg2x-hal \
             --features rt \
             --target thumbv8m.main-none-eabihf \
             --release

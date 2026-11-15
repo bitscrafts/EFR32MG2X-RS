@@ -640,7 +640,7 @@ cargo run --example 03_gpio --features rt --release
 2. **docs/03-development/PLAN.md** - Development roadmap
 3. **docs/INDEX.md** - Documentation index
 4. **docs/03-development/BACKLOG.md** - Feature backlog and TODOs
-5. **crates/efr32mg24-hal/docs/STATUS.md** - HAL-specific status
+5. **docs/03-development/HAL-STATUS.md** - HAL-specific status (moved out of the published package)
 6. **CLAUDE.md** - Project instructions (includes backup workflow)
 7. **HANDOFF.md** - Comprehensive project handoff
 

@@ -20,6 +20,7 @@ on the board itself, not merely built -- an example nobody has ever run is an ex
 | `pac_led_blink_double` | PAC-only DOUBLE blink: `blink blink ______ blink blink ______ ...` | -- |
 | `pac_led_blink_timer` | PAC-only blink on a hardware timer: TIMER0 clocked from HFRCOEM23 | -- |
 | `pac_mic_level` | PAC-level microphone → LED: the Arduino "VU meter" demo, at register level | -- |
+| `pac_minimal` | The smallest program that runs on the board, from the PAC alone | -- |
 | `pac_mvp_add` | MVP: the on-chip matrix/vector processor adds two fp16 vectors, from the PAC | -- |
 | `pac_oled_hello` | PAC-only demo on the Expansion Base OLED: SSD1306 128x64 at 0x3C | -- |
 | `pac_pullup_probe` | Which pins have an external pull-up? A measurement, not a datasheet reading | -- |

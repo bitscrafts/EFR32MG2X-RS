@@ -46,9 +46,13 @@ misused (a pin that knows its port, an I2C transfer that owns the bus), and `efr
 `efr32mg2x-expansion-base-bsp` wrap the boards. This crate is the floor, and it is here so that the layers above can
 be read and audited against the silicon.
 
-There are **27 examples** under `examples/`, each one verified on hardware rather than merely compiled: the LED
-ladder, the button, I2C scan, the BME680, the OLED, the microphone, the IMU, the RTC, the watchdog, and the mailbox
-that lets a board report what it did without a debugger attached.
+There are **27 examples** under `examples/`. They cover the LED ladder, the button, the I2C scan, the BME680, the OLED,
+the microphone, the IMU, the RTC, the watchdog and the mailbox that lets a board report what it did with no debugger
+attached.
+
+An earlier version of this page said all 27 were "verified on hardware". They are not: **one** carries a date in its own
+file of having been watched on the board, and the rest have been compiled. `docs/examples.md` is generated from those
+files and shows the column honestly — treat a `--` there as "built, not watched".
 
 ## Licence
 

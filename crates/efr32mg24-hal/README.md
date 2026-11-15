@@ -1,4 +1,4 @@
-# EFR32MG24 HAL (Hardware Abstraction Layer)
+# efr32mg2x-hal — HAL for the EFR32MG24 (XIAO MG24 Sense)
 
 High-level, type-safe Hardware Abstraction Layer for EFR32MG24 microcontrollers.
 
@@ -66,7 +66,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-efr32mg24-hal = { path = "../efr32mg24-hal", features = ["rt"] }
+efr32mg2x-hal = { version = "0.1.3", features = ["rt"] }
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
@@ -123,7 +123,7 @@ fn main() -> ! {
 ### Getting Started
 
 - **[docs/](docs/)** - Complete HAL documentation index
-- **[docs/BUILD_SYSTEM.md](docs/BUILD_SYSTEM.md)** - Build system and toolchain setup
+- **Build system and toolchain** — in the repository: `docs/02-guides/HAL-BUILD-SYSTEM.md`
 - **[docs/LINKER_SETUP.md](docs/LINKER_SETUP.md)** - Linker script configuration
 
 ### Module Documentation
@@ -200,7 +200,7 @@ cargo test --features rt
 
 ## Where the state lives
 
-[docs/STATUS.md](docs/STATUS.md) carries the dated status; this README's own summary above is the short version. The
+The status groups at the top of this file are the status; there is no second one to drift away from it. The
 workspace-wide authority is `docs/03-development/STATUS.md` in the project repository.
 
 ## Staying out of the bootloader
@@ -220,13 +220,13 @@ lowest load address of the image before flashing and refuse anything below 0x080
 
 Licensed under either of:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://www.apache.org/licenses/LICENSE-2.0.txt))
+- MIT license ([LICENSE-MIT](https://opensource.org/license/mit))
 
 at your option.
 
 ---
 
-**Version**: 0.1.1
+**Version**: 0.1.3
 **Last Updated**: November 14, 2026
 **Status**: 20 drivers in the tree; the measured/unmeasured split is at the top of this file

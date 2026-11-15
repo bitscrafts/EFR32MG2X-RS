@@ -23,9 +23,9 @@ run() {
   fi
 }
 
-run pac            -p efr32mg24-pac
-run hal            -p efr32mg24-hal --features rt
-run rail-sys       -p efr32mg24-rail-sys
-run bluetooth-sys  -p efr32mg24-bluetooth-sys
-run bsp            -p xiao-mg24-bsp
-run bsp-all-targets -p xiao-mg24-bsp --features ble,microphone --examples
+run pac            -p efr32mg2x-pac
+run hal            -p efr32mg2x-hal --features rt
+run rail-sys       -p efr32mg2x-rail-sys
+run bluetooth-sys  -p efr32mg2x-bluetooth-sys
+run bsp            -p efr32mg2x-xiao-bsp
+run bsp-all-targets -p efr32mg2x-xiao-bsp --features sense,stack --examples

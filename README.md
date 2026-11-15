@@ -1,4 +1,7 @@
-# EFR32MG24 Rust Support
+# EFR32MG2X Rust Support
+
+Rust for the Silicon Labs EFR32MG2x family. The board this is developed and measured on is an **EFR32MG24B220F1536IM48**
+(the XIAO MG24 Sense), which is why the part number appears everywhere below.
 
 [![Build and Test](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/build-and-test.yml/badge.svg?branch=master)](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/build-and-test.yml)
 [![Code Quality](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/quality-checks.yml/badge.svg?branch=master)](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/quality-checks.yml)

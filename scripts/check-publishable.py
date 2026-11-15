@@ -57,6 +57,68 @@ def packaged_files(crate_dir: Path):
     return {line.strip() for line in out.stdout.splitlines() if line.strip()}
 
 
+
+IDENTITY_DEP = re.compile(r'^([A-Za-z0-9_-]+)\s*=\s*(?:"([^"]+)"|\{([^}]*)\})', re.M)
+OWN_DEP = re.compile(r'^([A-Za-z0-9_-]+)\s*=\s*"([^"]+)"', re.M)
+
+
+def check_identity(name, d, readme_text, failures):
+    """The page must describe the crate it is on: same name, same version, and only features that exist."""
+    manifest = (d / 'Cargo.toml').read_text()
+    pkg = re.search(r'^name\s*=\s*"([^"]+)"', manifest, re.M).group(1)
+    mver = re.search(r'^version\s*=\s*"([^"]+)"', manifest, re.M)
+    if mver:
+        version = mver.group(1)
+    else:
+        ws = (ROOT / 'Cargo.toml').read_text()
+        version = re.search(r'^version\s*=\s*"([^"]+)"', ws, re.M).group(1)
+    feats = set(re.findall(r'^([A-Za-z0-9_-]+)\s*=\s*\[', manifest, re.M))
+
+    title = next((l for l in readme_text.splitlines() if l.startswith('# ')), '')
+    if pkg not in title:
+        failures.append(f'{name}: README title is "{title}" but the package is {pkg}')
+
+    # Any dependency-looking line that names an efr32 crate must name *this* crate, at *this* version.
+    for m in IDENTITY_DEP.finditer(readme_text):
+        dep, quoted, braced = m.group(1), m.group(2), m.group(3)
+        if 'efr32' not in dep:
+            continue
+        if dep != pkg:
+            failures.append(f'{name}: README installs "{dep}", which is not this package ({pkg})')
+            continue
+        if quoted and quoted != version:
+            failures.append(f'{name}: README pins {dep} = "{quoted}" but the version is {version}')
+        if braced:
+            v = re.search(r'version\s*=\s*"([^"]+)"', braced)
+            if v and v.group(1) != version:
+                failures.append(f'{name}: README pins {dep} version "{v.group(1)}" but the version is {version}')
+            fm = re.search(r'features\s*=\s*\[([^\]]*)\]', braced)
+            if fm:
+                for f in re.findall(r'"([^"]+)"', fm.group(1)):
+                    if f not in feats:
+                        failures.append(f'{name}: README offers feature "{f}" which the manifest does not define')
+
+    # Features offered in a table or list must exist too.
+    for f in re.findall(r'^-\s`([A-Za-z0-9_-]+)`\s-', readme_text, re.M):
+        if f not in feats and not f.startswith('0x'):
+            failures.append(f'{name}: README lists feature "{f}" which the manifest does not define')
+
+
+
+OWN_REPO = re.compile(r"https://github\.com/bitscrafts/EFR32MG2X-RS/(?:blob|tree)/master/([^)\s\"'`]+)")
+
+
+def check_own_urls(name, d, failures):
+    for doc in [d / "README.md"] + sorted(d.rglob("*.md")):
+        if not doc.exists():
+            continue
+        for m in OWN_REPO.finditer(doc.read_text(errors="ignore")):
+            target = m.group(1).rstrip(".,;:")
+            if not (ROOT / target).exists():
+                failures.append(f"{name}: {doc.name} links to {target}, which does not exist in this repository")
+
+
+
 def main():
     failures = []
     for name, spec in CRATES.items():
@@ -92,6 +154,9 @@ def main():
         for need in spec.get("required", []):
             if not re.search(need, readme_text):
                 failures.append(f"{name}: README never mentions {need}, and this crate ships a linker script")
+
+        check_identity(name, d, readme_text, failures)
+        check_own_urls(name, d, failures)
 
         for doc in list(d.rglob("*.md")):
             body = doc.read_text(errors="ignore")

@@ -1,25 +1,19 @@
-# efr32mg24-pac
+# efr32mg2x-pac
 
 Peripheral Access Crate (PAC) for Silicon Labs EFR32MG24 microcontrollers.
 
 ## Overview
 
-This crate provides low-level register access to all peripherals of the EFR32MG24 family. It is automatically generated from Silicon Labs CMSIS-SVD files using svd2rust.
+Low-level register access to every peripheral of one part, the **EFR32MG24B220F1536IM48** — the chip on the XIAO MG24
+Sense. Generated from Silicon Labs' CMSIS-SVD for that part with svd2rust; the register map, the field types and the
+doc comments come from the SVD, not from a header file somebody transcribed.
 
-**Status**: ✅ Generated - Modular structure (2,633 files across 104 directories)
+**Generated**: 2,633 files across 104 directories, from `EFR32MG24B220F1536IM48.svd`. One part, one crate: an
+earlier version of this file advertised 20 device variants that do not exist.
 
 **Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a guarded
 flash, one crate per layer (PAC, HAL, radio, board, Expansion Base). Not published to crates.io: an examples-only
 crate has no binary, so it installs only with `--example`, and its crate page would render nothing.
-
-## Features
-
-- **Device Support**: EFR32MG24B220F1536IM48 (primary target - XIAO MG24 Sense)
-  - Additional variants can be added via feature flags
-- **Register Access**: Direct memory-mapped register manipulation
-- **Type Safety**: Rust type system ensures compile-time peripheral access safety
-- **Interrupt Handling**: Full interrupt vector table support (with `rt` feature)
-- **TrustZone**: Both secure (_S) and non-secure peripherals exposed
 
 ## Usage
 
@@ -27,180 +21,236 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-efr32mg24-pac = "0.1.0"
-cortex-m = "0.7"
+efr32mg2x-pac = "0.1.3"
+# the architecture crate supplies the critical-section implementation that the generated
+# modify() needs; without this feature the build fails to link with
+# "undefined symbol: _critical_section_1_0_acquire"
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 ```
 
-### Basic Example
+The smallest program that runs on the board — copied from `examples/pac_minimal.rs`, which the gate compiles:
 
-```rust
-use efr32mg24_pac as pac;
+```rust,ignore
+#![no_std]
+#![no_main]
+
 use cortex_m_rt::entry;
+use efr32mg24_pac as pac;
+use panic_halt as _;
+
+const APPLICATION_PROPERTIES_MAGIC: [u8; 16] = [
+    0x13, 0xb7, 0x79, 0xfa, 0xc9, 0x25, 0xdd, 0xb7, 0xad, 0xf3, 0xcf, 0xe0, 0xf1, 0xb6, 0x14, 0xb8,
+];
+
+#[repr(C)]
+pub struct ApplicationProperties {
+    header: [u8; 8],           // 8-byte header (02 01 02 02 02 03 02 04 from Arduino)
+    magic: [u8; 16],           // Magic signature (Word 13 points HERE, not to header)
+    struct_version: u32,       // Version of this struct
+    signature_type: u32,       // Type of signature (0 = none)
+    signature_location: u32,   // Pointer to signature (0xFFFFFFFF = none)
+    app_info: ApplicationData, // Application metadata
+    cert: u32,                 // Pointer to certificate (NULL = 0)
+    long_token_section_address: u32, // Pointer to long token section (NULL = 0)
+    decrypt_key: [u8; 16],     // Decryption key (zeros if not encrypted)
+}
+
+#[repr(C)]
+pub struct ApplicationData {
+    app_type: u32, // Arduino uses 0x22 (34)
+    version: u32,
+    capabilities: u32,
+    product_id: [u8; 16],
+}
+
+#[used]
+#[link_section = ".app_properties"]
+static APP_PROPERTIES: ApplicationProperties = ApplicationProperties {
+    header: [0x02, 0x01, 0x02, 0x02, 0x02, 0x03, 0x02, 0x04],
+    magic: APPLICATION_PROPERTIES_MAGIC,
+    struct_version: 0x0201,
+    signature_type: 0,
+    signature_location: 0xFFFF_FFFF,
+    app_info: ApplicationData {
+        app_type: 0x22,
+        version: 0x0000_0001,
+        capabilities: 0,
+        product_id: [0u8; 16],
+    },
+    cert: 0,
+    long_token_section_address: 0,
+    decrypt_key: [0u8; 16],
+};
 
 #[entry]
 fn main() -> ! {
-    // Take peripheral singletons
-    let peripherals = pac::Peripherals::take().unwrap();
-    let core_peripherals = pac::CorePeripherals::take().unwrap();
+    let dp = pac::Peripherals::take().unwrap();
 
-    // Access GPIO peripheral
-    let gpio = &peripherals.GPIO_S;
+    // 1. The GPIO clock, gated by bit 26 of CLKEN0 in the secure CMU.
+    dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
 
-    // Configure PA5 as output
-    gpio.porta_model.modify(|_, w| w.mode5().pushpull());
+    // 2. PA7 is the LED (active low). MODEL holds the pins 0-7 mode fields; mode7() is this one.
+    dp.gpio_s.porta_model().modify(|_r, w| w.mode7().pushpull());
 
-    // Set PA5 high
-    gpio.porta_dout.write(|w| w.dout5().set_bit());
+    // 3. Toggle it. No DOUTTGL on this part: XOR the bit in software.
+    loop {
+        dp.gpio_s
+            .porta_dout()
+            .modify(|r, w| unsafe { w.bits(r.bits() ^ (1 << 7)) });
 
-    loop {}
+        for _ in 0..1_000_000 {
+            cortex_m::asm::nop();
+        }
+    }
 }
 ```
 
-## Features Flags
 
-### Device Variants
+## Features
 
-```toml
-# Select specific device variant
-efr32mg24-pac = { version = "0.1.0", features = ["efr32mg24a020f1536gm48"] }
-```
+| feature | what it turns on | default |
+|---|---|---|
+| `rt` | `cortex-m-rt/device` | no |
+| `critical-section` | `dep:critical-section` | yes |
+<!-- /gen:features -->
 
-Available variants (planned):
-- `efr32mg24a010f1024im40` - 1024KB Flash, 128KB RAM, 40-pin
-- `efr32mg24a010f1024im48` - 1024KB Flash, 128KB RAM, 48-pin
-- `efr32mg24a010f1536gm48` - 1536KB Flash, 256KB RAM, 48-pin (GM package)
-- `efr32mg24a020f1536gm48` - 1536KB Flash, 256KB RAM, 48-pin (default)
-- ... (16 more variants)
+## Peripherals
 
-### Runtime Features
+103 instances on `Peripherals`, in 46 families. Generated from `src/lib.rs`: every name below is a field you can reach through `Peripherals`.
 
-- `rt` - Include runtime support (interrupt vectors, startup code)
-- `secure` - Enable secure peripheral access (TrustZone)
+| family | instances |
+|---|---|
+| acmp | `acmp0_ns`, `acmp0_s`, `acmp1_ns`, `acmp1_s` |
+| buram | `buram_ns`, `buram_s` |
+| burtc | `burtc_ns`, `burtc_s` |
+| cmu | `cmu_ns`, `cmu_s` |
+| dcdc | `dcdc_ns`, `dcdc_s` |
+| devinfo | `devinfo` |
+| dmem | `dmem_ns`, `dmem_s` |
+| dpll | `dpll0_ns`, `dpll0_s` |
+| emu | `emu_ns`, `emu_s` |
+| eusart | `eusart0_ns`, `eusart0_s`, `eusart1_ns`, `eusart1_s` |
+| fsrco | `fsrco_ns`, `fsrco_s` |
+| gpcrc | `gpcrc_ns`, `gpcrc_s` |
+| gpio | `gpio_ns`, `gpio_s` |
+| hfrco | `hfrco0_ns`, `hfrco0_s` |
+| hfrcoem | `hfrcoem23_ns`, `hfrcoem23_s` |
+| hfxo | `hfxo0_ns`, `hfxo0_s` |
+| hostmailbox | `hostmailbox_ns`, `hostmailbox_s` |
+| i2c | `i2c0_ns`, `i2c0_s`, `i2c1_ns`, `i2c1_s` |
+| iadc | `iadc0_ns`, `iadc0_s` |
+| icache | `icache0_ns`, `icache0_s` |
+| keyscan | `keyscan_ns`, `keyscan_s` |
+| ldma | `ldma_ns`, `ldma_s` |
+| ldmaxbar | `ldmaxbar_ns`, `ldmaxbar_s` |
+| letimer | `letimer0_ns`, `letimer0_s` |
+| lfrco | `lfrco_ns`, `lfrco_s` |
+| lfxo | `lfxo_ns`, `lfxo_s` |
+| msc | `msc_ns`, `msc_s` |
+| mvp | `mvp_ns`, `mvp_s` |
+| pcnt | `pcnt0_ns`, `pcnt0_s` |
+| prs | `prs_ns`, `prs_s` |
+| radioaes | `radioaes_ns`, `radioaes_s` |
+| scratchpad | `scratchpad_ns`, `scratchpad_s` |
+| semailbox_ns_host | `semailbox_ns_host` |
+| semailbox_s_host | `semailbox_s_host` |
+| smu | `smu_ns`, `smu_s` |
+| smu_ns_cfgns | `smu_ns_cfgns` |
+| smu_s_cfgns | `smu_s_cfgns` |
+| syscfg | `syscfg_ns`, `syscfg_s` |
+| syscfg_ns_cfgns | `syscfg_ns_cfgns` |
+| syscfg_s_cfgns | `syscfg_s_cfgns` |
+| sysrtc | `sysrtc0_ns`, `sysrtc0_s` |
+| timer | `timer0_ns`, `timer0_s`, `timer1_ns`, `timer1_s`, `timer2_ns`, `timer2_s`, `timer3_ns`, `timer3_s`, `timer4_ns`, `timer4_s` |
+| ulfrco | `ulfrco_ns`, `ulfrco_s` |
+| usart | `usart0_ns`, `usart0_s` |
+| vdac | `vdac0_ns`, `vdac0_s`, `vdac1_ns`, `vdac1_s` |
+| wdog | `wdog0_ns`, `wdog0_s`, `wdog1_ns`, `wdog1_s` |
 
-## Peripheral List
 
-### Core Peripherals
-- SCRATCHPAD - Scratch pad registers
-- EMU - Energy Management Unit
-- CMU - Clock Management Unit
-- HFRCO - High Frequency RC Oscillator
-- FSRCO - Fast Startup RC Oscillator
-- DPLL - Digital Phase-Locked Loop
-- LFXO - Low Frequency Crystal Oscillator
-- LFRCO - Low Frequency RC Oscillator
-- ULFRCO - Ultra Low Frequency RC Oscillator
-- MSC - Memory System Controller
-- ICACHE - Instruction Cache
 
-### Communication
-- USART0 - Universal Synchronous/Asynchronous Receiver/Transmitter
-- EUSART0/1/2 - Enhanced USART
-- I2C0/1 - Inter-Integrated Circuit
+## Peripherals
 
-### Timers
-- TIMER0-4 - General Purpose Timers
-- LETIMER - Low Energy Timer
-- SYSRTC - System Real-Time Counter
-- BURTC - Backup Real-Time Counter
-- WDOG0/1 - Watchdog Timers
-- PCNT - Pulse Counter
+103 instances on `Peripherals`, in 46 families. Generated from `src/lib.rs`; every name here
+is a field you can call `.take()` on.
 
-### Analog
-- IADC0 - Incremental Analog-to-Digital Converter
-- VDAC0/1 - Voltage Digital-to-Analog Converter
-- ACMP0/1 - Analog Comparator
-
-### Digital I/O
-- GPIO - General Purpose Input/Output
-- PRS - Peripheral Reflex System
-
-### DMA
-- LDMA - Linked Direct Memory Access
-
-### System
-- SYSCFG - System Configuration
-- BURAM - Backup RAM
-- GPCRC - General Purpose CRC
-- DCDC - DC-DC Converter
-- PDM - Pulse Density Modulation
-- RFSENSE - RF Sense
-
-### Security (Secure Vault)
-- CRYPTOACC - Cryptographic Accelerator
-- SEMAILBOX - Secure Mailbox
-
-### Radio
-- AGC - Automatic Gain Control
-- FRC - Frame Controller
-- MODEM - Modem
-- PROTIMER - Protocol Timer
-- RAC - Radio Controller
-- RFCRC - Radio CRC
-- SYNTH - Frequency Synthesizer
-
-(See SVD files for complete peripheral list)
+| family | instances |
+|---|---|
+| acmp | `acmp0_ns`, `acmp0_s`, `acmp1_ns`, `acmp1_s` |
+| buram | `buram_ns`, `buram_s` |
+| burtc | `burtc_ns`, `burtc_s` |
+| cmu | `cmu_ns`, `cmu_s` |
+| dcdc | `dcdc_ns`, `dcdc_s` |
+| devinfo | `devinfo` |
+| dmem | `dmem_ns`, `dmem_s` |
+| dpll | `dpll0_ns`, `dpll0_s` |
+| emu | `emu_ns`, `emu_s` |
+| eusart | `eusart0_ns`, `eusart0_s`, `eusart1_ns`, `eusart1_s` |
+| fsrco | `fsrco_ns`, `fsrco_s` |
+| gpcrc | `gpcrc_ns`, `gpcrc_s` |
+| gpio | `gpio_ns`, `gpio_s` |
+| hfrco | `hfrco0_ns`, `hfrco0_s` |
+| hfrcoem | `hfrcoem23_ns`, `hfrcoem23_s` |
+| hfxo | `hfxo0_ns`, `hfxo0_s` |
+| hostmailbox | `hostmailbox_ns`, `hostmailbox_s` |
+| i2c | `i2c0_ns`, `i2c0_s`, `i2c1_ns`, `i2c1_s` |
+| iadc | `iadc0_ns`, `iadc0_s` |
+| icache | `icache0_ns`, `icache0_s` |
+| keyscan | `keyscan_ns`, `keyscan_s` |
+| ldma | `ldma_ns`, `ldma_s` |
+| ldmaxbar | `ldmaxbar_ns`, `ldmaxbar_s` |
+| letimer | `letimer0_ns`, `letimer0_s` |
+| lfrco | `lfrco_ns`, `lfrco_s` |
+| lfxo | `lfxo_ns`, `lfxo_s` |
+| msc | `msc_ns`, `msc_s` |
+| mvp | `mvp_ns`, `mvp_s` |
+| pcnt | `pcnt0_ns`, `pcnt0_s` |
+| prs | `prs_ns`, `prs_s` |
+| radioaes | `radioaes_ns`, `radioaes_s` |
+| scratchpad | `scratchpad_ns`, `scratchpad_s` |
+| semailbox_ns_host | `semailbox_ns_host` |
+| semailbox_s_host | `semailbox_s_host` |
+| smu | `smu_ns`, `smu_s` |
+| smu_ns_cfgns | `smu_ns_cfgns` |
+| smu_s_cfgns | `smu_s_cfgns` |
+| syscfg | `syscfg_ns`, `syscfg_s` |
+| syscfg_ns_cfgns | `syscfg_ns_cfgns` |
+| syscfg_s_cfgns | `syscfg_s_cfgns` |
+| sysrtc | `sysrtc0_ns`, `sysrtc0_s` |
+| timer | `timer0_ns`, `timer0_s`, `timer1_ns`, `timer1_s`, `timer2_ns`, `timer2_s`, `timer3_ns`, `timer3_s`, `timer4_ns`, `timer4_s` |
+| ulfrco | `ulfrco_ns`, `ulfrco_s` |
+| usart | `usart0_ns`, `usart0_s` |
+| vdac | `vdac0_ns`, `vdac0_s`, `vdac1_ns`, `vdac1_s` |
+| wdog | `wdog0_ns`, `wdog0_s`, `wdog1_ns`, `wdog1_s` |
+<!-- /gen:peripherals -->
 
 ## Memory Map
 
-### Flash
-- Start: `0x0000_0000`
-- End: `0x0818_0000`
-- Size: 1536 KB (variant dependent)
+Taken from `memory.x`, which is what the linker actually uses.
 
-### RAM
-- Start: `0x2000_0000`
-- End: `0x2003_FFFF`
-- Size: 256 KB (variant dependent)
+| region | start | end | size |
+|---|---|---|---|
+| Flash (application) | `0x08006000` | `0x0817FFFF` | 1512 KB |
+| RAM | `0x20000000` | `0x2003EFFF` | 252 KB |
+| Gecko bootloader (never written) | `0x08000000` | `0x08005FFF` | 24 KB |
 
-### Peripherals
-- Secure peripherals: `0x4000_0000 - 0x4FFF_FFFF`
-- Non-secure peripherals: `0x5000_0000 - 0x5FFF_FFFF`
+Peripheral space: secure `0x4000_0000-0x4FFF_FFFF`, non-secure `0x5000_0000-0x5FFF_FFFF`; every peripheral with a TrustZone face appears twice, as `<name>_s` and `<name>_ns`.
+
+
 
 ## Module Structure
 
-Generated by `svd2rust` and split one register per file. Numbers below were
-counted in this tree on 2026-11-10, not copied from a template:
+Generated by `svd2rust` and split one register per file. Counted in this tree by the generator that produced this section:
 
-- **2,634 files** under `src/`
-- **103 peripherals**, each with **two** faces where TrustZone applies:
-  `<periph>_s` (secure) and `<periph>_ns` (non-secure)
-- each register in its own file
-- the *largest* peripheral is GPIO: `gpio_s/` holds **173** register modules
-  (`cmu_s/` holds 28, `prs_s/` 115)
+- **2,633 files** under `src/`, in **104** directories
+- **103** peripheral instances in **46** families; each with a secure and a non-secure face where TrustZone applies (`<name>_s`, `<name>_ns`)
+- the largest register blocks: `gpio_ns/` 173 modules, `gpio_s/` 173 modules, `prs_ns/` 115 modules
+- `lib.rs` is 1,752 lines (53,678 B): the `Peripherals` struct and the base addresses
 
-### Structure Example
+**There is no `mod.rs` inside a peripheral directory.** `svd2rust` writes the register block as `<periph>.rs` and puts the register modules in the directory beside it; that file declares them. An earlier version of this page showed a `mod.rs` that does not exist.
 
-```
-efr32mg24-pac/src/
-├── lib.rs               # 1,529 lines (48,826 B): Peripheral struct, base
-│                        #   addresses, `pub mod cmu_s; pub mod gpio_s; …`
-├── generic.rs           # 28,726 B: Reg/Readable/Writable/FieldReader machinery
-├── build.rs             # copies memory.x + device.x to OUT_DIR
-├── cmu_s.rs             # RegisterBlock for the secure CMU + `pub mod status;`
-│                        #   … 28 declarations, one per register
-├── cmu_s/               # the register modules the file above declares
-│   ├── status.rs        # STATUS register (fields, enums, reader/writer)
-│   ├── clken0.rs        # CLKEN0 register
-│   └── … (26 more)
-├── gpio_s.rs            # RegisterBlock for secure GPIO (148 KB)
-├── gpio_s/              # 173 register modules (PORTA_*, PORTB_*, … routes)
-├── gpio_ns.rs / gpio_ns/
-└── … (101 more peripheral pairs)
-```
 
-**There is no `mod.rs` inside a peripheral directory.** `svd2rust` emits the
-register block as `<periph>.rs` at the top level and puts the register modules
-in the directory beside it; the `<periph>.rs` file is what declares them
-(`pub mod status;`). An earlier version of this README showed a `mod.rs`
-"module coordinator" that does not exist — the tree is exactly as above.
-
-### Benefits
-
-- **IDE Performance**: Fast navigation and autocomplete
-- **Incremental Compilation**: Only recompile changed peripherals
-- **Git Diffs**: Readable peripheral-level changes
-- **Code Review**: Easier to review register-specific changes
 
 ## Generation Process
 
@@ -229,33 +279,20 @@ cargo build --release --target thumbv8m.main-none-eabihf
 directory to the linker search path, which is what makes `-Tlink.x` resolve the
 memory layout at link time.
 
-### Regenerating for Other Variants
+### This crate is one part
+
+`efr32mg2x-pac` is generated from `svd/EFR32MG24B220F1536IM48.svd` and exposes that part's registers. It is not a multi-variant crate:
+an earlier version of this page showed a `--features` list of 20 device variants and an example regeneration command
+for `EFR32MG24A020F1536GM48`, neither of which exists here.
+
+Another part means another crate, generated the same way:
 
 ```bash
-# Use different SVD file for other device variants
-svd2rust -i svd/EFR32MG24A020F1536GM48.svd \
-         --output-dir src/ \
-         --atomics \
-         --target cortex-m \
-         --generic-mod
-form -i src/lib.rs -o src/
+svd2rust -i svd/<part>.svd --output-dir src/ --atomics --target cortex-m --generic-mod
 cargo fmt
 ```
 
-## Dependencies
-
-```toml
-[dependencies]
-cortex-m = "0.7.7"
-vcell = "0.1.3"
-
-[dependencies.cortex-m-rt]
-version = "0.7.3"
-optional = true
-
-[build-dependencies]
-# For device.x linker script generation
-```
+The rest of this document describes the layout such a crate gets.
 
 ## Target Architecture
 
@@ -267,17 +304,24 @@ optional = true
 
 ## Linker Script
 
-The PAC will provide `device.x` linker script with memory layout:
+Shipped with the crate as `memory.x`; `build.rs` copies it to `OUT_DIR` so `-Tlink.x` can include it. These are the numbers in the file, not a plan:
 
 ```ld
 MEMORY
 {
-  FLASH : ORIGIN = 0x00000000, LENGTH = 1536K
-  RAM   : ORIGIN = 0x20000000, LENGTH = 256K
+  /* Application flash - starts after 24 KB Gecko bootloader */
+  /* Bootloader occupies 0x08000000 - 0x08005FFF (first 24 KB) */
+  /* MUST match Arduino's bootloader layout for compatibility */
+  FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
+  /* SRAM - 256 KB total, but the last 4 KB page is reserved as the SWD mailbox
+   * (0x2003_F000), so the linker gets 252 KB. */
+  RAM : ORIGIN = 0x20000000, LENGTH = 252K
 }
+_stack_start = 0x2003F000;
 ```
 
-Variants will have different memory sizes.
+The first 24 KiB (`0x08000000`-`0x08005FFF`) belong to the Gecko bootloader; an image there bricks the board. Build with `-C link-arg=--nmagic` as well, or the linker emits a segment at `0x08000000` regardless of this script.
+
 
 ## Safety
 
@@ -293,8 +337,8 @@ This crate provides `unsafe` access to hardware registers. Users must ensure:
 
 ```bash
 # Clone repository
-git clone https://github.com/bitscrafts/efr32-rs
-cd efr32-rs/efr32mg24-pac
+git clone https://github.com/bitscrafts/EFR32MG2X-RS
+cd EFR32MG2X-RS/crates/efr32mg24-pac
 
 # Install target
 rustup target add thumbv8m.main-none-eabihf
@@ -312,9 +356,23 @@ PAC testing is limited without hardware:
 
 ## Related Crates
 
-- [efr32mg24-hal](https://github.com/bitscrafts/EFR32MG2X-RS/tree/master/crates/efr32mg24-hal) - High-level Hardware Abstraction Layer
-- [cortex-m](https://crates.io/crates/cortex-m) - Core Cortex-M functionality
-- [cortex-m-rt](https://crates.io/crates/cortex-m-rt) - Runtime support
+| crate | what it adds |
+|---|---|
+| `efr32mg2x-bluetooth-sys` | in this workspace |
+| `efr32mg2x-bootloader` | in this workspace |
+| `efr32mg2x-bootloader-test-app` | in this workspace |
+| `efr32mg2x-cmsis-stubs` | in this workspace |
+| `efr32mg2x-emlib-sys` | in this workspace |
+| `efr32mg2x-expansion-base-bsp` | in this workspace |
+| `efr32mg2x-hal` | in this workspace |
+| `efr32mg2x-pac` | in this workspace |
+| `efr32mg2x-radio` | in this workspace |
+| `efr32mg2x-rail-sys` | in this workspace |
+| `efr32mg2x-xiao-bsp` | in this workspace |
+
+Runnable examples for all of them: <https://github.com/bitscrafts/efr32mg2x-examples>.
+
+
 
 ## Resources
 
@@ -339,15 +397,15 @@ lowest load address of the image before flashing and refuse anything below 0x080
 
 Licensed under either of:
 
-- Apache License, Version 2.0 ([LICENSE-APACHE](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-APACHE))
-- MIT license ([LICENSE-MIT](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/LICENSE-MIT))
+- Apache License, Version 2.0 ([LICENSE-APACHE](https://www.apache.org/licenses/LICENSE-2.0.txt))
+- MIT license ([LICENSE-MIT](https://opensource.org/license/mit))
 
 at your option.
 
 ---
 
 **Status**: ✅ Generated - Modular Structure Complete
-**Version**: 0.1.0-dev
+**Version**: 0.1.3
 **Device**: EFR32MG24B220F1536IM48 (XIAO MG24 Sense)
 **Generated With**: svd2rust 0.37.1 + form
 **Files**: 2,633 Rust files across 104 modules

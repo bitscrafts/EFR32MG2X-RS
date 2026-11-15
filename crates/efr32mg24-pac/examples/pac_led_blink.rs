@@ -89,6 +89,9 @@
 
 use cortex_m_rt::entry;
 use efr32mg24_pac as pac;
+
+#[path = "common/mailbox.rs"]
+mod mailbox;
 use panic_halt as _;
 
 // Gecko Bootloader Application Properties
@@ -168,6 +171,8 @@ fn main() -> ! {
     //    EFR32MG24 has no DOUTTGL, so XOR the bit in software. The LED is active
     //    low, so clearing bit 7 turns it ON and setting bit 7 turns it OFF; the
     //    XOR toggle alternates between the two regardless of polarity.
+    let mut toggles = 0u32;
+    mailbox::info(b"blink: toggling PA7 by read-modify-write");
     loop {
         // Toggle PA7 (bit 7).
         dp.gpio_s
@@ -175,5 +180,12 @@ fn main() -> ! {
             .modify(|r, w| unsafe { w.bits(r.bits() ^ (1 << 7)) });
 
         delay();
+
+        // The mailbox is the instrument: its sequence number advances once per record, so two reads three seconds
+        // apart prove the loop is running rather than the image merely having been verified after flashing.
+        toggles = toggles.wrapping_add(1);
+        if toggles % 16 == 0 {
+            mailbox::pass(b"blink: 16 toggles");
+        }
     }
 }
