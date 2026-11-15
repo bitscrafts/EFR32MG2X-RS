@@ -17,7 +17,7 @@ This crate provides high-level, safe abstractions over EFR32MG24 peripherals wit
 
 ## What is in the tree
 
-Twenty modules, each one a peripheral or a bus:
+Twenty-one modules, each one a peripheral, a bus or a driver:
 
 ```
 adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
@@ -33,7 +33,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty modules. All of them are implementations, not skeletons: the smallest has 2 public functions, the largest 18, and
+Twenty-one modules. All of them are implementations, not skeletons: the smallest has 2 public functions, the largest 18, and
 the only `unimplemented!` in the crate is inside a doc example. What differs is how far each one has been taken.
 
 **Watched on the board**
@@ -142,24 +142,29 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-Three working examples demonstrating all implemented peripherals:
+Eight examples, and the table is the authority on which of them has been watched on the board:
+
+| Example | What it shows | Watched on hardware |
+| --- | --- | --- |
+| `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | -- |
+| `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | -- |
+| `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- |
+| `hal_mic_level.rs` | Shout at the board and the light gets brighter, with hardware PWM. | -- |
+| `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | -- |
+| `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself. | -- |
+| `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
+| `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
+
+A `--` is not a defect: the example compiles and is exercised, but nobody has read its output back off the part yet,
+so it does not claim a date. The same rule as the PAC crate: a date appears only when something was measured.
 
 ```bash
-# Build all examples
-cargo build --examples --features rt
+cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg2x-hal --features rt --examples
 
-# Build specific example
-cargo build --example 01_clock --features rt
-
-# Flash to hardware (requires probe-rs)
-cargo run --example 03_gpio --features rt
+# One example, on the board, with its log read over RTT
+probe-rs run --chip EFR32MG24B220F1536IM48 \
+  target/thumbv8m.main-none-eabihf/release/examples/hal_rtt_hello
 ```
-
-### Available Examples
-
-1. **01_clock.rs** - Clock configuration with HFXO/HFRCO/LFXO
-2. **02_delay.rs** - Millisecond/microsecond/nanosecond delays
-3. **03_gpio.rs** - LED control, button input, type-safe pins
 
 ## Building
 
@@ -229,4 +234,4 @@ at your option.
 
 **Version**: 0.1.0
 **Last Updated**: November 14, 2026
-**Status**: 20 drivers in the tree; the measured/unmeasured split is at the top of this file
+**Status**: 21 modules in the tree; the measured/unmeasured split is at the top of this file

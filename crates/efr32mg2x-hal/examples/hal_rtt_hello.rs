@@ -13,6 +13,7 @@
 //! The last line deliberately divides by a value the compiler cannot know, to show what a panic looks like over RTT: a
 //! program that faults is the case the mailbox instrument cannot report, because the mailbox is only read after the
 //! program has written it.
+//! VERIFIED ON HARDWARE (2026-11-15) -- heartbeats 0..8 read off RTT with probe-rs while the core ran
 
 #![no_std]
 #![no_main]
