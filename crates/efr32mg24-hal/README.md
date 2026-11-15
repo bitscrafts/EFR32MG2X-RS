@@ -56,6 +56,10 @@ Two of those deserve naming rather than a row in a table:
 
 
 
+**Runnable examples**: <https://github.com/bitscrafts/efr32mg2x-examples> — a clone, a build and a flash, one
+crate per layer. Examples are not published to crates.io: an examples-only crate has no binary, so it installs
+only with `--example`, and its crate page renders nothing but the README.
+
 ## Quick Start
 
 Add to your `Cargo.toml`:
