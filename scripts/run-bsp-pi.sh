@@ -21,6 +21,7 @@ LOGDIR="$ROOT/_tmp/pi-bsp"
 mkdir -p "$LOGDIR"
 LOG="$LOGDIR/run-$(date +%Y%m%d-%H%M%S).log"
 SESSION_FILE="$LOGDIR/session.txt"
+SESSION_PATH="$LOGDIR/session-$(date +%Y%m%d-%H%M%S).jsonl"
 
 export PATH="/root/.local/bin:/usr/local/cargo/bin:/usr/local/bin:/usr/bin:/bin"
 export CARGO_TARGET_DIR="/projects/_cache/targets"
@@ -42,6 +43,10 @@ if [[ -z "${OLLAMA_API_KEY:-}" ]]; then
   exit 1
 fi
 
+# On resume the point is to continue, not to re-send the whole brief: a short, directive
+# prompt that names what is still undone is what makes a resume cheaper than a new session.
+RESUME_BRIEF="${BRIEF%.md}-resume.md"
+PROMPT="$([[ -f "$RESUME_BRIEF" ]] && echo "$RESUME_BRIEF" || echo "$BRIEF")"
 resume=0
 session=""
 if [[ "${1:-}" == "-r" || "${1:-}" == "--resume" ]]; then
@@ -54,7 +59,7 @@ fi
 echo "=== dispatch plan, before spending anything ==="
 echo "provider      : $PROVIDER"
 echo "model         : $MODEL"
-echo "brief         : $BRIEF ($(wc -c < "$BRIEF") bytes)"
+echo "brief         : $PROMPT ($(wc -c < "$PROMPT") bytes)"
 echo "log           : $LOG"
 echo "target dir    : $CARGO_TARGET_DIR"
 echo "head          : $(git log --oneline -1)"
@@ -67,7 +72,7 @@ fi
 echo "============================================="
 
 if [[ $resume -eq 1 ]]; then
-  exec pi --yolo --provider "$PROVIDER" --model "$MODEL" --session "$session" -p "$(cat "$BRIEF")" 2>&1 | tee "$LOG"
+  exec pi --yolo --provider "$PROVIDER" --model "$MODEL" --session "$session" -p "$(cat "$PROMPT")" 2>&1 | tee "$LOG"
 else
   exec pi --yolo --provider "$PROVIDER" --model "$MODEL" -p "$(cat "$BRIEF")" 2>&1 | tee "$LOG"
 fi

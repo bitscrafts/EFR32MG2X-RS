@@ -111,6 +111,7 @@ features_for() {
   # Keyed by directory basename on purpose: the crates.io name may change, the directory may not.
   case "$1" in
     efr32mg2x-pac|efr32mg2x-hal) echo "--features rt" ;;
+    xiao-mg24-bsp) echo "--features sense" ;;   # the microphone and the IMU exist only on the Sense variant
     *) echo "" ;;
   esac
 }
