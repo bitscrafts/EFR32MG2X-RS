@@ -213,7 +213,154 @@ impl<'a> Microphone<'a> {
         Ok(Self { adc })
     }
 
+    /// Is the IADC's local timer running? `STATUS.TIMERACTIVE`, "The local timer is running".
+    #[must_use]
+    pub fn timer_active(&self) -> bool {
+        self.adc.status().read().timeractive().bit_is_set()
+    }
+
+    /// Configure the single queue to trigger from the IADC's local timer, and load the period.
+    ///
+    /// `IADC_TIMER` counts **ADC_CLK cycles** — `em_iadc.h`, field `timerCycles`: "Number of ADC_CLK cycles per
+    /// TIMER event" — so the caller passes the converter's own clock, not the bus clock. This driver divides
+    /// `CLK_SRC_ADC` by two in `SCHED0.PRESCALE`, so with the 19 MHz HFRCOEM23 that is 9,5 MHz and 16 kHz is a
+    /// period of 594 (15 993 Hz, 0,04 % low).
+    ///
+    /// Nothing here starts the timer: [`start_timer`](Self::start_timer) does, and it goes **after** the queue
+    /// has been armed, which is the order the vendor driver leaves to the application
+    /// (`iadcCmdEnableTimer` is an application command, not part of `IADC_Init`).
+    ///
+    /// # Errors
+    ///
+    /// [`MicError::StuckDisabling`] when the converter will not leave its enabled state: `TRIGGER` is
+    /// write-protected while it runs, and writing it anyway raised a precise bus error at `0x4900_402C`
+    /// (measured 2026-11-17, `CFSR=0x00008200`, `BFAR=0x4900402C`).
+    pub fn pace_from_timer(&mut self, adc_clk_hz: u32, hz: u32) -> Result<u32, MicError> {
+        if hz == 0 || adc_clk_hz == 0 {
+            return Err(MicError::StuckDisabling);
+        }
+        self.adc.en().write(|w| w.en().clear_bit());
+        let mut spin = 0u32;
+        while self.adc.en().read().disabling().bit_is_set() {
+            spin += 1;
+            if spin > 1_000_000 {
+                return Err(MicError::StuckDisabling);
+            }
+        }
+        let cycles = adc_clk_hz / hz;
+        self.adc
+            .trigger()
+            .modify(|_r, w| w.singletrigsel().timer().singletrigaction().once());
+        self.adc
+            .timer()
+            .write(|w| unsafe { w.timer().bits(cycles as u16) });
+        self.adc.en().write(|w| w.en().set_bit());
+        Ok(cycles)
+    }
+
+    /// Set the timer period again, without touching the trigger configuration.
+    ///
+    /// The timer counts `CLK_SRC_ADC`, and that clock is not always what the datasheet's default suggests: the
+    /// Bluetooth stack reconfigures the clock tree when it starts, and a period of 1187 that gives 16 kHz in a
+    /// bare example gave 8 kHz with the stack running — measured 2026-11-17, a loop that read exactly twice
+    /// real time. Rather than assume the clock, the caller can measure one window in core cycles and pass
+    /// `cycles * measured / expected` here; the relationship is linear, so one iteration converges.
+    ///
+    /// # Errors
+    ///
+    /// [`MicError::StuckDisabling`] when the converter will not leave its enabled state to be reconfigured.
+    pub fn retune_period(&mut self, cycles: u32) -> Result<u32, MicError> {
+        self.adc.en().write(|w| w.en().clear_bit());
+        let mut spin = 0u32;
+        while self.adc.en().read().disabling().bit_is_set() {
+            spin += 1;
+            if spin > 1_000_000 {
+                return Err(MicError::StuckDisabling);
+            }
+        }
+        self.adc
+            .timer()
+            .write(|w| unsafe { w.timer().bits(cycles as u16) });
+        self.adc.en().write(|w| w.en().set_bit());
+        self.adc.cmd().write(|w| w.timerdis().set_bit());
+        self.adc.cmd().write(|w| w.timeren().set_bit());
+        Ok(cycles)
+    }
+
+    /// Arm the single queue once, so a trigger has a queue to start.
+    pub fn arm(&mut self) {
+        self.adc.cmd().write(|w| w.singlestart().set_bit());
+    }
+
+    /// Start the local timer. Call this **after** [`arm`](Self::arm).
+    ///
+    /// `TIMERDIS` first: "Disable the local timer and reset the counter to timer reload value" — the reset is
+    /// what loads the `TIMER` register written by `pace_from_timer`, so the pair is DIS then EN.
+    ///
+    /// Both writes go through `CMD`, which faults while the converter is **disabled** (`BFAR=0x4900_400C`,
+    /// measured 2026-11-17). That is the mirror of `TRIGGER`, which faults while it is **enabled**
+    /// (`BFAR=0x4900_402C`): configuration goes in while disabled, commands while enabled, and there is no
+    /// single moment when both are allowed.
+    pub fn start_timer(&mut self) {
+        self.adc.cmd().write(|w| w.timerdis().set_bit());
+        self.adc.cmd().write(|w| w.timeren().set_bit());
+    }
+
+    /// Wait for the conversion the timer started, and read it — without issuing a start of its own.
+    ///
+    /// [`sample`](Self::sample) writes `CMD.SINGLESTART` on every call, which is what makes it free-running;
+    /// a paced loop must not do that, or the rate is the CPU's, not the timer's (measured: 256 samples in
+    /// 8 741 cycles under a 16 kHz trigger, i.e. 556 kHz).
+    pub fn read_paced(&self) -> Option<u16> {
+        // The budget is two sample periods, not a generous timeout. In sync, the valid flag is either already
+        // set (the CPU was late) or arrives within one period of 1187 cycles; if it is not there in two, the
+        // FIFO overran and waiting longer only wastes time. Measured 2026-11-17 with the BLE stack running: a
+        // 200 000-cycle budget cost 200 000 cycles on every miss, and the application loop with BLE went to
+        // 206 % of real time because of it — one missed read per window.
+        const BUDGET: u32 = 2_500;
+        let mut spin = 0u32;
+        while !self.adc.status().read().singlefifodv().bit_is_set() {
+            spin += 1;
+            if spin > BUDGET {
+                return None;
+            }
+        }
+        // SINGLEFIFODATA, not SINGLEDATA: only the FIFO read *pops*, and a pop is what clears the valid flag
+        // for the next conversion. Reading SINGLEDATA left the flag set and the paced loop returned the same
+        // value instantly — 256 samples in 8 741 cycles under a 16 kHz timer, measured 2026-11-17.
+        Some(self.adc.singlefifodata().read().data().bits() as u16)
+    }
+
+    /// Fill a whole window with paced samples, returning how many actually arrived.
+    ///
+    /// The paced read waits for the timer, so a full window spans `out.len() / hz` seconds of wall time — 16 ms
+    /// for 256 samples at 16 kHz. Nothing between windows is buffered in hardware: the converter keeps
+    /// converting whether or not the CPU reads, so a caller that spends too long computing features will find
+    /// the buffer short. The count is returned rather than an `Err` because "how many arrived" is the number
+    /// that tells a streaming loop whether it is keeping up.
+    pub fn capture_window(&mut self, out: &mut [u16]) -> usize {
+        let mut n = 0usize;
+        for slot in out.iter_mut() {
+            match self.read_paced() {
+                Some(v) => {
+                    *slot = v;
+                    n += 1;
+                }
+                None => break,
+            }
+        }
+        n
+    }
+
     /// One conversion, or `None` if the converter did not deliver.
+    ///
+    /// Reads `SINGLEDATA`. A review on 2026-11-17 argued this is wrong — that `SINGLEDATA` returns the
+    /// *latest* value and never pops the FIFO, so `SINGLEFIFODV` would stay set and the same value would come
+    /// back at CPU speed. Reading `SINGLEFIFODATA` instead was tried and measured on the board the same night:
+    /// the level went from `rms=593 pk=615` to a dead `rms=2048 pk=2048`, so in this configuration the FIFO
+    /// path returns nothing and `SINGLEDATA` is the register that carries the conversion. The review's
+    /// mechanism was not reproduced; see `crates/xiao-mg24-bsp/examples/module_mic_probe.rs`, which counts
+    /// distinct values in a window so that "repeated data" is a measurement rather than an argument.
     pub fn sample(&self) -> Option<u16> {
         self.adc.cmd().write(|w| w.singlestart().set_bit());
         let mut spin = 0u32;

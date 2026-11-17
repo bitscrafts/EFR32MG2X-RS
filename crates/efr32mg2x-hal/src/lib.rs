@@ -121,6 +121,7 @@ pub mod dwt;
 pub mod emu;
 pub mod i2c;
 pub mod microphone;
+pub mod mvp;
 pub mod pin;
 pub mod pwm;
 pub mod rtc;

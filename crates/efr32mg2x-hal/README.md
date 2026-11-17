@@ -25,6 +25,7 @@ Read from the source, so it cannot drift:
 
 | what it takes | where it is used |
 |---|---|
+| `CmuNs` | `src/mvp/mod.rs` |
 | `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+3 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
 | `Eusart0S` | `src/spi/mod.rs` |
@@ -35,6 +36,7 @@ Read from the source, so it cannot drift:
 | `Interrupt` | `src/sysrtc.rs` |
 | `LdmaS` | `src/dma/mod.rs` |
 | `LdmaxbarS` | `src/dma/mod.rs` |
+| `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
 | `Sysrtc0Ns` | `src/rtc/mod.rs` |
 | `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
@@ -184,7 +186,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-11 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+12 examples, **3 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -196,6 +198,7 @@ mean it works.
 | `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- |
 | `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | -- |
+| `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways. | -- |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | -- |
