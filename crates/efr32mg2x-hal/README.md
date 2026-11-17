@@ -41,6 +41,7 @@ Read from the source, so it cannot drift:
 | `Sysrtc0Ns` | `src/rtc/mod.rs` |
 | `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
+| `cmu_s` | `src/board.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
 | `iadc0_s` | `src/board.rs`, `src/microphone.rs` |
 | `timer0_s` | `src/pwm.rs` |

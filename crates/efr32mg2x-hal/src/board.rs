@@ -126,7 +126,7 @@ impl Board {
     pub fn boost_to_38_mhz(&self) -> Option<u32> {
         // 38 MHz -> DEVINFO->HFRCODPLLCAL[12]
         let cal = self.dp.devinfo.hfrcodpllcal12().read().bits();
-        self.apply_hfrco_cal(cal)
+        self.apply_hfrco_cal(cal, 38_000_000)
     }
 
     /// Raise the core clock to the **56 MHz** band — the nearest calibrated band to 19 x 3.
@@ -135,17 +135,17 @@ impl Board {
     /// vendor's table. There is no 57 MHz band, so "times three" lands on 56 (x2,95) or 64 (x3,37).
     pub fn boost_to_56_mhz(&self) -> Option<u32> {
         let cal = self.dp.devinfo.hfrcodpllcal14().read().bits();
-        self.apply_hfrco_cal(cal)
+        self.apply_hfrco_cal(cal, 56_000_000)
     }
 
     /// Raise the core clock to the **80 MHz** band, the fastest calibrated one under 100.
     pub fn boost_to_80_mhz(&self) -> Option<u32> {
         let cal = self.dp.devinfo.hfrcodpllcal16().read().bits();
-        self.apply_hfrco_cal(cal)
+        self.apply_hfrco_cal(cal, 80_000_000)
     }
 
     /// The procedure itself, shared by every band: clocks, wait states, calibration, wait for ready.
-    fn apply_hfrco_cal(&self, cal: u32) -> Option<u32> {
+    fn apply_hfrco_cal(&self, cal: u32, target_hz: u32) -> Option<u32> {
         if cal == 0 || cal == u32::MAX {
             return None;
         }
@@ -196,6 +196,31 @@ impl Board {
                 return None;
             }
         }
+        // The peripheral bus and the radio clock are derived from the core clock and both have a ceiling:
+        // PCLK at 50 MHz and the radio clock at 40 MHz (`em_cmu.c:98,101`). The vendor divides them after every
+        // frequency change (`pclkDivOptimize`, `rhclkPrescOptimize`, called from `CMU_ClockFreqGet`'s siblings at
+        // `em_cmu.c:4463`), and this function did not -- so at 80 MHz both were running undivided and out of spec,
+        // with the Bluetooth stack on. Measured 2026-11-17 by the review that read the vendor source; the divider
+        // does not touch the microphone's pace, which runs from HFRCOEM23.
+        let pclk = if target_hz > 50_000_000 {
+            crate::pac::cmu_s::sysclkctrl::Pclkpresc::Div2
+        } else {
+            crate::pac::cmu_s::sysclkctrl::Pclkpresc::Div1
+        };
+        self.dp
+            .cmu_s
+            .sysclkctrl()
+            .modify(|_r, w| w.pclkpresc().variant(pclk));
+        let rhclk = if target_hz > 40_000_000 {
+            crate::pac::cmu_s::sysclkctrl::Rhclkpresc::Div2
+        } else {
+            crate::pac::cmu_s::sysclkctrl::Rhclkpresc::Div1
+        };
+        self.dp
+            .cmu_s
+            .sysclkctrl()
+            .modify(|_r, w| w.rhclkpresc().variant(rhclk));
+
         Some(cal)
     }
 
