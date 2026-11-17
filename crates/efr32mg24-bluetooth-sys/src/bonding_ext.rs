@@ -18,6 +18,7 @@
 //! `(handle << 8) | type`, and write `len` bytes from `data`. The same key formula is used here, moved into a key
 //! range of our own so it cannot collide with anything the stack keeps in NVM3.
 
+use crate::peer_match::address_matches;
 use core::sync::atomic::{AtomicU32, Ordering};
 
 /// Keys of our bonding records live above anything the stack uses: 20-bit keys, and the top nibble of the range is
@@ -38,7 +39,13 @@ extern "C" {
     fn nvm3_deleteObject(handle: *mut u8, key: u32) -> u32;
     fn nvm3_getObjectInfo(handle: *mut u8, key: u32, obj_type: *mut u32, length: *mut usize)
         -> u32;
-    fn nvm3_enumObjects(handle: *mut u8, key_list: *mut u32, key_list_size: usize) -> usize;
+    fn nvm3_enumObjects(
+        handle: *mut u8,
+        key_list: *mut u32,
+        key_list_size: usize,
+        key_min: u32,
+        key_max: u32,
+    ) -> usize;
 }
 
 #[inline]
@@ -95,36 +102,58 @@ pub fn note_data_request(connection: u8, data_type: u8) {
 /// by **connection**, and the bond is identified by the **peer address** stored with it, so without the table there
 /// is no way to tell which bond a request is about. Measured 2026-11-17: answering every request with zero length
 /// (the previous behaviour) means encryption can never be established from stored data.
-static CONNECTION_PEERS: [AtomicU32; 8] = [
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
-    AtomicU32::new(0xFFFF_FFFF),
+///
+/// **The whole address is kept.** Each connection is two words: the first four address bytes, then the last two, the
+/// address type and a "valid" bit. The previous packing kept the type and bytes 0-2 and the compare shifted that right by
+/// eight, so it matched on the type and two address bytes: a peer whose connection address type was not 0 never matched
+/// the stored side (packed with type 0), every phone connects with a random address (type 1), and two bonds whose
+/// addresses shared two bytes collided.
+static CONNECTION_PEERS: [[AtomicU32; 2]; 8] = [
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
+    [AtomicU32::new(0), AtomicU32::new(0)],
 ];
+/// Set in the second word while the connection is open.
+const PEER_VALID: u32 = 1 << 24;
 
-/// Pack a 6-byte address and its type into one word: type in the top byte, the first five address bytes below it.
-fn pack_peer(address: [u8; 6], address_type: u8) -> u32 {
-    (address_type as u32) << 24
-        | (address[0] as u32) << 16
-        | (address[1] as u32) << 8
-        | address[2] as u32
+/// The peer of an open connection: its six address bytes and its type.
+fn peer_of(connection: u8) -> Option<([u8; 6], u8)> {
+    let words = CONNECTION_PEERS.get(connection as usize)?;
+    let lo = words[0].load(Ordering::Relaxed);
+    let hi = words[1].load(Ordering::Relaxed);
+    if hi & PEER_VALID == 0 {
+        return None;
+    }
+    let l = lo.to_le_bytes();
+    Some((
+        [l[0], l[1], l[2], l[3], hi as u8, (hi >> 8) as u8],
+        (hi >> 16) as u8,
+    ))
 }
 
 /// Remember the peer of a connection, from `connection_opened`.
 pub fn note_connection(connection: u8, address: [u8; 6], address_type: u8) {
-    if let Some(slot) = CONNECTION_PEERS.get(connection as usize) {
-        slot.store(pack_peer(address, address_type), Ordering::Relaxed);
+    if let Some(words) = CONNECTION_PEERS.get(connection as usize) {
+        words[0].store(
+            u32::from_le_bytes([address[0], address[1], address[2], address[3]]),
+            Ordering::Relaxed,
+        );
+        words[1].store(
+            PEER_VALID | (address_type as u32) << 16 | (address[5] as u32) << 8 | address[4] as u32,
+            Ordering::Relaxed,
+        );
     }
 }
 
 /// Forget a connection, from `connection_closed`.
 pub fn forget_connection(connection: u8) {
-    if let Some(slot) = CONNECTION_PEERS.get(connection as usize) {
-        slot.store(0xFFFF_FFFF, Ordering::Relaxed);
+    if let Some(words) = CONNECTION_PEERS.get(connection as usize) {
+        words[1].store(0, Ordering::Relaxed);
     }
 }
 
@@ -181,8 +210,18 @@ pub fn clear_all() -> u32 {
     let mut removed = 0;
     // SAFETY: single-core; NVM3 is opened by the stack and this only enumerates and deletes within our own key range.
     unsafe {
-        let mut keys = [0u32; 48];
-        let found = nvm3_enumObjects(nvm3_handle(), keys.as_mut_ptr(), keys.len());
+        // The vendor prototype has five parameters (`nvm3_generic.h:353-355`: handle, list, list size, `keyMin`,
+        // `keyMax`). The three-argument declaration this replaces left `keyMin` as whatever `r3` held and `keyMax` as
+        // whatever word was on the stack, so the wipe enumerated a random range. The list is sized for every key
+        // this module can own, so nothing is silently cut.
+        let mut keys = [0u32; MAX_SLOTS as usize * MAX_PIECE as usize];
+        let found = nvm3_enumObjects(
+            nvm3_handle(),
+            keys.as_mut_ptr(),
+            keys.len(),
+            KEY_BASE,
+            KEY_BASE | 0xFFFF,
+        );
         for key in keys.iter().take(found.min(keys.len())) {
             if *key / 0x1_0000 != KEY_BASE / 0x1_0000 {
                 continue;
@@ -204,25 +243,14 @@ pub fn clear_all() -> u32 {
 /// # Safety
 /// Reads NVM3 objects for handles `0..MAX_SLOTS`.
 unsafe fn bond_for_connection(connection: u8) -> Option<u8> {
-    let packed = CONNECTION_PEERS
-        .get(connection as usize)?
-        .load(Ordering::Relaxed);
-    if packed == 0xFFFF_FFFF {
-        return None;
-    }
+    let (peer, peer_type) = peer_of(connection)?;
     let mut stored = [0u8; 8];
     for slot in 0..MAX_SLOTS {
         let Some(len) = copy_stored(slot, 0, &mut stored) else {
             continue;
         };
         // Piece 0 is the remote address: six bytes, little-endian as the stack reports it.
-        if len < 6 {
-            continue;
-        }
-        let address = [
-            stored[0], stored[1], stored[2], stored[3], stored[4], stored[5],
-        ];
-        if pack_peer(address, 0) >> 8 == packed >> 8 {
+        if address_matches(&stored, len, peer, peer_type) {
             return Some(slot);
         }
     }
