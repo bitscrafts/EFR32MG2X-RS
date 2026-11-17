@@ -76,6 +76,9 @@ compile_error!(
                  docs/04-reference/RADIO-NOTES.md"
 );
 
+/// Whether this device holds any bond at all — the question the pairing window asks before allowing a new one.
+#[cfg(feature = "external-bonding")]
+pub use efr32mg24_bluetooth_sys::bonding_ext::any_bond;
 #[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::clear_all as bonding_clear_all;
 #[cfg(feature = "external-bonding")]

@@ -422,6 +422,30 @@ pub unsafe extern "C" fn sli_bt_external_bonding_alloc(record: *const u8) -> i8 
     -1
 }
 
+/// Whether this device holds any bond at all.
+///
+/// The re-pairing policy needs this question and nothing more: a device with no bond must accept the first peer that
+/// pairs, or it can never be set up. The test is the same one `sli_bt_external_bonding_alloc` uses to decide a slot is
+/// free -- piece 8 exists -- asked of every slot instead of stopping at the first free one.
+pub fn any_bond() -> bool {
+    for bonding in 0..MAX_SLOTS {
+        let mut obj_type = 0u32;
+        let mut length = 0usize;
+        let taken = unsafe {
+            nvm3_getObjectInfo(
+                nvm3_handle(),
+                storage_key(bonding, 8),
+                &mut obj_type,
+                &mut length,
+            )
+        } == 0;
+        if taken {
+            return true;
+        }
+    }
+    false
+}
+
 /// Whether a bonding handle names a record this application holds.
 ///
 /// The internal implementation answers this by reading the piece numbered 8 with a length of 8, so the same question

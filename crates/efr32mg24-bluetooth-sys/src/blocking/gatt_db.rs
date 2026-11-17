@@ -47,6 +47,13 @@ pub struct Characteristic {
     /// `write_attribute`, and a fresh one reads as empty. A non-zero size gives the stack its own buffer, which is what
     /// makes `read` work.
     pub max_len: u16,
+    /// Which operations require security, as a bitmask of [`SEC_ENCRYPTED_READ`], [`SEC_BONDED_READ`],
+    /// [`SEC_ENCRYPTED_WRITE`], [`SEC_BONDED_WRITE`], [`SEC_ENCRYPTED_NOTIFY`] and [`SEC_BONDED_NOTIFY`].
+    ///
+    /// **Zero is not a default, it is a decision**: with zero, any client in range reads the value without pairing. The
+    /// dosimeter shipped with zero for three characteristics that carry a person's noise exposure, and the measurement
+    /// that showed it (2026-11-17) was a read from a host that had never paired.
+    pub security: u16,
 }
 /// One characteristic carrying a **standard 16-bit** UUID.
 ///
@@ -61,6 +68,8 @@ pub struct Characteristic16 {
     pub properties: u16,
     /// Buffer size the stack allocates for the value; zero means user-managed, which reads back nothing.
     pub max_len: u16,
+    /// Which operations require security; see [`Characteristic::security`]. Zero means an unpaired client may use it.
+    pub security: u16,
 }
 
 /// `SL_BT_GATTDB_CHARACTERISTIC_READ`.
@@ -69,6 +78,19 @@ pub const PROP_READ: u16 = 0x02;
 pub const PROP_WRITE: u16 = 0x08;
 /// `SL_BT_GATTDB_CHARACTERISTIC_NOTIFY`.
 pub const PROP_NOTIFY: u16 = 0x10;
+
+/// `SL_BT_GATTDB_ENCRYPTED_READ` (`sl_bt_api.h:8919`): the read requires pairing and an encrypted link.
+pub const SEC_ENCRYPTED_READ: u16 = 0x1;
+/// `SL_BT_GATTDB_BONDED_READ` (`sl_bt_api.h:8922`): the read requires **bonding** and an encrypted link.
+pub const SEC_BONDED_READ: u16 = 0x2;
+/// `SL_BT_GATTDB_ENCRYPTED_WRITE` (`sl_bt_api.h:8929`).
+pub const SEC_ENCRYPTED_WRITE: u16 = 0x8;
+/// `SL_BT_GATTDB_BONDED_WRITE` (`sl_bt_api.h:8932`).
+pub const SEC_BONDED_WRITE: u16 = 0x10;
+/// `SL_BT_GATTDB_ENCRYPTED_NOTIFY` (`sl_bt_api.h:8936`).
+pub const SEC_ENCRYPTED_NOTIFY: u16 = 0x40;
+/// `SL_BT_GATTDB_BONDED_NOTIFY` (`sl_bt_api.h:8939`).
+pub const SEC_BONDED_NOTIFY: u16 = 0x80;
 
 /// The handles of a service this code built.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -130,7 +152,7 @@ pub fn add_service(
                 session,
                 service,
                 spec.properties,
-                0, // no security requirement: an unpaired client may use it
+                spec.security,
                 0, // no option flags
                 uuid_value,
                 value_type,
@@ -209,7 +231,7 @@ pub fn add_service_uuid16(
                 session,
                 service,
                 spec.properties,
-                0, // no security requirement: an unpaired client may read
+                spec.security,
                 0, // no option flags
                 uuid_value,
                 value_type,

@@ -26,7 +26,9 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use efr32mg24_radio::gatt_db::{self, Characteristic, PROP_NOTIFY, PROP_READ};
+use efr32mg24_radio::gatt_db::{
+    self, Characteristic, PROP_NOTIFY, PROP_READ, SEC_BONDED_NOTIFY, SEC_BONDED_READ,
+};
 use efr32mg24_radio::Bluetooth;
 use panic_halt as _;
 use xiao_mg24_bsp::hal::dwt;
@@ -39,6 +41,18 @@ mod mailbox;
 const TARGET_HZ: u32 = 16_000;
 const TIMER_CLK_HZ: u32 = 19_000_000;
 const WINDOW: usize = 256;
+/// How long after power-on a new bond may be created, in seconds.
+///
+/// The re-pairing policy, decided 2026-11-17. A device that keeps a bond its owner's phone has forgotten can never be
+/// re-paired (`smrsn=4613`, measured); a device that accepts any bond can have it taken by anyone in radio range, and this
+/// one carries a person's noise exposure. So a new bond is accepted when the device holds none at all, or inside this
+/// window -- and the owner's re-pair gesture is a power cycle.
+///
+/// 120 s is long enough to take a phone out and pair it, and short enough that an attacker has to be present at the
+/// moment the device is switched on. It is **not** authentication: Just Works has no man-in-the-middle protection, and
+/// this window limits when a bond may be created, not who may create it.
+const PAIRING_WINDOW_SECONDS: u32 = 120;
+
 /// How many samples pass between two polls of the Bluetooth stack.
 ///
 /// 16 000 / 16 = 1 000 polls a second. The pairing failure that the per-sample poll fixed was a poll rate of one per
@@ -187,6 +201,11 @@ struct Link {
     smfail: u32,
     /// The last SMP error code the device refused a pairing with.
     smrsn: u16,
+    /// Bonding decisions: accepted, refused, and the rule behind the last answer (`cfwhy`: 1 = no bond held, 2 = inside
+    /// the power-on window, 3 = outside it with a bond held). `cfb` counts how many times the stack asked.
+    cfok: u32,
+    cfno: u32,
+    cfwhy: u8,
 }
 
 impl Link {
@@ -202,6 +221,9 @@ impl Link {
             subscribed: [false; 3],
             smfail: 0,
             smrsn: 0,
+            cfok: 0,
+            cfno: 0,
+            cfwhy: 0,
         }
     }
 
@@ -248,7 +270,7 @@ impl Link {
 /// per-second drain threw every event away: a disconnect popped there left the device silent until a power cycle,
 /// which is the "Connection refused (111)" the first re-advertise was written to fix. `AdvertisingTimeout` is handled
 /// for the same reason (the set stops, nothing restarts it).
-fn service_stack(ble: &mut Bluetooth, link: &mut Link) -> bool {
+fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool {
     use efr32mg24_radio::BleEvent;
     let mut disconnected = false;
     while let Some(event) = ble.poll_event() {
@@ -271,6 +293,27 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link) -> bool {
             // Not counted in `adv`, which pairs one-to-one with `disc`.
             BleEvent::AdvertisingTimeout { .. } => {
                 let _ = ble.start_connectable(200, 0);
+            }
+            BleEvent::ConfirmBonding { connection, .. } => {
+                // The stack only asks this when `BONDING_REQUEST_REQUIRED` (0x08) is among the pairing flags, so `cfb=0`
+                // with the flag set means the event is not raised at all -- the open question in the plan.
+                let holds_a_bond = efr32mg24_radio::any_bond();
+                let inside_window = boot_second < PAIRING_WINDOW_SECONDS;
+                let (accept, why) = if !holds_a_bond {
+                    (1u8, 1u8)
+                } else if inside_window {
+                    (1u8, 2u8)
+                } else {
+                    (0u8, 3u8)
+                };
+                link.cfwhy = why;
+                // 0 rejects and 1 accepts (`sl_bt_api.h:11237-11243`). A refused bond does not drop the link: the
+                // connection works for its lifetime, it just does not survive this phone being forgotten.
+                if accept == 1 && ble.bonding_confirm(connection, accept) == 0 {
+                    link.cfok += 1;
+                } else {
+                    link.cfno += 1;
+                }
             }
             _ => {}
         }
@@ -365,21 +408,33 @@ fn main() -> ! {
             }
         }
     };
+    // Every one of these three carries a person's noise exposure, and every one of them shipped with `security: 0`,
+    // which the stack reads as "an unpaired client may use it". Measured 2026-11-17: a host that had never paired read
+    // the RMS characteristic over an open link. `BONDED_*` rather than `ENCRYPTED_*` because the product asks for
+    // encryption on connect (`increase_security`), and a bond is what makes that encryption survive a reconnect -- an
+    // encrypted-but-unbonded link would let any client that pairs once read for the life of that one connection.
+    //
+    // The notify requirement is not decoration: without it a client can subscribe to the stream and receive every value
+    // without ever reading the characteristic it protects.
+    let sec = SEC_BONDED_READ | SEC_BONDED_NOTIFY;
     let characteristics = [
         Characteristic {
             uuid: UUID_RMS,
             properties: PROP_READ | PROP_NOTIFY,
             max_len: 2,
+            security: sec,
         },
         Characteristic {
             uuid: UUID_BANDS,
             properties: PROP_READ | PROP_NOTIFY,
             max_len: 32,
+            security: sec,
         },
         Characteristic {
             uuid: UUID_STATUS,
             properties: PROP_READ | PROP_NOTIFY,
             max_len: 3,
+            security: sec,
         },
     ];
     let service = match gatt_db::add_service(UUID_SERVICE, &characteristics) {
@@ -479,7 +534,12 @@ fn main() -> ! {
     // `enable_pairing_with(0x84, 0x03)`: flags 0x84 = bonding required + MITM ("authenticated"), IO capability 0x03 =
     // NoInputNoOutput, i.e. Just Works. That keeps the phone's dialog simple; a passkey would be stricter but this
     // product has no display to show one on.
-    let _ = ble.enable_pairing_with(0x84, 0x03);
+    // Flags: 0x80 bonding required, 0x08 bonding request required (so the stack asks before storing one), 0x04 MITM
+    // ("authenticated"); IO capability 0x03 = no input, no output, i.e. Just Works.
+    //
+    // 0x08 is what makes `sl_bt_evt_sm_confirm_bonding` arrive at all (`sl_bt_api.h:10801`), and without it every pairing
+    // is accepted silently -- which is the state the device shipped in until 2026-11-17.
+    let _ = ble.enable_pairing_with(0x8C, 0x03);
     // With the builtin database the stack needs to be told how many bonds to keep. With the external one that command
     // is documented as NOT_AVAILABLE and the count lives in `bonding_ext`.
     #[cfg(not(feature = "external-bonding"))]
@@ -583,6 +643,12 @@ fn main() -> ! {
             t.u(link.smfail);
             t.s(b" smrsn=");
             t.u(link.smrsn as u32);
+            t.s(b" cfok=");
+            t.u(link.cfok);
+            t.s(b" cfno=");
+            t.u(link.cfno);
+            t.s(b" cfwhy=");
+            t.u(link.cfwhy as u32);
             t.s(b" disc=");
             t.u(link.disc);
             t.s(b" adv=");
@@ -642,7 +708,7 @@ fn main() -> ! {
                         // 7.5 ms floor of a BLE connection interval.
                         if samples_this_iteration % POLL_EVERY_SAMPLES == 0 {
                             let poll_start = dwt::cycles();
-                            if service_stack(&mut ble, &mut link) {
+                            if service_stack(&mut ble, &mut link, second) {
                                 notifications = 0;
                             }
                             stack_cycles += dwt::since(poll_start) as u64;
@@ -728,7 +794,7 @@ fn main() -> ! {
         //
         // Same handler as the per-sample drain, so a disconnect popped here is not lost.
         let _ = second;
-        if service_stack(&mut ble, &mut link) {
+        if service_stack(&mut ble, &mut link, second) {
             notifications = 0;
         }
     }

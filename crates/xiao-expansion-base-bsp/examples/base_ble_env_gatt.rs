@@ -86,16 +86,19 @@ fn main() -> ! {
             uuid: CHAR_TEMPERATURE,
             properties: PROP_READ | PROP_NOTIFY,
             max_len: 2,
+            security: 0, // the Expansion Base example is unchanged: an unpaired client may read it
         },
         Characteristic16 {
             uuid: CHAR_HUMIDITY,
             properties: PROP_READ | PROP_NOTIFY,
             max_len: 2,
+            security: 0, // the Expansion Base example is unchanged: an unpaired client may read it
         },
         Characteristic16 {
             uuid: CHAR_PRESSURE,
             properties: PROP_READ | PROP_NOTIFY,
             max_len: 4,
+            security: 0, // the Expansion Base example is unchanged: an unpaired client may read it
         },
     ];
 

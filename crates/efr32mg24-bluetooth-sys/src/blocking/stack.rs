@@ -704,6 +704,17 @@ impl Bluetooth {
 
     /// The same two calls with the flags and IO capability named by the caller, for isolating which one of them
     /// changes what the stack does to the link.
+    /// Answer `sl_bt_evt_sm_confirm_bonding`: may this pairing create a bond?
+    ///
+    /// The stack raises the event only when `BONDING_REQUEST_REQUIRED` (`0x08`) is among the flags given to
+    /// [`Bluetooth::enable_pairing_with`]; without it the question is never asked and every pairing is accepted. **0
+    /// rejects, 1 accepts** (`sl_bt_api.h:11237-11243`). Rejecting does not drop the link; it refuses to store a bond for
+    /// it, which is what makes a re-pairing window possible at all.
+    pub fn bonding_confirm(&mut self, connection: u8, accept: u8) -> u8 {
+        // SAFETY: plain FFI into the stack; both arguments are plain values.
+        unsafe { bt::sl_bt_sm_bonding_confirm(connection, accept) as u8 }
+    }
+
     pub fn enable_pairing_with(&mut self, flags: u8, io: u8) -> (u8, u8) {
         let configure = unsafe { bt::sl_bt_sm_configure(flags, io) };
         let bondable = unsafe { bt::sl_bt_sm_set_bondable_mode(1) };
