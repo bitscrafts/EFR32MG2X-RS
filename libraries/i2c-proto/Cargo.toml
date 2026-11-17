@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-i2c-proto"
+version = "0.1.0"
+edition = "2021"
+description = "The I2C transaction, with no registers in it, so it can be measured on the host"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

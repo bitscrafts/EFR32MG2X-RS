@@ -60,6 +60,7 @@
 mod traits;
 mod types;
 
+pub use efr32mg2x_i2c_proto as proto;
 pub use types::{Config, Error, Speed};
 
 use crate::clock::FrozenClocks;
@@ -71,6 +72,93 @@ use crate::pac;
 /// Three orders of magnitude of slack: no correct transfer of a few bytes comes close, and nothing on a wedged bus can
 /// hang the program for longer than this.
 const WAIT_POLLS: u32 = 200_000;
+
+/// The hardware registers, as the transaction layer sees them.
+///
+/// This is the whole seam: `efr32mg2x-i2c-proto` decides *what* a repeated START looks like and is measured on the
+/// host; this type only performs the four primitives on the peripheral. A change in one cannot silently change the
+/// other, which is what made the old two-transaction `write_read` survive in a driver nobody could exercise.
+struct HwBus<'a, P> {
+    i2c: &'a P,
+}
+
+/// The primitives, written once for both I2C instances.
+macro_rules! impl_hw_bus {
+    ($ty:ty) => {
+        impl efr32mg2x_i2c_proto::Bus for HwBus<'_, $ty> {
+            fn start(&mut self) -> Result<(), efr32mg2x_i2c_proto::Error> {
+                use efr32mg2x_i2c_proto::Error as Proto;
+                self.i2c.cmd().write(|w| w.start().set_bit());
+                let mut polls = 0u32;
+                while self.i2c.status().read().pstart().bit_is_set() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Proto::Timeout);
+                    }
+                }
+                Ok(())
+            }
+
+            fn write(&mut self, byte: u8) -> Result<(), efr32mg2x_i2c_proto::Error> {
+                use efr32mg2x_i2c_proto::Error as Proto;
+                let mut polls = 0u32;
+                while self.i2c.status().read().txbl().bit_is_clear() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Proto::Timeout);
+                    }
+                }
+                self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
+                let mut polls = 0u32;
+                while self.i2c.status().read().txc().bit_is_clear() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Proto::Timeout);
+                    }
+                }
+                if self.i2c.if_().read().nack().bit_is_set() {
+                    unsafe { crate::alias::clear_window(core::ptr::from_ref(self.i2c).cast_mut()) }
+                        .if_()
+                        .write(|w| w.nack().set_bit());
+                    return Err(Proto::Nack);
+                }
+                Ok(())
+            }
+
+            fn read(&mut self, ack: bool) -> Result<u8, efr32mg2x_i2c_proto::Error> {
+                use efr32mg2x_i2c_proto::Error as Proto;
+                let mut polls = 0u32;
+                while self.i2c.status().read().rxdatav().bit_is_clear() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Proto::Timeout);
+                    }
+                }
+                if ack {
+                    self.i2c.cmd().write(|w| w.ack().set_bit());
+                } else {
+                    self.i2c.cmd().write(|w| w.nack().set_bit());
+                }
+                Ok(self.i2c.rxdata().read().bits() as u8)
+            }
+
+            fn stop(&mut self) -> Result<(), efr32mg2x_i2c_proto::Error> {
+                use efr32mg2x_i2c_proto::Error as Proto;
+                self.i2c.cmd().write(|w| w.stop().set_bit());
+                let mut polls = 0u32;
+                while self.i2c.status().read().pstop().bit_is_set() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Proto::Timeout);
+                    }
+                }
+                Ok(())
+            }
+        }
+    };
+}
+impl_hw_bus!(pac::I2c0Ns);
+impl_hw_bus!(pac::I2c1S);
 
 /// I2C0 peripheral instance
 pub struct I2c0 {
@@ -283,12 +371,17 @@ impl I2c0 {
         }
 
         // Write register address
-        self.write(addr, &[register])?;
-
-        // Read data
-        self.read(addr, buffer)?;
-
-        Ok(())
+        // One transaction, with a repeated START, from the crate whose host tests measure exactly that:
+        // `efr32mg2x-i2c-proto`. The old body here called `write` and then `read`, which released the bus in the middle
+        // and let a device drop the register pointer it had just been given.
+        let bus = HwBus { i2c: &self.i2c };
+        efr32mg2x_i2c_proto::write_read(&mut HwBus { i2c: bus.i2c }, addr, register, buffer)
+            .map_err(|e| match e {
+                efr32mg2x_i2c_proto::Error::Nack => Error::Nack,
+                efr32mg2x_i2c_proto::Error::Bus => Error::Bus,
+                efr32mg2x_i2c_proto::Error::InvalidData => Error::InvalidData,
+                efr32mg2x_i2c_proto::Error::Timeout => Error::Timeout,
+            })
     }
 
     /// Write a single byte to TX buffer and wait for ACK/NACK
