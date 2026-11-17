@@ -41,7 +41,9 @@ const WINDOW: usize = 256;
 /// One second of audio: 62,5 windows, so the loop counts to 63 and notifies.
 const WINDOWS_PER_SECOND: usize = 63;
 /// How long to run before writing the record. The loop is endless; the record is the proof it ran.
-const SECONDS: u32 = 5;
+/// How long the service runs. Sixty seconds at 1 Hz is the acceptance criterion (E1-BLE.2): long enough for a phone
+/// to connect, discover, subscribe and receive a minute of samples without the run ending underneath it.
+const SECONDS: u32 = 60;
 
 const COEFFS: [f32; 8] = [
     1.999_387_962_f32,
