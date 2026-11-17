@@ -178,6 +178,15 @@ struct Link {
     /// unsubscribed characteristic fails with `INVALID_STATE`, so there is no reason to issue it.
     handles: [u16; 3],
     subscribed: [bool; 3],
+    /// Pairing failures, as the device sees them.
+    ///
+    /// The orphan-bond case -- the device holds a bond, the phone forgot it -- fails on the air with
+    /// `Authentication Failed (0x05)`, and until this counter existed the **device** recorded nothing at all: measured
+    /// 2026-11-17, a failed pairing attempt left `sreq=255 sec=0 disc=0 adv=0` in the record, which reads as "nobody
+    /// tried". A diagnosis that only exists on the peer is not a diagnosis of this device.
+    smfail: u32,
+    /// The last SMP error code the device refused a pairing with.
+    smrsn: u16,
 }
 
 impl Link {
@@ -191,6 +200,8 @@ impl Link {
             adv: 0,
             handles: [0; 3],
             subscribed: [false; 3],
+            smfail: 0,
+            smrsn: 0,
         }
     }
 
@@ -213,6 +224,11 @@ impl Link {
             }
             BleEvent::Mtu { mtu, .. } => self.mtu = *mtu,
             BleEvent::ConfirmBonding { .. } => self.cfb += 1,
+            // `event == 4` is `sl_bt_evt_sm_bonding_failed`; `reason` is the SMP code the pairing was refused with.
+            BleEvent::Security { event, reason, .. } if *event == 4 => {
+                self.smfail += 1;
+                self.smrsn = *reason;
+            }
             // A new connection starts unencrypted at the default MTU; keeping the previous link's values would make a
             // stale `sec=1` look like proof for a link that never encrypted.
             BleEvent::Disconnected { .. } | BleEvent::Connected { .. } => {
@@ -563,6 +579,10 @@ fn main() -> ! {
             t.u(link.mtu as u32);
             t.s(b" cfb=");
             t.u(link.cfb);
+            t.s(b" smfail=");
+            t.u(link.smfail);
+            t.s(b" smrsn=");
+            t.u(link.smrsn as u32);
             t.s(b" disc=");
             t.u(link.disc);
             t.s(b" adv=");
