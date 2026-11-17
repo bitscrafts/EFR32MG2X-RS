@@ -46,7 +46,7 @@ fn nvm3_object_count() -> u32 {
 }
 
 /// How long the device stays available for a pairing attempt before it reports and stops.
-const WINDOW_MS: u32 = 600_000;
+const WINDOW_MS: u32 = 1_800_000;
 
 struct Text {
     buf: [u8; 190],
@@ -134,10 +134,20 @@ fn main() -> ! {
     // Before this session the SM was compiled out and the phone connected; if it connects now with SM present but
     // unconfigured, the act of configuring it is what breaks the link, and that is a much sharper question.
     const CONFIGURE_SM: bool = true;
-    let (sm_cfg, sm_bond) = if CONFIGURE_SM {
-        ble.enable_pairing_with(0x84, 0x03)
+    let (sm_cfg, sm_bond, sm_store) = if CONFIGURE_SM {
+        let (configure, bondable) = ble.enable_pairing_with(0x84, 0x03);
+        // Without this the stack keeps the bond in RAM only: measured today, a bond the peer saw as "Bonded: yes"
+        // left NVM3 with zero objects and the next boot answered 0x1006 to a peer that still had the keys.
+        // CLEAR_BONDS makes the test reproducible: the device forgets, the host is unpaired explicitly, and the
+        // pairing that follows is the first either side has ever seen.
+        const CLEAR_BONDS: bool = true;
+        if CLEAR_BONDS {
+            let _ = ble.delete_bondings();
+        }
+        let store = ble.store_bonding_configuration(8, 1);
+        (configure, bondable, store)
     } else {
-        (0xFF, 0xFF)
+        (0xFF, 0xFF, 0xFF)
     };
     let rc_name = ble.set_device_name("xiao-pair-probe").is_ok();
     let rc_adv = ble.start_connectable(200, 0).is_ok();
@@ -146,6 +156,8 @@ fn main() -> ! {
     startup.hex(sm_cfg as u32);
     startup.s(b" sm_bond=0x");
     startup.hex(sm_bond as u32);
+    startup.s(b" store=0x");
+    startup.hex(sm_store as u32);
     startup.s(b" name=");
     startup.u(rc_name as u32);
     startup.s(b" adv=");
@@ -156,6 +168,7 @@ fn main() -> ! {
     let mut sec_events: u32 = 0;
     let mut sec_event: u32 = 0;
     let mut sec_reason: u32 = 0;
+    let mut nvm_cached = 0u32;
     let mut unknown: u32 = 0;
     let mut last_unknown: u32 = 0;
 
@@ -167,6 +180,10 @@ fn main() -> ! {
                 efr32mg24_radio::BleEvent::Connected { .. } => connections += 1,
                 efr32mg24_radio::BleEvent::Disconnected { reason, .. } => {
                     sec_event = 0x1000 + reason as u32;
+                    // Advertising stops when a connection is established, and a peripheral that does not restart it
+                    // becomes invisible after the first attempt — the host then answers "Device not available", which
+                    // looks like the host's fault and is not (measured 2026-11-17).
+                    let _ = ble.start_connectable(200, 0);
                 }
                 efr32mg24_radio::BleEvent::Security { event, reason, .. } => {
                     sec_events += 1;
@@ -197,8 +214,19 @@ fn main() -> ! {
             live.u(lf.0);
             live.s(b"/");
             live.u(lf.1);
+            // Read rarely: NVM3 is not reentrant and the stack uses this same handle from its own context, so a
+            // per-second enumeration races with the security manager (measured: pairing then failed with 0x1205
+            // PAIRING_NOT_SUPPORTED before generating any key).
+
+            // Enumerate once a second. This is a read-only walk of the NVM3 page index; the earlier suspicion that it
+            // broke pairing was wrong, and leaving it disabled turned nvm= into a constant zero that cost an hour.
+            if tick % 1_000 == 0 {
+                nvm_cached = nvm3_object_count();
+            }
+            live.s(b" st=0x");
+            live.hex(sm_store as u32);
             live.s(b" nvm=");
-            live.u(nvm3_object_count());
+            live.u(nvm_cached);
             live.s(b" bc=");
             live.u(efr32mg24_radio::psa_last_call());
             let gen = efr32mg24_radio::psa_generate_stats();

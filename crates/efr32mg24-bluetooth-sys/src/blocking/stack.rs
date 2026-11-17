@@ -710,6 +710,26 @@ impl Bluetooth {
         (configure as u8, bondable as u8)
     }
 
+    /// How many bonds the stack keeps in NVM, and what it does when the list is full.
+    ///
+    /// Without this call the stack keeps a bond in RAM for the life of the run and writes nothing to NVM: measured
+    /// on this board, a pairing that the peer reported as `Bonded: yes` left the NVM3 instance with **zero**
+    /// objects, and after a reset the device answered `0x1006 PIN or Key Missing` to a peer that still had the
+    /// keys. The vendor header is explicit that the default policy is 0 (a new bonding fails when the database is
+    /// full) and that the count defaults to 13; the write itself is only enabled by naming both here.
+    ///
+    /// `policy` is 0 (fail when full), 1 (overwrite the oldest) or 2 (overwrite the least recently used).
+    pub fn store_bonding_configuration(&mut self, max_bonding_count: u8, policy: u8) -> u8 {
+        unsafe { bt::sl_bt_sm_store_bonding_configuration(max_bonding_count, policy) as u8 }
+    }
+
+    /// Forget every stored bond. For tests that need both sides to start from nothing: a device that keeps a bond
+    /// while the host drops its own answers the next attempt with `0x1205`, which looks like a firmware refusal
+    /// and is really the two sides disagreeing about keys they already hold.
+    pub fn delete_bondings(&mut self) -> u8 {
+        unsafe { bt::sl_bt_sm_delete_bondings() as u8 }
+    }
+
     /// Set connection state (manual tracking)
     ///
     /// Updates the internal connection state. This is typically called
