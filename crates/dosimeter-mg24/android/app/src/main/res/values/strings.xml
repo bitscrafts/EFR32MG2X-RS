@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="a_procurar">à procura do dosímetro…</string>
+    <string name="a_ligar">a ligar a %1$s…</string>
+    <string name="ligado">ligado — à espera de notificações</string>
+    <string name="desligado">desligado</string>
+    <string name="servico_ausente">serviço do dosímetro não encontrado</string>
+    <string name="sem_permissoes">sem permissões de Bluetooth</string>
+    <string name="sem_bluetooth">este aparelho não tem Bluetooth</string>
+    <string name="ligue_bluetooth">ligue o Bluetooth</string>
+    <string name="falha_procura">falha na procura: %1$d</string>
+    <string name="painel">Nível: %1$s\nDose:  %2$s</string>
+</resources>

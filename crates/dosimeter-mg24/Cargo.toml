@@ -9,3 +9,7 @@ description = "Dosimetro de ruido com incerteza (NR-15) — logica pura, testave
 [dependencies]
 
 [dev-dependencies]
+
+[[example]]
+name = "computa_dose"
+crate-type = ["lib"]

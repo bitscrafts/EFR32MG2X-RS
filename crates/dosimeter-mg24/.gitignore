@@ -1,0 +1,19 @@
+# Caches e artefactos do build Android: reproduzem-se com `bash android/compila.sh`
+# e não pertencem ao repositório. Padrões com barra são relativos a ESTE ficheiro, por
+# isso o caminho tem de incluir `android/` — foi o erro da primeira tentativa.
+android/.gradle/
+android/.gradle-dist/
+android/.gradle-home/
+android/.gradle-*.old-*/
+android/app/build/
+android/local.properties
+
+# Artefactos LaTeX (o PDF fica; os auxiliares não)
+docs/**/*.aux
+docs/**/*.log
+docs/**/*.out
+docs/**/*.toc
+docs/**/*.nav
+docs/**/*.snm
+docs/**/*.fls
+docs/**/*.fdb_latexmk
