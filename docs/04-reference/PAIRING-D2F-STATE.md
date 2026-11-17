@@ -302,3 +302,27 @@ A note on the instruments themselves, because they cost more than the silicon di
 a COUNT of connections, not the current state -- reading `conn=1` as "connected" sent this session after the wrong
 problem twice. The record is now read together with the host's own `Connected:` line, and the two disagree only when
 something is actually wrong.
+
+## The record is there and the key is not — the defect is named
+
+The peer stores its own side of the bond on disk (BlueZ keeps the LTK under `/var/lib/bluetooth/<ctrl>/<peer>/info`),
+so the two sides can be compared without touching either stack. Hash of the host's LTK, printed to identify the value
+without exposing it: `dbba0d73d56b9fdb`, 16 bytes.
+
+```
+LTK do lnx presente nos 40960 bytes do NVM3?      NAO  (nem inteira, nem as duas metades)
+endereco do peer presente?                        SIM, offset 84, como 56 44 81 80 de 90 (ordem LE)
+contexto do registo                               [fmt][key][addr 6B][ff ff][CRC] e mais tres objectos
+```
+
+So the bonding record is written, it carries the peer's address, the stack loads it after a reset, finds it by the
+address the peer presents -- and the long-term key is not stored with it. The stack therefore holds a record it
+cannot authenticate with, which is exactly what `0x1006 PIN or Key Missing` says: not a wrong key, an absent one.
+
+What that rules out, after a day of chasing the wrong layer: storage (works), persistence across a reset (works),
+identity lookup (works), address types (public, matches), record layout (present, with CRC). What it leaves is why
+the bonding database writes a record without its key -- a question about the stack's store path, to be answered
+from the vendor's bonding-database source or by an architectural decision not to depend on it.
+
+Until then the product decision stands: `enable_pairing` stays out of the dosimeter example. A dosimeter that pairs
+and then refuses to reconnect is worse for the app than one that never pairs.
