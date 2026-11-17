@@ -66,6 +66,9 @@ pub struct Bluetooth {
     ///
     /// Cached to allow incremental updates (add name, add UUID, etc.)
     adv_data: GapAdBuilder,
+    /// Nome para a resposta de scan (pacote separado do anúncio). Vazio = não se envia resposta.
+    scan_response: [u8; 31],
+    scan_response_len: usize,
 }
 
 impl Bluetooth {
@@ -142,6 +145,8 @@ impl Bluetooth {
 
         // Step 4: Initialize advertising data builder
         let adv_data = GapAdBuilder::new();
+        let scan_response = [0u8; 31];
+        let scan_response_len = 0usize;
 
         Ok(Self {
             advertising_set,
@@ -149,6 +154,8 @@ impl Bluetooth {
             scanning: false,
             connection_handle: 0,
             adv_data,
+            scan_response,
+            scan_response_len,
         })
     }
 
@@ -217,6 +224,52 @@ impl Bluetooth {
         Ok(())
     }
 
+    /// Put a **128-bit service UUID** in the advertisement, so any client can scan for it by filter.
+    ///
+    /// This is the generic discovery path: the UUID is a property of the firmware, not of one board. See
+    /// [`GapAdBuilder::add_service_uuid128`] for why it cannot share the packet with the name.
+    pub fn advertise_service(&mut self, uuid: [u8; 16]) -> Result<(), BleError> {
+        self.adv_data.add_service_uuid128(uuid)
+    }
+
+    /// Put the device name in the **scan response** packet, which is where it fits once the UUID is in the
+    /// advertisement.
+    ///
+    /// A scanning phone merges the advertisement and the scan response, so the name still appears in a scan — it just
+    /// travels in the second packet. `bluetoothctl scan` on 2026-11-17 showed the name either way.
+    pub fn set_scan_response_name(&mut self, name: &str) -> Result<(), BleError> {
+        if name.len() > 27 {
+            return Err(BleError::InvalidParameter);
+        }
+        self.scan_response[0] = (name.len() + 1) as u8; // length: type + name
+        self.scan_response[1] = 0x09; // Complete Local Name
+        self.scan_response[2..2 + name.len()].copy_from_slice(name.as_bytes());
+        self.scan_response_len = 2 + name.len();
+        Ok(())
+    }
+
+    /// Send the scan-response packet, if one was prepared.
+    ///
+    /// Packet type 1 is `SL_BT_ADVERTISER_DATA_SCAN_RESPONSE`; type 0 is the advertisement itself.
+    fn apply_scan_response(&mut self) -> Result<(), BleError> {
+        if self.scan_response_len == 0 {
+            return Ok(());
+        }
+        // SAFETY: the buffer and the length come from the same `set_scan_response_name` call.
+        let status = unsafe {
+            bt::sl_bt_advertiser_set_data(
+                self.advertising_set,
+                1,
+                self.scan_response_len,
+                self.scan_response.as_ptr(),
+            )
+        };
+        if status != 0 {
+            return Err(BleError::from(status));
+        }
+        Ok(())
+    }
+
     /// Start non-connectable advertising (beacon mode)
     ///
     /// Device will broadcast but not accept connections.
@@ -253,6 +306,7 @@ impl Bluetooth {
                 return Err(BleError::from(status));
             }
         }
+        self.apply_scan_response()?;
 
         // Set timing (convert ms to 0.625ms units)
         let interval_units = (interval_ms as u32 * 16) / 10;
@@ -337,6 +391,7 @@ impl Bluetooth {
                 return Err(BleError::from(status));
             }
         }
+        self.apply_scan_response()?;
 
         // Set timing (convert ms to 0.625ms units)
         let interval_units = (interval_ms as u32 * 16) / 10;

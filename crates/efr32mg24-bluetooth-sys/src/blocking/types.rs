@@ -145,6 +145,30 @@ impl GapAdBuilder {
         Ok(())
     }
 
+    /// Add a **128-bit** service UUID to the advertising data.
+    ///
+    /// Encodes as Complete List of 128-bit Service UUIDs (AD type `0x07`), 18 bytes on the wire: one length, one
+    /// type, sixteen of UUID.
+    ///
+    /// This is what makes discovery generic. A phone cannot filter on a name it does not know, and a fixed address
+    /// is a property of one board; the service UUID is the thing a client can search for on any device that runs
+    /// this firmware. Measured 2026-11-17: without it, an app scanning on a phone found nothing while the device was
+    /// advertising, and the only workaround was to hard-code an address — which works for exactly one board.
+    ///
+    /// It does not fit together with a name: flags (3) + UUID (18) + a 19-character name (21) is 42 of the 31 bytes
+    /// an advertisement has. The name belongs in the scan response.
+    pub fn add_service_uuid128(&mut self, uuid: [u8; 16]) -> Result<(), BleError> {
+        let needed = 2 + 16; // length + type + 16 bytes
+        if self.offset + needed > 31 {
+            return Err(BleError::BufferOverflow);
+        }
+        self.buffer[self.offset] = 17; // length: type + 16
+        self.buffer[self.offset + 1] = 0x07; // AD type: Complete List of 128-bit Service UUIDs
+        self.buffer[self.offset + 2..self.offset + 18].copy_from_slice(&uuid);
+        self.offset += needed;
+        Ok(())
+    }
+
     /// Add 16-bit service UUID to advertising data
     ///
     /// Encodes as Complete List of 16-bit Service UUIDs (AD type 0x03).

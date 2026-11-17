@@ -522,7 +522,17 @@ fn main() -> ! {
         }
     }
 
-    let _ = ble.set_device_name("xiao-mg24-dosimeter");
+    // Discovery, and why it is laid out this way.
+    //
+    // The advertisement carries the **service UUID** and the scan response carries the **name**, because both do not
+    // fit in 31 bytes: flags (3) + 128-bit UUID (18) + a 19-character name (21) is 42. A phone that filters on the
+    // UUID finds this device on any board — the UUID is a property of the firmware, not of one unit.
+    //
+    // Before this, the advertisement had only the name, an app scanning on a phone saw nothing (measured
+    // 2026-11-17, the device advertising at -67 dBm and the phone returning no results), and the workaround was to
+    // hard-code a Bluetooth address. That works for exactly one board, which is not a product.
+    let _ = ble.advertise_service(UUID_SERVICE);
+    let _ = ble.set_scan_response_name("xiao-mg24-dosimeter");
 
     // Pairing, and what it costs the phone.
     //
