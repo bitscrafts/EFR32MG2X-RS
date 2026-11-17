@@ -66,6 +66,8 @@ book/**/*.toc
 
 # Local temp work must not land in the repository
 _tmp/
+# Removed files are moved here rather than deleted, so they stay inspectable but are never sources.
+_trash/
 
 # Build artefacts and vendor packs never belong in the repository
 *.hex
