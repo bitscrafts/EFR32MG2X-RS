@@ -376,3 +376,22 @@ implemented against their real semantics, which the disassembly of the internal 
 
 That is a bounded piece of work with a known shape, and it is where a future session should start. Until then the
 feature stays off and the builtin database stays as it is.
+
+## The bridge is the PSA-backed variant — the next session should start there
+
+One more fact, and it changes the shape of the remaining work. The object linked as "the bridge"
+(`bondingdb-stubs.c.obj`) is not a generic shim: it contains `bondingdb_psa_add_ecb_key` and calls
+`psa_destroy_key`, so it is the vendor's **PSA-key-backed** bonding database. In that design the bond record — the
+long-term key included — is stored as a PSA key, and PSA keys are stored by the shim in this crate.
+
+That means the persistence gap and the pairing failure are two faces of the same thing: our `psa.rs` keeps its key
+table in RAM, so the PSA database has nowhere to persist a bond, and the pairing that writes through it does not
+complete. Making the key table persistent (write the slots to NVM3 on import, read them at start-up) is a smaller
+and much better-understood change than implementing the remaining database API, and it is the one to try first:
+
+1. persist the PSA slot table (import/export/destroy touch NVM3; load at init)
+2. keep the `external-bonding` feature on and re-run the pairing
+3. if it pairs, reset and reconnect — that is the proof the whole day was aimed at
+
+If that does not close it, the remaining functions named above are the fallback, and the honest product decision is
+the one already taken: no `enable_pairing` in the dosimeter until a reconnect works.
