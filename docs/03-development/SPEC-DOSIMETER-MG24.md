@@ -234,7 +234,7 @@ NOTA       o MVP e' optimizacao. Nenhuma outra tarefa pode depender dele.
 
 ```
 entrada    todas as tarefas acima
-saida      crates/dosimeter-mg24 (ou examples/dosimeter) que corre sozinha na placa
+saida      /projects/dosimeter-mg24 (projecto proprio) + a app que corre na placa
 aceitacao  ligar a placa, abrir a pagina no telemovel, fazer 3 palmas e ver o nivel e o
            intervalo a reagir; desligar o telemovel e a dose continua a acumular no
            dispositivo (autonomia local)

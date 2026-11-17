@@ -37,10 +37,15 @@ there — that was my first hypothesis and the code disproved it. `DEFAULT_SYSCL
 which matches what emlib reads back from the CMU. So the constant is right and the conversion is right;
 the assumption that is wrong is **what rate SysTick counts at**.
 
-SysTick is configured with `SystClkSource::Core`. The measurement implies it ticks at about 44 MHz while
-the core runs at 19 MHz. That is not a rounding error, and it is not something to paper over by
-changing `DEFAULT_SYSCLK_HZ` to 44 000 000: the number that matters is the ratio between the two
-clocks, and it must be **measured on the part**, not tuned until the example goes green.
+SysTick is configured with `SystClkSource::Core`. The measurement implies it ticks at about **8.27 MHz**
+while the core runs at 19 MHz — 19 / 8.27 = 2.3, which is exactly the factor the delay was short by. This
+line used to read "about 44 MHz", a figure derived in the wrong direction from the same 82 680 cycles and
+never checked against the ratio; corrected 2026-11-17. The core itself is not in doubt: emlib reports
+`SystemSYSCLKGet()` = 19 000 kHz and `CMU_ClockFreqGet(cmuClock_CORE)` = 19 000 kHz, and an independent
+DWT-against-LFRCO measurement (`pac_sysrtc_rate`) gives 18.98 MHz. What is wrong is the rate SysTick counts
+at, not the rate the core runs at. That is not a rounding error, and it is not something to paper over by
+changing `DEFAULT_SYSCLK_HZ` to whatever makes the delay come out right: the number that matters is the ratio
+between the two clocks, and it must be **measured on the part**, not tuned until the example goes green.
 
 ## What the fix has to be
 
