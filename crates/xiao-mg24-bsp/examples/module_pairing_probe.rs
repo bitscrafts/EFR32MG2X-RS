@@ -144,6 +144,8 @@ fn main() -> ! {
         if CLEAR_BONDS {
             let _ = ble.delete_bondings();
         }
+        // With an external bonding database this command is documented as unavailable, and calling it anyway is a
+        // good way to leave the security manager configured for a database that is not the one running.
         let store = ble.store_bonding_configuration(8, 1);
         (configure, bondable, store)
     } else {

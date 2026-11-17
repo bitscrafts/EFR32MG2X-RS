@@ -23,6 +23,9 @@ const KEY_BASE: u32 = 0xE_0000;
 /// walks the same small set rather than the whole 256-value space.
 const MAX_PIECE: u8 = 16;
 
+/// How many bonds are kept, matching the store configuration the stack is given (8).
+const MAX_SLOTS: u8 = 8;
+
 extern "C" {
     static mut nvm3_defaultHandle: *mut u8;
     fn nvm3_writeData(handle: *mut u8, key: u32, data: *const u8, length: usize) -> u32;
@@ -72,22 +75,37 @@ pub extern "C" fn sli_bt_external_bonding_get_database_type() -> u32 {
     1
 }
 
-/// Which slot a record should occupy.
+/// Which slot a record should occupy, or -1 when the store is full.
 ///
-/// The stack hands over the record it wants stored and expects the storage to name the slot. The vendor's own
-/// external-database default answers with the signed byte at offset 112 of that record -- the slot the stack itself
-/// filled in -- and there is no reason to invent another rule: reading it from the disassembly of
-/// `external_bondingdb.c.obj` gives exactly `ldrsb.w r0, [r0, #0x70]; bx lr`.
+/// The internal implementation walks its handles, asks whether each one is already bonded and answers with the first
+/// free one -- read from its disassembly (`movs r7, #0` before the loop, a read of the record type 8 per handle, a
+/// compare against the configured maximum). The vendor's external-database default instead answers with a byte from
+/// the record itself, which is why copying that default left the pairing failing: the stack was told to reuse a slot
+/// it had not been given.
 ///
 /// # Safety
 ///
-/// `record` must point to the stack's bonding record structure.
+/// `record` is the stack's record structure; this implementation does not read it, but the argument is part of the
+/// contract and is accepted unchanged.
 #[no_mangle]
 pub unsafe extern "C" fn sli_bt_external_bonding_alloc(record: *const u8) -> i8 {
-    if record.is_null() {
-        return -1;
+    let _ = record;
+    for bonding in 0..MAX_SLOTS {
+        let mut obj_type = 0u32;
+        let mut length = 0usize;
+        let taken = unsafe {
+            nvm3_getObjectInfo(
+                handle(),
+                storage_key(bonding, 8),
+                &mut obj_type,
+                &mut length,
+            )
+        } == 0;
+        if !taken {
+            return bonding as i8;
+        }
     }
-    core::ptr::read_unaligned(record.add(112).cast::<i8>())
+    -1
 }
 
 /// Whether a bonding handle names a record this application holds.
@@ -221,4 +239,27 @@ pub unsafe extern "C" fn sli_bt_bonding_get_data(
         READ_ERRORS.fetch_add(1, Ordering::Relaxed);
     }
     rc
+}
+
+/// How many bonds the store can hold.
+///
+/// The bridge ships this as a stub returning zero, and zero is not a harmless default: with no capacity the security
+/// manager refuses to bond, and the peer is told the pairing failed authentication with nothing in the record to say
+/// why. Measured 2026-11-17: the pairing failed with AuthenticationFailed while `is_bonded` and `store_data` were
+/// both being called, because the stack had been told it could keep no bonds at all.
+#[no_mangle]
+pub extern "C" fn sli_bt_bonding_get_max_bondings() -> u8 {
+    MAX_SLOTS
+}
+
+/// Whether a bonding handle names one of the slots this store provides.
+///
+/// Also a stub in the bridge, also answering zero -- which would make every handle invalid.
+///
+/// # Safety
+///
+/// Called by the stack with the C convention; `bonding` is a handle.
+#[no_mangle]
+pub extern "C" fn sli_bt_bonding_is_valid_handle(bonding: u8) -> bool {
+    bonding < MAX_SLOTS
 }

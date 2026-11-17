@@ -351,3 +351,28 @@ builtin database satisfied is now missing.
 
 The feature stays off by default and the builtin database stays as it was: a device that pairs inside a session is
 worth more to the app than one that does not pair at all.
+
+## Why the external database route stops where it does (2026-11-17, last measurement)
+
+Classifying every function the bridge provides says exactly what is missing:
+
+```
+DELEGA para nos        get_database_type, alloc, store_data, is_bonded
+DEVOLVE 0 (stub)       get_data, get_max_bondings, is_valid_handle
+IMPLEMENTA             delete, get_details, count_bondings, find_by_address, find_by_data, resolve_address,
+                       resolve_or_find_bonding, pairing_completed, set_key, set_overwrite_mode, ...
+```
+
+Three of those stubs are fatal and two were invisible until this classification: `get_max_bondings` answers **zero**, so
+the security manager is told the store can hold no bonds and refuses to bond, and `is_valid_handle` answers **zero**,
+so every handle is invalid. Both are now defined strongly from our side, together with `get_data`, and the linked
+binary shows our prologues instead of the stubs.
+
+The pairing still fails with `AuthenticationFailed`, and `sl_bt_sm_store_bonding_configuration` answers 0x0E
+NOT_AVAILABLE with an external database, which is documented behaviour and not the cause. So the bridge is a partial
+helper -- enough to route storage, not enough to run a database -- and closing this needs the remaining functions
+implemented against their real semantics, which the disassembly of the internal database can give one at a time
+(`get_details`, `pairing_completed`, `set_key`, `resolve_or_find_bonding` are the ones on the pairing path).
+
+That is a bounded piece of work with a known shape, and it is where a future session should start. Until then the
+feature stays off and the builtin database stays as it is.
