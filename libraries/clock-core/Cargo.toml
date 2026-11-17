@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-clock-core"
+version = "0.1.0"
+edition = "2021"
+description = "Which band, wait states and prescalers a target frequency implies, checked over the whole range"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

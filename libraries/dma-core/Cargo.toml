@@ -1,5 +1,5 @@
 [package]
-name = "efr32mg2x-dma-transfer"
+name = "efr32mg2x-dma-core"
 version = "0.1.0"
 edition = "2021"
 description = "A DMA transfer that owns its buffer and stops the channel on drop"

@@ -4,12 +4,12 @@
 //! that latches its register pointer on a write and loses it when the bus is released -- which is what a real device
 //! does, and what the old two-transaction `write_read` in the HAL relied on not happening.
 //!
-//! Run: `cargo run --target x86_64-unknown-linux-gnu -p efr32mg2x-i2c-proto --example simulate`
+//! Run: `cargo run --target x86_64-unknown-linux-gnu -p efr32mg2x-i2c-core --example simulate`
 //!
 //! Exits non-zero if the bus sequence or the data is not what the transaction promises, so it can be used as a check
 //! rather than only as a demonstration.
 
-use efr32mg2x_i2c_proto::sim::simulate_write_read;
+use efr32mg2x_i2c_core::sim::simulate_write_read;
 
 fn main() {
     // The IMU on this board answers at 0x6A; register 3 upwards holds 0x13, 0x14, 0x15 in the model.

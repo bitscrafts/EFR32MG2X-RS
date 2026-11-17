@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-gpio-core"
+version = "0.1.0"
+edition = "2021"
+description = "One pin at a time: model fields, DOUT bits and the route encoding, enumerated exhaustively"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

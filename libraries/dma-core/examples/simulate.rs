@@ -1,12 +1,12 @@
 //! Run a transfer against a recording channel and print what the channel was told.
 //!
-//! Run: `cargo run --target x86_64-unknown-linux-gnu -p efr32mg2x-dma-transfer --example simulate`
+//! Run: `cargo run --target x86_64-unknown-linux-gnu -p efr32mg2x-dma-core --example simulate`
 //!
 //! The point of the output is the sequence: `S` when the channel is programmed, `P` when it is stopped. A transfer that
 //! is dropped must produce exactly one of each. A transfer that is finished explicitly must not produce a second `P`,
 //! because stopping a channel twice is how a driver loses the second transfer.
 
-use efr32mg2x_dma_transfer::{Channel, Transfer};
+use efr32mg2x_dma_core::{Channel, Transfer};
 use std::cell::RefCell;
 use std::rc::Rc;
 
