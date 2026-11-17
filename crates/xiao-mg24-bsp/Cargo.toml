@@ -80,10 +80,13 @@ required-features = ["sense", "stack"]
 name = "module_ble_beacon"
 required-features = ["stack"]
 
-# The dosimeter service needs the link-layer handler, like the other BLE examples.
+# The dosimeter service needs the link-layer handler, like the other BLE examples, and it needs the external bonding
+# database: with the stack's built-in one the bond is stored and then not found after a reset (vendor defect, measured
+# 2026-11-17 -- `rsn=0x1006` on a key that is present in flash). Declaring the feature here means a plain
+# `cargo build --example module_ble_dosimeter` refuses instead of silently producing a device that forgets the phone.
 [[example]]
 name = "module_ble_dosimeter"
-required-features = ["stack", "sense"]
+required-features = ["stack", "sense", "external-bonding"]
 
 [[example]]
 name = "module_heap_probe"

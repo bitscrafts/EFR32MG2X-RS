@@ -40,6 +40,15 @@ before today's last change was measured without it, and the link was open.
 12 lifetime       the example stopped measuring after 60 s and stopped advertising on a disconnect
 ```
 
+## The build the product needs
+
+`module_ble_dosimeter` declares `required-features = ["stack", "sense", "external-bonding"]`, so a plain
+`cargo build --example module_ble_dosimeter` refuses with
+``requires the features: `stack`, `sense`, `external-bonding` `` instead of producing a device that pairs, stores the
+bond, and then cannot find the key after a reset. That is not a preference: the stack's own bonding database loses the
+key across a reset (measured, `rsn=0x1006` with the key present in flash), which is why the external database exists in
+this project at all.
+
 ## Still open, in the order I would take them
 
 ```
