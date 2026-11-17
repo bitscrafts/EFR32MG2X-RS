@@ -58,10 +58,20 @@ impl Converter {
 /// Result of one measurement window.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Level {
-    /// Root-mean-square amplitude around mid-scale, in ADC counts.
+    /// Root-mean-square amplitude **about the window's mean**, in ADC counts -- the signal, with the converter's bias
+    /// removed. Before 2026-11-17 this was computed about the fixed mid-scale value 2048, which reported the bias
+    /// itself: on this board `rms` was 343 for a signal of 8, because the bias sits at 2391.
     pub rms: u32,
-    /// Largest deviation from mid-scale seen in the window.
+    /// Largest deviation from the window's mean seen in the window.
     pub peak: u32,
+    /// The window's mean, i.e. the converter's bias for this window. Report it next to `rms`: a level quoted without
+    /// the bias it was measured against cannot be reproduced.
+    pub mean: u32,
+    /// Smallest and largest raw sample in the window. Reported because they bound every other number here: an `rms`
+    /// larger than half the span, or a `peak` smaller than it, means the arithmetic and the samples disagree.
+    pub min: u16,
+    /// Largest raw sample in the window.
+    pub max: u16,
     /// Samples actually collected — zero means the converter never delivered.
     pub samples: u32,
 }
@@ -373,36 +383,74 @@ impl<'a> Microphone<'a> {
         Some(self.adc.singledata().read().data().bits() as u16)
     }
 
-    /// RMS and peak amplitude over `window` samples, around mid-scale.
+    /// RMS and peak amplitude over `window` samples, about the window's **own mean**.
+    ///
+    /// The mean, not mid-scale: this converter's bias is not 2048. Measured on the board 2026-11-17
+    /// (`examples/module_mic_stats.rs`, one 63-sample window): `min=2371 max=2405 mean=2391`, so the bias sits 343 counts
+    /// above mid-scale while the signal about that mean is 8 counts. Centring on 2048 therefore reported `rms=343` --
+    /// the reference error -- for a signal of 8. Any caller that wants a sound level has to remove the bias, and the
+    /// caller cannot know the bias without measuring it, which is what this function now does.
+    ///
+    /// Peak and RMS come from the same pass over the buffered samples, so the four numbers in `Level` describe one set
+    /// of samples and can be checked against each other (`rms <= peak <= max - min`).
     pub fn level(&self, window: usize) -> Level {
-        let mut sum_sq: u64 = 0;
-        let mut peak = 0u32;
-        let mut samples = 0u32;
-        for _ in 0..window {
+        // The deviation is taken from the samples themselves, not from sums of squares. A closed form
+        // (`E[x^2] - E[x]^2`) was tried first and produced numbers that violated their own bounds -- `rms=51` for a
+        // window whose extreme deviation was 27, which Bhatia-Davis rules out for any distribution. Two passes over a
+        // buffer cost 256 bytes of stack and cannot be wrong about which samples they are describing.
+        let mut buf = [0u16; MAX_WINDOW];
+        let window = window.min(MAX_WINDOW);
+        let mut samples = 0usize;
+        let mut sum: u64 = 0;
+        while samples < window {
             match self.sample() {
                 Some(raw) => {
-                    let centred = if raw >= 2048 {
-                        (raw - 2048) as u32
-                    } else {
-                        (2048 - raw) as u32
-                    };
-                    sum_sq += (centred as u64) * (centred as u64);
-                    if centred > peak {
-                        peak = centred;
-                    }
+                    buf[samples] = raw;
+                    sum += raw as u64;
                     samples += 1;
                 }
                 None => break,
             }
         }
-        let rms = if samples > 0 {
-            isqrt((sum_sq / samples as u64) as u32)
-        } else {
-            0
-        };
-        Level { rms, peak, samples }
+        if samples == 0 {
+            return Level {
+                rms: 0,
+                peak: 0,
+                mean: 0,
+                min: 0,
+                max: 0,
+                samples: 0,
+            };
+        }
+        let mean = (sum / samples as u64) as i32;
+        let mut sum_sq: u64 = 0;
+        let mut min = u16::MAX;
+        let mut max = 0u16;
+        let mut peak = 0u32;
+        for raw in buf.iter().take(samples) {
+            let deviation = (*raw as i32 - mean).unsigned_abs();
+            sum_sq += (deviation as u64) * (deviation as u64);
+            if deviation > peak {
+                peak = deviation;
+            }
+            min = if *raw < min { *raw } else { min };
+            max = if *raw > max { *raw } else { max };
+        }
+        let rms = isqrt((sum_sq / samples as u64) as u32);
+        Level {
+            rms,
+            peak,
+            mean: mean as u32,
+            min,
+            max,
+            samples: samples as u32,
+        }
     }
 }
+
+/// Largest window `level()` will measure, and the buffer it needs: 128 samples is 256 bytes of stack, and it is two
+/// windows of the dosimeter's 63-sample second. Asking for more returns this many rather than overflowing.
+pub const MAX_WINDOW: usize = 128;
 
 /// Integer square root (no libm on a bare-metal target).
 pub fn isqrt(value: u32) -> u32 {

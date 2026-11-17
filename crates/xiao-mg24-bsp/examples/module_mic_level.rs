@@ -80,10 +80,26 @@ fn main() -> ! {
     buf[at..at + b" n=".len()].copy_from_slice(b" n=");
     at += 3;
     at = push_dec(&mut buf, at, u32::from(window.samples));
+    // The bias is reported next to the level: an RMS without the mean it was measured against cannot be reproduced,
+    // and on this board the mean is 2391, not the mid-scale 2048.
+    buf[at..at + b" mean=".len()].copy_from_slice(b" mean=");
+    at += 6;
+    at = push_dec(&mut buf, at, window.mean);
+    buf[at..at + b" mm=".len()].copy_from_slice(b" mm=");
+    at += 4;
+    at = push_dec(&mut buf, at, u32::from(window.min));
+    buf[at] = b'/';
+    at += 1;
+    at = push_dec(&mut buf, at, u32::from(window.max));
 
     // A quiet room is a small number; a dead microphone is zero. Gravity has no analogue
     // here, so the invariant is "something moved".
-    let ok = window.rms > 0 && window.peak >= window.rms;
+    // The invariants that make these four numbers checkable against each other: an RMS cannot exceed the peak
+    // deviation, the peak cannot exceed the span, and the span is the only thing that bounds the signal. A window
+    // that fails any of them means the arithmetic and the samples disagree, which is worth a red record rather than
+    // a quiet number.
+    let span = window.max.saturating_sub(window.min) as u32;
+    let ok = window.rms > 0 && window.rms <= window.peak && window.peak <= span && span > 0;
     mailbox::write(
         if ok {
             mailbox::Status::Pass

@@ -87,8 +87,13 @@ impl Bands {
             s2: [0.0; 8],
         }
     }
-    fn step(&mut self, sample: u16) {
-        let x = sample as f32 - 2048.0;
+    /// Feed one sample, **already centred on the window's mean**.
+    ///
+    /// The converter's bias is not mid-scale: measured 2026-11-17 with `module_mic_stats`, `mean=2391` in one window and
+    /// `2414` in another, against a mid-scale of 2048. Subtracting a fixed 2048 therefore fed a constant ~343 counts
+    /// into every filter in the bank, which is not sound and shows up worst in the lowest band, where it is most of the
+    /// energy. The caller centres each sample on its own window's mean before this sees it.
+    fn step(&mut self, x: f32) {
         for b in 0..8 {
             let s0 = COEFFS[b] * self.s1[b] - self.s2[b] + x;
             self.s2[b] = self.s1[b];
@@ -103,9 +108,16 @@ impl Bands {
                 - COEFFS[b] * self.s1[b] * self.s2[b];
             powers[b] = if p > 0.0 { p as u32 } else { 0 };
         }
+        // Centred on the window's own mean, for the same reason the filter is: 2048 is not this converter's bias, and
+        // the level it produced was mostly the bias (measured: `rms=343` for a signal of 8).
+        let mean = if window.is_empty() {
+            2048
+        } else {
+            (window.iter().map(|v| *v as u64).sum::<u64>() / window.len() as u64) as i32
+        };
         let mut acc = 0u64;
         for v in window {
-            let d = *v as i32 - 2048;
+            let d = *v as i32 - mean;
             acc += (d * d) as u64;
         }
         let rms = if window.is_empty() {
@@ -510,7 +522,6 @@ fn main() -> ! {
             while got < WINDOW {
                 match mic.read_paced() {
                     Some(v) => {
-                        bands.step(v);
                         window[got] = v;
                         got += 1;
                         // Service the stack while sampling, not only between seconds. A connection lives on the
@@ -527,6 +538,13 @@ fn main() -> ! {
             }
             if got != WINDOW {
                 continue;
+            }
+            // Feed the filter bank only now, with the window's mean removed. The mean is not known until the window
+            // is complete, and feeding the raw samples would push the converter's bias (measured at 2391 and at 2414 in
+            // two windows, against a mid-scale of 2048) through every filter as a constant input.
+            let mean = (window.iter().map(|v| *v as u64).sum::<u64>() / WINDOW as u64) as i32;
+            for v in window.iter() {
+                bands.step(*v as i32 as f32 - mean as f32);
             }
             let (powers, rms) = bands.finish(&window);
             for b in 0..8 {
