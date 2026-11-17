@@ -120,3 +120,29 @@ State after both: pairing green again (`Pairing successful`, `Bonded: yes`), the
 reset (`reversed=14686` of 40960 bytes), and the reconnect still links and then drops. The next thread is visible in
 the instruments: `del=2` — the stack destroys two keys during the boot after a reset, and what it destroys is what
 the reconnect then needs.
+
+## Where the night ended, and the thread to pull next
+
+```
+pairing                       green: 'Pairing successful', 'Bonded: yes', device ec=1,1,1 gen=2 sev=3
+bond record in flash          yes (bh=1 after a reset)
+long-term key in flash        yes (found inverted, offset varies with the NVM3 repack)
+restore at boot               works: rst=9 in one run, rst=3 in another
+reconnect after a reset       still drops, and the miss says which name it wanted: miss=0x48003
+```
+
+Two more defects were closed after the ones above, and one instrument was made honest:
+
+- **the identifier was truncated by the store.** NVM3 object keys are 20 bits; `PERSIST_BASE | (id % 0x10000)` turned
+  the stack's `0x48003` into `0x8003`, so a restored key came back under a different name. Measured as `rst=9` and
+  `miss=0x48003` **in the same boot**. The id now travels in the object's payload.
+- **an identifier names one key.** Re-importing under an identifier already present used to append a second slot, so
+  the lookup answered with the stale key and the host cancelled the pairing.
+- **the mailbox record was capped at 200 bytes** and silently cut the last fields of the live line — twice that was
+  `sev`/`rsn`, the fields that explain the failure. It is 512 now. The host's pairing step also retries, because a
+  measurement that depends on one timing-sensitive `bluetoothctl` attempt is not a measurement.
+
+**Next thread:** after a reset the stack destroys two keys during initialisation (`del=2`, `dl=1`), and the lookups
+then ask for `0x48003`, which the restore did not put back in the last runs. Two questions, in order: does the pairing
+that precedes the reset ever import under `0x48003` in that run (`latr=` shows the attributes of the last 16-byte
+import), and what does the boot delete? Both are one cycle each with the instruments already in place.
