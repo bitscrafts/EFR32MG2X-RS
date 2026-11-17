@@ -99,3 +99,24 @@ A bond written by the builtin database survives the reset — the key material i
 three fixes, our shim restores it into RAM at boot (`rst=6/10`). What fails is the lookup: the security manager asks for
 the key under the identifier it encodes (`0x48003`), and the key sits under ours. Everything before that point —
 pairing, storage, restore — is measured and working.
+
+## The identifier seam, closed later the same night
+
+Two further defects, both found from the disassembly and confirmed on the board.
+
+**The stack names the key and we were ignoring the name.** `bondingdb_psa_add_ecb_key(handle, type, key)` builds
+`0x48000 | type | (handle << 8)`, writes it into the attributes blob at **offset 8** (`str r6, [r4, #8]`) and only then
+calls `psa_import_key`. The security manager later asks PSA for exactly that identifier. Our shim handed out its own
+small id instead, so the key was stored under one name and looked up under another. Honouring the requested id made
+the attributes captured at pairing read `802400, 101, 48003, 100, 4404400, ...` — the identifier sitting exactly where
+the disassembly said — and the post-reset lookup stopped missing.
+
+**An identifier names one key.** With the id honoured, the table held the same identifier twice — the long-term key
+of an earlier pairing in front of the new one — and the lookup answered with the stale key. From the host that looks
+like a device that answers with yesterday's key: `AuthenticationCanceled`, while the device records a bond. A
+re-import under an identifier already present now replaces that slot and persists it.
+
+State after both: pairing green again (`Pairing successful`, `Bonded: yes`), the long-term key in the flash after a
+reset (`reversed=14686` of 40960 bytes), and the reconnect still links and then drops. The next thread is visible in
+the instruments: `del=2` — the stack destroys two keys during the boot after a reset, and what it destroys is what
+the reconnect then needs.
