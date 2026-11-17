@@ -171,6 +171,7 @@ impl Dma {
     /// ```
     pub fn channel0(&mut self) -> Channel<0> {
         Channel {
+            transfer_running: false,
             _marker: core::marker::PhantomData,
         }
     }
@@ -184,6 +185,8 @@ impl Dma {
 ///
 /// * `N` - Channel number (0-7)
 pub struct Channel<const N: u8> {
+    /// Set while a `Transfer` guard owns the buffer this channel is filling. `Drop` on the guard clears it.
+    transfer_running: bool,
     _marker: core::marker::PhantomData<()>,
 }
 
@@ -238,12 +241,12 @@ impl<const N: u8> Channel<N> {
     /// // DMA now runs continuously, filling buffer circularly
     /// // Use get_position() to read current write position
     /// ```
-    pub fn start_peripheral_to_memory<T>(
-        &mut self,
+    pub fn start_peripheral_to_memory<'a, T>(
+        &'a mut self,
         peripheral_addr: u32,
-        buffer: &mut [T],
+        buffer: &'a mut [T],
         request: PeripheralRequest,
-    ) -> Result<(), DmaError>
+    ) -> Result<efr32mg2x_dma_transfer::Transfer<'a, T, &'a mut Self>, DmaError>
     where
         T: TransferElement,
     {
@@ -345,11 +348,16 @@ impl<const N: u8> Channel<N> {
                         ldma.chen().write(|w| w.bits(1 << N));
                     }
 
+                    // The channel is running and will keep writing into `buffer`. Returning `()` here is what the
+                    // review's H2 named: the borrow ended at the return, and safe code could take a second `&mut` to
+                    // memory the hardware was still filling. The guard carries the borrow for as long as the transfer
+                    // runs, and stops the channel when it is dropped.
                     Ok(())
                 }
                 _ => Err(DmaError::Unsupported),
             }
-        })
+        })?;
+        Ok(efr32mg2x_dma_transfer::Transfer::new(self, buffer))
     }
 
     /// Get current DMA write position in circular buffer
@@ -433,6 +441,22 @@ impl<const N: u8> Channel<N> {
             crate::alias::clear_window(pac::LdmaS::ptr())
                 .if_()
                 .write(|w| w.bits(1 << N));
+        }
+    }
+
+    /// The transfer layer's view of this channel, so a `Transfer` can own the borrow of the buffer it fills.
+    ///
+    /// `start` here only records that the channel is running; the descriptor was programmed by the caller before the
+    /// guard was created, because the guard has no business knowing about LDMAXBAR routing.
+    fn begin_transfer(&mut self) {
+        self.transfer_running = true;
+    }
+
+    /// Stop if a transfer the guard started is still running.
+    fn end_transfer(&mut self) {
+        if self.transfer_running {
+            self.stop();
+            self.transfer_running = false;
         }
     }
 
@@ -561,5 +585,22 @@ impl<const N: u8> Channel<N> {
         }
 
         Ok(())
+    }
+}
+
+/// The transfer layer's view of a HAL channel, held by reference so the guard does not own the peripheral.
+impl<const N: u8> efr32mg2x_dma_transfer::Channel for &mut Channel<N> {
+    unsafe fn start(&mut self, _dst: *mut u8, _bytes: usize) {
+        // The descriptor is already programmed by `start_peripheral_to_memory`; this only records that the buffer is
+        // now owned by the transfer.
+        self.begin_transfer();
+    }
+
+    fn stop(&mut self) {
+        self.end_transfer();
+    }
+
+    fn active(&self) -> bool {
+        self.transfer_running
     }
 }
