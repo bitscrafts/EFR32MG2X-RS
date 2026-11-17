@@ -3,7 +3,6 @@ resolver = "2"
 # `crates/` is the hardware stack: PAC <- HAL <- BSP <- bindings, one direction only.
 members = [
     "crates/cmsis-stubs",
-    "crates/dosimeter-mg24",
     "crates/efr32mg2x-pac",
     "crates/efr32mg2x-hal",
     "crates/efr32mg24-emlib-sys",
