@@ -40,6 +40,12 @@ pub enum Error {
     Bus,
     /// Invalid data (empty buffer)
     InvalidData,
+    /// A hardware handshake did not complete within the driver's poll budget.
+    ///
+    /// Added 2026-11-17: every wait in the driver was `while condition {}`, so a device holding the bus, a missing clock
+    /// or a wedged state machine hung the program in a loop that looked like work. A bus that cannot complete a
+    /// transfer has to say so.
+    Timeout,
 }
 
 impl core::fmt::Display for Error {
@@ -48,6 +54,7 @@ impl core::fmt::Display for Error {
             Error::Nack => write!(f, "I2C NACK received"),
             Error::Bus => write!(f, "I2C bus error"),
             Error::InvalidData => write!(f, "I2C invalid data"),
+            Error::Timeout => write!(f, "I2C wait timed out"),
         }
     }
 }
@@ -61,6 +68,9 @@ impl embedded_hal::i2c::Error for Error {
             ),
             Error::Bus => embedded_hal::i2c::ErrorKind::Bus,
             Error::InvalidData => embedded_hal::i2c::ErrorKind::Other,
+            // `embedded-hal` has no timeout kind for I2C; `Other` is the honest bucket, and the driver's own `Display`
+            // says which one it was.
+            Error::Timeout => embedded_hal::i2c::ErrorKind::Other,
         }
     }
 }

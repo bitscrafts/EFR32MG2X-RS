@@ -65,6 +65,13 @@ pub use types::{Config, Error, Speed};
 use crate::clock::FrozenClocks;
 use crate::pac;
 
+/// Polls a handshake may take before the driver reports `Timeout`.
+///
+/// At 19 MHz a poll is a handful of cycles, so this is tens of milliseconds; a 100 kHz byte time is 90 microseconds.
+/// Three orders of magnitude of slack: no correct transfer of a few bytes comes close, and nothing on a wedged bus can
+/// hang the program for longer than this.
+const WAIT_POLLS: u32 = 200_000;
+
 /// I2C0 peripheral instance
 pub struct I2c0 {
     i2c: pac::I2c0Ns,
@@ -148,7 +155,15 @@ impl I2c0 {
         self.i2c.cmd().write(|w| w.start().set_bit());
 
         // Wait for START to complete
-        while self.i2c.status().read().pstart().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstart().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         // Send address with write bit (R/W = 0)
         let addr_byte = (addr << 1) & 0xFE;
@@ -163,7 +178,15 @@ impl I2c0 {
         self.i2c.cmd().write(|w| w.stop().set_bit());
 
         // Wait for STOP to complete
-        while self.i2c.status().read().pstop().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstop().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         Ok(())
     }
@@ -187,7 +210,15 @@ impl I2c0 {
         self.i2c.cmd().write(|w| w.start().set_bit());
 
         // Wait for START to complete
-        while self.i2c.status().read().pstart().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstart().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         // Send address with read bit (R/W = 1)
         let addr_byte = (addr << 1) | 0x01;
@@ -197,7 +228,15 @@ impl I2c0 {
         let last_idx = buffer.len() - 1;
         for (i, byte) in buffer.iter_mut().enumerate() {
             // Wait for RX data valid
-            while self.i2c.status().read().rxdatav().bit_is_clear() {}
+            {
+                let mut polls = 0u32;
+                while self.i2c.status().read().rxdatav().bit_is_clear() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Error::Timeout);
+                    }
+                }
+            }
 
             // Read byte
             *byte = self.i2c.rxdata().read().bits() as u8;
@@ -214,7 +253,15 @@ impl I2c0 {
         self.i2c.cmd().write(|w| w.stop().set_bit());
 
         // Wait for STOP to complete
-        while self.i2c.status().read().pstop().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstop().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         Ok(())
     }
@@ -247,13 +294,29 @@ impl I2c0 {
     /// Write a single byte to TX buffer and wait for ACK/NACK
     fn write_byte(&mut self, byte: u8) -> Result<(), Error> {
         // Wait for TX buffer ready
-        while self.i2c.status().read().txbl().bit_is_clear() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().txbl().bit_is_clear() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         // Write byte to TX buffer
         self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
 
         // Wait for transmission complete
-        while self.i2c.status().read().txc().bit_is_clear() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().txc().bit_is_clear() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         // Check for NACK (address or data not acknowledged)
         if self.i2c.if_().read().nack().bit_is_set() {
@@ -321,7 +384,15 @@ impl I2c1 {
         }
 
         self.i2c.cmd().write(|w| w.start().set_bit());
-        while self.i2c.status().read().pstart().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstart().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         let addr_byte = (addr << 1) & 0xFE;
         self.write_byte(addr_byte)?;
@@ -331,7 +402,15 @@ impl I2c1 {
         }
 
         self.i2c.cmd().write(|w| w.stop().set_bit());
-        while self.i2c.status().read().pstop().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstop().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         Ok(())
     }
@@ -352,14 +431,30 @@ impl I2c1 {
         }
 
         self.i2c.cmd().write(|w| w.start().set_bit());
-        while self.i2c.status().read().pstart().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstart().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         let addr_byte = (addr << 1) | 0x01;
         self.write_byte(addr_byte)?;
 
         let last_idx = buffer.len() - 1;
         for (i, byte) in buffer.iter_mut().enumerate() {
-            while self.i2c.status().read().rxdatav().bit_is_clear() {}
+            {
+                let mut polls = 0u32;
+                while self.i2c.status().read().rxdatav().bit_is_clear() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        return Err(Error::Timeout);
+                    }
+                }
+            }
             *byte = self.i2c.rxdata().read().bits() as u8;
 
             if i == last_idx {
@@ -370,7 +465,15 @@ impl I2c1 {
         }
 
         self.i2c.cmd().write(|w| w.stop().set_bit());
-        while self.i2c.status().read().pstop().bit_is_set() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().pstop().bit_is_set() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         Ok(())
     }
@@ -396,9 +499,25 @@ impl I2c1 {
     }
 
     fn write_byte(&mut self, byte: u8) -> Result<(), Error> {
-        while self.i2c.status().read().txbl().bit_is_clear() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().txbl().bit_is_clear() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
         self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
-        while self.i2c.status().read().txc().bit_is_clear() {}
+        {
+            let mut polls = 0u32;
+            while self.i2c.status().read().txc().bit_is_clear() {
+                polls += 1;
+                if polls > WAIT_POLLS {
+                    return Err(Error::Timeout);
+                }
+            }
+        }
 
         if self.i2c.if_().read().nack().bit_is_set() {
             unsafe { crate::alias::clear_window(pac::I2c0S::ptr()) }
