@@ -723,6 +723,20 @@ impl Bluetooth {
         unsafe { bt::sl_bt_sm_store_bonding_configuration(max_bonding_count, policy) as u8 }
     }
 
+    /// How many bonds the stack itself believes it holds, and the status of the question.
+    ///
+    /// This is the stack's own view, which is what decides whether a peer's keys are usable: NVM3 can hold the
+    /// objects and the stack still answer zero if it rejected them while initialising.
+    pub fn bonding_handles(&mut self) -> (u8, u32) {
+        let mut num = 0u32;
+        let mut len = 0usize;
+        let mut bits = [0u8; 4];
+        let rc = unsafe {
+            bt::sl_bt_sm_get_bonding_handles(0, &mut num, bits.len(), &mut len, bits.as_mut_ptr())
+        };
+        (rc as u8, num)
+    }
+
     /// Forget every stored bond. For tests that need both sides to start from nothing: a device that keeps a bond
     /// while the host drops its own answers the next attempt with `0x1205`, which looks like a firmware refusal
     /// and is really the two sides disagreeing about keys they already hold.

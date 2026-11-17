@@ -235,6 +235,11 @@ fn main() -> ! {
             live.hex(sm_store as u32);
             live.s(b" nvm=");
             live.u(nvm_cached);
+            let (bh_rc, bh_n) = ble.bonding_handles();
+            live.s(b" bh=");
+            live.u(bh_n);
+            live.s(b"/");
+            live.hex(bh_rc as u32);
             live.s(b" k=");
             for (i, k) in key_cache.iter().take(key_count.min(8)).enumerate() {
                 if i > 0 {

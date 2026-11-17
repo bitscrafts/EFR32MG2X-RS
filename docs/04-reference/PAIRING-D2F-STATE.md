@@ -250,3 +250,28 @@ clean pair of states (erase the host bond, flash the board fresh) before drawing
 5. the host pairing recipe: one bluetoothctl as root fed through a pipe (see above)
 6. NVM3 keys are 20 bits, readData returns Ecode_t, and a fresh flash erases NVM3
 ```
+
+## The bond IS stored and IS loaded — the reconnect fails to find it (2026-11-17, last measurement)
+
+The instrument that settled it is the stack's own view, not NVM3: `sl_bt_sm_get_bonding_handles` returns how many
+bonds the stack believes it holds. Enumerating NVM3 from the main loop was the wrong probe twice over -- the same
+handle is used by the stack from its own context, and an enumeration every millisecond returned zeros that looked
+like an empty store.
+
+```
+bonding cleared                        bh=0/0
+pairing from the lnx                   Pairing successful          bh=1/0   conn=1
+probe-rs reset (no reflash)             --                         bh=1/0   conn=0
+lnx connects WITHOUT pairing            Connected, then dropped    rsn=0x1006  PIN or Key Missing
+```
+
+`bh=1` after the reset is the proof that storage works: the bond is in flash, the stack loads it, and the peer's
+keys are not the problem.
+
+What fails is the lookup: the stack holds one bond and cannot bind it to the peer that reconnects, so it answers
+`0x1006` and the link drops. That is identity -- the address the peer presents versus the address stored -- not
+storage. The next instrument is `sl_bt_sm_get_bonding_details`, which returns the stored address and its type, to
+compare against the address used on the reconnect.
+
+Consequences for the product, unchanged until this closes: `enable_pairing` stays out of the dosimeter example,
+because a device that pairs and cannot be reconnected is worse for the app than one that does not pair at all.
