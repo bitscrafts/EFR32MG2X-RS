@@ -1,81 +1,112 @@
-# BLE on the bench: what works, and how to bring it back
+# BLE on the bench: the assert that cost a night, and its cause
 
-Written 2026-11-17, late, after a night in which the link worked, broke, and was blamed on the wrong layer three
-times. Every number here was measured; nothing is inferred from a design.
+Written 2026-11-17 after the board refused to boot the Bluetooth firmware for roughly two hours, and closed at
+22:29 with the fix measured from a cold power-on and end to end over the air. Every number below was measured; the
+hypotheses that failed are kept, because a record that only shows the answer teaches nothing.
 
-## The state, in one table
+## The symptom
 
-| what | value | how it was measured |
-|---|---|---|
-| firmware runs, measures, records | `seconds windows published` growing | mailbox, `scripts/read-mailbox.sh` |
-| advertisement carries the service | `UUID: Vendor specific (e1d0e000-…)` | `bluetoothctl info`, i.e. BlueZ's own parse |
-| bond, inside the window | `Pairing successful`, `Bonded: yes` | `scripts/ble-end-to-end.sh` |
-| data behind the bond | `rms 11 00 = 17`, 8 non-zero bands, `status 01 99 09 01 1e` | same, `gatttool` at `sec-level=medium` |
-| window policy | bond new only in the first 600 s after power-on | `PAIRING_WINDOW_SECONDS` |
-| refusal, outside the window | `cfno` grows, `smrsn=4102` (`0x1006`) on the phone | device record vs host error |
-
-`VERDICT: PASS` from `scripts/ble-end-to-end.sh` on 2026-11-17 at 20:57.
-
-## The failure that cost the night
-
-After a sequence of debugger resets the board stopped booting the BLE firmware: the core sat in
-`RAILCb_AssertFailed` (`r1=0x4b`), no record was written, and nothing was advertised. It was **not** the firmware:
-that exact image had passed end to end forty minutes earlier, and `module_led_blink` still ran on the same board
-(`pc=0x08006304`), so the core, the flash and the clock were fine.
-
-What actually causes it, as far as the measurements can tell:
-
-- A **system reset does not reset the radio peripheral.** `probe-rs reset` and the flash script's `reset + run` leave the
-  RAIL state machine where it was, and a stack that initialises into that state asserts.
-- **Halting the core while the radio runs** makes it worse. `scripts/wait-for-record.sh` halted every 12 s looking for
-  a record, which is exactly the wrong instrument: it kept the state broken while it waited for the state to heal.
-- **A power cycle looked like it would clear it, and it does not.** Measured three times after this was first
-  written: unplug, five seconds, replug — the core is in `RAILCb_AssertFailed` again within a minute, with the
-  120 s firmware and with the 600 s firmware alike. The earlier report that it worked after a replug was true of
-  one occasion, and it did not survive being repeated, so it is withdrawn here rather than left standing.
-
-What survives every measurement:
-
-- the core runs non-BLE firmware on the same board at the same time (`module_led_blink` at `0x08006304`, and
-  `module_dosimeter_offline` at `0x0800640e` in `core::ptr::read_volatile`), so the silicon, the clock, the flash
-  and the debugger are all fine;
-- the failing code is the Bluetooth stack's start-up (`RAILCb_AssertFailed`, `r1=0x4b`), and it fails before the
-  first 60 s record is published, which is why the mailbox looks empty;
-- the host holds `Paired: yes`, `Bonded: yes`, `Connected: no`, so nothing on the host is connecting to the board.
-
-This is where the bench stands until the radio stack's start-up is examined with time to read the vendor's assert
-codes, instead of the guesses that cost this night.
-
-## Thursday, in order
+The product firmware (`module_ble_dosimeter`) would not run. No advertisement, no mailbox record (`magic = 0`, which
+the read script reports as *"record still being written"*), and the core found at `RAILCb_AssertFailed`.
 
 ```
-1  flash the product                  FLASH_HOST=10.10.10.217 FLASH_USER=mvcorrea \
-                                      bash scripts/flash.sh <elf> --confirm --run
-2  POWER CYCLE the board              unplug USB, 5 s, plug back
-3  prove the link from the host       sudo -n /tmp/blevenv/bin/python /tmp/ble_minimo.py
-                                      (scan unfiltered, print, connect, read -- no asserts)
-4  prove the whole path with checks   bash scripts/ble-end-to-end.sh   -> VERDICT: PASS
-5  the phone                          open the app, accept the bond within 10 minutes
+pc = 0x08007e78   ->  RAILCb_AssertFailed
+r1 = 0x0000004b   =   75
 ```
 
-If step 3 prints no dosimeter, the board is not running: check `reg pc` for `RAILCb_AssertFailed` and go back to the
-power cycle. If it prints the dosimeter but the phone cannot see it, the phone side is the problem and the app prints
-the permission state and the number of devices it sees.
+## The cause
+
+`stack_init::start` called `Sysrtc::enable_clocks`, which gates the SYSRTC's bus clocks and **leaves the counter
+stopped**. RAIL's bring-up requires the counter **running** and asserts at its own line 380 otherwise.
+
+The comment above that call had concluded the opposite in an earlier session — *"clocked and disabled is the only
+state that satisfies both"* — from a `CFG` write fault at `0x500a_800c`. That fault was our own later re-init writing
+`CFG` while the module ran, not RAIL's write, which happens while the counter is still stopped. **A wrong comment in
+the code produced a wrong precondition, and the wrong precondition produced this assert.**
+
+The evidence, in the order it arrived:
+
+```
+0x2003F500   41535254 0000004b 20011a60 00000001     "ASRT", code 75, handle, count
+0x20011dfc   0000017c                                RAIL_AssertLineNumber = 380
+0x500A8014   00000001   (after module_clock_probe)   SYSRTC STATUS.RUNNING = 1
+0x500A8018   000004 076e                           COUNT counting
+```
+
+Notice what `0x2003F500` means: `RAILCb_AssertFailed` is **ours** (`crates/xiao-mg24-bluetooth-sys/src/rail_assert.rs`),
+already instrumented, and it writes the code to that buffer before spinning. The information existed all along; nobody
+read the buffer.
+
+## The fix
+
+`Sysrtc::ensure_running(cmu)` — enable the clocks, then set `EN` and issue `CMD_START`, each only when not already in
+that state, so a warm reset into a running counter is left alone and a cold boot starts it. `stack_init::start` now
+calls it instead of `enable_clocks`.
+
+Commit `1373f3f`.
+
+## The proof
+
+```
+cold power-on (unplug, replug), no help from any prior firmware:
+    ble: seconds=60 windows=3780 published=60 hz=41298389 rms=14
+
+end to end over the air, scripts/ble-end-to-end.sh:
+    1. advertisement carries the service UUID      BlueZ: UUID: Vendor specific (e1d0e000-…)
+    2. Pairing successful / Bonded: yes
+    3. rms 0x0003 = 0c 00 (12)   bands 0x0006 = 8 powers   status 0x0009 = 01 99 09 01 1e
+    flags=1 calibrated | source=datasheet | uncertainty 3.0 dB | status 5 bytes
+    VERDICT: PASS
+```
+
+## The six hypotheses that were wrong, and what refused each
+
+```
+1  the bond table is full (MAX_SLOTS = 8)      the probe with CLEAR_BONDS = true also asserted
+2  NVM3 corrupt                                 erased to 0xFFFFFFFF with module_nvm3_wipe; asserted the same
+3  the firmware version                        800988a (the build that had passed) asserted identically
+4  the debugger's soft reset leaves RAIL wedged three physical power cycles did not clear it
+5  the phone was connecting and tripping it     phone Bluetooth disabled; same assert
+6  a power cycle clears it                      written down, then measured three times, then withdrawn
+```
+
+Two more that were not hypotheses but mistakes of method:
+
+- **Halting the core every 12 s** (`wait-for-record.sh`) while the radio ran, *waiting for the fault to heal*. The
+  instrument was part of the failure.
+- **`probe-rs write` to flash silently does not land** without an erase. It was read back unchanged, which is the only
+  reason the mistake was caught; `MSC_ErasePage` from our own example is what actually erases.
+
+## What the board needs now
+
+Nothing special. Flash it and power it on:
+
+```
+FLASH_HOST=10.10.10.217 FLASH_USER=mvcorrea bash scripts/flash.sh <elf> --confirm --run
+```
+
+The earlier procedure — flash, then power cycle, then pray — is gone, because the precondition it was working around
+is now satisfied in code.
+
+## Tools built during the night, each one earning its place
+
+```
+scripts/ble-end-to-end.sh    discovery by UUID + bond + the three reads, with a PASS/FAIL verdict
+scripts/ble_minimo.py        unfiltered scan, prints every device, connects, reads: no filter and no asserts
+scripts/ble_pair_check.py    the validated version of the same walk
+scripts/wait-for-record.sh   did the board write anything (do not run it while the radio matters: it halts)
+scripts/watch-resets.sh      does the counter restart
+crates/xiao-mg24-bsp/examples/module_nvm3_wipe.rs   erase the NVM3 pages only, refusing anything below 0x08006000
+crates/xiao-mg24-bsp/examples/module_dosimeter_offline.rs   measure without a radio
+crates/xiao-mg24-bsp/examples/module_clock_probe.rs        leaves SYSRTC running — the workaround that proved the cause
+```
 
 ## What is not claimed
 
-- **dB(A) and dose % are not on the wire.** The NR-15 arithmetic exists and is tested; it is not wired to the stream,
-  because A-weighting needs the per-band sum, not the broadband level.
-- The calibration is **from the datasheet** (`−38 dBV/Pa`, DC 0.7 V, cross-checked against the measured bias at 0.9 %),
-  **not** from a calibrator. Uncertainty ±3.0 dB, and the app says so on every screen.
+- **dB(A) and dose % are not on the wire.** The NR-15 arithmetic is tested but not wired to the stream; A-weighting
+  needs the per-band sum, not the broadband level.
+- Calibration is **from the datasheet** (−38 dBV/Pa, DC 0.7 V, cross-checked against the measured bias at 0.9 %), not
+  from a calibrator. Uncertainty ±3.0 dB, and the app says so on every screen.
 - Nothing here is a certification.
-
-## The next step, and it is a specific one
-
-The vendor library calls `RAILCb_AssertFailed(errorCode)` — an application-provided callback. We do not define it, so
-the vendor's weak default spins. Defining it is the whole next move: capture `errorCode` (`r1` was `0x4b`), and if the
-vendor exposes `RAIL_GetAssertInfo()` / the assert file and line, capture those too, and publish them to the mailbox
-before halting. That turns "the radio asserts" into "the radio asserts at <file>:<line> with code 75", which is a
-defect with an address instead of a night of guesses.
-
-Until that number is read, nothing about the radio should be claimed either way.
+- The BLE link was proven **from the host** (`gatttool` at `sec-level=medium`, BlueZ). The phone's own run is the next
+  measurement, not a conclusion of this document.

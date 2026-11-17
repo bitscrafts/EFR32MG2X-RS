@@ -48,7 +48,7 @@ Decided 2026-11-17 (brief; the same date is in the code comment on `PAIRING_WIND
 
 ```
 accept a new bond   when the device holds no bond at all
-                    OR  within 120 s of power-on
+                    OR  within 600 s of power-on
 otherwise           refuse to store a bond for this pairing
 ```
 
@@ -56,7 +56,7 @@ otherwise           refuse to store a bond for this pairing
 measurement: long enough to take a phone out and pair it, short enough that an attacker must be present when the device
 is switched on.
 
-What "within 120 s of power-on" means in the code: `inside_window = boot_second < PAIRING_WINDOW_SECONDS`
+What "within 600 s of power-on" means in the code: `inside_window = boot_second < PAIRING_WINDOW_SECONDS` (the constant is **600** since 2026-11-17)
 (`module_ble_dosimeter.rs:301`), where `boot_second` is the loop's `second` counter, handed to `service_stack`
 (`:711`, `:797`). That counter advances once per paced second of audio samples; it is **not** a hardware wall clock and I
 have not checked it against a stopwatch. The loop's cost is measured (`cpu=118`, `BLE-OPERATIONAL.md`), which says it
@@ -85,8 +85,8 @@ The decision, as the code makes it (`module_ble_dosimeter.rs:296-318`):
 
 ```
 no bond held            accept = 1, cfwhy = 1
-bond held, inside 120 s accept = 1, cfwhy = 2
-bond held, past 120 s   accept = 0, cfwhy = 3
+bond held, inside 600 s accept = 1, cfwhy = 2
+bond held, past 600 s   accept = 0, cfwhy = 3
 ```
 
 Two things in that code differ from the picture the brief paints, and a reader should know them:
@@ -123,7 +123,7 @@ Works either way.
 
 ## 4. What the owner does to re-pair
 
-**Power-cycle the device, then pair within two minutes.** After a reset the loop's counter starts again, so
+**Power-cycle the device, then pair within ten minutes.** After a reset the loop's counter starts again, so
 `boot_second < 120` is true and a new bond is accepted even though the device still holds the old one (`cfwhy = 2`).
 That is the whole gesture; there is no button path in this policy (the older "button-hold-at-boot" path in
 `BLE-OPERATIONAL.md` item A is a different, unverified mechanism).
@@ -179,3 +179,18 @@ NOT done what the stack does with an unanswered confirm request (section 3, poin
 
 Until a capture exists the honest summary is: **the policy is decided, the mechanism is written, and no number in this
 file says it works.**
+
+## Why the window is ten minutes and not two (changed 2026-11-17)
+
+Two minutes was measured as too short on the bench: the operator powers the board, opens the app, and by the time the
+phone has scanned, connected and asked to bond, the window is gone. A refusal at that point is invisible on Android —
+the peripheral declines inside SMP, the phone's bond state never leaves `NONE`, so `ACTION_BOND_STATE_CHANGED` never
+fires and the app has no event to show; it sits on "pairing" with nothing to report, which reads exactly like a hang.
+
+Ten minutes keeps the property that matters — a bond can only be created while somebody is physically present at
+power-on — and removes the failure the demonstration kept hitting. The mechanism, the counters (`cfok`, `cfno`,
+`cfwhy`) and the refusal path are unchanged; only `PAIRING_WINDOW_SECONDS` moved.
+
+The companion change is on the app side: when the device refuses, the app now **drops the link**. A connected
+peripheral stops advertising, so every attempt after a refusal used to find nothing to scan and reported "the
+dosimeter is not there" while it was advertising again a second later.
