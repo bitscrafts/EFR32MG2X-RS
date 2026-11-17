@@ -679,24 +679,35 @@ impl Bluetooth {
     /// `BONDING_REQUIRED` makes the link key persist, and the builtin bonding database stores it in NVM3, so a paired
     /// peer is remembered across a reboot.
     pub fn enable_pairing(&mut self) -> Result<(), BleError> {
-        /// `SL_BT_SM_CONFIGURATION_SC_ONLY`: refuse legacy pairing, accept what the peer asks for otherwise.
-        ///
-        /// `BONDING_REQUIRED` (0x02) is deliberately **not** set. With it, a peer that pairs without requesting a bond
-        /// -- which is what BlueZ sends from `pair` -- gets `Pairing Failed: unspecified reason` before any key
-        /// exchange. Measured on this board: flags 0x02|0x04 refused the client outright; see the doc.
-        const FLAGS: u8 = 0x04;
-        /// `sl_bt_sm_io_capability_noinputnooutput`
-        const NO_INPUT_NO_OUTPUT: u8 = 0x03;
-
-        let status = unsafe { bt::sl_bt_sm_configure(FLAGS, NO_INPUT_NO_OUTPUT) };
-        if status != 0 {
-            return Err(BleError::from(status));
+        // `0x04` is `SL_BT_SM_CONFIGURATION_SC_ONLY`: refuse legacy pairing, accept what the peer asks for otherwise.
+        // `BONDING_REQUIRED` (0x02) is deliberately **not** set — with it, a peer that pairs without requesting a bond
+        // gets `Pairing Failed` before any key exchange (measured on this board: flags 0x02|0x04 refused the client).
+        // `0x03` is `sl_bt_sm_io_capability_noinputnooutput`, which is Just Works: no PIN, no dialog on the device.
+        let (configure, bondable) = self.enable_pairing_with(0x04, 0x03);
+        if configure != 0 {
+            return Err(BleError::from(configure as u16));
         }
-        let status = unsafe { bt::sl_bt_sm_set_bondable_mode(1) };
-        if status != 0 {
-            return Err(BleError::from(status));
+        if bondable != 0 {
+            return Err(BleError::from(bondable as u16));
         }
         Ok(())
+    }
+
+    /// The two raw status codes behind [`enable_pairing`](Self::enable_pairing), without deciding anything.
+    ///
+    /// A boolean is not enough to diagnose this: `enable_pairing` failing said nothing about *which* of the two
+    /// calls the stack refused, or why, and that cost a session. The codes are the stack's own
+    /// (`0` success, `0x0002` invalid state, `0x0004` out of memory, `0x0005` not found, `0x0012` unsupported).
+    pub fn enable_pairing_status(&mut self) -> (u8, u8) {
+        self.enable_pairing_with(0x04, 0x03)
+    }
+
+    /// The same two calls with the flags and IO capability named by the caller, for isolating which one of them
+    /// changes what the stack does to the link.
+    pub fn enable_pairing_with(&mut self, flags: u8, io: u8) -> (u8, u8) {
+        let configure = unsafe { bt::sl_bt_sm_configure(flags, io) };
+        let bondable = unsafe { bt::sl_bt_sm_set_bondable_mode(1) };
+        (configure as u8, bondable as u8)
     }
 
     /// Set connection state (manual tracking)

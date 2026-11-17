@@ -61,7 +61,13 @@ pub use efr32mg24_bluetooth_sys::heap::recent as heap_recent;
 /// depending on the `-sys` crate.
 pub use efr32mg24_bluetooth_sys::heap::stats as heap_stats;
 /// `(generated, exported, agreed)`: how far a pairing got through the elliptic-curve calls.
+pub use efr32mg24_bluetooth_sys::psa::cmac_kat;
+pub use efr32mg24_bluetooth_sys::psa::generate_stats as psa_generate_stats;
+pub use efr32mg24_bluetooth_sys::psa::import_refused as psa_import_refused;
+pub use efr32mg24_bluetooth_sys::psa::import_stats as psa_import_stats;
+pub use efr32mg24_bluetooth_sys::psa::last_call as psa_last_call;
 pub use efr32mg24_bluetooth_sys::psa_ec::call_counts as psa_ec_counts;
+pub use efr32mg24_bluetooth_sys::psa_ec::last_failure as psa_last_failure;
 
 #[cfg(feature = "rail")]
 compile_error!(

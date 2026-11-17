@@ -74,7 +74,7 @@ pub fn last_failure() -> (u32, u32) {
     unsafe { (LAST_FAIL_OP, LAST_FAIL_VALUE) }
 }
 
-fn note_failure(op: u32, value: u32) {
+pub(crate) fn note_failure(op: u32, value: u32) {
     unsafe {
         LAST_FAIL_OP = op;
         LAST_FAIL_VALUE = value;
@@ -154,7 +154,7 @@ impl CryptoRng for SeRng {}
 /// # Safety
 ///
 /// `attributes` must point at a `psa_key_attributes_t` and `key` at a `mbedtls_svc_key_id_t`, as the caller does.
-pub unsafe fn generate_ecc_key(attributes: *const KeyAttributes, key: *mut u64) -> i32 {
+pub unsafe fn generate_ecc_key(attributes: *const KeyAttributes, key: *mut u32) -> i32 {
     if attributes.is_null() || key.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -169,7 +169,7 @@ pub unsafe fn generate_ecc_key(attributes: *const KeyAttributes, key: *mut u64) 
 
     match crate::psa::store_key(&scalar, u32::from(PSA_KEY_TYPE_ECC_KEY_PAIR_P256)) {
         Some(id) => {
-            *key = u64::from(id);
+            *key = id;
             unsafe { EC_GENERATED = EC_GENERATED.wrapping_add(1) };
             0
         }
@@ -185,7 +185,7 @@ pub unsafe fn generate_ecc_key(attributes: *const KeyAttributes, key: *mut u64) 
 /// # Safety
 ///
 /// `attributes` must point at a `psa_key_attributes_t`.
-pub unsafe fn key_attributes(key: u64, attributes: *mut KeyAttributes) -> i32 {
+pub unsafe fn key_attributes(key: u32, attributes: *mut KeyAttributes) -> i32 {
     if attributes.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -217,13 +217,13 @@ pub unsafe fn key_attributes(key: u64, attributes: *mut KeyAttributes) -> i32 {
 ///
 /// `data` must point at `data_size` writable bytes.
 pub unsafe fn export_public_key(
-    key: u64,
+    key: u32,
     data: *mut u8,
     data_size: usize,
     data_length: *mut usize,
 ) -> i32 {
     let Some(slot) = crate::psa::slot(key) else {
-        note_failure(2, (key & 0xffff) as u32);
+        note_failure(2, key & 0xffff);
         return PSA_ERROR_INVALID_HANDLE;
     };
     if slot.key_type != u32::from(PSA_KEY_TYPE_ECC_KEY_PAIR_P256) || slot.key_len != 32 {
@@ -259,7 +259,7 @@ pub unsafe fn export_public_key(
 /// `peer_key` must point at `peer_key_length` readable bytes; `output` at `output_size` writable ones.
 pub unsafe fn raw_key_agreement(
     alg: u32,
-    key: u64,
+    key: u32,
     peer_key: *const u8,
     peer_key_length: usize,
     output: *mut u8,

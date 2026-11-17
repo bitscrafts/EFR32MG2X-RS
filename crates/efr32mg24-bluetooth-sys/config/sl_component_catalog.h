@@ -39,8 +39,16 @@
 // Pairing is not needed for the GATT product that is delivered and verified, and a component that fails halfway should
 // not be in the product build.
 //
-// #define SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT 1
-// #define SL_CATALOG_BLUETOOTH_FEATURE_BUILTIN_BONDING_DATABASE_PRESENT 1
+// **On again, 2026-11-17**, because the state above was misdiagnosed: with the manager absent, `sl_bt_sm_configure`
+// returns `SL_STATUS_NOT_SUPPORTED` (0x000F), measured on the board (`sm_cfg=0x0f sm_bond=0x0f`) -- so every "pairing
+// fails" observation since it was disabled was really "pairing is not in this build". A product that carries a dose
+// per person needs pairing, so the manager goes back in and the 0x0B is chased with the manager actually present.
+#define SL_CATALOG_BLUETOOTH_FEATURE_SM_PRESENT 1
+// **On, 2026-11-17.** The key store is not optional after all: with it off, `sl_bt_sm_set_bondable_mode` answers
+// SL_STATUS_NOT_AVAILABLE (0x000E) and the pairing runs to the DHKey check with no keys behind it, failing there
+// with 0x120B. NVM3 is already linked and working (`nvm3_open` at a real address in the image, and the stack will
+// not start if it fails), so this is a catalogue switch, not a port.
+#define SL_CATALOG_BLUETOOTH_FEATURE_BUILTIN_BONDING_DATABASE_PRESENT 1
 /* The dynamic GATT database: enabled, and the reason it was blocked for a day.
  *
  * Turning it on made `sli_bt_system_start_bluetooth` return `SL_STATUS_TIMEOUT` and `system_boot` never arrived, which

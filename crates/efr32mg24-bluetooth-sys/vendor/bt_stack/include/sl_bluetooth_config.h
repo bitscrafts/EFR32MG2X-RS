@@ -66,7 +66,10 @@
 // <i> advertising and scanning. The default value is an estimation for achieving adequate throughput
 // <i> and supporting multiple simultaneous connections. Consider increasing this value for
 // <i> higher data throughput over connections, advertising or scanning long advertisement data.
-#define SL_BT_CONFIG_BUFFER_SIZE    (3150)
+/* 8192, raised 2026-11-17 from 3150: with the security manager enabled, a pairing crashed with a precise bus fault at
+ * address 0x41 — NULL + 65 — which is `bg_zalloc(64)` returning NULL and the caller writing at offset 64. `bg_*` does
+ * not draw from `sl_malloc` (that heap had 52 KB free and zero failures at the time), it draws from this pool. */
+#define SL_BT_CONFIG_BUFFER_SIZE    (8192)
 
 // </h> End Bluetooth Stack Configuration
 

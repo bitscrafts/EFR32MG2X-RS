@@ -56,8 +56,12 @@ const PSA_KEY_TYPE_AES: u32 = 0x2400;
 
 /// Slots. Sixteen AES-128 keys is more than a peripheral needs (one for the link layer, one per bonded peer).
 const SLOTS: usize = 16;
-/// Longest key this accepts, in bytes. AES-256 would be 32; the link layer uses 16.
-const MAX_KEY: usize = 32;
+/// Longest key this accepts, in bytes. AES-256 would be 32; the link layer uses 16. Raised to 65 for the unwrapped
+/// secp256r1 public point (`0x04 || X || Y`), which the stack imports to validate a peer's key before any agreement.
+const MAX_KEY: usize = 65;
+/// `PSA_KEY_TYPE_ECC_PUBLIC_KEY(PSA_ECC_FAMILY_SECP_R1)` = 0x4112: what the stack passes when it imports the peer's
+/// public key for validation.
+const PSA_KEY_TYPE_ECC_PUBLIC_KEY_P256: u32 = 0x4112;
 /// Largest message a single MAC operation may accumulate. A BLE CMAC covers a handful of bytes; 128 is generous
 /// and bounded on purpose, because a MAC operation that can queue unbounded input is a memory bug waiting.
 const MAX_MAC_INPUT: usize = 128;
@@ -129,6 +133,7 @@ fn ops() -> &'static mut [MacOp; MAC_OPS] {
 /// Initialise PSA. Nothing to do: the slot table is already in `.bss` and empty.
 #[no_mangle]
 pub extern "C" fn psa_crypto_init() -> i32 {
+    bump(0);
     PSA_SUCCESS
 }
 
@@ -149,6 +154,7 @@ pub extern "C" fn psa_crypto_init() -> i32 {
 /// `output` must point to `output_size` writable bytes in SRAM.
 #[no_mangle]
 pub unsafe extern "C" fn psa_generate_random(output: *mut u8, output_size: usize) -> i32 {
+    bump(1);
     let p = ptr::addr_of_mut!(RANDOM_REQUESTS);
     ptr::write_volatile(p, ptr::read_volatile(p) + 1);
     crate::se_trng::count_request();
@@ -181,6 +187,7 @@ pub unsafe extern "C" fn psa_generate_random(output: *mut u8, output_size: usize
 /// `attributes` must point to a `psa_key_attributes_t` (232 bytes for this configuration).
 #[no_mangle]
 pub unsafe extern "C" fn psa_reset_key_attributes(attributes: *mut u8) {
+    bump(8);
     if attributes.is_null() {
         return;
     }
@@ -202,6 +209,7 @@ pub unsafe extern "C" fn psa_set_key_domain_parameters(
     _data: *const u8,
     _data_length: usize,
 ) -> i32 {
+    bump(9);
     if attributes.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -228,10 +236,57 @@ pub unsafe extern "C" fn psa_import_key(
     data_length: usize,
     key: *mut u32,
 ) -> i32 {
+    bump(3);
     if data.is_null() || key.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
-    if data_length == 0 || data_length > MAX_KEY || !data_length.is_multiple_of(8) {
+    if data_length == 0 || data_length > MAX_KEY {
+        unsafe {
+            *core::ptr::addr_of_mut!(IMPORT_REFUSED) =
+                ((data_length as u32) << 8) | (PSA_ERROR_INVALID_ARGUMENT as u32 & 0xFF)
+        };
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
+    // The peer's public key arrives here before any key agreement: type 0x4112, 65 bytes, `0x04 || X || Y`.
+    // Rejecting it costs the whole pairing. The blob calls `smp_verify_remote_public_key`, reads -135 as "the peer
+    // sent an invalid point" and answers SMP reason 0x0B — which the spec requires for an invalid key, and which
+    // is why the failure looked like a DHKey check with zero elliptic-curve calls (measured 2026-11-17, a phone as
+    // the peer, ec=0,0,0 and no PSA failure recorded).
+    if data_length == 65 {
+        let bytes = core::slice::from_raw_parts(data, 65);
+        if bytes[0] != 0x04 || p256::PublicKey::from_sec1_bytes(bytes).is_err() {
+            crate::psa_ec::note_failure(3, PSA_KEY_TYPE_ECC_PUBLIC_KEY_P256);
+            return PSA_ERROR_INVALID_ARGUMENT;
+        }
+        let table = slots();
+        let Some(index) = table.iter().position(|s| !s.used) else {
+            return PSA_ERROR_INSUFFICIENT_MEMORY;
+        };
+        let mut k = [0u8; MAX_KEY];
+        k[..65].copy_from_slice(bytes);
+        table[index] = Slot {
+            used: true,
+            id: 0,
+            key_len: 65,
+            key: k,
+            key_type: PSA_KEY_TYPE_ECC_PUBLIC_KEY_P256,
+        };
+        let id = {
+            let n = ptr::addr_of_mut!(NEXT_ID);
+            let v = ptr::read_volatile(n);
+            ptr::write_volatile(n, v.wrapping_add(1).max(1));
+            v.max(1)
+        };
+        ptr::write(key, id);
+        for slot in slots().iter_mut() {
+            if slot.used && slot.id == 0 {
+                slot.id = id;
+                break;
+            }
+        }
+        return 0;
+    }
+    if !data_length.is_multiple_of(8) {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
     // Only AES key sizes PSA knows: 128, 192, 256 bits.
@@ -241,6 +296,10 @@ pub unsafe extern "C" fn psa_import_key(
     // This AES core is 128-bit. Accepting a 24- or 32-byte key would store something the MAC below cannot use,
     // so it is refused here rather than producing a wrong tag later.
     if data_length != 16 {
+        unsafe {
+            *core::ptr::addr_of_mut!(IMPORT_REFUSED) =
+                ((data_length as u32) << 8) | (PSA_ERROR_NOT_SUPPORTED as u32 & 0xFF)
+        };
         return PSA_ERROR_NOT_SUPPORTED;
     }
 
@@ -288,8 +347,9 @@ pub unsafe extern "C" fn psa_import_key(
 /// The id is a value, not a pointer; declaring it `u64` reads the low half whether the caller passed one register
 /// or two, and only the low 32 bits are used.
 #[no_mangle]
-pub unsafe extern "C" fn psa_destroy_key(key: u64) -> i32 {
-    let id = key as u32;
+pub unsafe extern "C" fn psa_destroy_key(key: u32) -> i32 {
+    bump(6);
+    let id = key;
     if id == 0 {
         return PSA_ERROR_INVALID_HANDLE;
     }
@@ -313,7 +373,8 @@ pub unsafe extern "C" fn psa_destroy_key(key: u64) -> i32 {
 ///
 /// `operation` must be the caller's `psa_mac_operation_t` address, and `key` is a value.
 #[no_mangle]
-pub unsafe extern "C" fn psa_mac_sign_setup(operation: *mut u8, key: u64, alg: u32) -> i32 {
+pub unsafe extern "C" fn psa_mac_sign_setup(operation: *mut u8, key: u32, alg: u32) -> i32 {
+    bump(12);
     if operation.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -324,7 +385,7 @@ pub unsafe extern "C" fn psa_mac_sign_setup(operation: *mut u8, key: u64, alg: u
         return PSA_ERROR_NOT_SUPPORTED;
     }
 
-    let id = key as u32;
+    let id = key;
     let table = slots();
     let mut seen = 0u32;
     let mut found: Option<usize> = None;
@@ -368,6 +429,7 @@ pub unsafe extern "C" fn psa_mac_update(
     input: *const u8,
     input_length: usize,
 ) -> i32 {
+    bump(13);
     if operation.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -399,6 +461,7 @@ pub unsafe extern "C" fn psa_mac_sign_finish(
     mac_size: usize,
     mac_length: *mut usize,
 ) -> i32 {
+    bump(14);
     if operation.is_null() || mac.is_null() || mac_length.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -442,6 +505,7 @@ pub unsafe extern "C" fn psa_mac_sign_finish(
 /// `operation` is the caller's address; nothing is dereferenced.
 #[no_mangle]
 pub unsafe extern "C" fn psa_mac_abort(operation: *mut u8) {
+    bump(15);
     if operation.is_null() {
         return;
     }
@@ -516,8 +580,8 @@ fn record_unsupported(alg: u32) -> i32 {
 
 /// The slot a handle refers to. Handles are the indices this module hands out, offset by one, so that zero is never
 /// a valid key -- `NEXT_ID` starts at 1 for exactly that reason.
-fn slot_for(key: u64) -> Option<&'static Slot> {
-    let id = key as u32;
+fn slot_for(key: u32) -> Option<&'static Slot> {
+    let id = key;
     if id == 0 {
         return None;
     }
@@ -532,11 +596,12 @@ fn slot_for(key: u64) -> Option<&'static Slot> {
 /// requires of its callers.
 #[no_mangle]
 pub unsafe extern "C" fn psa_export_key(
-    key: u64,
+    key: u32,
     data: *mut u8,
     data_size: usize,
     data_length: *mut usize,
 ) -> i32 {
+    bump(4);
     let Some(slot) = slot_for(key) else {
         return PSA_ERROR_INVALID_HANDLE;
     };
@@ -567,7 +632,7 @@ pub unsafe extern "C" fn psa_export_key(
 /// writable `size_t`.
 #[no_mangle]
 pub unsafe extern "C" fn psa_mac_compute(
-    key: u64,
+    key: u32,
     alg: u32,
     input: *const u8,
     input_length: usize,
@@ -575,6 +640,7 @@ pub unsafe extern "C" fn psa_mac_compute(
     mac_size: usize,
     mac_length: *mut usize,
 ) -> i32 {
+    bump(11);
     if alg != PSA_ALG_CMAC {
         return record_unsupported(alg);
     }
@@ -611,7 +677,7 @@ pub unsafe extern "C" fn psa_mac_compute(
 /// at a writable `size_t`.
 #[no_mangle]
 pub unsafe extern "C" fn psa_cipher_encrypt(
-    key: u64,
+    key: u32,
     alg: u32,
     input: *const u8,
     input_length: usize,
@@ -619,6 +685,7 @@ pub unsafe extern "C" fn psa_cipher_encrypt(
     output_size: usize,
     output_length: *mut usize,
 ) -> i32 {
+    bump(16);
     if alg == PSA_ALG_ECB_NO_PADDING {
         let Some(slot) = slot_for(key) else {
             return PSA_ERROR_INVALID_HANDLE;
@@ -710,7 +777,7 @@ pub unsafe extern "C" fn psa_cipher_encrypt(
 // ---------------------------------------------------------------------------------------------------------------
 
 /// The slot behind a handle, for the elliptic-curve module.
-pub(crate) fn slot(key: u64) -> Option<&'static Slot> {
+pub(crate) fn slot(key: u32) -> Option<&'static Slot> {
     slot_for(key)
 }
 
@@ -744,7 +811,8 @@ pub(crate) fn store_key(material: &[u8], key_type: u32) -> Option<u32> {
 ///
 /// `attributes` must point at a `psa_key_attributes_t`; `key` at a `mbedtls_svc_key_id_t`.
 #[no_mangle]
-pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u64) -> i32 {
+pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u32) -> i32 {
+    bump(2);
     if attributes.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -778,7 +846,7 @@ pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u64) 
     match store_key(&material[..len], PSA_KEY_TYPE_AES) {
         Some(id) => {
             if !key.is_null() {
-                *key = u64::from(id);
+                *key = id;
             }
             0
         }
@@ -792,7 +860,8 @@ pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u64) 
 ///
 /// `attributes` must point at a `psa_key_attributes_t`.
 #[no_mangle]
-pub unsafe extern "C" fn psa_get_key_attributes(key: u64, attributes: *mut u8) -> i32 {
+pub unsafe extern "C" fn psa_get_key_attributes(key: u32, attributes: *mut u8) -> i32 {
+    bump(7);
     crate::psa_ec::key_attributes(key, attributes as *mut crate::psa_ec::KeyAttributes)
 }
 
@@ -803,11 +872,12 @@ pub unsafe extern "C" fn psa_get_key_attributes(key: u64, attributes: *mut u8) -
 /// `data` must point at `data_size` writable bytes.
 #[no_mangle]
 pub unsafe extern "C" fn psa_export_public_key(
-    key: u64,
+    key: u32,
     data: *mut u8,
     data_size: usize,
     data_length: *mut usize,
 ) -> i32 {
+    bump(5);
     crate::psa_ec::export_public_key(key, data, data_size, data_length)
 }
 
@@ -819,13 +889,14 @@ pub unsafe extern "C" fn psa_export_public_key(
 #[no_mangle]
 pub unsafe extern "C" fn psa_raw_key_agreement(
     alg: u32,
-    private_key: u64,
+    private_key: u32,
     peer_key: *const u8,
     peer_key_length: usize,
     output: *mut u8,
     output_size: usize,
     output_length: *mut usize,
 ) -> i32 {
+    bump(10);
     crate::psa_ec::raw_key_agreement(
         alg,
         private_key,
@@ -835,4 +906,111 @@ pub unsafe extern "C" fn psa_raw_key_agreement(
         output_size,
         output_length,
     )
+}
+
+// ---------------------------------------------------------------------------------------------------------------
+// Which PSA entry points the stack actually calls, in what order — instrumentation, not logic.
+//
+// The pairing failure of 2026-11-14 said "no PSA entry point was called" from three counters. Three is not the
+// whole interface: the blobs import seventeen PSA symbols (`nm -u` on the three archives), and the security
+// manager may stop at any one of them. These counters are here so the next pairing attempt answers "where did it
+// stop" with a number per symbol instead of a guess.
+pub const PSA_CALL_NAMES: [&str; 17] = [
+    "psa_crypto_init",
+    "psa_generate_random",
+    "psa_generate_key",
+    "psa_import_key",
+    "psa_export_key",
+    "psa_export_public_key",
+    "psa_destroy_key",
+    "psa_get_key_attributes",
+    "psa_reset_key_attributes",
+    "psa_set_key_domain_parameters",
+    "psa_raw_key_agreement",
+    "psa_mac_compute",
+    "psa_mac_sign_setup",
+    "psa_mac_update",
+    "psa_mac_sign_finish",
+    "psa_mac_abort",
+    "psa_cipher_encrypt",
+];
+static mut PSA_CALLS: [u32; 17] = [0; 17];
+/// Index of the most recent PSA entry point, kept as a breadcrumb.
+///
+/// A fault inside the stack's pairing path kills the firmware, so a counter can only report where the code had been.
+/// This one is written by `bump`, which every entry point calls first, and it survives the fault because it is a
+/// static: the last live record before the crash names the function the code was in.
+static mut LAST_CALL: u32 = 0;
+/// Why the last `psa_import_key` was refused: `(length << 8) | (code & 0xFF)`. A refusal that leaves no trace is how
+/// "imp=14/13" stayed unexplained: one import in fourteen failed and nothing said which one or why.
+static mut IMPORT_REFUSED: u32 = 0;
+
+#[inline(always)]
+fn bump(i: usize) {
+    // SAFETY: single-core, and a counter that races with itself only misreports a count.
+    unsafe {
+        PSA_CALLS[i] = PSA_CALLS[i].wrapping_add(1);
+        *core::ptr::addr_of_mut!(LAST_CALL) = i as u32;
+    }
+}
+
+/// The per-symbol call counts, in `PSA_CALL_NAMES` order.
+pub fn psa_calls() -> [u32; 17] {
+    unsafe { PSA_CALLS }
+}
+
+/// AES-128-CMAC against a published vector (NIST SP 800-38B, 16-byte message).
+///
+/// The DHKey check of LE Secure Connections is an AES-CMAC over the ECDH secret (f5/f6), so a wrong MAC produces
+/// exactly the `SL_STATUS_BT_SMP_DHKEY_CHECK_FAILED` this board reports. This separates "the MAC is wrong" from
+/// "the MAC is right and its inputs are wrong" with no phone in the loop.
+pub fn cmac_kat() -> bool {
+    const KEY: [u8; 16] = [
+        0x2b, 0x7e, 0x15, 0x16, 0x28, 0xae, 0xd2, 0xa6, 0xab, 0xf7, 0x15, 0x88, 0x09, 0xcf, 0x4f,
+        0x3c,
+    ];
+    const MSG: [u8; 16] = [
+        0x6b, 0xc1, 0xbe, 0xe2, 0x2e, 0x40, 0x9f, 0x96, 0xe9, 0x3d, 0x7e, 0x11, 0x73, 0x93, 0x17,
+        0x2a,
+    ];
+    const EXPECTED: [u8; 16] = [
+        0x07, 0x0a, 0x16, 0xb4, 0x6b, 0x4d, 0x41, 0x44, 0xf7, 0x9b, 0xdd, 0x9d, 0xd0, 0x4a, 0x28,
+        0x7c,
+    ];
+    let got = unsafe { crate::crypto::cmac_of(KEY.as_ptr(), MSG.as_ptr(), MSG.len()) };
+    got == EXPECTED
+}
+
+/// How many times the stack asked to import a key, and how many of those succeeded.
+///
+/// The pairing dies on an import that returns -135; these two numbers say whether that path is even reached, which
+/// is the difference between "our import is wrong" and "the exchange never gets there".
+pub fn import_stats() -> (u32, u32) {
+    unsafe {
+        let calls = *core::ptr::addr_of!(PSA_CALLS[3]);
+        let ok = *core::ptr::addr_of!(IMPORTS);
+        (calls, ok)
+    }
+}
+
+/// Whether the stack asked for a key to be generated, and whether we refused a key type instead.
+///
+/// `ec=0,0,0` says the elliptic-curve code never ran; these two numbers say why: either nothing asked for a key, or
+/// something asked for a type this file declines and the caller did not notice.
+pub fn generate_stats() -> (u32, u32) {
+    unsafe {
+        let calls = *core::ptr::addr_of!(PSA_CALLS[2]);
+        let unsupported = *core::ptr::addr_of!(UNSUPPORTED_ALG);
+        (calls, unsupported)
+    }
+}
+
+/// The index of the last PSA entry point entered, for a fault that leaves no room for a crash handler.
+pub fn last_call() -> u32 {
+    unsafe { *core::ptr::addr_of!(LAST_CALL) }
+}
+
+/// `(length << 8) | code` of the last refused `psa_import_key`, zero if none since boot.
+pub fn import_refused() -> u32 {
+    unsafe { *core::ptr::addr_of!(IMPORT_REFUSED) }
 }
