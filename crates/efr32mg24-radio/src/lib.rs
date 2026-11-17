@@ -85,6 +85,10 @@ pub use efr32mg24_bluetooth_sys::bonding_ext::stats as bonding_ext_stats;
 #[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::trace_entries;
 
+/// Unused PSA key slots after the restore (`free=`), and `psa_destroy_key` calls that returned an error (`dfail=`).
+pub use efr32mg24_bluetooth_sys::psa::destroy_failures as psa_destroy_failures;
+pub use efr32mg24_bluetooth_sys::psa::free_slots as psa_free_slots;
+
 /// Key lookups that missed after a reset, and keys restored at start-up.
 pub use efr32mg24_bluetooth_sys::psa::lookup_stats as psa_lookup_stats;
 

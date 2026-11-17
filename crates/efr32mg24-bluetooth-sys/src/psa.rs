@@ -49,9 +49,6 @@ const PSA_ERROR_INVALID_HANDLE: i32 = -136;
 const PSA_ERROR_BAD_STATE: i32 = -137;
 /// `PSA_ERROR_BUFFER_TOO_SMALL`
 const PSA_ERROR_BUFFER_TOO_SMALL: i32 = -138;
-/// `PSA_ERROR_DOES_NOT_EXIST`
-const PSA_ERROR_DOES_NOT_EXIST: i32 = -140;
-
 /// `PSA_KEY_TYPE_AES`, the only key type this firmware handles.
 const PSA_KEY_TYPE_AES: u32 = 0x2400;
 
@@ -81,6 +78,10 @@ pub(crate) struct Slot {
     /// `psa_key_type_t` recorded at import. Read by nothing yet — this firmware only holds AES keys — but stored
     /// so that a future key type is a table change rather than a redesign.
     pub(crate) key_type: u32,
+    /// True only for a key the stack named (`requested_id != 0`), which is the only kind written to flash. The flag also
+    /// guards the delete: NVM3 keys are `PERSIST_BASE | (id % 0x10000)`, so destroying an unnamed key with id `0x8003`
+    /// would delete the stored object of the bond key `0x48003`.
+    pub(crate) persistent: bool,
 }
 
 const EMPTY_SLOT: Slot = Slot {
@@ -89,7 +90,12 @@ const EMPTY_SLOT: Slot = Slot {
     key_len: 0,
     key: [0; MAX_KEY],
     key_type: PSA_KEY_TYPE_AES,
+    persistent: false,
 };
+
+/// Ids below this are ours (counter-assigned, ephemeral). The vendor's named ids start at `0x40000`
+/// (`0x48003`, `0x40037`), so the two ranges cannot meet.
+const AUTO_ID_LIMIT: u32 = 0x4_0000;
 
 // THE TABLE IS IN RAM, AND THAT IS THE NEXT DEFECT TO CLOSE.
 //
@@ -109,8 +115,8 @@ const EMPTY_SLOT: Slot = Slot {
 //   2. `psa_import_key`, `psa_generate_key` and `psa_destroy_key` write and delete the object, so the flash always
 //      agrees with the table
 //   3. `slot_for` loads a key from flash on a miss, so a handle that survived a reset resolves again
-//   4. `NEXT_ID` is restored at start-up by enumerating our range and taking the highest id, because ids are handed
-//      out from a counter and a counter that restarts at 1 would overwrite a persisted key
+//   4. only keys the stack NAMED are persisted, and counter-assigned ids live in `1..AUTO_ID_LIMIT`, below the
+//      vendor's `0x40000` range, so the counter needs no restoring and cannot overwrite a persisted key
 //
 // Then: turn `external-bonding` on, pair from the host, reset the board, reconnect without pairing. That last step is
 // the proof the whole BLE requirement rests on, and it is why this is written here rather than in a note.
@@ -149,6 +155,21 @@ pub fn destroyed_ids() -> [u32; 4] {
 /// How many keys have been destroyed.
 pub fn destroy_count() -> u32 {
     DESTROYED.load(Ordering::Relaxed)
+}
+
+/// Calls to `psa_destroy_key` that returned an error (`dfail=`). After the status-code fix this must stay 0 in normal
+/// operation; the stack treats anything but 0 or -136 as a system error.
+static DESTROY_FAILED: AtomicU32 = AtomicU32::new(0);
+
+/// `psa_destroy_key` calls that returned an error.
+pub fn destroy_failures() -> u32 {
+    DESTROY_FAILED.load(Ordering::Relaxed)
+}
+
+/// Unused key-table slots (`free=`). Each leaked ephemeral key took one at every boot, and at zero the next ECDH fails
+/// with `INSUFFICIENT_MEMORY`.
+pub fn free_slots() -> u32 {
+    slots().iter().filter(|s| !s.used).count() as u32
 }
 
 /// The key lookups that found nothing, and what the last one asked for. A miss at reconnect is the whole of the
@@ -319,7 +340,13 @@ extern "C" {
     fn nvm3_writeData(handle: *mut u8, key: u32, data: *const u8, length: usize) -> u32;
     fn nvm3_readData(handle: *mut u8, key: u32, data: *mut u8, length: usize) -> u32;
     fn nvm3_deleteObject(handle: *mut u8, key: u32) -> u32;
-    fn nvm3_enumObjects(handle: *mut u8, key_list: *mut u32, key_list_size: usize) -> usize;
+    fn nvm3_enumObjects(
+        handle: *mut u8,
+        key_list: *mut u32,
+        key_list_size: usize,
+        key_min: u32,
+        key_max: u32,
+    ) -> usize;
     fn nvm3_getObjectInfo(handle: *mut u8, key: u32, obj_type: *mut u32, length: *mut usize)
         -> u32;
 }
@@ -330,7 +357,7 @@ fn persist_key_for(id: u32) -> u32 {
 
 /// Write one slot to flash. Called on every change, so a key that exists in the table always exists on the device.
 fn persist_slot(slot: &Slot) {
-    if !slot.used || slot.id == 0 || slot.key_len == 0 {
+    if !slot.used || !slot.persistent || slot.id == 0 || slot.key_len == 0 {
         return;
     }
     let mut buf = [0u8; PERSIST_HEADER + MAX_KEY];
@@ -357,10 +384,10 @@ fn forget_slot(id: u32) {
     }
 }
 
-/// Load every persisted key back into the table, once per boot, and restore the id counter above them.
+/// Load every persisted key back into the table, once per boot.
 ///
-/// The counter matters as much as the keys: ids are handed out from `NEXT_ID`, which starts at 1 on every boot, so
-/// without this a new import would take the id of a key that survived and overwrite it.
+/// The id counter is not restored: it only hands out ids below `AUTO_ID_LIMIT`, and persisted keys are all named ones
+/// above it.
 fn restore_slots_once() {
     // SAFETY: single-core, called from the PSA entry points before they touch the table, and guarded by RESTORE_DONE.
     unsafe {
@@ -379,10 +406,18 @@ fn restore_slots_once() {
         *ptr::addr_of_mut!(RESTORE_DONE) = true;
         RESTORE_RUNS.fetch_add(1, Ordering::Relaxed);
 
-        let mut keys = [0u32; 24];
-        let found = nvm3_enumObjects(nvm3_defaultHandle, keys.as_mut_ptr(), keys.len());
+        // Five arguments, as the vendor prototype has (`nvm3_generic.h:353-355`). With three, `keyMin`/`keyMax` were
+        // stale register and stack contents, which fits the run-to-run variance of `rst=` (5, 6, 13, 7 on the same flash)
+        // and the key that was not restored. The list holds one entry per table slot.
+        let mut keys = [0u32; SLOTS];
+        let found = nvm3_enumObjects(
+            nvm3_defaultHandle,
+            keys.as_mut_ptr(),
+            keys.len(),
+            PERSIST_BASE,
+            PERSIST_BASE | 0xFFFF,
+        );
         RESTORE_ENUMERATED.store(found as u32, Ordering::Relaxed);
-        let mut highest = 0u32;
         for key in keys.iter().take(found.min(keys.len())) {
             // Same range as `PERSIST_BASE`, compared by the high half so this does not depend on a bit mask.
             if *key / 0x1_0000 != PERSIST_BASE / 0x1_0000 {
@@ -411,6 +446,13 @@ fn restore_slots_once() {
             if key_len == 0 || key_len > MAX_KEY {
                 continue;
             }
+            // One-time purge of what the earlier firmware left behind: it persisted every import, including
+            // counter-assigned ephemeral keys (ids below `AUTO_ID_LIMIT`). Those are not the stack's to get back, and
+            // each one occupied a table slot at every boot. Only named ids (`0x40000` and up) are restored.
+            if id < AUTO_ID_LIMIT {
+                nvm3_deleteObject(nvm3_defaultHandle, *key);
+                continue;
+            }
             // `id` comes from the payload above: the NVM3 key only identifies the object.
             let table = slots();
             if let Some(free) = table.iter_mut().find(|s| !s.used) {
@@ -422,15 +464,14 @@ fn restore_slots_once() {
                     key_len,
                     key: bytes,
                     key_type,
+                    persistent: true,
                 };
-                highest = highest.max(id);
                 SLOTS_RESTORED.fetch_add(1, Ordering::Relaxed);
                 LAST_RESTORED_ID.store(id, Ordering::Relaxed);
             }
         }
-        if highest >= *ptr::addr_of!(NEXT_ID) {
-            *ptr::addr_of_mut!(NEXT_ID) = highest + 1;
-        }
+        // `NEXT_ID` is deliberately not moved here: the counter lives in `1..AUTO_ID_LIMIT` and the restored ids are
+        // all above it, so they cannot collide (see `next_auto_id`).
     }
 }
 
@@ -536,10 +577,40 @@ unsafe fn take_id(attributes: *const u8) -> u32 {
     if asked != 0 {
         return asked;
     }
-    let counter = ptr::addr_of_mut!(NEXT_ID);
-    let value = ptr::read_volatile(counter);
-    ptr::write_volatile(counter, value.wrapping_add(1).max(1));
-    value.max(1)
+    next_auto_id()
+}
+
+/// The next counter-assigned id, from `1..AUTO_ID_LIMIT`, skipping ids already in the table.
+///
+/// The counter used to be restored to "highest persisted id + 1" at boot, and the highest included `0x48003`, so the
+/// next ephemeral key was handed `0x48004`, `0x48005`, ... which are the ids `bondingdb_psa_add_ecb_key` builds as
+/// `0x48000 | handle << 8 | type`. A later import under the same id replaced the slot, and a later destroy of the
+/// ephemeral key destroyed the bond key in its place.
+fn next_auto_id() -> u32 {
+    // SAFETY: single-core, and the counter is only touched from the PSA entry points.
+    unsafe {
+        let counter = ptr::addr_of_mut!(NEXT_ID);
+        // The table has `SLOTS` entries, so at most `SLOTS` candidates can collide.
+        for _ in 0..=SLOTS {
+            let value = ptr::read_volatile(counter);
+            let next = if value + 1 >= AUTO_ID_LIMIT {
+                1
+            } else {
+                value + 1
+            };
+            ptr::write_volatile(counter, next);
+            let value = if (1..AUTO_ID_LIMIT).contains(&value) {
+                value
+            } else {
+                1
+            };
+            if !slots().iter().any(|s| s.used && s.id == value) {
+                return value;
+            }
+        }
+    }
+    // Unreachable in practice (more collisions than slots); the table-full path refuses the import before it matters.
+    1
 }
 
 /// `sizeof(psa_key_attributes_t)` **as this implementation reports it to the allocator**.
@@ -659,12 +730,17 @@ unsafe fn psa_import_key_inner(
         };
         let mut k = [0u8; MAX_KEY];
         k[..65].copy_from_slice(bytes);
+        // The peer's public key is only imported to validate it before an agreement. Written to flash on every pairing
+        // it left one more object behind each time and, restored, took a table slot at boot; it is persisted only if
+        // the stack named it.
+        let named = requested_id(attributes) != 0;
         table[index] = Slot {
             used: true,
             id: 0,
             key_len: 65,
             key: k,
             key_type: PSA_KEY_TYPE_ECC_PUBLIC_KEY_P256,
+            persistent: named,
         };
         let id = take_id(attributes);
         ptr::write(key, id);
@@ -695,6 +771,9 @@ unsafe fn psa_import_key_inner(
     }
 
     let id = take_id(attributes);
+    // Only a key the stack named survives a reset; counter-assigned AES keys are ephemeral and go when the stack
+    // destroys them.
+    let named = requested_id(attributes) != 0;
 
     let mut k = [0u8; MAX_KEY];
     ptr::copy_nonoverlapping(data, k.as_mut_ptr(), data_length);
@@ -711,6 +790,7 @@ unsafe fn psa_import_key_inner(
             key_len: data_length,
             key: k,
             key_type: PSA_KEY_TYPE_AES,
+            persistent: named,
         };
         persist_slot(existing);
         ptr::write(key, id);
@@ -728,6 +808,7 @@ unsafe fn psa_import_key_inner(
         key_len: data_length,
         key: k,
         key_type: PSA_KEY_TYPE_AES,
+        persistent: named,
     };
 
     ptr::write(key, id);
@@ -760,20 +841,28 @@ pub unsafe extern "C" fn psa_destroy_key(key: u32) -> i32 {
     restore_slots_once();
     let id = key;
     if id == 0 {
+        DESTROY_FAILED.fetch_add(1, Ordering::Relaxed);
         return PSA_ERROR_INVALID_HANDLE;
     }
     let table = slots();
     for slot in table.iter_mut() {
         if slot.used && slot.id == id {
+            let persisted = slot.persistent;
             slot.used = false;
             slot.id = 0;
             slot.key_len = 0;
             slot.key = [0; MAX_KEY];
-            forget_slot(id);
+            slot.persistent = false;
+            if persisted {
+                forget_slot(id);
+            }
             return PSA_SUCCESS;
         }
     }
-    PSA_ERROR_DOES_NOT_EXIST
+    // An unknown id is PSA_ERROR_INVALID_HANDLE (-136), not PSA_ERROR_DOES_NOT_EXIST (-140): `sli_bt_bonding_delete`
+    // accepts only 0 or -136 (`sli_bt_bonding_delete+0x10`, review grade D), and anything else raises a system error.
+    DESTROY_FAILED.fetch_add(1, Ordering::Relaxed);
+    PSA_ERROR_INVALID_HANDLE
 }
 
 /// Begin a CMAC over the key `key`. The algorithm must be a CMAC one; anything else is refused rather than
@@ -1209,21 +1298,18 @@ pub(crate) fn store_key(material: &[u8], key_type: u32) -> Option<u32> {
     }
     let table = slots();
     let index = table.iter().position(|s| !s.used)?;
-    let id = unsafe {
-        let n = ptr::addr_of_mut!(NEXT_ID);
-        let v = ptr::read_volatile(n);
-        ptr::write_volatile(n, v.wrapping_add(1).max(1));
-        v.max(1)
-    };
+    let id = next_auto_id();
+    // Not persisted: the stack did not name this key, so it is the stack's to destroy and it must not survive a reset
+    // (a persisted ephemeral key is a table slot lost at every boot, until the table is full and ECDH fails).
     table[index] = Slot {
         used: true,
         id,
         key_len: material.len(),
         key: [0; MAX_KEY],
         key_type,
+        persistent: false,
     };
     table[index].key[..material.len()].copy_from_slice(material);
-    persist_slot(&table[index]);
     Some(id)
 }
 
@@ -1272,7 +1358,9 @@ pub unsafe extern "C" fn psa_generate_key(attributes: *const u8, key: *mut u32) 
             }
             0
         }
-        None => -143, // PSA_ERROR_INSUFFICIENT_MEMORY
+        // -141 is PSA_ERROR_INSUFFICIENT_MEMORY. This returned -143, which in PSA is PSA_ERROR_INSUFFICIENT_DATA, so a
+        // full table was reported to the stack as a different failure than the one it handles.
+        None => PSA_ERROR_INSUFFICIENT_MEMORY,
     }
 }
 

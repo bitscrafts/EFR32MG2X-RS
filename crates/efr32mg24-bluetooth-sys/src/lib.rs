@@ -126,3 +126,5 @@ extern "C" {}
 
 #[cfg(feature = "external-bonding")]
 pub mod bonding_ext;
+#[cfg(feature = "external-bonding")]
+mod peer_match;

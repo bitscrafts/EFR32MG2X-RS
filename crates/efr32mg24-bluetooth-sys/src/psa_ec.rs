@@ -175,7 +175,9 @@ pub unsafe fn generate_ecc_key(attributes: *const KeyAttributes, key: *mut u32) 
         }
         None => {
             note_failure(1, 143);
-            -143 // PSA_ERROR_INSUFFICIENT_MEMORY
+            // PSA_ERROR_INSUFFICIENT_MEMORY is -141. -143 is PSA_ERROR_INSUFFICIENT_DATA, which the stack reads as a
+            // different condition (see `psa.rs`, `psa_generate_key`).
+            -141
         }
     }
 }
