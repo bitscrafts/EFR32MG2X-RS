@@ -142,3 +142,43 @@ The fixes, in `dosimeter-mg24`: pair before subscribing; register the receiver e
 `device.bondState` every 400 ms; one GATT operation at a time, each callback asking for the next, with a two-second
 guard. The general rule this night produced: **prefer reading a state to waiting for an event, and never leave a
 failure path without a line on the screen.**
+
+## Why the phone is asked to pair again after the dosimeter is power-cycled
+
+Measured 2026-11-17, reported by the operator as *"quando desligo esta pedindo sempre para emparelhar novamente"*,
+and located in our own code:
+
+```
+crates/efr32mg24-bluetooth-sys/src/bonding_ext.rs:585
+    sli_bt_external_bonding_resolve_address(address, address_type) -> 0     // always "not mine"
+```
+
+A bonded phone presents a **Resolvable Private Address**. Before it can match the connection to a stored bond, the stack
+asks the external bonding database to resolve that address — and this layer answers "no" every time, by design, with a
+comment saying the honest thing rather than guessing which record piece holds the key. The consequence is exactly the
+symptom: after a reboot the device does not recognise the phone, so the stack creates a new bond and the phone shows a
+pairing prompt.
+
+What the record says, measured across two resets:
+
+```
+before reset   cfb=2 cfok=2 cfno=0 smfail=1 smrsn=4102
+after reset 1  cfb=1 cfok=1 cfno=0 cfwhy=2      new bond created, inside the window
+after reset 2  cfb=0 cfok=0 cfno=0              no bond requested -- the phone had not reconnected yet
+NVM3 header    b29a0001 d0000001 -> d0000002    writes are landing; the store is not the problem
+```
+
+`4102 = 0x1006` is the SMP reason the phone reports on the failed attempt. So the bond is written and readable; what is
+missing is **address resolution**.
+
+### The fix, and why it is not a five-minute patch
+
+Resolving an RPA needs the peer's IRK and the `ah` function (AES-128 over `prand`, top 24 bits compared with the hash),
+plus knowing **which piece of the bonding record holds the IRK** — and that layout is not documented anywhere in the
+vendor tree; the comment above the stub says so. Finding it is a read-only experiment: dump every piece of one stored
+bond after a pairing and identify the 16-byte key. Then `aes-modes` already has ECB, and the resolution itself is small.
+
+Until that is done, the demonstration-safe procedure is: **pair once and do not power-cycle the dosimeter afterwards.**
+Resetting the phone's app is harmless; resetting the board costs a re-pair. `CALLS_RESOLVE` already counts these calls
+in `bonding_ext.rs` but is not published anywhere yet — exposing it in the record is the first step of the fix, because
+it turns "the stack probably calls this" into a number.
