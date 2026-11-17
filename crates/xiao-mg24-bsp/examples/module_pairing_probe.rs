@@ -142,6 +142,13 @@ fn main() -> ! {
         // pairing that follows is the first either side has ever seen.
         const CLEAR_BONDS: bool = false;
         if CLEAR_BONDS {
+            // With the builtin database the stack owns the store and deletes through its own command. With an external
+            // database that command is documented as unavailable and the store is ours, so clearing it is done here.
+            #[cfg(feature = "external-bonding")]
+            let removed = efr32mg24_radio::bonding_clear_all();
+            #[cfg(not(feature = "external-bonding"))]
+            let removed = 0u32;
+            let _ = removed;
             let _ = ble.delete_bondings();
         }
         // With an external bonding database this command is documented as unavailable, and calling it anyway is a

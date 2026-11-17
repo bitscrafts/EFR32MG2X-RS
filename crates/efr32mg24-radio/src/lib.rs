@@ -77,6 +77,8 @@ compile_error!(
 );
 
 #[cfg(feature = "external-bonding")]
+pub use efr32mg24_bluetooth_sys::bonding_ext::clear_all as bonding_clear_all;
+#[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::data_request_stats;
 #[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::stats as bonding_ext_stats;

@@ -860,11 +860,26 @@ impl Bluetooth {
         // Answer a bonding-data request that the previous poll recorded, outside any BGAPI call.
         #[cfg(feature = "external-bonding")]
         if let Some((conn, data_type)) = crate::bonding_ext::take_queued_data_answer() {
-            let empty = [0u8; 1];
-            let status = unsafe {
-                bt::sl_bt_external_bondingdb_set_data(conn, data_type, 0, empty.as_ptr())
+            // Answer with what the database holds for that bond. A zero-length answer is the documented way to say
+            // "not available" and is only correct when nothing is stored; answering zero unconditionally -- which
+            // this did until 2026-11-17 -- makes encryption impossible from stored data, because the stack then has
+            // no long-term key to encrypt with.
+            // Only the pieces the security manager needs are worth answering with data. The GATT-cache pieces
+            // (8 = client characteristic configurations, 9 = client features, 10 = database hash) are the *remote
+            // client's* cached view of our database: answering "not available" makes it re-read everything, which is
+            // always correct, while answering with a stale blob is rejected outright (measured 2026-11-17: 8 bytes for
+            // type 8 came back SL_STATUS_INVALID_PARAMETER, and the request that followed never completed).
+            let is_gatt_cache = matches!(data_type, 8 | 9 | 10);
+            let mut buf = [0u8; 64];
+            let len = if is_gatt_cache {
+                0
+            } else {
+                crate::bonding_ext::piece_for(conn, data_type, &mut buf).unwrap_or(0)
             };
-            crate::bonding_ext::note_data_answer(status);
+            let status = unsafe {
+                bt::sl_bt_external_bondingdb_set_data(conn, data_type, len, buf.as_ptr())
+            };
+            crate::bonding_ext::note_data_answer(len, status);
         }
 
         let mut evt = core::mem::MaybeUninit::<bt::sl_bt_msg_t>::uninit();
@@ -934,11 +949,28 @@ impl Bluetooth {
         // Automatically update connection state based on events
         if let Some(ref event) = parsed {
             match event {
-                BleEvent::Connected { connection, .. } => {
+                // `address`/`address_type` feed the connection bookkeeping of the external database; without that
+                // feature they are simply unused, so the binding says so instead of the compiler complaining.
+                BleEvent::Connected {
+                    connection,
+                    address,
+                    address_type,
+                    ..
+                } => {
+                    #[cfg(not(feature = "external-bonding"))]
+                    let _ = (address, address_type);
                     self.connected = true;
                     self.connection_handle = *connection;
+                    // The external database needs the peer of every connection: the stack asks for bonding data by
+                    // connection handle, and a bond is identified by the address stored with it.
+                    #[cfg(feature = "external-bonding")]
+                    crate::bonding_ext::note_connection(*connection, *address, *address_type);
                 }
                 BleEvent::Disconnected { .. } => {
+                    #[cfg(feature = "external-bonding")]
+                    if self.connected {
+                        crate::bonding_ext::forget_connection(self.connection_handle);
+                    }
                     self.connected = false;
                     self.connection_handle = 0;
                 }

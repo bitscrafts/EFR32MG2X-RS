@@ -38,6 +38,7 @@ extern "C" {
     fn nvm3_deleteObject(handle: *mut u8, key: u32) -> u32;
     fn nvm3_getObjectInfo(handle: *mut u8, key: u32, obj_type: *mut u32, length: *mut usize)
         -> u32;
+    fn nvm3_enumObjects(handle: *mut u8, key_list: *mut u32, key_list_size: usize) -> usize;
 }
 
 #[inline]
@@ -45,8 +46,10 @@ fn storage_key(bonding: u8, piece: u8) -> u32 {
     KEY_BASE | ((bonding as u32) << 8) | piece as u32
 }
 
+/// The stack's NVM3 handle. Named with the module in it because the helpers below take a `handle: u8` argument, and
+/// a local of that name shadows a function of that name (found by the compiler, 2026-11-17).
 #[inline]
-fn handle() -> *mut u8 {
+fn nvm3_handle() -> *mut u8 {
     unsafe { nvm3_defaultHandle }
 }
 
@@ -81,6 +84,161 @@ pub fn note_data_request(connection: u8, data_type: u8) {
     trace(1, data_type as u32, connection as u32);
     LAST_DATA_CONN.store(connection as u32, Ordering::Relaxed);
     LAST_DATA_TYPE.store(data_type as u32, Ordering::Relaxed);
+}
+
+/// The peer address of each open connection, as the stack reported it on `connection_opened`.
+///
+/// With an external database this bookkeeping is the application's job, and the vendor's own contract says so
+/// (`sl_bt_api.h:11580`): "Manage a local RAM-based bookkeeping to keep track of open connections. At a minimum, the
+/// remote Bluetooth address and address type must be stored in the bookkeeping when a
+/// `sl_bt_evt_connection_opened` event is received." It exists here for one reason: the stack asks for bonding data
+/// by **connection**, and the bond is identified by the **peer address** stored with it, so without the table there
+/// is no way to tell which bond a request is about. Measured 2026-11-17: answering every request with zero length
+/// (the previous behaviour) means encryption can never be established from stored data.
+static CONNECTION_PEERS: [AtomicU32; 8] = [
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+    AtomicU32::new(0xFFFF_FFFF),
+];
+
+/// Pack a 6-byte address and its type into one word: type in the top byte, the first five address bytes below it.
+fn pack_peer(address: [u8; 6], address_type: u8) -> u32 {
+    (address_type as u32) << 24
+        | (address[0] as u32) << 16
+        | (address[1] as u32) << 8
+        | address[2] as u32
+}
+
+/// Remember the peer of a connection, from `connection_opened`.
+pub fn note_connection(connection: u8, address: [u8; 6], address_type: u8) {
+    if let Some(slot) = CONNECTION_PEERS.get(connection as usize) {
+        slot.store(pack_peer(address, address_type), Ordering::Relaxed);
+    }
+}
+
+/// Forget a connection, from `connection_closed`.
+pub fn forget_connection(connection: u8) {
+    if let Some(slot) = CONNECTION_PEERS.get(connection as usize) {
+        slot.store(0xFFFF_FFFF, Ordering::Relaxed);
+    }
+}
+
+/// How many bytes the stack stored for `(handle, piece)`, or `None` when nothing is stored.
+///
+/// # Safety
+/// Reads the NVM3 object for that pair; the handle must be the stack's NVM3 handle.
+unsafe fn stored_len(handle: u8, piece: u8) -> Option<usize> {
+    let mut obj_type = 0u32;
+    let mut len = 0usize;
+    let rc = nvm3_getObjectInfo(
+        nvm3_handle(),
+        storage_key(handle, piece),
+        &mut obj_type,
+        &mut len,
+    );
+    if rc != 0 || len == 0 {
+        None
+    } else {
+        Some(len)
+    }
+}
+
+/// Copy the piece the stack stored for `(handle, piece)` into `out`, returning how many bytes were copied.
+///
+/// # Safety
+/// As for `stored_len`.
+unsafe fn copy_stored(handle: u8, piece: u8, out: &mut [u8]) -> Option<usize> {
+    let len = stored_len(handle, piece)?;
+    if len > out.len() {
+        return None;
+    }
+    let rc = nvm3_readData(
+        nvm3_handle(),
+        storage_key(handle, piece),
+        out.as_mut_ptr(),
+        len,
+    );
+    if rc != 0 {
+        None
+    } else {
+        Some(len)
+    }
+}
+
+/// Delete every bond this database holds, and say how many objects were removed.
+///
+/// With an external database the stack cannot delete bonds for the application: `sl_bt_sm_delete_bonding` and the whole
+/// family answer `SL_STATUS_NOT_AVAILABLE` (`sl_bt_api.h:11605-11610`), and "The application also needs to manage the
+/// bondings in the storage, e.g., delete a bonding when requested by the business logic." Measured 2026-11-17: a test
+/// phase that asked the stack to clear the device cleared nothing on this path, the device kept answering the next
+/// pairing with the previous long-term key, and the host cancelled.
+pub fn clear_all() -> u32 {
+    let mut removed = 0;
+    // SAFETY: single-core; NVM3 is opened by the stack and this only enumerates and deletes within our own key range.
+    unsafe {
+        let mut keys = [0u32; 48];
+        let found = nvm3_enumObjects(nvm3_handle(), keys.as_mut_ptr(), keys.len());
+        for key in keys.iter().take(found.min(keys.len())) {
+            if *key / 0x1_0000 != KEY_BASE / 0x1_0000 {
+                continue;
+            }
+            if nvm3_deleteObject(nvm3_handle(), *key) == 0 {
+                removed += 1;
+            }
+        }
+    }
+    removed
+}
+
+/// The bond handle whose stored peer address matches the peer of `connection`.
+///
+/// The address the stack reports on the connection is what the bond was stored under: `bondingdb` keeps the remote
+/// address as piece 0. Comparing the two is how a request for "the long-term key of connection 1" becomes "the
+/// long-term key of bond N".
+///
+/// # Safety
+/// Reads NVM3 objects for handles `0..MAX_SLOTS`.
+unsafe fn bond_for_connection(connection: u8) -> Option<u8> {
+    let packed = CONNECTION_PEERS
+        .get(connection as usize)?
+        .load(Ordering::Relaxed);
+    if packed == 0xFFFF_FFFF {
+        return None;
+    }
+    let mut stored = [0u8; 8];
+    for slot in 0..MAX_SLOTS {
+        let Some(len) = copy_stored(slot, 0, &mut stored) else {
+            continue;
+        };
+        // Piece 0 is the remote address: six bytes, little-endian as the stack reports it.
+        if len < 6 {
+            continue;
+        }
+        let address = [
+            stored[0], stored[1], stored[2], stored[3], stored[4], stored[5],
+        ];
+        if pack_peer(address, 0) >> 8 == packed >> 8 {
+            return Some(slot);
+        }
+    }
+    None
+}
+
+/// The bonding data of `piece` for the bond of `connection`, copied into `out`.
+///
+/// `None` means "this stack has no such data", which the caller answers with a zero-length
+/// `sl_bt_external_bondingdb_set_data` -- the documented way to say "not available" (`sl_bt_api.h:11887`).
+pub fn piece_for(connection: u8, piece: u8, out: &mut [u8]) -> Option<usize> {
+    // SAFETY: single-core, NVM3 is opened by the stack and this only reads.
+    unsafe {
+        let handle = bond_for_connection(connection)?;
+        copy_stored(handle, piece, out)
+    }
 }
 
 /// A compact trace of the bonding conversation: eight entries of `(kind << 16) | (a << 8) | b`.
@@ -152,8 +310,9 @@ pub fn note_data_ready() {
     trace(5, 0, 0);
 }
 
-/// Called after answering that request, with the status the stack returned.
-pub fn note_data_answer(status: u32) {
+/// Called after answering that request, with the length answered and the status the stack returned.
+pub fn note_data_answer(length: usize, status: u32) {
+    trace(2, length as u32, status);
     CALLS_DATA_ANSWERED.fetch_add(1, Ordering::Relaxed);
     trace(2, 0, status);
     LAST_DATA_STATUS.store(status, Ordering::Relaxed);
@@ -213,7 +372,7 @@ pub unsafe extern "C" fn sli_bt_external_bonding_alloc(record: *const u8) -> i8 
         let mut length = 0usize;
         let taken = unsafe {
             nvm3_getObjectInfo(
-                handle(),
+                nvm3_handle(),
                 storage_key(bonding, 8),
                 &mut obj_type,
                 &mut length,
@@ -244,7 +403,7 @@ pub extern "C" fn sli_bt_external_bonding_is_bonded(bonding: u8) -> bool {
     let mut length = 0usize;
     unsafe {
         nvm3_getObjectInfo(
-            handle(),
+            nvm3_handle(),
             storage_key(bonding, 8),
             &mut obj_type,
             &mut length,
@@ -282,7 +441,7 @@ pub unsafe extern "C" fn sli_bt_external_bonding_store_data(
     if data.is_null() || length == 0 || length > 128 {
         return 0x406;
     }
-    let rc = nvm3_writeData(handle(), storage_key(bonding, piece), data, length);
+    let rc = nvm3_writeData(nvm3_handle(), storage_key(bonding, piece), data, length);
     if rc != 0 {
         STORE_ERRORS.fetch_add(1, Ordering::Relaxed);
         // NVM3 refused: report it as a storage failure rather than pretending the record exists.
@@ -306,7 +465,7 @@ pub unsafe extern "C" fn sli_bt_external_bonding_read_data(
     if data.is_null() || length == 0 {
         return 0x406;
     }
-    nvm3_readData(handle(), storage_key(bonding, piece), data, length)
+    nvm3_readData(nvm3_handle(), storage_key(bonding, piece), data, length)
 }
 
 /// Forget every piece of one bonding record.
@@ -319,7 +478,7 @@ pub extern "C" fn sli_bt_external_bonding_delete(bonding: u8) -> u32 {
     CALLS_DELETE.fetch_add(1, Ordering::Relaxed);
     for piece in 0..MAX_PIECE {
         unsafe {
-            nvm3_deleteObject(handle(), storage_key(bonding, piece));
+            nvm3_deleteObject(nvm3_handle(), storage_key(bonding, piece));
         }
     }
     0
@@ -366,7 +525,7 @@ pub unsafe extern "C" fn sli_bt_bonding_get_data(
     if data.is_null() || length == 0 {
         return 0x406;
     }
-    let rc = nvm3_readData(handle(), storage_key(bonding, piece), data, length);
+    let rc = nvm3_readData(nvm3_handle(), storage_key(bonding, piece), data, length);
     if rc != 0 {
         READ_ERRORS.fetch_add(1, Ordering::Relaxed);
     }
