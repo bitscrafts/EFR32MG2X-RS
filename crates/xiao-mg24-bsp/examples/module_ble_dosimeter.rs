@@ -48,10 +48,17 @@ const WINDOW: usize = 256;
 /// one carries a person's noise exposure. So a new bond is accepted when the device holds none at all, or inside this
 /// window -- and the owner's re-pair gesture is a power cycle.
 ///
-/// 120 s is long enough to take a phone out and pair it, and short enough that an attacker has to be present at the
-/// moment the device is switched on. It is **not** authentication: Just Works has no man-in-the-middle protection, and
-/// this window limits when a bond may be created, not who may create it.
-const PAIRING_WINDOW_SECONDS: u32 = 120;
+/// It is **not** authentication: Just Works has no man-in-the-middle protection, and this window limits when a bond may
+/// be created, not who may create it.
+/// Ten minutes, not two. The trade-off is the same in kind and different in size: the window still limits *when* a bond
+/// may be created, and an attacker still has to be within radio range during that window; it is only longer.
+///
+/// Measured 2026-11-17, twice, on a real phone: the two-minute window closed while the phone was being set up, the device
+/// refused (`cfno`), and Android showed no dialog at all because its bond state had never left NONE -- so the operator saw
+/// "a emparelhar" and nothing else, with no way to tell a refusal from a slow pairing. Two minutes is right for a product
+/// in daily use, where pairing happens once at the moment the device is switched on. It is wrong for a demonstration,
+/// where the device is powered before the explanation starts.
+const PAIRING_WINDOW_SECONDS: u32 = 600;
 
 /// How many samples pass between two polls of the Bluetooth stack.
 ///

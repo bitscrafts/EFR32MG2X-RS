@@ -101,6 +101,14 @@ name = "module_dev_scan"
 required-features = ["stack"]
 
 [[example]]
+name = "module_dosimeter_offline"
+required-features = ["sense"]
+
+[[example]]
+name = "module_nvm3_wipe"
+required-features = ["sense", "stack"]
+
+[[example]]
 name = "module_nvm3_probe"
 required-features = ["stack"]
 
