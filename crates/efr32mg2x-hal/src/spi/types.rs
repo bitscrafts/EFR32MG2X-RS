@@ -116,6 +116,10 @@ pub enum Error {
     FrameError,
     /// Invalid configuration
     InvalidConfig,
+    /// A handshake did not complete within the driver's poll budget.
+    ///
+    /// Added 2026-11-17 with the `flush` fix: waiting for `TXIDLE` without a bound turns a stuck shifter into a hang.
+    Timeout,
 }
 
 impl core::fmt::Display for Error {
@@ -124,6 +128,7 @@ impl core::fmt::Display for Error {
             Error::Overrun => write!(f, "SPI overrun error"),
             Error::FrameError => write!(f, "SPI frame error"),
             Error::InvalidConfig => write!(f, "SPI invalid configuration"),
+            Error::Timeout => write!(f, "SPI handshake timed out"),
         }
     }
 }
@@ -135,6 +140,7 @@ impl embedded_hal::spi::Error for Error {
             Error::Overrun => embedded_hal::spi::ErrorKind::Overrun,
             Error::FrameError => embedded_hal::spi::ErrorKind::FrameFormat,
             Error::InvalidConfig => embedded_hal::spi::ErrorKind::Other,
+            Error::Timeout => embedded_hal::spi::ErrorKind::Other,
         }
     }
 }

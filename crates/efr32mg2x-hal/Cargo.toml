@@ -13,6 +13,7 @@ categories = ["embedded", "hardware-support", "no-std"]
 efr32mg2x-i2c-proto = { path = "../../libraries/i2c-proto" }
 efr32mg2x-dma-transfer = { path = "../../libraries/dma-transfer" }
 efr32mg2x-usart-core = { path = "../../libraries/usart-core" }
+efr32mg2x-spi-core = { path = "../../libraries/spi-core" }
 efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.0" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 embedded-hal = { workspace = true }

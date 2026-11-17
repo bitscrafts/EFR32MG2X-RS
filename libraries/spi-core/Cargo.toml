@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-spi-core"
+version = "0.1.0"
+edition = "2021"
+description = "The EUSART synchronous path: what finished means, and the SDIV divider"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

@@ -63,9 +63,18 @@ impl SpiBus for Spi1 {
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        // Wait for TX FIFO to drain (EUSART uses TXFL instead of TXC)
-        // TXFL bit is set when FIFO has space, clear when empty
-        while self.eusart.status().read().txfl().bit_is_set() {}
+        // `TXIDLE`, not `TXFL`. `TXFL` reads 1 when the FIFO has **room** (its reset value is 1), so waiting on it
+        // returns as soon as the software has filled the buffer, with every byte still to go out -- measured on the host
+        // in `efr32mg2x-spi-core`: `flush on TXFL returned after 0 polls`. The bit that means "the shifter is done" is
+        // `TXIDLE` (`efr32mg24_eusart.h:911`), and the wait is bounded so a stuck shifter is an error, not a hang.
+        const BUDGET: u32 = 200_000;
+        let mut polls = 0u32;
+        while !self.eusart.status().read().txidle().bit_is_set() {
+            polls += 1;
+            if polls > BUDGET {
+                return Err(Error::Timeout);
+            }
+        }
         Ok(())
     }
 }
@@ -97,9 +106,18 @@ impl SpiBus for Spi2 {
     }
 
     fn flush(&mut self) -> Result<(), Self::Error> {
-        // Wait for TX FIFO to drain (EUSART uses TXFL instead of TXC)
-        // TXFL bit is set when FIFO has space, clear when empty
-        while self.eusart.status().read().txfl().bit_is_set() {}
+        // `TXIDLE`, not `TXFL`. `TXFL` reads 1 when the FIFO has **room** (its reset value is 1), so waiting on it
+        // returns as soon as the software has filled the buffer, with every byte still to go out -- measured on the host
+        // in `efr32mg2x-spi-core`: `flush on TXFL returned after 0 polls`. The bit that means "the shifter is done" is
+        // `TXIDLE` (`efr32mg24_eusart.h:911`), and the wait is bounded so a stuck shifter is an error, not a hang.
+        const BUDGET: u32 = 200_000;
+        let mut polls = 0u32;
+        while !self.eusart.status().read().txidle().bit_is_set() {
+            polls += 1;
+            if polls > BUDGET {
+                return Err(Error::Timeout);
+            }
+        }
         Ok(())
     }
 }

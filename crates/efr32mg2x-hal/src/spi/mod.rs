@@ -96,10 +96,8 @@ impl Spi0 {
             cmu.clken0().modify(|_, w| w.usart0().set_bit());
         });
 
-        // Enable USART peripheral
-        usart.en().write(|w| w.en().set_bit());
-
-        // Configure USART for SPI master mode
+        // Configure first, enable after: this family faults when a peripheral is configured while it is enabled (the
+        // project measured exactly that on the TIMER, `board.rs:244`).
         usart.ctrl().write(|w| {
             w.sync()
                 .set_bit() // Synchronous mode (SPI)
@@ -120,8 +118,12 @@ impl Spi0 {
         let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.frequency);
         usart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
-        // Enable TX and RX
+        // Enable the peripheral, enable TX and RX, then start the master. Without `MASTEREN` (bit 4 of `CMD`,
+        // `efr32mg24_usart.h:531`) a configured synchronous USART sits with the bus clock running and never transfers,
+        // which is the half of H8 this block was missing.
+        usart.en().write(|w| w.en().set_bit());
         usart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
+        usart.cmd().write(|w| w.masteren().set_bit());
 
         Self { usart }
     }
@@ -235,10 +237,13 @@ impl Spi1 {
             cmu.clken1().modify(|_, w| w.eusart0().set_bit());
         });
 
-        // Enable EUSART peripheral
-        eusart.en().write(|w| w.en().set_bit());
-
-        // Configure EUSART for SPI master mode
+        // Configure **before** enabling, and put the divider where the synchronous path reads it.
+        //
+        // The previous order was: enable the peripheral, then write CFG0/CFG2. The project has already measured that
+        // this family faults when a peripheral is configured after it is enabled (the TIMER at `board.rs:244`), and the
+        // divider was written into `CLKDIV` -- the *asynchronous* divider -- while in synchronous mode the divider is
+        // `CFG2.SDIV`, an 8-bit field at bit 24 (`efr32mg24_eusart.h:565`). Both halves are measured on the host in
+        // `efr32mg2x-spi-core`.
         eusart.cfg0().write(|w| {
             w.sync()
                 .sync() // Synchronous mode (SPI)
@@ -246,31 +251,31 @@ impl Spi1 {
                 .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
-        eusart.cfg2().write(|w| {
+        let sdiv = match efr32mg2x_spi_core::sdiv(clocks.hfclk().into(), config.frequency) {
+            Ok(value) => value as u8,
+            Err(_) => 0xFF, // the slowest expressible rate: reported by `actual_frequency`, never silent
+        };
+        eusart.cfg2().write(|w| unsafe {
             w.clkpol()
                 .bit(config.mode.polarity() == Polarity::IdleHigh)
                 .clkpha()
                 .bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
                 .master()
                 .set_bit() // Master mode
+                .sdiv()
+                .bits(sdiv)
         });
 
-        // Calculate and set clock divider
-        let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.frequency);
-        eusart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
-
-        // Enable TX and RX
+        // Enable TX and RX, then enable the peripheral. The EUSART starts transferring once `CFG2.MASTER` is set and a
+        // byte is queued; `CMD.MASTEREN` does not exist on this peripheral (it is a USART bit, bit 4 of CMD --
+        // `efr32mg24_usart.h:531`), which is worth stating because the review named it for the wrong block.
         eusart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
+        eusart.en().write(|w| w.en().set_bit());
 
         Self { eusart }
     }
 
     /// Calculate clock divider for desired SPI frequency
-    fn calculate_clkdiv(pclk_hz: u32, spi_hz: u32) -> u32 {
-        let divider = (pclk_hz / (2 * spi_hz)).saturating_sub(1);
-        (divider * 256).min(0x1FFFFF)
-    }
-
     /// Transfer data (full-duplex)
     ///
     /// # Arguments
@@ -365,10 +370,7 @@ impl Spi2 {
             cmu.clken1().modify(|_, w| w.eusart1().set_bit());
         });
 
-        // Enable EUSART peripheral
-        eusart.en().write(|w| w.en().set_bit());
-
-        // Configure EUSART for SPI master mode
+        // Same order and the same divider register as `Spi1`: configure, then enable, with the rate in `CFG2.SDIV`.
         eusart.cfg0().write(|w| {
             w.sync()
                 .sync()
@@ -376,28 +378,25 @@ impl Spi2 {
                 .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
-        eusart.cfg2().write(|w| {
+        let sdiv = match efr32mg2x_spi_core::sdiv(clocks.hfclk().into(), config.frequency) {
+            Ok(value) => value as u8,
+            Err(_) => 0xFF,
+        };
+        eusart.cfg2().write(|w| unsafe {
             w.clkpol()
                 .bit(config.mode.polarity() == Polarity::IdleHigh)
                 .clkpha()
                 .bit(config.mode.phase() == Phase::CaptureOnSecondTransition)
                 .master()
                 .set_bit()
+                .sdiv()
+                .bits(sdiv)
         });
 
-        // Calculate and set clock divider
-        let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.frequency);
-        eusart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
-
-        // Enable TX and RX
         eusart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
+        eusart.en().write(|w| w.en().set_bit());
 
         Self { eusart }
-    }
-
-    fn calculate_clkdiv(pclk_hz: u32, spi_hz: u32) -> u32 {
-        let divider = (pclk_hz / (2 * spi_hz)).saturating_sub(1);
-        (divider * 256).min(0x1FFFFF)
     }
 
     /// Transfer data (full-duplex)
