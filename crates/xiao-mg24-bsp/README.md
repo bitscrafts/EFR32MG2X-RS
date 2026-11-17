@@ -81,7 +81,12 @@ This crate provides high-level abstractions for the XIAO MG24 Sense development 
 - 1× User LED (PB02, active low)
 - 1× User button (PB01, active low)
 - 1× 6-axis IMU (LSM6DS3TR-C)
-- 1× Microphone (MSM261D3526H1CPM)
+- 1× Microphone (MSM381ACT001 — analogue output on PC09/MIC_ADC, enable on PC08/MIC_EN)
+
+  Corrected 2026-11-17 from the Seeed schematic. This line said `MSM261D3526H1CPM`, which is a **PDM** part: a PDM
+  microphone has a clock and a data line and cannot drive an ADC pin, so it could not have been the fitted part. The
+  analogue one is what makes the IADC path in `efr32mg2x-hal`'s `microphone.rs` possible, and its datasheet sensitivity
+  (-38 dBV/Pa at 1 kHz) is the whole basis of the acoustic calibration in the dosimeter app.
 - 1× Battery connector (JST 1.25mm)
 - 1× USB-C connector
 

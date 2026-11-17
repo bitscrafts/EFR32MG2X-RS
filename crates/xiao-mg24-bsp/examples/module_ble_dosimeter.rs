@@ -433,7 +433,7 @@ fn main() -> ! {
         Characteristic {
             uuid: UUID_STATUS,
             properties: PROP_READ | PROP_NOTIFY,
-            max_len: 3,
+            max_len: 5,
             security: sec,
         },
     ];
@@ -742,11 +742,24 @@ fn main() -> ! {
         for b in 0..8 {
             bands_value[b * 4..b * 4 + 4].copy_from_slice(&bands_acc[b].to_le_bytes());
         }
-        // bit 0: calibrated (0 — there is no acoustic reference on this board). Then the window count.
+        // Five bytes: flags, window count, and where the calibration comes from.
+        //
+        // bit 0 is now 1, and the reason is in byte 3: the acoustic reference is the microphone's own
+        // datasheet — MSM381ACT001, -38 dBV/Pa at 1 kHz (min -39, max -37), read from the Seeed Schematic
+        // (`MSM381ACT001` on `PC09/MIC_ADC`). With the converter's 12 bits and 1.21 V VBGR reference, the
+        // chain is checked by the bias the firmware itself measures: 2391 counts x 1.21/4096 = 0.7063 V
+        // against the 0.7 V the datasheet gives for the DC output, 0.9 %. Two documents that had to agree,
+        // and do.
+        //
+        // Byte 4 is the uncertainty in tenths of a dB: 30 = ±3.0, which is ±1 dB unit-to-unit plus
+        // ageing and temperature. It travels with the value because a level without its uncertainty is the
+        // kind of plausible number this project spent weeks removing.
         let status_value = [
-            0u8,
+            1u8,
             (windows_total & 0xFF) as u8,
             ((windows_total >> 8) & 0xFF) as u8,
+            1u8,  // calibration source 1: microphone datasheet
+            30u8, // ±3.0 dB
         ];
 
         // Count what was *published* and, separately, what reached a subscriber. Without a phone connected

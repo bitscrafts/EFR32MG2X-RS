@@ -128,7 +128,9 @@ The Seeed Studio XIAO MG24 Sense is the target hardware platform for testing and
 
 ### On-Board Sensors (Sense variant)
 - **IMU**: 6-axis accelerometer + gyroscope (LSM6DS3TR-C)
-- **Microphone**: PDM digital microphone
+- **Microphone**: **analogue** MEMS, MSM381ACT001 — output on PC09/MIC_ADC, enable on PC08/MIC_EN,
+  sensitivity -38 dBV/Pa at 1 kHz, DC output 0.7 V (Seeed schematic, read 2026-11-17). Earlier revisions of
+  this file said "PDM digital microphone", which contradicts both the schematic and the working IADC path.
 
 ### Power
 - **Operating Voltage**: 3.3V
@@ -221,7 +223,7 @@ pub mod pins {
 
 **Board-Level Abstractions**:
 - IMU driver integration (LSM6DS3TR-C)
-- Microphone PDM interface
+- Microphone analogue interface (IADC on PC09, enable on PC08)
 - Battery monitoring
 - USB serial
 - On-board LED control
