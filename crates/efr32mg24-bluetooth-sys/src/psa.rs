@@ -446,6 +446,7 @@ unsafe fn psa_import_key_inner(
         for slot in slots().iter_mut() {
             if slot.used && slot.id == 0 {
                 slot.id = id;
+                persist_slot(slot);
                 break;
             }
         }
@@ -495,6 +496,7 @@ unsafe fn psa_import_key_inner(
     for slot in slots().iter_mut() {
         if slot.used && slot.id == 0 {
             slot.id = id;
+            persist_slot(slot);
             break;
         }
     }
@@ -969,6 +971,7 @@ pub(crate) fn store_key(material: &[u8], key_type: u32) -> Option<u32> {
         key_type,
     };
     table[index].key[..material.len()].copy_from_slice(material);
+    persist_slot(&table[index]);
     Some(id)
 }
 

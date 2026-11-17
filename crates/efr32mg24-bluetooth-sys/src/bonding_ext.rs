@@ -132,15 +132,14 @@ pub extern "C" fn sli_bt_external_bonding_is_bonded(bonding: u8) -> bool {
     // concluded a bond already existed and never ran the pairing exchange (measured: ec=0,0,0 and no crypto at all).
     let mut obj_type = 0u32;
     let mut length = 0usize;
-    let exists = unsafe {
+    unsafe {
         nvm3_getObjectInfo(
             handle(),
             storage_key(bonding, 8),
             &mut obj_type,
             &mut length,
-        )
-    } == 0;
-    exists
+        ) == 0
+    }
 }
 
 /// Store one piece of a bonding record. 0 is success; 0x406 is the status the internal implementation returns for a
