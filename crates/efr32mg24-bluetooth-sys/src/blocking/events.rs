@@ -80,7 +80,7 @@ pub enum BleEvent {
     /// # Fields
     ///
     /// * `event` — 0 passkey display, 1 passkey request, 2 confirm passkey, 3 bonded, 4 bonding failed,
-    ///   9 confirm bonding
+    ///   (`confirm bonding` has its own variant, `ConfirmBonding`, because its layout differs)
     /// * `connection` — the connection handle
     /// * `reason` — the security manager's error code, meaningful for `event == 4`
     Security {
@@ -88,6 +88,32 @@ pub enum BleEvent {
         connection: u8,
         reason: u16,
     },
+
+    /// The stack asks whether a pairing may create a bond (`sl_bt_evt_sm_confirm_bonding`).
+    ///
+    /// Its payload is `(connection: u8, bonding_handle: u8)` (`sl_bt_api.h`, `sl_bt_evt_sm_confirm_bonding_s`). It used
+    /// to be decoded through the `bonding_failed` layout, which reads a `u16` reason out of what is a `u8` handle, so
+    /// the field it reported was the handle byte plus whatever followed it in the buffer.
+    ConfirmBonding { connection: u8, bonding_handle: u8 },
+
+    /// The link's parameters or security level changed (`sl_bt_evt_connection_parameters`).
+    ///
+    /// `security_mode` is the only device-side proof that a link is encrypted: 0 none, 1 unauthenticated encryption
+    /// (what Just Works gives), 2 authenticated, 3 authenticated Secure Connections. `Bonded: yes` on a host is the
+    /// host's own storage and says nothing about this link.
+    ConnectionParameters {
+        connection: u8,
+        /// Units of 1.25 ms.
+        interval: u16,
+        latency: u16,
+        /// Units of 10 ms.
+        timeout: u16,
+        security_mode: u8,
+        txsize: u16,
+    },
+
+    /// The ATT MTU was negotiated (`sl_bt_evt_gatt_mtu_exchanged`). The default is 23 until this fires.
+    Mtu { connection: u8, mtu: u16 },
 
     /// Remote device connected
     ///
@@ -278,16 +304,14 @@ impl BleEvent {
             | bt::sl_bt_evt_sm_passkey_request_id
             | bt::sl_bt_evt_sm_confirm_passkey_id
             | bt::sl_bt_evt_sm_bonded_id
-            | bt::sl_bt_evt_sm_bonding_failed_id
-            | bt::sl_bt_evt_sm_confirm_bonding_id => {
+            | bt::sl_bt_evt_sm_bonding_failed_id => {
                 let data = unsafe { evt.data.evt_sm_bonding_failed.as_ref() };
                 let event = match event_id {
                     bt::sl_bt_evt_sm_passkey_display_id => 0u8,
                     bt::sl_bt_evt_sm_passkey_request_id => 1,
                     bt::sl_bt_evt_sm_confirm_passkey_id => 2,
                     bt::sl_bt_evt_sm_bonded_id => 3,
-                    bt::sl_bt_evt_sm_bonding_failed_id => 4,
-                    _ => 9,
+                    _ => 4,
                 };
                 // Both `bonded` and `bonding_failed` carry (connection, reason) in that order; the reason field is
                 // only meaningful on failure, and reading it on success costs nothing.
@@ -295,6 +319,34 @@ impl BleEvent {
                     event,
                     connection: data.connection,
                     reason: data.reason,
+                })
+            }
+
+            bt::sl_bt_evt_sm_confirm_bonding_id => {
+                let data = unsafe { evt.data.evt_sm_confirm_bonding.as_ref() };
+                Some(BleEvent::ConfirmBonding {
+                    connection: data.connection,
+                    bonding_handle: data.bonding_handle,
+                })
+            }
+
+            bt::sl_bt_evt_connection_parameters_id => {
+                let data = unsafe { evt.data.evt_connection_parameters.as_ref() };
+                Some(BleEvent::ConnectionParameters {
+                    connection: data.connection,
+                    interval: data.interval,
+                    latency: data.latency,
+                    timeout: data.timeout,
+                    security_mode: data.security_mode,
+                    txsize: data.txsize,
+                })
+            }
+
+            bt::sl_bt_evt_gatt_mtu_exchanged_id => {
+                let data = unsafe { evt.data.evt_gatt_mtu_exchanged.as_ref() };
+                Some(BleEvent::Mtu {
+                    connection: data.connection,
+                    mtu: data.mtu,
                 })
             }
 
