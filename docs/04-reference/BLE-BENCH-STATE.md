@@ -69,3 +69,13 @@ the permission state and the number of devices it sees.
 - The calibration is **from the datasheet** (`−38 dBV/Pa`, DC 0.7 V, cross-checked against the measured bias at 0.9 %),
   **not** from a calibrator. Uncertainty ±3.0 dB, and the app says so on every screen.
 - Nothing here is a certification.
+
+## The next step, and it is a specific one
+
+The vendor library calls `RAILCb_AssertFailed(errorCode)` — an application-provided callback. We do not define it, so
+the vendor's weak default spins. Defining it is the whole next move: capture `errorCode` (`r1` was `0x4b`), and if the
+vendor exposes `RAIL_GetAssertInfo()` / the assert file and line, capture those too, and publish them to the mailbox
+before halting. That turns "the radio asserts" into "the radio asserts at <file>:<line> with code 75", which is a
+defect with an address instead of a night of guesses.
+
+Until that number is read, nothing about the radio should be claimed either way.
