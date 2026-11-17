@@ -5,6 +5,36 @@ was found faulty on 2026-11-15 and is away for replacement (about a month); that
 anything already measured with it — those dates stand — and the examples that need the carrier say so
 until another one is on the bench. The board left running `hal_led_blink`, its LED confirmed blinking.
 
+## Session 2026-11-17 (evening) — BLE measured encrypted end to end, and five HAL defects closed
+
+1. **The link is encrypted, and it is the device that says so.** Pairing once, then after a reset of the MCU with no
+   pairing, the host reports `Connection successful / Bonded: yes / Connected: yes` and the device reports `sec=1`,
+   `mtu=247`, `windows=3780`, `published=60`, `dfail=0`, `disc=0`, `adv=0`. The load-bearing number is `sec=`, not the
+   host's `Bonded:` line: the host prints that from its own bond store whether or not the link is encrypted, and this
+   project made exactly that wrong claim once. What was missing was one vendor instruction —
+   `sl_bt_sm_increase_security` on connect — and nothing ever issued it.
+2. **The product refuses to be built without the external bonding database.** `module_ble_dosimeter` declares
+   `required-features = ["stack", "sense", "external-bonding"]`, so a plain build stops with a clear message instead of
+   producing a device that pairs, stores a bond and cannot find the key after a reset.
+3. **Five review findings closed, each measured or bounded.** H1 (DMA linked to `LDMA->IF` at 0x50 instead of
+   `CH0_CTRL` at 0x64, confirmed against the PAC), H3 (eight sites "cleared" flags by writing 1 to `IF`; this family
+   clears through the `_CLR` window at +0x2000), H14 (the microphone's level was measured about a fixed 2048 while the
+   converter's bias is 2391 — it published 343 for a signal of 8), H16 (FIFO overflows are now counted: `ovf=0` over
+   3780 windows, so latent, and visible from now on), H20 (fourteen I2C waits bounded, `Error::Timeout`).
+4. **Two defects the day's own checks caught, both mine.** The first H14 fix computed the variance in closed form and
+   reported `rms=51` for a window whose extremes allowed at most 25.5 (Bhatia-Davis): the invariant written to keep the
+   numbers honest rejected my arithmetic. And the report's source checker treated a row with no openable source as a
+   *skip*: it is now a failure, and it immediately found a row citing "this repository".
+5. **What blocks the rest of the HAL queue.** The I2C transaction model (repeated START) and the ADC's analogue bus both
+   need things this project does not have: pin routing for the hardware I2C (`I2c0::new` configures no pins; the board
+   exposes only the bit-banged bus) and the reference manual's pin-to-analogue-bus table for `GPIO->ABUSALLOC`. Both are
+   named in the code where the gap is, rather than guessed: a plausible number from the wrong pin is the failure mode
+   this queue exists to prevent.
+6. **Where the work continues.** `_tmp/ble-plan/PLAN.md` (12 steps, `file:line`), `_tmp/ble-plan/IMPLEMENTED.md` (what
+   the implementation pass completed and what it could not verify), `docs/04-reference/BLE-OPERATIONAL.md` (what is
+   measured and what is open), and the open-items table in §7.6 of the dosimeter report.
+
+
 ## Session 2026-11-15 — the board learns to talk back, and the carrier steps out for a while
 
 1. **The Expansion Base is faulty and away for replacement.** Seated in it the module's debug port is
