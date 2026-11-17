@@ -98,6 +98,34 @@ if [ "${PROBES:-0}" -ne 1 ]; then
 fi
 echo "1 CMSIS-DAP probe present"
 
+# The bootloader region is not protected by anything but this script: `memory.x` decides where the *linker* may put
+# code, and a direct SWD write (`probe-rs download --base-address`, `probe-rs erase`) honours no linker script at all.
+# Measured 2026-11-17: a chip erase took the bootloader with it, the BLE stack then crashed executing a pointer it read
+# as 0xFFFFFFFF from the erased region, and the board only booted because a read-back backup existed. Check for it
+# before every write, and say where the backup is when it is missing.
+echo "== bootloader present? =="
+BOOT_WORDS="$(ssh -o BatchMode=yes -o ConnectTimeout=10 "${FLASH_USER}@${FLASH_HOST}" \
+  "sudo -n probe-rs read b32 0x08000000 2 --chip ${CHIP} 2>/dev/null | tail -1" || true)"
+BOOT_SP="$(printf '%s\n' "${BOOT_WORDS}" | awk '{print $2}')"
+BOOT_PC="$(printf '%s\n' "${BOOT_WORDS}" | awk '{print $3}')"
+SP_OK=0
+PC_OK=0
+case "${BOOT_SP}" in
+  200[0-3]????) SP_OK=1 ;;
+esac
+case "${BOOT_PC}" in
+  0800[0-5]???) PC_OK=1 ;;
+esac
+if [ "${SP_OK}" -ne 1 ] || [ "${PC_OK}" -ne 1 ]; then
+  echo "REFUSE: the bootloader region does not hold a valid vector table" >&2
+  echo "        read back: SP=${BOOT_SP:-?} reset=${BOOT_PC:-?}" >&2
+  echo "        restore it before flashing anything:" >&2
+  echo "          /projects/_tmp/efr32mg24-rs/backups/mg24-bootloader.bin" >&2
+  echo "          sha256 8aa5b2f7abc8ee001ae66ab5a8d96410d24f06452bf60bd80811e74013d7a54f, 24576 bytes, at 0x08000000" >&2
+  exit 6
+fi
+echo "bootloader present (SP=${BOOT_SP} reset=${BOOT_PC})"
+
 if [ "${CONFIRM}" -ne 1 ]; then
   echo
   echo "DRY RUN: guards passed. Re-run with --confirm to write the image."
