@@ -90,6 +90,29 @@ const EMPTY_SLOT: Slot = Slot {
     key_type: PSA_KEY_TYPE_AES,
 };
 
+// THE TABLE IS IN RAM, AND THAT IS THE NEXT DEFECT TO CLOSE.
+//
+// The vendor's host library ships two bonding databases. The builtin one keeps records in NVM3 and, measured on this
+// board, writes the record and not the long-term key, so a peer that reconnects after a reset is answered 0x1006 PIN
+// or Key Missing (docs/04-reference/PAIRING-D2F-STATE.md). The other one -- the object linked when the feature
+// `external-bonding` is on -- is the PSA-key-backed database: it keeps the bond, long-term key included, as a PSA
+// key, which means it keeps it *here*.
+//
+// Which is why this table matters beyond this file: it is RAM only, so with the PSA database selected a bond has
+// nowhere to survive a reset, and the pairing that writes through it does not complete.
+//
+// The option, written down so the next session does not have to rediscover it:
+//
+//   1. one NVM3 object per key, under a key range of our own (`0xD0000 | id`, clear of the stack's keys and of the
+//      bonding records at `0xE0000`), holding `key_type`, `key_len` and the key bytes
+//   2. `psa_import_key`, `psa_generate_key` and `psa_destroy_key` write and delete the object, so the flash always
+//      agrees with the table
+//   3. `slot_for` loads a key from flash on a miss, so a handle that survived a reset resolves again
+//   4. `NEXT_ID` is restored at start-up by enumerating our range and taking the highest id, because ids are handed
+//      out from a counter and a counter that restarts at 1 would overwrite a persisted key
+//
+// Then: turn `external-bonding` on, pair from the host, reset the board, reconnect without pairing. That last step is
+// the proof the whole BLE requirement rests on, and it is why this is written here rather than in a note.
 static mut SLOTS_TABLE: [Slot; SLOTS] = [EMPTY_SLOT; SLOTS];
 /// Key id 0 is `PSA_KEY_ID_NULL` and must never be handed out; ids start at 1.
 static mut NEXT_ID: u32 = 1;

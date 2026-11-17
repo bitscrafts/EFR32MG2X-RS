@@ -8,6 +8,11 @@
 //! This module is those callbacks. With the `external-bonding` feature on, the build derives the host archive without
 //! the internal implementation and links the bridge in its place, so these functions are the ones that run.
 //!
+//! OPTION, NOT YET TAKEN: the bridge is the PSA-key-backed database, so a bond -- long-term key included -- is stored
+//! as a PSA key by `psa.rs`. That table is RAM only, which is why a bond cannot survive a reset with this feature on.
+//! Persisting it (one NVM3 object per key, id range restored at start-up) is the smaller change than implementing the
+//! remaining database API, and it is written up where the table lives, in `psa.rs`.
+//!
 //! The signatures are in no header the vendor ships; they were read from the call sites. `store_data` was read from
 //! the internal implementation, which does the same work: validate the handle, build the storage key as
 //! `(handle << 8) | type`, and write `len` bytes from `data`. The same key formula is used here, moved into a key
