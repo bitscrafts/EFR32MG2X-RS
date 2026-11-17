@@ -294,6 +294,15 @@ fn trace(kind: u32, a: u32, b: u32) {
     );
 }
 
+/// Stale bonds deleted because a re-pairing carried the same peer address. Non-zero is normal (a phone that forgot
+/// the device), and it is the number that shows the policy working.
+static STALE_BONDS: AtomicU32 = AtomicU32::new(0);
+
+/// How many stale bonds were dropped since boot.
+pub fn stale_bonds_dropped() -> u32 {
+    STALE_BONDS.load(Ordering::Relaxed)
+}
+
 /// The eight most recent entries, oldest first, as `kind/a/b` numbers packed in one word each.
 pub fn trace_entries() -> [u32; 8] {
     let mut out = [0u32; 8];
@@ -469,6 +478,33 @@ pub unsafe extern "C" fn sli_bt_external_bonding_store_data(
     if data.is_null() || length == 0 || length > 128 {
         return 0x406;
     }
+    // One bond per identity.
+    //
+    // When a phone forgets the device and pairs again, the stack allocates a NEW handle and stores the same peer
+    // address under it, while the old handle keeps its copy. `bond_for_connection` walks the handles in order, so it
+    // finds the stale one first and answers every later reconnect with yesterday's key -- which the phone rejects as
+    // `0x05 Authentication Failed` (measured 2026-11-17, and the reason a device with a bond could not be paired
+    // again until it was wiped). Deleting the other handles that carry this address, at the moment the stack stores
+    // it, makes the newest bond the only one and the answer unambiguous.
+    if piece == 0 && length == 6 {
+        let stored_len = length;
+        let mut older = [0u8; 8];
+        let peer = unsafe { core::slice::from_raw_parts(data, stored_len) };
+        for other in 0..MAX_SLOTS {
+            if other == bonding {
+                continue;
+            }
+            let Some(len) = copy_stored(other, 0, &mut older) else {
+                continue;
+            };
+            if len == stored_len && &older[..len] == peer {
+                let _ = sli_bt_external_bonding_delete(other);
+                crate::psa::destroy_bond_keys(other);
+                STALE_BONDS.fetch_add(1, Ordering::Relaxed);
+            }
+        }
+    }
+
     let rc = nvm3_writeData(nvm3_handle(), storage_key(bonding, piece), data, length);
     if rc != 0 {
         STORE_ERRORS.fetch_add(1, Ordering::Relaxed);

@@ -80,10 +80,16 @@ compile_error!(
 pub use efr32mg24_bluetooth_sys::bonding_ext::clear_all as bonding_clear_all;
 #[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::data_request_stats;
+/// Stale bonds dropped when a re-pairing carried the address of an existing bond (step 9 of the plan).
+#[cfg(feature = "external-bonding")]
+pub use efr32mg24_bluetooth_sys::bonding_ext::stale_bonds_dropped;
 #[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::stats as bonding_ext_stats;
 #[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::trace_entries;
+/// Keys destroyed together with a dropped bond.
+#[cfg(feature = "external-bonding")]
+pub use efr32mg24_bluetooth_sys::psa::destroyed_bond_keys;
 
 /// Unused PSA key slots after the restore (`free=`), and `psa_destroy_key` calls that returned an error (`dfail=`).
 pub use efr32mg24_bluetooth_sys::psa::destroy_failures as psa_destroy_failures;

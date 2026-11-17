@@ -384,6 +384,43 @@ fn forget_slot(id: u32) {
     }
 }
 
+/// Destroy every key the stack named for one bonding handle.
+///
+/// The stack names bond material `0x48000 | (handle << 8) | type` (`bondingdb_psa_add_ecb_key`), so the keys of one
+/// bond are a contiguous run of ids. Called when a stale bond is dropped: the table holds a handful of keys, and a bond
+/// whose record is gone but whose keys are not costs those slots for the life of the boot.
+///
+/// A key that was never persisted is removed from RAM only; the persisted ones also lose their NVM3 object, which is
+/// what `forget_slot` guards on `persistent`.
+pub fn destroy_bond_keys(handle: u8) {
+    // No `unsafe` here: `slots()` hands out the table to this module only, and the persisted object is deleted through
+    // `forget_slot`, which owns the one `unsafe` call that needs justifying.
+    {
+        restore_slots_once();
+        let table = slots();
+        for type_ in 0..=0x0Fu32 {
+            let id = 0x4_8000u32 | ((handle as u32) << 8) | type_;
+            for slot in table.iter_mut() {
+                if !slot.used || slot.id != id {
+                    continue;
+                }
+                if slot.persistent {
+                    forget_slot(id);
+                }
+                DESTROYED_KEYS.fetch_add(1, Ordering::Relaxed);
+                *slot = EMPTY_SLOT;
+            }
+        }
+    }
+}
+
+/// How many keys `destroy_bond_keys` has removed since boot.
+pub fn destroyed_bond_keys() -> u32 {
+    DESTROYED_KEYS.load(Ordering::Relaxed)
+}
+
+static DESTROYED_KEYS: AtomicU32 = AtomicU32::new(0);
+
 /// Load every persisted key back into the table, once per boot.
 ///
 /// The id counter is not restored: it only hands out ids below `AUTO_ID_LIMIT`, and persisted keys are all named ones

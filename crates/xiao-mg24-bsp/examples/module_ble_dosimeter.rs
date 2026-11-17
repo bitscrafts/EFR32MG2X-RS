@@ -492,6 +492,10 @@ fn main() -> ! {
             t.u(efr32mg24_radio::psa_lookup_stats().2);
             t.s(b" free=");
             t.u(efr32mg24_radio::psa_free_slots());
+            t.s(b" stale=");
+            t.u(efr32mg24_radio::stale_bonds_dropped());
+            t.s(b" dkeys=");
+            t.u(efr32mg24_radio::destroyed_bond_keys());
             t.s(b" dfail=");
             t.u(efr32mg24_radio::psa_destroy_failures());
             mailbox::info(t.bytes());

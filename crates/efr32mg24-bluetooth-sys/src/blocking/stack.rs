@@ -882,7 +882,7 @@ impl Bluetooth {
             // client's* cached view of our database: answering "not available" makes it re-read everything, which is
             // always correct, while answering with a stale blob is rejected outright (measured 2026-11-17: 8 bytes for
             // type 8 came back SL_STATUS_INVALID_PARAMETER, and the request that followed never completed).
-            let is_gatt_cache = matches!(data_type, 8 | 9 | 10);
+            let is_gatt_cache = matches!(data_type, 8..=10);
             let mut buf = [0u8; 64];
             let len = if is_gatt_cache {
                 0
