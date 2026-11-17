@@ -30,6 +30,7 @@ use efr32mg24_radio::gatt_db::{self, Characteristic, PROP_NOTIFY, PROP_READ};
 use efr32mg24_radio::Bluetooth;
 use panic_halt as _;
 use xiao_mg24_bsp::hal::dwt;
+use xiao_mg24_bsp::prelude::*;
 use xiao_mg24_bsp::Module;
 
 #[path = "common/mailbox.rs"]
@@ -264,6 +265,42 @@ fn main() -> ! {
     mic.arm();
     mic.start_timer();
 
+    // Provisioning: holding the user button during boot forgets every bond.
+    //
+    // Without this the device is unrecoverable in the field: a peripheral that holds a bond for a phone which has
+    // since forgotten it answers the next pairing with the old long-term key, the phone cancels with
+    // `AuthenticationFailed`, and nothing on the device can be asked to forget -- with an external bonding database
+    // the stack's own delete commands answer NOT_AVAILABLE, and with the builtin one there is no way in without a
+    // debugger. Measured both ways on 2026-11-17. Three seconds is long enough not to happen by accident and short
+    // enough to be usable with the device in a hand.
+    {
+        let button = module.hal().input_on(xiao_mg24_bsp::hal::pin::Port::C, 1);
+        let mut held = 0u32;
+        while button.is_low() {
+            delay.delay_ms(10);
+            held += 1;
+            if held >= 300 {
+                #[cfg(feature = "external-bonding")]
+                let removed = efr32mg24_radio::bonding_clear_all();
+                #[cfg(not(feature = "external-bonding"))]
+                let removed = {
+                    let _ = ble.delete_bondings();
+                    1u32
+                };
+                // Say so on the LED: three short pulses means the bonds are gone.
+                let mut led = module.led();
+                for _ in 0..3 {
+                    led.on();
+                    delay.delay_ms(60);
+                    led.off();
+                    delay.delay_ms(60);
+                }
+                let _ = removed;
+                break;
+            }
+        }
+    }
+
     let _ = ble.set_device_name("xiao-mg24-dosimeter");
 
     // Pairing, and what it costs the phone.
@@ -358,7 +395,15 @@ fn main() -> ! {
                         // the BGAPI queue often enough to answer it: measured 2026-11-17, the product example failed
                         // to pair three times out of three while the probe example, whose loop has nothing else to do,
                         // paired first time. One call per sample costs a compare in the common case.
-                        while let Some(_event) = ble.poll_event() {}
+                        while let Some(event) = ble.poll_event() {
+                            // A peripheral that stops advertising when a phone walks away cannot be reached again
+                            // without a power cycle. Measured 2026-11-17: after the first disconnect the host got
+                            // "Connection refused (111)" from gatttool, i.e. nothing was advertising.
+                            if matches!(event, efr32mg24_radio::BleEvent::Disconnected { .. }) {
+                                let _ = ble.start_connectable(200, 0);
+                                notifications = 0;
+                            }
+                        }
                     }
                     None => break,
                 }
