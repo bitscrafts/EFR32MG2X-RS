@@ -310,6 +310,8 @@ fn main() -> ! {
             // The words of the attributes blob the stack passes on import: this is where its key id lives, and
             // reading it is the only honest way to learn the layout when the header is not in the tree.
             let (latr, latr_n) = efr32mg24_radio::psa_ltk_attributes();
+            live.s(b" del=");
+            live.u(efr32mg24_radio::psa_destroy_count());
             live.s(b" latr=");
             live.u(latr_n);
             live.s(b"/");

@@ -97,3 +97,6 @@ pub use efr32mg24_bluetooth_sys::psa::attributes_words as psa_attributes_words;
 
 /// Attributes words of the last 16-byte import (the long-term key) and how many were seen.
 pub use efr32mg24_bluetooth_sys::psa::ltk_attributes as psa_ltk_attributes;
+
+/// Keys destroyed through the PSA shim.
+pub use efr32mg24_bluetooth_sys::psa::destroy_count as psa_destroy_count;

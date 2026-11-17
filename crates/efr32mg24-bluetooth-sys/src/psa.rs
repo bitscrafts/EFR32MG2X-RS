@@ -117,6 +117,15 @@ const EMPTY_SLOT: Slot = Slot {
 static mut SLOTS_TABLE: [Slot; SLOTS] = [EMPTY_SLOT; SLOTS];
 /// Key id 0 is `PSA_KEY_ID_NULL` and must never be handed out; ids start at 1.
 static mut NEXT_ID: u32 = 1;
+/// Keys destroyed through `psa_destroy_key`. A bond deleted on the device must reach this counter, otherwise the key
+/// survives under the identifier the stack names and the next pairing answers with it.
+static DESTROYED: AtomicU32 = AtomicU32::new(0);
+
+/// How many keys have been destroyed.
+pub fn destroy_count() -> u32 {
+    DESTROYED.load(Ordering::Relaxed)
+}
+
 /// The key lookups that found nothing, and what the last one asked for. A miss at reconnect is the whole of the
 /// "PIN or Key Missing" symptom, seen from our side of the ABI.
 static SLOT_MISSES: AtomicU32 = AtomicU32::new(0);
@@ -648,24 +657,42 @@ unsafe fn psa_import_key_inner(
         return PSA_ERROR_NOT_SUPPORTED;
     }
 
+    let id = take_id(attributes);
+
+    let mut k = [0u8; MAX_KEY];
+    ptr::copy_nonoverlapping(data, k.as_mut_ptr(), data_length);
+
+    // An identifier names one key: re-importing under an identifier that is already in the table must REPLACE that
+    // key, not add a second one beside it. Measured 2026-11-17: the table ended up holding the same id twice (an old
+    // long-term key in front of the new one), the lookup returned the stale key, and the host cancelled the pairing
+    // with AuthenticationCanceled while the device recorded a bond.
     let table = slots();
+    if let Some(existing) = table.iter_mut().find(|s| s.used && s.id == id) {
+        *existing = Slot {
+            used: true,
+            id,
+            key_len: data_length,
+            key: k,
+            key_type: PSA_KEY_TYPE_AES,
+        };
+        persist_slot(existing);
+        ptr::write(key, id);
+        return 0;
+    }
+
     let free = table.iter().position(|s| !s.used);
     let Some(index) = free else {
         return PSA_ERROR_INSUFFICIENT_MEMORY;
     };
 
-    let mut k = [0u8; MAX_KEY];
-    ptr::copy_nonoverlapping(data, k.as_mut_ptr(), data_length);
     table[index] = Slot {
         used: true,
-        id: 0, // stamped below, once the handle is handed out
+        id, // stamped now that the handle exists
         key_len: data_length,
         key: k,
         key_type: PSA_KEY_TYPE_AES,
     };
 
-    // The slot just written holds no id yet; stamp it now that the handle exists.
-    let id = take_id(attributes);
     ptr::write(key, id);
     for slot in slots().iter_mut() {
         if slot.used && slot.id == 0 {
@@ -689,6 +716,7 @@ unsafe fn psa_import_key_inner(
 /// or two, and only the low 32 bits are used.
 #[no_mangle]
 pub unsafe extern "C" fn psa_destroy_key(key: u32) -> i32 {
+    DESTROYED.fetch_add(1, Ordering::Relaxed);
     bump(6);
     restore_slots_once();
     let id = key;
