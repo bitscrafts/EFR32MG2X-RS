@@ -30,7 +30,13 @@ extern "C" {
     /// The default NVM3 instance, opened by the stack at start-up.
     static mut nvm3_defaultHandle: *mut u8;
     /// Lists object keys: returns how many were written into the buffer.
-    fn nvm3_enumObjects(handle: *mut u8, key_list: *mut u32, key_list_size: usize) -> usize;
+    fn nvm3_enumObjects(
+        handle: *mut u8,
+        key_list: *mut u32,
+        key_list_size: usize,
+        key_min: u32,
+        key_max: u32,
+    ) -> usize;
 }
 
 /// How many objects the Bluetooth stack's bonding database holds in NVM3.
@@ -41,7 +47,17 @@ extern "C" {
 /// the store works and the *load* is the defect.
 fn nvm3_object_count() -> u32 {
     let mut keys = [0u32; 64];
-    let n = unsafe { nvm3_enumObjects(nvm3_defaultHandle, keys.as_mut_ptr(), keys.len()) };
+    // All five arguments of the vendor prototype (`nvm3_generic.h:353-355`); this counts every object, so the range is
+    // the whole NVM3 key space (20 bits). With three, `keyMin`/`keyMax` were stale register and stack contents.
+    let n = unsafe {
+        nvm3_enumObjects(
+            nvm3_defaultHandle,
+            keys.as_mut_ptr(),
+            keys.len(),
+            0,
+            0xF_FFFF,
+        )
+    };
     n as u32
 }
 
@@ -240,7 +256,13 @@ fn main() -> ! {
             // broke pairing was wrong, and leaving it disabled turned nvm= into a constant zero that cost an hour.
             if tick % 1_000 == 0 {
                 key_count = unsafe {
-                    nvm3_enumObjects(nvm3_defaultHandle, key_cache.as_mut_ptr(), key_cache.len())
+                    nvm3_enumObjects(
+                        nvm3_defaultHandle,
+                        key_cache.as_mut_ptr(),
+                        key_cache.len(),
+                        0,
+                        0xF_FFFF,
+                    )
                 };
                 nvm_cached = key_count as u32;
             }

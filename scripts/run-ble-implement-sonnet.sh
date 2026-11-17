@@ -60,7 +60,7 @@ echo "session: ${SID}"
 echo "log:     ${OUT}"
 
 cd "${PROJECT}"
-"${CLAUDE}" --session-id "${SID}" --model "${MODEL}" --permission-mode acceptEdits --max-turns 120 \
+"${CLAUDE}" --session-id "${SID}" --model "${MODEL}" --permission-mode acceptEdits --allowedTools "Bash" "Read" "Write" "Edit" "Grep" "Glob" --max-turns 120 \
     -p "$(cat "${PROMPT_FILE}")" > "${OUT}" 2>&1
 RC=$?
 echo "exit: ${RC}"

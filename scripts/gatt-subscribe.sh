@@ -16,7 +16,11 @@ CCCD=0x0004
 VALUE_HANDLE=0x0003
 
 OUT="${TMPDIR:-/tmp}/notify-proof.txt"
-sudo -n timeout $((SECONDS_TO_LISTEN + 10)) gatttool -b "${ADDR}" \
+# `gatttool` defaults to `--sec-level=low`, which never asks the link to encrypt, so notifications that arrive prove the
+# GATT server works and nothing about the bond. SEC=medium makes the client request encryption (and fail without a bond),
+# which is the check that a reconnect after a reset really used the stored key. Default stays `low` for the unpaired test.
+SEC="${SEC:-low}"
+sudo -n timeout $((SECONDS_TO_LISTEN + 10)) gatttool -b "${ADDR}" --sec-level="${SEC}" \
   --char-write-req -a "${CCCD}" -n 0100 --listen > "${OUT}" 2>&1 || true
 
 TOTAL=$(grep -c "Notification handle = ${VALUE_HANDLE}" "${OUT}" || true)

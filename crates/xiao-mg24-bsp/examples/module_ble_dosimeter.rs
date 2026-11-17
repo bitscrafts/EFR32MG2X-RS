@@ -134,15 +134,113 @@ impl Bands {
     }
 }
 
+/// What the device itself knows about the current link.
+///
+/// `sec` is the highest `security_mode` reported by `sl_bt_evt_connection_parameters` on this connection (0 none,
+/// 1 unauthenticated encryption, which is what Just Works gives). It exists because nothing measured before it proved
+/// that a reconnect after a reset was *encrypted*: `Bonded: yes` in `bluetoothctl info` is the host's own storage, and
+/// `gatttool` at its default `--sec-level=low` receives these notifications without ever asking the link to encrypt
+/// (the characteristics need no security), so they proved the GATT server and not the bond.
+struct Link {
+    sec: u8,
+    /// ATT_MTU; 23 is the default until `sl_bt_evt_gatt_mtu_exchanged` says otherwise.
+    mtu: u16,
+    /// `sl_bt_evt_sm_confirm_bonding` events seen since boot. Zero while the flag that requests them is set would mean
+    /// the stack does not raise it with the external database (`sl_bt_api.h`, bonding field forced to 0xff).
+    cfb: u32,
+    /// Disconnects seen, and advertising restarts issued. They must be equal: a disconnect that is popped by a drain
+    /// that does not restart advertising leaves the device silent until a power cycle ("Connection refused (111)").
+    disc: u32,
+    adv: u32,
+    /// Value handles of rms, bands, status, and whether the client has subscribed to each. A notify to an
+    /// unsubscribed characteristic fails with `INVALID_STATE`, so there is no reason to issue it.
+    handles: [u16; 3],
+    subscribed: [bool; 3],
+}
+
+impl Link {
+    const fn new() -> Self {
+        Self {
+            sec: 0,
+            mtu: 23,
+            cfb: 0,
+            disc: 0,
+            adv: 0,
+            handles: [0; 3],
+            subscribed: [false; 3],
+        }
+    }
+
+    fn note(&mut self, event: &efr32mg24_radio::BleEvent) {
+        use efr32mg24_radio::BleEvent;
+        match event {
+            BleEvent::Subscribed {
+                characteristic,
+                notifications,
+                ..
+            } => {
+                for i in 0..3 {
+                    if self.handles[i] == *characteristic {
+                        self.subscribed[i] = *notifications;
+                    }
+                }
+            }
+            BleEvent::ConnectionParameters { security_mode, .. } => {
+                self.sec = self.sec.max(*security_mode);
+            }
+            BleEvent::Mtu { mtu, .. } => self.mtu = *mtu,
+            BleEvent::ConfirmBonding { .. } => self.cfb += 1,
+            // A new connection starts unencrypted at the default MTU; keeping the previous link's values would make a
+            // stale `sec=1` look like proof for a link that never encrypted.
+            BleEvent::Disconnected { .. } | BleEvent::Connected { .. } => {
+                self.sec = 0;
+                self.mtu = 23;
+                // Subscriptions belong to a connection (a bonded client's come back through its own CCCD write).
+                self.subscribed = [false; 3];
+            }
+            _ => {}
+        }
+    }
+}
+
+/// Drain the stack's event queue and act on what it says. Returns true if a disconnect was seen.
+///
+/// **One handler for both drain sites.** The re-advertise used to live only in the per-sample drain, while the
+/// per-second drain threw every event away: a disconnect popped there left the device silent until a power cycle,
+/// which is the "Connection refused (111)" the first re-advertise was written to fix. `AdvertisingTimeout` is handled
+/// for the same reason (the set stops, nothing restarts it).
+fn service_stack(ble: &mut Bluetooth, link: &mut Link) -> bool {
+    use efr32mg24_radio::BleEvent;
+    let mut disconnected = false;
+    while let Some(event) = ble.poll_event() {
+        link.note(&event);
+        match event {
+            BleEvent::Disconnected { .. } => {
+                link.disc += 1;
+                disconnected = true;
+                if ble.start_connectable(200, 0).is_ok() {
+                    link.adv += 1;
+                }
+            }
+            // Not counted in `adv`, which pairs one-to-one with `disc`.
+            BleEvent::AdvertisingTimeout { .. } => {
+                let _ = ble.start_connectable(200, 0);
+            }
+            _ => {}
+        }
+    }
+    disconnected
+}
+
 struct Text {
-    buf: [u8; 180],
+    buf: [u8; 256],
     len: usize,
 }
 
 impl Text {
     fn new() -> Self {
         Self {
-            buf: [0; 180],
+            buf: [0; 256],
             len: 0,
         }
     }
@@ -319,34 +417,24 @@ fn main() -> ! {
     #[cfg(not(feature = "external-bonding"))]
     let _ = ble.store_bonding_configuration(8, 1);
 
-    // Run the core fast while the stack is on: at 19 MHz the capture loop leaves the stack about a third of the time
-    // it needs. Measured ratios against the IADC timer: 38 MHz 1.99x, 56 MHz 2.93x, 80 MHz 4.19x.
-    // `Module` derefs to the board this example already owns.
-    let boosted = module.hal().boost_to_80_mhz();
+    // No clock boost and no pace calibration here, on purpose. The core runs at 39.18 MHz whatever `boost_to_80_mhz`
+    // does: 2 350 795 993 DWT cycles over 60 s with the boost, 2 350 470 467 without it. That is the 39 MHz HFXO the
+    // stack selects in `Bluetooth::new` (`stack_init.rs`), and the boost only retunes HFRCODPLL, which no longer clocks
+    // the core. The calibration read `dwt::cycles()` before `dwt::start()`, so it measured nothing (or, with DWT on,
+    // assumed a 19 MHz core and would have doubled the period); `windows=3780` in 60 s (63/s) shows it changed nothing.
     let _ = ble.start_connectable(200, 0);
-
-    // Calibrate the pace against the core clock instead of trusting the timer's nominal clock: one window is
-    // 16 ms, so it must cost 304 000 cycles at 19 MHz. Whatever it actually costs scales the period linearly.
-    {
-        let mut window = [0u16; WINDOW];
-        let t0 = dwt::cycles();
-        let got = mic.capture_window(&mut window);
-        let took = dwt::since(t0);
-        if got == WINDOW && took > 0 {
-            let wanted = ((WINDOW as u64) * 19_000_000u64 / TARGET_HZ as u64) as u32;
-            let nominal = TIMER_CLK_HZ / TARGET_HZ;
-            let corrected = ((nominal as u64 * took as u64) / wanted as u64) as u32;
-            if corrected > 0 && corrected < 60000 {
-                let _ = mic.retune_period(corrected);
-            }
-        }
-    }
 
     let mut windows_total = 0u32;
     let mut notifications = 0u32;
     let mut published = 0u32;
     let mut last_rms = 0u16;
     let mut last_band0 = 0u32;
+    let mut link = Link::new();
+    link.handles = [
+        rms_handle.value(),
+        bands_handle.value(),
+        status_handle.value(),
+    ];
 
     // SAFETY: nothing else in this program touches DWT.
     unsafe { dwt::start() };
@@ -375,6 +463,24 @@ fn main() -> ! {
             t.u(last_rms as u32);
             t.s(b" b0=");
             t.u(last_band0);
+            t.s(b" sec=");
+            t.u(link.sec as u32);
+            t.s(b" mtu=");
+            t.u(link.mtu as u32);
+            t.s(b" cfb=");
+            t.u(link.cfb);
+            t.s(b" disc=");
+            t.u(link.disc);
+            t.s(b" adv=");
+            t.u(link.adv);
+            // Key-table health: `rst` keys restored at boot must be the same number after every reset, `free` slots
+            // must stay at 10 or more, and `dfail` (destroy calls that errored) must be 0.
+            t.s(b" rst=");
+            t.u(efr32mg24_radio::psa_lookup_stats().2);
+            t.s(b" free=");
+            t.u(efr32mg24_radio::psa_free_slots());
+            t.s(b" dfail=");
+            t.u(efr32mg24_radio::psa_destroy_failures());
             mailbox::info(t.bytes());
         }
         let mut window = [0u16; WINDOW];
@@ -395,14 +501,8 @@ fn main() -> ! {
                         // the BGAPI queue often enough to answer it: measured 2026-11-17, the product example failed
                         // to pair three times out of three while the probe example, whose loop has nothing else to do,
                         // paired first time. One call per sample costs a compare in the common case.
-                        while let Some(event) = ble.poll_event() {
-                            // A peripheral that stops advertising when a phone walks away cannot be reached again
-                            // without a power cycle. Measured 2026-11-17: after the first disconnect the host got
-                            // "Connection refused (111)" from gatttool, i.e. nothing was advertising.
-                            if matches!(event, efr32mg24_radio::BleEvent::Disconnected { .. }) {
-                                let _ = ble.start_connectable(200, 0);
-                                notifications = 0;
-                            }
+                        if service_stack(&mut ble, &mut link) {
+                            notifications = 0;
                         }
                     }
                     None => break,
@@ -449,13 +549,11 @@ fn main() -> ! {
 
         // Drain the stack's events between seconds: a connection only stays alive while its events are read.
         //
-        // Once per second is not enough with the stack running: at 19 MHz the loop costs about 206 % of real time
-        // (docs/04-reference/APP-LOOP-WITH-BLE-OPEN.md), so "one second" of loop is two seconds of wall clock, and the
-        // connection interval is 250 ms (200 x 1.25 ms). Measured 2026-11-17: pairing the product example failed three
-        // times out of three while the probe example, which has no capture loop, pairs first time. The clock boost is
-        // what buys the margin back.
+        // Same handler as the per-sample drain, so a disconnect popped here is not lost.
         let _ = second;
-        while let Some(_event) = ble.poll_event() {}
+        if service_stack(&mut ble, &mut link) {
+            notifications = 0;
+        }
     }
 
     let elapsed = dwt::since(started);
