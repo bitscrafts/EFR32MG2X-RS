@@ -275,3 +275,30 @@ compare against the address used on the reconnect.
 
 Consequences for the product, unchanged until this closes: `enable_pairing` stays out of the dosimeter example,
 because a device that pairs and cannot be reconnected is worse for the app than one that does not pair at all.
+
+## The bond is stored, loaded, indexed under the right address — and the key is refused
+
+`sl_bt_sm_get_bonding_details` closes the identity question. Read from the device while the host was connected:
+
+```
+bd=56448180de90   tipo=0 (publico)   modo=1 (emparelhamento nao autenticado com cifra)   chave=16 bytes
+peer=56448180de90 <-- o endereco que se ligou e' exactamente o que esta' guardado
+bh=1/0            o stack tem o bond
+resultado         a ligacao cai, e o ultimo evento de seguranca traz 0x1006 PIN or Key Missing
+```
+
+So the three things that were in doubt are settled: the bond is written, it survives a reset, and it is found by the
+address the peer presents. What fails is the key itself -- the host asks for encryption and the device answers that
+it has no key for it, or the key it holds is not the one the host derived.
+
+Where the next instrument goes, in the order that costs least:
+
+1. read the stored bond's content from NVM3 and see whether a 16-byte value with the LTK's shape is actually there,
+   which separates "the record was saved without its keys" from "the keys were saved and differ"
+2. if the record is complete, the disagreement is in derivation: the host's LTK comes from the pairing exchange, and
+   ours from whatever the stack kept, so one of the two paths is not the one that produced the other's value
+
+A note on the instruments themselves, because they cost more than the silicon did: `conn` in the probe's live line is
+a COUNT of connections, not the current state -- reading `conn=1` as "connected" sent this session after the wrong
+problem twice. The record is now read together with the host's own `Connected:` line, and the two disagree only when
+something is actually wrong.

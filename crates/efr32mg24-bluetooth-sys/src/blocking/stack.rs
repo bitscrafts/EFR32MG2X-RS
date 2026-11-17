@@ -737,6 +737,28 @@ impl Bluetooth {
         (rc as u8, num)
     }
 
+    /// The address a stored bond belongs to, plus how that bond was secured.
+    ///
+    /// Storage and lookup are different failures: a device can hold a bond, load it after a reset, and still answer
+    /// `0x1006 PIN or Key Missing` because the peer on the new connection does not match the stored address. This
+    /// returns what was stored so the two can be compared.
+    pub fn bonding_details(&mut self, bonding: u32) -> (u8, [u8; 6], u8, u8, u8) {
+        let mut address = [0u8; 6];
+        let mut address_type = 0u8;
+        let mut security_mode = 0u8;
+        let mut key_size = 0u8;
+        let rc = unsafe {
+            bt::sl_bt_sm_get_bonding_details(
+                bonding,
+                address.as_mut_ptr().cast(),
+                &mut address_type,
+                &mut security_mode,
+                &mut key_size,
+            )
+        };
+        (rc as u8, address, address_type, security_mode, key_size)
+    }
+
     /// Forget every stored bond. For tests that need both sides to start from nothing: a device that keeps a bond
     /// while the host drops its own answers the next attempt with `0x1205`, which looks like a firmware refusal
     /// and is really the two sides disagreeing about keys they already hold.

@@ -168,6 +168,7 @@ fn main() -> ! {
     let mut sec_events: u32 = 0;
     let mut sec_event: u32 = 0;
     let mut sec_reason: u32 = 0;
+    let mut peer_addr = [0u8; 6];
     let mut nvm_cached = 0u32;
     // NVM3 is not reentrant and the stack uses this same handle from its own context, so the enumeration happens
     // once a second and the live line reads the cache. Enumerating per iteration returned zeros and looked like an
@@ -182,7 +183,10 @@ fn main() -> ! {
     for tick in 0..WINDOW_MS {
         while let Some(event) = ble.poll_event() {
             match event {
-                efr32mg24_radio::BleEvent::Connected { .. } => connections += 1,
+                efr32mg24_radio::BleEvent::Connected { address, .. } => {
+                    connections += 1;
+                    peer_addr = address;
+                }
                 efr32mg24_radio::BleEvent::Disconnected { reason, .. } => {
                     sec_event = 0x1000 + reason as u32;
                     // Advertising stops when a connection is established, and a peripheral that does not restart it
@@ -235,6 +239,23 @@ fn main() -> ! {
             live.hex(sm_store as u32);
             live.s(b" nvm=");
             live.u(nvm_cached);
+            // Compare what the bond store holds with the peer that just connected: equal addresses mean the
+            // lookup failure is elsewhere, different ones name it.
+            let (_bd_rc, bd_addr, bd_type, bd_mode, bd_keys) = ble.bonding_details(0);
+            live.s(b" bd=");
+            for b in bd_addr.iter() {
+                live.hex(*b as u32);
+            }
+            live.s(b"/");
+            live.u(bd_type as u32);
+            live.s(b"/");
+            live.u(bd_mode as u32);
+            live.s(b"/");
+            live.u(bd_keys as u32);
+            live.s(b" peer=");
+            for b in peer_addr.iter() {
+                live.hex(*b as u32);
+            }
             let (bh_rc, bh_n) = ble.bonding_handles();
             live.s(b" bh=");
             live.u(bh_n);
