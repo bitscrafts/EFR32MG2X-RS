@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-emu-core"
+version = "0.1.0"
+edition = "2021"
+description = "What prevents EM2: the blockers, the voltage scale, and why a wfi with a pending interrupt does not sleep"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

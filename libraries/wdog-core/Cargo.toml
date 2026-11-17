@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-wdog-core"
+version = "0.1.0"
+edition = "2021"
+description = "Watchdog timeout encoding, and the rule that LOCK is taken only on a running watchdog"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-timer-core"
+version = "0.1.0"
+edition = "2021"
+description = "Prescaler and top for a wanted timer period, and the rule that a running timer is not configured"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
