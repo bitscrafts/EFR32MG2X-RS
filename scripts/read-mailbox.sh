@@ -51,7 +51,7 @@ magic, seq, status, length = struct.unpack_from("<IIII", data, 0)
 if magic != 0x4D424F58:
     # 0 = a write is in progress; anything else = no mailbox at all.
     sys.exit(5 if magic == 0 else 4)
-length = min(length, len(data) - 16, 200)
+length = min(length, len(data) - 16, 4096)
 names = {0: "info", 1: "PASS", 2: "FAIL"}
 print(f"seq={seq} status={names.get(status, status)} len={length}")
 print(data[16:16 + length].decode("utf-8", "replace"))

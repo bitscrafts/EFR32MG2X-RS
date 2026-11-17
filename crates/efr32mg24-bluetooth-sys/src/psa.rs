@@ -30,6 +30,7 @@
 //! requires no assumption about the struct's layout.
 
 use core::ptr;
+use core::sync::atomic::{AtomicU32, Ordering};
 
 use aes_modes::cmac;
 
@@ -116,6 +117,59 @@ const EMPTY_SLOT: Slot = Slot {
 static mut SLOTS_TABLE: [Slot; SLOTS] = [EMPTY_SLOT; SLOTS];
 /// Key id 0 is `PSA_KEY_ID_NULL` and must never be handed out; ids start at 1.
 static mut NEXT_ID: u32 = 1;
+/// The key lookups that found nothing, and what the last one asked for. A miss at reconnect is the whole of the
+/// "PIN or Key Missing" symptom, seen from our side of the ABI.
+static SLOT_MISSES: AtomicU32 = AtomicU32::new(0);
+static LAST_MISS_ID: AtomicU32 = AtomicU32::new(0);
+/// Keys restored from flash at start-up, and the last id restored.
+/// How many restore attempts have been made this boot. The enumeration can legitimately return nothing if it runs
+/// before the stack has populated the NVM3 pages (measured: `rcal=1/0/0/0` at boot against `5` objects once running),
+/// so a lookup that misses is allowed to trigger one more attempt instead of trusting the first window.
+/// Set once the key table has been restored from flash for this boot. Module scope on purpose: a function-local
+/// `static mut` is a separate variable per function, and clearing it from a helper silently failed.
+static mut RESTORE_DONE: bool = false;
+
+static RESTORE_RUNS: AtomicU32 = AtomicU32::new(0);
+/// The attempts allowed per boot. Small on purpose: this is a fallback for a bad moment, not a polling loop.
+const RESTORE_MAX_RUNS: u32 = 4;
+
+/// Forget the "already restored" mark so the next miss can try again. Safe to call from a lookup.
+fn allow_another_restore() {
+    if RESTORE_RUNS.load(Ordering::Relaxed) >= RESTORE_MAX_RUNS {
+        return;
+    }
+    // SAFETY: single-core, and the flag only guards a table walk that is not re-entered.
+    unsafe { *ptr::addr_of_mut!(RESTORE_DONE) = false }
+}
+
+/// Why the restore did or did not happen: how many times it was attempted, how many of those saw a null NVM3 handle,
+/// how many objects the enumeration returned, and how many of them fell in our key range.
+static RESTORE_CALLS: AtomicU32 = AtomicU32::new(0);
+static RESTORE_NULL_HANDLE: AtomicU32 = AtomicU32::new(0);
+static RESTORE_ENUMERATED: AtomicU32 = AtomicU32::new(0);
+static RESTORE_IN_RANGE: AtomicU32 = AtomicU32::new(0);
+
+/// `(calls, null handle, enumerated, in range)` of the restore.
+pub fn restore_stats() -> (u32, u32, u32, u32) {
+    (
+        RESTORE_CALLS.load(Ordering::Relaxed),
+        RESTORE_NULL_HANDLE.load(Ordering::Relaxed),
+        RESTORE_ENUMERATED.load(Ordering::Relaxed),
+        RESTORE_IN_RANGE.load(Ordering::Relaxed),
+    )
+}
+static SLOTS_RESTORED: AtomicU32 = AtomicU32::new(0);
+static LAST_RESTORED_ID: AtomicU32 = AtomicU32::new(0);
+
+/// `(misses, last missed id, restored, last restored id)`.
+pub fn lookup_stats() -> (u32, u32, u32, u32) {
+    (
+        SLOT_MISSES.load(Ordering::Relaxed),
+        LAST_MISS_ID.load(Ordering::Relaxed),
+        SLOTS_RESTORED.load(Ordering::Relaxed),
+        LAST_RESTORED_ID.load(Ordering::Relaxed),
+    )
+}
 /// Diagnostics: how many imports, and whether randomness was ever requested.
 static mut IMPORTS: u32 = 0;
 static mut RANDOM_REQUESTS: u32 = 0;
@@ -158,6 +212,8 @@ extern "C" {
     fn nvm3_readData(handle: *mut u8, key: u32, data: *mut u8, length: usize) -> u32;
     fn nvm3_deleteObject(handle: *mut u8, key: u32) -> u32;
     fn nvm3_enumObjects(handle: *mut u8, key_list: *mut u32, key_list_size: usize) -> usize;
+    fn nvm3_getObjectInfo(handle: *mut u8, key: u32, obj_type: *mut u32, length: *mut usize)
+        -> u32;
 }
 
 fn persist_key_for(id: u32) -> u32 {
@@ -197,29 +253,46 @@ fn forget_slot(id: u32) {
 /// The counter matters as much as the keys: ids are handed out from `NEXT_ID`, which starts at 1 on every boot, so
 /// without this a new import would take the id of a key that survived and overwrite it.
 fn restore_slots_once() {
-    static mut DONE: bool = false;
-    // SAFETY: single-core, called from the PSA entry points before they touch the table, and guarded by `DONE`.
+    // SAFETY: single-core, called from the PSA entry points before they touch the table, and guarded by RESTORE_DONE.
     unsafe {
-        if *ptr::addr_of!(DONE) {
+        if *ptr::addr_of!(RESTORE_DONE) {
             return;
         }
-        *ptr::addr_of_mut!(DONE) = true;
+        // The stack opens the NVM3 default instance itself, and the first PSA call can arrive before it has. Marking
+        // the restore as done in that state made the whole persistence silent: measured 2026-11-17, `rst=0/0` after a
+        // reset while the keys were in the flash, and the stack then missed key 0x40037 and the link dropped with
+        // 0x1006. So: only take `DONE` when the handle is usable, and retry on the next call otherwise.
+        RESTORE_CALLS.fetch_add(1, Ordering::Relaxed);
+        if nvm3_defaultHandle.is_null() {
+            RESTORE_NULL_HANDLE.fetch_add(1, Ordering::Relaxed);
+            return;
+        }
+        *ptr::addr_of_mut!(RESTORE_DONE) = true;
+        RESTORE_RUNS.fetch_add(1, Ordering::Relaxed);
 
         let mut keys = [0u32; 24];
         let found = nvm3_enumObjects(nvm3_defaultHandle, keys.as_mut_ptr(), keys.len());
+        RESTORE_ENUMERATED.store(found as u32, Ordering::Relaxed);
         let mut highest = 0u32;
         for key in keys.iter().take(found.min(keys.len())) {
             // Same range as `PERSIST_BASE`, compared by the high half so this does not depend on a bit mask.
             if *key / 0x1_0000 != PERSIST_BASE / 0x1_0000 {
                 continue;
             }
+            RESTORE_IN_RANGE.fetch_add(1, Ordering::Relaxed);
+            // Ask the object how long it is before reading it: `nvm3_readData` refuses a length larger than the
+            // object, and asking for the full buffer (header + MAX_KEY) against a shorter object failed every read.
+            // Measured 2026-11-17: four keys in range, zero restored, because of exactly this.
+            let mut obj_type = 0u32;
+            let mut obj_len = 0usize;
+            if nvm3_getObjectInfo(nvm3_defaultHandle, *key, &mut obj_type, &mut obj_len) != 0 {
+                continue;
+            }
+            if !(PERSIST_HEADER + 1..=PERSIST_HEADER + MAX_KEY).contains(&obj_len) {
+                continue;
+            }
             let mut buf = [0u8; PERSIST_HEADER + MAX_KEY];
-            let rc = nvm3_readData(
-                nvm3_defaultHandle,
-                *key,
-                buf.as_mut_ptr(),
-                PERSIST_HEADER + MAX_KEY,
-            );
+            let rc = nvm3_readData(nvm3_defaultHandle, *key, buf.as_mut_ptr(), obj_len);
             if rc != 0 {
                 continue;
             }
@@ -241,6 +314,8 @@ fn restore_slots_once() {
                     key_type,
                 };
                 highest = highest.max(id);
+                SLOTS_RESTORED.fetch_add(1, Ordering::Relaxed);
+                LAST_RESTORED_ID.store(id, Ordering::Relaxed);
             }
         }
         if highest >= *ptr::addr_of!(NEXT_ID) {
@@ -754,6 +829,17 @@ fn slot_for(key: u32) -> Option<&'static Slot> {
     if id == 0 {
         return None;
     }
+    if let Some(slot) = slots().iter().find(|s| s.used && s.id == id) {
+        return Some(slot);
+    }
+    // A miss is the moment the keys are actually needed, and the only moment we know the stack has finished opening
+    // its NVM3 instance. Try one more restore here before reporting the key as absent: without this the table stays
+    // empty for the whole boot if the start-up restore ran too early (measured 2026-11-17: the link dropped with
+    // 0x1006 on a key that was in the flash).
+    SLOT_MISSES.fetch_add(1, Ordering::Relaxed);
+    LAST_MISS_ID.store(id, Ordering::Relaxed);
+    allow_another_restore();
+    restore_slots_once();
     slots().iter().find(|s| s.used && s.id == id)
 }
 

@@ -49,14 +49,14 @@ fn nvm3_object_count() -> u32 {
 const WINDOW_MS: u32 = 1_800_000;
 
 struct Text {
-    buf: [u8; 190],
+    buf: [u8; 480],
     len: usize,
 }
 
 impl Text {
     fn new() -> Self {
         Self {
-            buf: [0; 190],
+            buf: [0; 480],
             len: 0,
         }
     }
@@ -241,57 +241,64 @@ fn main() -> ! {
             live.hex(sm_store as u32);
             live.s(b" nvm=");
             live.u(nvm_cached);
-            // Compare what the bond store holds with the peer that just connected: equal addresses mean the
-            // lookup failure is elsewhere, different ones name it.
-            let (_bd_rc, bd_addr, bd_type, bd_mode, bd_keys) = ble.bonding_details(0);
-            live.s(b" bd=");
-            for b in bd_addr.iter() {
-                live.hex(*b as u32);
-            }
-            live.s(b"/");
-            live.u(bd_type as u32);
-            live.s(b"/");
-            live.u(bd_mode as u32);
-            live.s(b"/");
-            live.u(bd_keys as u32);
-            live.s(b" peer=");
-            for b in peer_addr.iter() {
-                live.hex(*b as u32);
-            }
-            // Are the external-bonding callbacks the ones running? Counters, not assumptions.
+            // Did the stack actually ask for bonding data, and did our answer reach it? With an external database
+            // this conversation is what gates the security manager, so an unanswered request looks exactly like
+            // "pairing does nothing" from the outside.
             #[cfg(feature = "external-bonding")]
-            let (bx_is, bx_store, bx_type, bx_del, bx_res, bx_err) =
-                efr32mg24_radio::bonding_ext_stats();
+            let (dr, da, ds, dt, dc, dry) = efr32mg24_radio::data_request_stats();
             #[cfg(not(feature = "external-bonding"))]
-            let (bx_is, bx_store, bx_type, bx_del, bx_res, bx_err) =
-                (0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
-            let bx_alloc = 0u32;
-            live.s(b" bxc=");
-            live.u(bx_alloc);
+            let (dr, da, ds, dt, dc, dry) = (
+                0u32,
+                0u32,
+                0xFFFF_FFFFu32,
+                0xFFFF_FFFFu32,
+                0xFFFF_FFFFu32,
+                0u32,
+            );
+            live.s(b" dr=");
+            live.u(dr);
             live.s(b"/");
-            live.u(bx_is);
-            live.s(b"/");
+            live.u(da);
+            live.s(b"/ds=");
+            live.u(ds);
+            live.s(b" dt=");
+            live.u(dt);
+            live.s(b"/dc=");
+            live.u(dc);
+            live.s(b" dry=");
+            live.u(dry);
+            // The last eight steps of the bonding conversation, in order: kind=1 asked, 2 answered, 3 stored,
+            // 4 read, 5 data_ready; then the type and the length/status.
+            #[cfg(feature = "external-bonding")]
+            let trc = efr32mg24_radio::trace_entries();
+            #[cfg(not(feature = "external-bonding"))]
+            let trc = [0u32; 8];
+            live.s(b" trc=");
+            for word in trc.iter() {
+                if *word == 0 {
+                    break;
+                }
+                live.u(*word >> 16);
+                live.s(b":");
+                live.u((*word >> 8) & 0xFF);
+                live.s(b":");
+                live.u(*word & 0xFF);
+                live.s(b",");
+            }
+            // The callbacks the stack uses for storage, compact: store count only. The whole set is available in
+            // `bonding_ext_stats()` when a test needs it, but the mailbox record is 200 bytes and the security fields
+            // matter more than the counters.
+            #[cfg(feature = "external-bonding")]
+            let bx_store = efr32mg24_radio::bonding_ext_stats().1;
+            #[cfg(not(feature = "external-bonding"))]
+            let bx_store = 0u32;
+            live.s(b" bxs=");
             live.u(bx_store);
-            live.s(b"/");
-            live.u(bx_type);
-            live.s(b"/");
-            live.u(bx_res);
-            live.s(b"/");
-            live.u(bx_del);
-            live.s(b"/");
-            live.u(bx_err);
             let (bh_rc, bh_n) = ble.bonding_handles();
             live.s(b" bh=");
             live.u(bh_n);
             live.s(b"/");
             live.hex(bh_rc as u32);
-            live.s(b" k=");
-            for (i, k) in key_cache.iter().take(key_count.min(8)).enumerate() {
-                if i > 0 {
-                    live.s(b",");
-                }
-                live.hex(*k);
-            }
             live.s(b" bc=");
             live.u(efr32mg24_radio::psa_last_call());
             let gen = efr32mg24_radio::psa_generate_stats();
@@ -299,6 +306,24 @@ fn main() -> ! {
             live.u(gen.0);
             live.s(b" uns=0x");
             live.hex(gen.1);
+            let (miss, miss_id, restored, restored_id) = efr32mg24_radio::psa_lookup_stats();
+            let (rcal, rnull, robj, rinr) = efr32mg24_radio::psa_restore_stats();
+            live.s(b" rcal=");
+            live.u(rcal);
+            live.s(b"/");
+            live.u(rnull);
+            live.s(b"/");
+            live.u(robj);
+            live.s(b"/");
+            live.u(rinr);
+            live.s(b" miss=");
+            live.u(miss);
+            live.s(b"/");
+            live.hex(miss_id);
+            live.s(b" rst=");
+            live.u(restored);
+            live.s(b"/");
+            live.hex(restored_id);
             live.s(b" imf=0x");
             live.hex(efr32mg24_radio::psa_import_failed());
             live.s(b" ref=0x");

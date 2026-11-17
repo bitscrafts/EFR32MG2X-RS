@@ -857,6 +857,16 @@ impl Bluetooth {
         crate::stack_init::pump();
 
         // Allocate event structure (256 bytes on stack)
+        // Answer a bonding-data request that the previous poll recorded, outside any BGAPI call.
+        #[cfg(feature = "external-bonding")]
+        if let Some((conn, data_type)) = crate::bonding_ext::take_queued_data_answer() {
+            let empty = [0u8; 1];
+            let status = unsafe {
+                bt::sl_bt_external_bondingdb_set_data(conn, data_type, 0, empty.as_ptr())
+            };
+            crate::bonding_ext::note_data_answer(status);
+        }
+
         let mut evt = core::mem::MaybeUninit::<bt::sl_bt_msg_t>::uninit();
 
         // Pop event from Bluetooth stack queue
@@ -878,6 +888,45 @@ impl Bluetooth {
 
         // SAFETY: sl_bt_pop_event() returns 0 only when event is valid
         let evt = unsafe { evt.assume_init() };
+
+        // **The external bonding database is a conversation, and this is where it is answered.**
+        //
+        // With that database selected, `sli_bt_bonding_get_database_type` answers 2, and `sm_init_bonding_data`
+        // (`sm.c.obj`, `+0x04..+0x0a` `cmp r0,#2` / `bne +0x28`) then calls
+        // `sli_bt_external_bonding_request_bonding_data` instead of taking the `+0x28` path, which is the one that
+        // sets bit 9 (`+0x2a..+0x2e` `orr r3,#512`) — "bonding data ready" in the connection's flags word. The
+        // security manager's pairing state machine pends the incoming Pairing Request on that bit and never replies
+        // until the application answers this request with `sl_bt_external_bondingdb_set_data` (vendor header
+        // `sl_bt_api.h:11887`: "Send 0 length data to the stack with this command if the requested data is not
+        // available"). Measured before this was here: `ec=0,0,0 gen=0`, no Pairing Response, host gives up with
+        // AuthenticationFailed.
+        //
+        // A zero length answer is the documented "not available", and for a first pairing it is all the stack needs
+        // to let the exchange start; the bonding data itself then arrives through the same conversation.
+        #[cfg(feature = "external-bonding")]
+        if header & 0xffff_00f8 == bt::sl_bt_evt_external_bondingdb_data_request_id {
+            // The typed event structures in the bindings carry the payload only; the 4-byte header precedes it.
+            let request = unsafe {
+                core::ptr::read_unaligned(
+                    (&evt as *const bt::sl_bt_msg as *const u8)
+                        .add(4)
+                        .cast::<bt::sl_bt_evt_external_bondingdb_data_request_t>(),
+                )
+            };
+            crate::bonding_ext::note_data_request(request.connection, request.type_);
+            // Do NOT issue the answer from inside the pump: `sl_bt_external_bondingdb_set_data` is a BGAPI command and
+            // the pump is inside the BGAPI call that delivered this event. Record it and answer on the next poll.
+            crate::bonding_ext::queue_data_answer(request.connection, request.type_);
+            // Not an application event; the next poll returns whatever follows.
+            return None;
+        }
+
+        // The completion signal of the external bonding conversation. It is counted before the event is parsed so
+        // that an event nobody decodes is still visible.
+        #[cfg(feature = "external-bonding")]
+        if header & 0xffff_00f8 == 0x025c_00a0 {
+            crate::bonding_ext::note_data_ready();
+        }
 
         // Parse event into typed BleEvent
         let parsed = unsafe { BleEvent::parse(&evt) };

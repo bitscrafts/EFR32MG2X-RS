@@ -60,6 +60,116 @@ static CALLS_RESOLVE: AtomicU32 = AtomicU32::new(0);
 static STORE_ERRORS: AtomicU32 = AtomicU32::new(0);
 static CALLS_READ: AtomicU32 = AtomicU32::new(0);
 static READ_ERRORS: AtomicU32 = AtomicU32::new(0);
+/// The stack's request for bonding data and the answers given to it. With an external database this conversation is
+/// what gates the security manager: `sm_init_bonding_data` asks instead of setting its "bonding data ready" bit, and
+/// the pairing exchange does not start until the application answers. Counted here so a test can tell "asked and
+/// answered" from "never asked".
+static CALLS_DATA_REQ: AtomicU32 = AtomicU32::new(0);
+static CALLS_DATA_ANSWERED: AtomicU32 = AtomicU32::new(0);
+static LAST_DATA_STATUS: AtomicU32 = AtomicU32::new(0xFFFF_FFFF);
+/// Which piece of bonding data was asked for, and on which connection. The vendor's types are small integers; the
+/// exact meaning is in `sl_bt_api.h` under `sl_bt_evt_external_bondingdb_data_request`.
+static LAST_DATA_TYPE: AtomicU32 = AtomicU32::new(0xFFFF_FFFF);
+static LAST_DATA_CONN: AtomicU32 = AtomicU32::new(0xFFFF_FFFF);
+/// The stack's "I have all the bonding data I asked for" signal. Its absence is the difference between "the stack is
+/// still waiting for us" and "the stack moved on and failed elsewhere".
+static DATA_READY_EVENTS: AtomicU32 = AtomicU32::new(0);
+
+/// Called when the stack asks for the bonding data of a connection.
+pub fn note_data_request(connection: u8, data_type: u8) {
+    CALLS_DATA_REQ.fetch_add(1, Ordering::Relaxed);
+    trace(1, data_type as u32, connection as u32);
+    LAST_DATA_CONN.store(connection as u32, Ordering::Relaxed);
+    LAST_DATA_TYPE.store(data_type as u32, Ordering::Relaxed);
+}
+
+/// A compact trace of the bonding conversation: eight entries of `(kind << 16) | (a << 8) | b`.
+///
+/// kinds: 1 = the stack asked for data (a=type, b=connection), 2 = we answered (a=type, b=status),
+/// 3 = the stack stored a piece (a=type, b=length), 4 = the stack read a piece (a=type, b=1 if found),
+/// 5 = the stack announced data_ready.
+static TRACE: [AtomicU32; 8] = [
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+];
+static TRACE_NEXT: AtomicU32 = AtomicU32::new(0);
+
+fn trace(kind: u32, a: u32, b: u32) {
+    let index = (TRACE_NEXT.fetch_add(1, Ordering::Relaxed) % 8) as usize;
+    TRACE[index].store(
+        (kind << 16) | ((a & 0xFF) << 8) | (b & 0xFF),
+        Ordering::Relaxed,
+    );
+}
+
+/// The eight most recent entries, oldest first, as `kind/a/b` numbers packed in one word each.
+pub fn trace_entries() -> [u32; 8] {
+    let mut out = [0u32; 8];
+    let written = TRACE_NEXT.load(Ordering::Relaxed) as usize;
+    if written == 0 {
+        return out;
+    }
+    // Oldest first: with fewer than eight entries the ring has not wrapped, so the oldest is index 0 and there is
+    // nothing after `written`. Getting this wrong made the whole trace print as empty (measured 2026-11-17).
+    let count = written.min(8);
+    let start = if written > 8 { written % 8 } else { 0 };
+    for i in 0..count {
+        out[i] = TRACE[(start + i) % 8].load(Ordering::Relaxed);
+    }
+    out
+}
+
+/// A bonding-data request waiting to be answered from a safe context.
+static QUEUED_DATA: AtomicU32 = AtomicU32::new(0xFFFF_FFFF);
+
+/// Record a request to be answered on the next poll, outside any BGAPI call.
+pub fn queue_data_answer(connection: u8, data_type: u8) {
+    QUEUED_DATA.store(
+        ((connection as u32) << 8) | data_type as u32,
+        Ordering::Relaxed,
+    );
+}
+
+/// Take the queued request, if any.
+pub fn take_queued_data_answer() -> Option<(u8, u8)> {
+    let packed = QUEUED_DATA.swap(0xFFFF_FFFF, Ordering::Relaxed);
+    if packed == 0xFFFF_FFFF {
+        None
+    } else {
+        Some(((packed >> 8) as u8, (packed & 0xFF) as u8))
+    }
+}
+
+/// Called when the stack announces that it has all the bonding data it asked for.
+pub fn note_data_ready() {
+    DATA_READY_EVENTS.fetch_add(1, Ordering::Relaxed);
+    trace(5, 0, 0);
+}
+
+/// Called after answering that request, with the status the stack returned.
+pub fn note_data_answer(status: u32) {
+    CALLS_DATA_ANSWERED.fetch_add(1, Ordering::Relaxed);
+    trace(2, 0, status);
+    LAST_DATA_STATUS.store(status, Ordering::Relaxed);
+}
+
+/// `(requests, answered, last status, last type, last connection)` of the bonding-data conversation.
+pub fn data_request_stats() -> (u32, u32, u32, u32, u32, u32) {
+    (
+        CALLS_DATA_REQ.load(Ordering::Relaxed),
+        CALLS_DATA_ANSWERED.load(Ordering::Relaxed),
+        LAST_DATA_STATUS.load(Ordering::Relaxed),
+        LAST_DATA_TYPE.load(Ordering::Relaxed),
+        LAST_DATA_CONN.load(Ordering::Relaxed),
+        DATA_READY_EVENTS.load(Ordering::Relaxed),
+    )
+}
 
 /// `(is_bonded, store, db_type, delete, resolve)` and the number of stores NVM3 refused.
 pub fn stats() -> (u32, u32, u32, u32, u32, u32) {
@@ -156,6 +266,7 @@ pub unsafe extern "C" fn sli_bt_external_bonding_store_data(
     length: usize,
 ) -> u32 {
     CALLS_STORE.fetch_add(1, Ordering::Relaxed);
+    trace(3, piece as u32, length as u32);
     if data.is_null() || length == 0 || length > 128 {
         return 0x406;
     }
@@ -239,6 +350,7 @@ pub unsafe extern "C" fn sli_bt_bonding_get_data(
     length: usize,
 ) -> u32 {
     CALLS_READ.fetch_add(1, Ordering::Relaxed);
+    trace(4, piece as u32, 0);
     if data.is_null() || length == 0 {
         return 0x406;
     }

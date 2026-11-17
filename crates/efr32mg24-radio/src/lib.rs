@@ -77,4 +77,14 @@ compile_error!(
 );
 
 #[cfg(feature = "external-bonding")]
+pub use efr32mg24_bluetooth_sys::bonding_ext::data_request_stats;
+#[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::stats as bonding_ext_stats;
+#[cfg(feature = "external-bonding")]
+pub use efr32mg24_bluetooth_sys::bonding_ext::trace_entries;
+
+/// Key lookups that missed after a reset, and keys restored at start-up.
+pub use efr32mg24_bluetooth_sys::psa::lookup_stats as psa_lookup_stats;
+
+/// Why the key restore did or did not happen at start-up.
+pub use efr32mg24_bluetooth_sys::psa::restore_stats as psa_restore_stats;
