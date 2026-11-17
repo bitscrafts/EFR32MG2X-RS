@@ -29,10 +29,22 @@ What actually causes it, as far as the measurements can tell:
   RAIL state machine where it was, and a stack that initialises into that state asserts.
 - **Halting the core while the radio runs** makes it worse. `scripts/wait-for-record.sh` halted every 12 s looking for
   a record, which is exactly the wrong instrument: it kept the state broken while it waited for the state to heal.
-- A **power cycle** clears it. Measured: after the operator unplugged and replugged the board, the link worked again.
+- **A power cycle looked like it would clear it, and it does not.** Measured three times after this was first
+  written: unplug, five seconds, replug — the core is in `RAILCb_AssertFailed` again within a minute, with the
+  120 s firmware and with the 600 s firmware alike. The earlier report that it worked after a replug was true of
+  one occasion, and it did not survive being repeated, so it is withdrawn here rather than left standing.
 
-So: **after flashing a firmware that starts the BLE stack, cut the power.** Not reset — unplug. Then leave the
-debugger alone while it runs.
+What survives every measurement:
+
+- the core runs non-BLE firmware on the same board at the same time (`module_led_blink` at `0x08006304`, and
+  `module_dosimeter_offline` at `0x0800640e` in `core::ptr::read_volatile`), so the silicon, the clock, the flash
+  and the debugger are all fine;
+- the failing code is the Bluetooth stack's start-up (`RAILCb_AssertFailed`, `r1=0x4b`), and it fails before the
+  first 60 s record is published, which is why the mailbox looks empty;
+- the host holds `Paired: yes`, `Bonded: yes`, `Connected: no`, so nothing on the host is connecting to the board.
+
+This is where the bench stands until the radio stack's start-up is examined with time to read the vendor's assert
+codes, instead of the guesses that cost this night.
 
 ## Thursday, in order
 
