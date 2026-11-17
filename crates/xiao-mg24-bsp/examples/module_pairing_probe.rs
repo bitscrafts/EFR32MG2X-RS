@@ -307,15 +307,21 @@ fn main() -> ! {
             live.s(b" uns=0x");
             live.hex(gen.1);
             let (miss, miss_id, restored, restored_id) = efr32mg24_radio::psa_lookup_stats();
-            let (rcal, rnull, robj, rinr) = efr32mg24_radio::psa_restore_stats();
-            live.s(b" rcal=");
-            live.u(rcal);
+            // The words of the attributes blob the stack passes on import: this is where its key id lives, and
+            // reading it is the only honest way to learn the layout when the header is not in the tree.
+            let (latr, latr_n) = efr32mg24_radio::psa_ltk_attributes();
+            live.s(b" latr=");
+            live.u(latr_n);
             live.s(b"/");
-            live.u(rnull);
-            live.s(b"/");
-            live.u(robj);
-            live.s(b"/");
-            live.u(rinr);
+            for word in latr.iter() {
+                live.hex(*word);
+                live.s(b",");
+            }
+            live.s(b" atr=");
+            for word in efr32mg24_radio::psa_attributes_words().iter() {
+                live.hex(*word);
+                live.s(b",");
+            }
             live.s(b" miss=");
             live.u(miss);
             live.s(b"/");

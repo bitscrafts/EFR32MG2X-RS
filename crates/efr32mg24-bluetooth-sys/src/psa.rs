@@ -161,6 +161,21 @@ pub fn restore_stats() -> (u32, u32, u32, u32) {
 static SLOTS_RESTORED: AtomicU32 = AtomicU32::new(0);
 static LAST_RESTORED_ID: AtomicU32 = AtomicU32::new(0);
 
+/// The used slots, as `(id, key_type)` pairs, for a test that needs to compare our identifiers with the ones the
+/// stack asks for.
+pub fn table_summary() -> [(u32, u32); 6] {
+    let mut out = [(0u32, 0u32); 6];
+    let mut n = 0;
+    for slot in slots().iter() {
+        if !slot.used || n >= out.len() {
+            continue;
+        }
+        out[n] = (slot.id, slot.key_type);
+        n += 1;
+    }
+    out
+}
+
 /// `(misses, last missed id, restored, last restored id)`.
 pub fn lookup_stats() -> (u32, u32, u32, u32) {
     (
@@ -205,6 +220,60 @@ static mut MAC_TABLE: [MacOp; MAC_OPS] = [EMPTY_OP; MAC_OPS];
 const PERSIST_BASE: u32 = 0xD_0000;
 /// A persisted key: `key_type` (4) + `key_len` (2) + bytes.
 const PERSIST_HEADER: usize = 6;
+
+/// The first eight 32-bit words of the last attributes blob seen by `psa_import_key`. The stack puts the key id in
+/// there; reading what arrives beats inventing an offset from a header that is not in the tree.
+static mut ATTR_WORDS: [u32; 8] = [0; 8];
+
+/// Words of the attributes of the last import whose payload was 16 bytes, i.e. a long-term key.
+static mut LTK_ATTR_WORDS: [u32; 8] = [0; 8];
+static mut LTK_ATTR_SEEN: u32 = 0;
+
+/// The attributes words of the last 16-byte import, and how many such imports were seen.
+pub fn ltk_attributes() -> ([u32; 8], u32) {
+    // SAFETY: single-core; written on the import path, read from the main loop.
+    unsafe {
+        (
+            *ptr::addr_of!(LTK_ATTR_WORDS),
+            *ptr::addr_of!(LTK_ATTR_SEEN),
+        )
+    }
+}
+
+/// The captured words, for a test that needs to locate the id field.
+pub fn attributes_words() -> [u32; 8] {
+    // SAFETY: single-core; written from the import path, read from the main loop.
+    unsafe { *ptr::addr_of!(ATTR_WORDS) }
+}
+
+/// Copy the attributes of an import whose payload is 16 bytes: that is the long-term key, and it is the one the
+/// security manager later asks for by an id derived from the bond handle.
+///
+/// # Safety
+/// As for `capture_attributes`.
+unsafe fn capture_ltk_attributes(attributes: *const u8, data_length: usize) {
+    if attributes.is_null() || data_length != 16 {
+        return;
+    }
+    for (i, slot) in (*ptr::addr_of_mut!(LTK_ATTR_WORDS)).iter_mut().enumerate() {
+        *slot = core::ptr::read_unaligned(attributes.add(i * 4).cast::<u32>());
+    }
+    *ptr::addr_of_mut!(LTK_ATTR_SEEN) += 1;
+}
+
+/// Copy the first words of the attributes blob.
+///
+/// # Safety
+/// `attributes` must be a readable blob of at least 32 bytes, which is what the PSA API guarantees for
+/// `psa_key_attributes_t`.
+unsafe fn capture_attributes(attributes: *const u8) {
+    if attributes.is_null() {
+        return;
+    }
+    for (i, slot) in (*ptr::addr_of_mut!(ATTR_WORDS)).iter_mut().enumerate() {
+        *slot = core::ptr::read_unaligned(attributes.add(i * 4).cast::<u32>());
+    }
+}
 
 extern "C" {
     static mut nvm3_defaultHandle: *mut u8;
@@ -459,6 +528,8 @@ pub unsafe extern "C" fn psa_import_key(
     data_length: usize,
     key: *mut u32,
 ) -> i32 {
+    capture_attributes(attributes);
+    capture_ltk_attributes(attributes, data_length);
     let rc = psa_import_key_inner(attributes, data, data_length, key);
     if rc != 0 {
         core::ptr::write_volatile(
@@ -470,12 +541,17 @@ pub unsafe extern "C" fn psa_import_key(
 }
 
 unsafe fn psa_import_key_inner(
-    _attributes: *const u8,
+    attributes: *const u8,
     data: *const u8,
     data_length: usize,
     key: *mut u32,
 ) -> i32 {
     bump(3);
+    // Record what the stack is asking us to store: the words of its attributes blob, and separately the ones that
+    // accompany a 16-byte payload (a long-term key). This is how the identifier seam was located -- see
+    // docs/04-reference/BOND-ACROSS-RESET-2026-11-17.md.
+    capture_attributes(attributes);
+    capture_ltk_attributes(attributes, data_length);
     restore_slots_once();
     if data.is_null() || key.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;

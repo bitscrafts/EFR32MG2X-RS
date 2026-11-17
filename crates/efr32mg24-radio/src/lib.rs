@@ -88,3 +88,12 @@ pub use efr32mg24_bluetooth_sys::psa::lookup_stats as psa_lookup_stats;
 
 /// Why the key restore did or did not happen at start-up.
 pub use efr32mg24_bluetooth_sys::psa::restore_stats as psa_restore_stats;
+
+/// What the key table holds after a restore: (id, type) per used slot.
+pub use efr32mg24_bluetooth_sys::psa::table_summary as psa_table_summary;
+
+/// The first words of the attributes blob the stack passes on import.
+pub use efr32mg24_bluetooth_sys::psa::attributes_words as psa_attributes_words;
+
+/// Attributes words of the last 16-byte import (the long-term key) and how many were seen.
+pub use efr32mg24_bluetooth_sys::psa::ltk_attributes as psa_ltk_attributes;
