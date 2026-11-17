@@ -710,6 +710,19 @@ impl Bluetooth {
         (configure as u8, bondable as u8)
     }
 
+    /// Ask the stack to encrypt (and, if not bonded yet, bond) this connection.
+    ///
+    /// The vendor is explicit (`sl_bt_api.h:10646`): *"After the connection is open, use command
+    /// `sl_bt_sm_increase_security` to encrypt the connection. This will also start the bonding process."*
+    /// Without it nothing raises the security of the link, and the device sits bonded-but-unencrypted -- which is
+    /// exactly what the record showed on 2026-11-17: pairing succeeded, notifications arrived, and `sec=0`.
+    ///
+    /// Returns the stack's status: `0` when the request was accepted, `0x0e` (`NOT_AVAILABLE`) when the feature is
+    /// absent, `0x0002` when the connection handle is invalid or the link is already secure.
+    pub fn increase_security(&mut self, connection: u8) -> u8 {
+        unsafe { bt::sl_bt_sm_increase_security(connection) as u8 }
+    }
+
     /// How many bonds the stack keeps in NVM, and what it does when the list is full.
     ///
     /// Without this call the stack keeps a bond in RAM for the life of the run and writes nothing to NVM: measured

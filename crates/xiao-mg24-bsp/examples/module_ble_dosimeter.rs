@@ -143,6 +143,9 @@ impl Bands {
 /// (the characteristics need no security), so they proved the GATT server and not the bond.
 struct Link {
     sec: u8,
+    /// The status the stack returned for the last `increase_security`. `0` means the request was accepted;
+    /// anything else is the reason the link is not being encrypted, which is worth having in the record.
+    security_request: u8,
     /// ATT_MTU; 23 is the default until `sl_bt_evt_gatt_mtu_exchanged` says otherwise.
     mtu: u16,
     /// `sl_bt_evt_sm_confirm_bonding` events seen since boot. Zero while the flag that requests them is set would mean
@@ -162,6 +165,7 @@ impl Link {
     const fn new() -> Self {
         Self {
             sec: 0,
+            security_request: 0xFF,
             mtu: 23,
             cfb: 0,
             disc: 0,
@@ -215,6 +219,13 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link) -> bool {
     while let Some(event) = ble.poll_event() {
         link.note(&event);
         match event {
+            BleEvent::Connected { connection, .. } => {
+                // Ask for encryption the moment the link is up. A bonded peripheral that never asks stays bonded and
+                // unencrypted: measured 2026-11-17, `sec=0` on a link whose pairing had completed, with the host
+                // reporting `Bonded: yes` throughout. `sl_bt_api.h:10646` is explicit that this command is what
+                // encrypts the connection and, when there is no bond yet, starts the bonding.
+                link.security_request = ble.increase_security(connection);
+            }
             BleEvent::Disconnected { .. } => {
                 link.disc += 1;
                 disconnected = true;
@@ -463,6 +474,8 @@ fn main() -> ! {
             t.u(last_rms as u32);
             t.s(b" b0=");
             t.u(last_band0);
+            t.s(b" sreq=");
+            t.u(link.security_request as u32);
             t.s(b" sec=");
             t.u(link.sec as u32);
             t.s(b" mtu=");
