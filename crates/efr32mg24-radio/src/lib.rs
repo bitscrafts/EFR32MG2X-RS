@@ -100,3 +100,6 @@ pub use efr32mg24_bluetooth_sys::psa::ltk_attributes as psa_ltk_attributes;
 
 /// Keys destroyed through the PSA shim.
 pub use efr32mg24_bluetooth_sys::psa::destroy_count as psa_destroy_count;
+
+/// The identifiers destroyed through the PSA shim, oldest first.
+pub use efr32mg24_bluetooth_sys::psa::destroyed_ids as psa_destroyed_ids;

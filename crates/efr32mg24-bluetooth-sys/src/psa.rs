@@ -121,6 +121,31 @@ static mut NEXT_ID: u32 = 1;
 /// survives under the identifier the stack names and the next pairing answers with it.
 static DESTROYED: AtomicU32 = AtomicU32::new(0);
 
+/// The identifiers destroyed, oldest first, four deep: which keys the stack removes at boot is the question that the
+/// `del=` counter alone cannot answer.
+static DESTROYED_IDS: [AtomicU32; 4] = [
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+    AtomicU32::new(0),
+];
+static DESTROYED_NEXT: AtomicU32 = AtomicU32::new(0);
+
+/// The last four destroyed identifiers, oldest first.
+pub fn destroyed_ids() -> [u32; 4] {
+    let written = DESTROYED_NEXT.load(Ordering::Relaxed) as usize;
+    let mut out = [0u32; 4];
+    if written == 0 {
+        return out;
+    }
+    let count = written.min(4);
+    let start = if written > 4 { written % 4 } else { 0 };
+    for i in 0..count {
+        out[i] = DESTROYED_IDS[(start + i) % 4].load(Ordering::Relaxed);
+    }
+    out
+}
+
 /// How many keys have been destroyed.
 pub fn destroy_count() -> u32 {
     DESTROYED.load(Ordering::Relaxed)
@@ -227,8 +252,13 @@ static mut MAC_TABLE: [MacOp; MAC_OPS] = [EMPTY_OP; MAC_OPS];
 
 /// Key range for persisted keys: clear of the stack's own keys and of the bonding records at `0xE0000`.
 const PERSIST_BASE: u32 = 0xD_0000;
-/// A persisted key: `key_type` (4) + `key_len` (2) + bytes.
-const PERSIST_HEADER: usize = 6;
+/// A persisted key: `id` (4) + `key_type` (4) + `key_len` (2) + bytes.
+///
+/// The id is stored in the payload, not encoded in the NVM3 key. NVM3 keys are 20 bits and the stack names keys by
+/// vendor identifiers such as `0x48003`, so `PERSIST_BASE | (id % 0x10000)` silently turned `0x48003` into `0x8003`
+/// and every restore handed the key back under a name nobody asked for (measured 2026-11-17: `rst=9` and still
+/// `miss=0x48003` after a reset).
+const PERSIST_HEADER: usize = 10;
 
 /// The first eight 32-bit words of the last attributes blob seen by `psa_import_key`. The stack puts the key id in
 /// there; reading what arrives beats inventing an offset from a header that is not in the tree.
@@ -304,8 +334,9 @@ fn persist_slot(slot: &Slot) {
         return;
     }
     let mut buf = [0u8; PERSIST_HEADER + MAX_KEY];
-    buf[..4].copy_from_slice(&slot.key_type.to_le_bytes());
-    buf[4..6].copy_from_slice(&(slot.key_len as u16).to_le_bytes());
+    buf[..4].copy_from_slice(&slot.id.to_le_bytes());
+    buf[4..8].copy_from_slice(&slot.key_type.to_le_bytes());
+    buf[8..10].copy_from_slice(&(slot.key_len as u16).to_le_bytes());
     buf[PERSIST_HEADER..PERSIST_HEADER + slot.key_len].copy_from_slice(&slot.key[..slot.key_len]);
     // SAFETY: the buffer outlives the call and the length is its own.
     unsafe {
@@ -374,12 +405,13 @@ fn restore_slots_once() {
             if rc != 0 {
                 continue;
             }
-            let key_type = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
-            let key_len = u16::from_le_bytes([buf[4], buf[5]]) as usize;
+            let id = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
+            let key_type = u32::from_le_bytes([buf[4], buf[5], buf[6], buf[7]]);
+            let key_len = u16::from_le_bytes([buf[8], buf[9]]) as usize;
             if key_len == 0 || key_len > MAX_KEY {
                 continue;
             }
-            let id = *key % 0x1_0000;
+            // `id` comes from the payload above: the NVM3 key only identifies the object.
             let table = slots();
             if let Some(free) = table.iter_mut().find(|s| !s.used) {
                 let mut bytes = [0u8; MAX_KEY];
@@ -717,6 +749,8 @@ unsafe fn psa_import_key_inner(
 #[no_mangle]
 pub unsafe extern "C" fn psa_destroy_key(key: u32) -> i32 {
     DESTROYED.fetch_add(1, Ordering::Relaxed);
+    let slot = (DESTROYED_NEXT.fetch_add(1, Ordering::Relaxed) % 4) as usize;
+    DESTROYED_IDS[slot].store(key, Ordering::Relaxed);
     bump(6);
     restore_slots_once();
     let id = key;

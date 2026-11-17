@@ -15,7 +15,7 @@
 //! 0x00  magic   = 0x4D42_4F58 ("MBOX"), 0 while a write is in progress
 //! 0x04  seq     increments on every write; a stale record is visible
 //! 0x08  status  0 = info, 1 = pass, 2 = fail
-//! 0x0C  len     message length in bytes (<= 200)
+//! 0x0C  len     message length in bytes (<= 512)
 //! 0x10  bytes   message, NOT NUL-terminated
 //! ```
 //!
@@ -49,7 +49,9 @@ pub enum Status {
 /// Write a record to the mailbox using the clear-fill-publish order.
 pub fn write(status: Status, msg: &[u8]) {
     let base = MAILBOX_ADDR as *mut u32;
-    let len = core::cmp::min(msg.len(), 200);
+    // 512 bytes is the slot this project reserves at MAILBOX_ADDR; the earlier 200-byte ceiling silently cut
+    // the last fields off a diagnostic record, which twice hid the field that explained a failure.
+    let len = core::cmp::min(msg.len(), 512);
 
     // Fresh RAM is not zero, so the first record must not inherit whatever the
     // sequence word happens to contain: only continue a sequence if a valid
