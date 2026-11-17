@@ -26,6 +26,7 @@ heapless = "0.8"
 panic-halt = "0.2"
 
 [features]
+external-bonding = ["efr32mg24-bluetooth-sys/external-bonding"]
 # Everything above the RAIL layer: the vendor Bluetooth stack needs nvm3, sleeptimer, the AES
 # radio helper and PSA crypto. Until those are vendored, the examples build only with this flag.
 stack = []

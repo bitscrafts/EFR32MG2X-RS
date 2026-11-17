@@ -44,6 +44,7 @@ motion-detection = { package = "efr32mg2x-motion-detection", path = "../../libra
 panic-halt = "0.2"
 
 [features]
+external-bonding = ["efr32mg24-radio/external-bonding"]
 stack = ["efr32mg24-radio/stack"]  # BLE examples: the link-layer handler lives behind this feature
 default = []
 # The Sense variant is the same PCB with more components fitted: the IMU and the analog

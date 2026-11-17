@@ -48,7 +48,14 @@
 // SL_STATUS_NOT_AVAILABLE (0x000E) and the pairing runs to the DHKey check with no keys behind it, failing there
 // with 0x120B. NVM3 is already linked and working (`nvm3_open` at a real address in the image, and the stack will
 // not start if it fails), so this is a catalogue switch, not a port.
+// The storage is the application's (external bonding database): the vendor's builtin database writes a record
+// without its long-term key on this board, so `bonding_ext.rs` provides the callbacks and the vendor's bridge
+// object (vendor/bluetooth/objects/bondingdb-stubs.c.obj) is linked in place of the builtin member.
+#ifdef SL_BT_EXTERNAL_BONDING
+#define SL_CATALOG_BLUETOOTH_FEATURE_EXTERNAL_BONDING_DATABASE_PRESENT 1
+#else
 #define SL_CATALOG_BLUETOOTH_FEATURE_BUILTIN_BONDING_DATABASE_PRESENT 1
+#endif
 /* The dynamic GATT database: enabled, and the reason it was blocked for a day.
  *
  * Turning it on made `sli_bt_system_start_bluetooth` return `SL_STATUS_TIMEOUT` and `system_boot` never arrived, which

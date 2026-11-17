@@ -30,7 +30,46 @@ fn sha256_file(path: &std::path::Path) -> Result<String, std::io::Error> {
     Ok(format!("{:x}", hasher.finalize()))
 }
 
+/// Copy the vendor host archive without its internal bonding database, adding the bridge object in its place.
+///
+/// Returns the path of the derived archive. Reproducible: the same vendored inputs always produce the same members.
+fn derived_host_archive(
+    out_dir: &std::path::Path,
+    blob_dir: &std::path::Path,
+    manifest_dir: &std::path::Path,
+) -> std::path::PathBuf {
+    use std::process::Command;
+    let src = blob_dir.join("libbluetooth_host_efr32xg24_gcc_release.a");
+    let dst_dir = out_dir.join("derived");
+    std::fs::create_dir_all(&dst_dir).ok();
+    let dst = dst_dir.join("libbluetooth_host_extdb_efr32xg24_gcc_release.a");
+    std::fs::copy(&src, &dst).ok();
+    let ar = std::env::var("AR").unwrap_or_else(|_| "arm-none-eabi-ar".to_string());
+    // drop the internal database, then add the bridge that calls back into the application
+    let deleted = Command::new(&ar)
+        .arg("d")
+        .arg(&dst)
+        .arg("bondingdb.c.obj")
+        .status();
+    match deleted {
+        Ok(s) if s.success() => {}
+        other => panic!("could not remove bondingdb.c.obj from the host archive: {other:?}"),
+    }
+    let bridge = manifest_dir.join("vendor/bluetooth/objects/bondingdb-stubs.c.obj");
+    let added = Command::new(&ar).arg("r").arg(&dst).arg(&bridge).status();
+    match added {
+        Ok(s) if s.success() => {}
+        other => panic!("could not add the bonding bridge to the host archive: {other:?}"),
+    }
+    println!("cargo:rerun-if-changed={}", bridge.display());
+    dst
+}
+
 fn main() {
+    let external_bonding = std::env::var("CARGO_FEATURE_EXTERNAL_BONDING").is_ok();
+    if external_bonding {
+        println!("cargo:rustc-cfg=external_bonding");
+    }
     // Get the target architecture
     let target = env::var("TARGET").unwrap();
 
@@ -143,6 +182,7 @@ fn main() {
                     // The initialiser refuses to compile without this, and it is the switch that makes it include
                     // `sl_component_catalog.h` -- the file in `vendor/bt_stack/` that lists the components.
                     .define("SL_COMPONENT_CATALOG_PRESENT", None)
+                    .define("SL_BT_EXTERNAL_BONDING", None)
                     // Values the component system normally generates: connections and advertisers reserved by
                     // components other than the application. This firmware has no such components, and the
                     // `_SUM` macros in `sl_bluetooth_config.h` add them to the application's own counts.
@@ -187,11 +227,49 @@ fn main() {
                     manifest.join("vendor/nvm3").display()
                 );
                 println!("cargo:rustc-link-lib=static=nvm3_CM33_gcc");
+                if external_bonding {
+                    // The bonding bridge, linked as an OBJECT and not through the archive. The archive also holds the
+                    // internal database (`bondingdb.c`), which writes a record without its long-term key on this board
+                    // (measured: the peer's LTK is nowhere in the NVM3 region, and a reconnect is answered 0x1006). Passing
+                    // this object first means its definitions are the ones the linker keeps and the internal database is
+                    // never pulled in, so the storage callbacks in `bonding_ext.rs` are the ones that run.
+                    let bridge =
+                        manifest_dir.join("vendor/bluetooth/objects/bondingdb-stubs.c.obj");
+                    println!("cargo:rustc-link-arg={}", bridge.display());
+                    println!("cargo:rerun-if-changed={}", bridge.display());
+                }
                 println!("cargo:rerun-if-changed=vendor/nvm3/");
             }
 
             println!("cargo:rustc-link-lib=static=bluetooth_controller_efr32xg24_gcc_release");
-            println!("cargo:rustc-link-lib=static=bluetooth_host_efr32xg24_gcc_release");
+            // Derived host archive: the vendor's own library minus its internal bonding database.
+            //
+            // The database it ships writes a record and not the long-term key on this board (measured: the peer's LTK
+            // is nowhere in the NVM3 region and a reconnect is answered 0x1006), and it cannot be overridden by
+            // defining the symbols ourselves because a static library is searched before any extra link argument.
+            // Removing the one member that implements it leaves the vendor's bridge (`bondingdb-stubs.c.obj`, which
+            // delegates to four application callbacks) as the only implementation, so `bonding_ext.rs` becomes the
+            // storage. The archive is otherwise untouched and the operation is reproducible from the vendored blobs.
+            if external_bonding {
+                let derived = derived_host_archive(
+                    &std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()),
+                    &blob_dir,
+                    &manifest_dir,
+                );
+                println!(
+                    "cargo:rustc-link-search=native={}",
+                    derived.parent().unwrap().display()
+                );
+                let stem = derived
+                    .file_stem()
+                    .unwrap()
+                    .to_string_lossy()
+                    .trim_start_matches("lib")
+                    .to_string();
+                println!("cargo:rustc-link-lib=static={stem}");
+            } else {
+                println!("cargo:rustc-link-lib=static=bluetooth_host_efr32xg24_gcc_release");
+            }
             println!("cargo:rustc-link-lib=static=bgcommon_efr32xg24_gcc_release");
 
             // The vendor blobs are archives, and an archive only satisfies symbols that are already

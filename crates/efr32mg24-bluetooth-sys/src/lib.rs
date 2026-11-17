@@ -123,3 +123,5 @@ pub use blocking::*;
 // symbols comes back undefined. The definitions live in the `cmsis-stubs` crate, compiled once.
 #[link(name = "cmsis_stubs", kind = "static")]
 extern "C" {}
+
+pub mod bonding_ext;

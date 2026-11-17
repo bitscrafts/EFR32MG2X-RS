@@ -256,6 +256,18 @@ fn main() -> ! {
             for b in peer_addr.iter() {
                 live.hex(*b as u32);
             }
+            // Are the external-bonding callbacks the ones running? Counters, not assumptions.
+            let (bx_alloc, bx_is, bx_store, bx_type, bx_res) = efr32mg24_radio::bonding_ext_stats();
+            live.s(b" bxc=");
+            live.u(bx_alloc);
+            live.s(b"/");
+            live.u(bx_is);
+            live.s(b"/");
+            live.u(bx_store);
+            live.s(b"/");
+            live.u(bx_type);
+            live.s(b"/");
+            live.u(bx_res);
             let (bh_rc, bh_n) = ble.bonding_handles();
             live.s(b" bh=");
             live.u(bh_n);

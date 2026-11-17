@@ -75,3 +75,5 @@ compile_error!(
     "the RAIL feature is staged: its headers and blob are not vendored yet — see \
                  docs/04-reference/RADIO-NOTES.md"
 );
+
+pub use efr32mg24_bluetooth_sys::bonding_ext::stats as bonding_ext_stats;

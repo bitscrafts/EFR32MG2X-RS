@@ -56,6 +56,10 @@ sha2 = "0.10"
 name = "bt_version"
 
 [features]
+# Take over bonding storage from the vendor's builtin database (see src/bonding_ext.rs). Off by default:
+# the builtin database works for the session and loses the long-term key on the next boot, while an external
+# database that only counts calls fails the pairing outright.
+external-bonding = []
 # No default features
 default = []
 # `core::error::Error` is only implemented behind this feature; the crate is otherwise no_std.
