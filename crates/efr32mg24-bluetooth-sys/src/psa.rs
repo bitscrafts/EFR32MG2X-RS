@@ -468,6 +468,39 @@ pub unsafe extern "C" fn psa_reset_key_attributes(attributes: *mut u8) {
     ptr::write_bytes(attributes, 0, PSA_KEY_ATTRIBUTES_BYTES);
 }
 
+/// The identifier the caller asked for, if it asked for one.
+///
+/// Measured 2026-11-17 by disassembling the stack's own bonding code: `bondingdb_psa_add_ecb_key` builds
+/// `0x48000 | (handle << 8) | type`, writes it into the attributes blob at **offset 8** (`str r6, [r4, #8]`) and then
+/// calls `psa_import_key`; the security manager later asks PSA for exactly that identifier. Ignoring it -- handing out
+/// our own small id instead -- made every post-reset lookup miss and the link drop with HCI 0x1006.
+///
+/// # Safety
+///
+/// `attributes` is either null or a readable attributes blob; only offset 8 is read.
+unsafe fn requested_id(attributes: *const u8) -> u32 {
+    if attributes.is_null() {
+        return 0;
+    }
+    core::ptr::read_unaligned(attributes.add(8).cast::<u32>())
+}
+
+/// The id a new key takes: the caller's if it named one, otherwise the next counter value.
+///
+/// # Safety
+///
+/// As for `requested_id`.
+unsafe fn take_id(attributes: *const u8) -> u32 {
+    let asked = requested_id(attributes);
+    if asked != 0 {
+        return asked;
+    }
+    let counter = ptr::addr_of_mut!(NEXT_ID);
+    let value = ptr::read_volatile(counter);
+    ptr::write_volatile(counter, value.wrapping_add(1).max(1));
+    value.max(1)
+}
+
 /// `sizeof(psa_key_attributes_t)` measured for this project's mbedtls headers.
 const PSA_KEY_ATTRIBUTES_BYTES: usize = 232;
 
@@ -587,12 +620,7 @@ unsafe fn psa_import_key_inner(
             key: k,
             key_type: PSA_KEY_TYPE_ECC_PUBLIC_KEY_P256,
         };
-        let id = {
-            let n = ptr::addr_of_mut!(NEXT_ID);
-            let v = ptr::read_volatile(n);
-            ptr::write_volatile(n, v.wrapping_add(1).max(1));
-            v.max(1)
-        };
+        let id = take_id(attributes);
         ptr::write(key, id);
         for slot in slots().iter_mut() {
             if slot.used && slot.id == 0 {
@@ -637,12 +665,7 @@ unsafe fn psa_import_key_inner(
     };
 
     // The slot just written holds no id yet; stamp it now that the handle exists.
-    let id = {
-        let n = ptr::addr_of_mut!(NEXT_ID);
-        let v = ptr::read_volatile(n);
-        ptr::write_volatile(n, v.wrapping_add(1).max(1));
-        v.max(1)
-    };
+    let id = take_id(attributes);
     ptr::write(key, id);
     for slot in slots().iter_mut() {
         if slot.used && slot.id == 0 {
