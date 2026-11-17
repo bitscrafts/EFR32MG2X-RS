@@ -135,6 +135,33 @@ impl Sysrtc {
         // anything, and RAIL performs its own before it writes `CFG`.
     }
 
+    /// Make sure the counter is **running** before the Bluetooth stack starts.
+    ///
+    /// Measured 2026-11-17, and it corrects this module's earlier claim. With the SYSRTC clocked but stopped, RAIL's
+    /// bring-up asserts at its own line 380 — recorded as code 75 in our `RAILCb_AssertFailed` (`"ASRT", 0x4b, ...` at
+    /// `0x2003_F500`, `RAIL_AssertLineNumber = 380` at `0x2001_1dfc`). With the counter left running by a previous
+    /// firmware, the same product image boots and publishes normally. The earlier note concluded "clocked and
+    /// disabled" from a `CFG` fault at `0x500a_800c`; that fault was our *own* re-init writing `CFG` while the module
+    /// ran, not RAIL's write, which happens while the counter is still stopped.
+    ///
+    /// Call this instead of [`Sysrtc::enable_clocks`] before the stack. A later [`Sysrtc::take`] still reconfigures
+    /// from scratch: it stops a running module before writing `CFG`, which is the order the register demands.
+    pub fn ensure_running(cmu: &CmuBlock) {
+        Self::enable_clocks(cmu);
+        let this = Sysrtc {
+            regs: efr32mg2x_pac::Sysrtc0Ns::ptr(),
+            cmu: cmu as *const CmuBlock as usize,
+        };
+        if !this.is_enabled() {
+            this.write_en_set(bits::EN_EN);
+            this.wait_sync();
+        }
+        if !this.is_running() {
+            this.write_cmd(bits::CMD_START);
+            this.wait_sync();
+        }
+    }
+
     /// Take the peripheral and put it in a known state: LFRCO, compare channel 0 armed, counter running.
     pub fn take(cmu: &CmuNs, rtc: &Sysrtc0Ns) -> Self {
         let cmu_regs: &CmuBlock = cmu;

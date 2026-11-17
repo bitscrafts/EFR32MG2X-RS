@@ -39,7 +39,7 @@ Read from the source, so it cannot drift:
 | `LdmaxbarS` | `src/dma/mod.rs` |
 | `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
-| `Sysrtc0Ns` | `src/rtc/mod.rs` |
+| `Sysrtc0Ns` | `src/rtc/mod.rs`, `src/sysrtc.rs` |
 | `Timer0S` | `src/timer/mod.rs` |
 | `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
