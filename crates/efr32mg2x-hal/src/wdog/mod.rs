@@ -292,9 +292,13 @@ impl Wdog {
     /// }
     /// ```
     pub fn clear_timeout_flag(&mut self) {
-        // SAFETY: IF register write to clear flags is safe.
-        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
-        wdog.if_().write(|w| w.tout().set_bit());
+        // The flag is cleared through the `_CLR` alias of the same block this driver owns (`Wdog0Ns`, the non-secure
+        // one), because writing 1 to the plain `IF` does not clear it on this family (see `crate::alias`).
+        // SAFETY: the alias window belongs to the peripheral this driver holds; `alias::clear_window` is the one place
+        // that offsets a block pointer.
+        unsafe { crate::alias::clear_window(pac::Wdog0Ns::ptr()) }
+            .if_()
+            .write(|w| w.tout().set_bit());
     }
 
     /// Waits for SYNCBUSY to clear

@@ -31,6 +31,7 @@ Read from the source, so it cannot drift:
 | `Eusart0S` | `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
 | `I2c0Ns` | `src/i2c/mod.rs` |
+| `I2c0S` | `src/i2c/mod.rs` |
 | `I2c1S` | `src/i2c/mod.rs` |
 | `Iadc0S` | `src/adc/mod.rs`, `src/board.rs` |
 | `Interrupt` | `src/sysrtc.rs` |
@@ -39,6 +40,7 @@ Read from the source, so it cannot drift:
 | `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
 | `Sysrtc0Ns` | `src/rtc/mod.rs` |
+| `Timer0S` | `src/timer/mod.rs` |
 | `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `cmu_s` | `src/board.rs` |

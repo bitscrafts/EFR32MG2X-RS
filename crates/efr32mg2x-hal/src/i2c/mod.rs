@@ -258,7 +258,9 @@ impl I2c0 {
         // Check for NACK (address or data not acknowledged)
         if self.i2c.if_().read().nack().bit_is_set() {
             // Clear NACK flag
-            self.i2c.if_().write(|w| w.nack().set_bit());
+            unsafe { crate::alias::clear_window(pac::I2c0S::ptr()) }
+                .if_()
+                .write(|w| w.nack().set_bit());
             return Err(Error::Nack);
         }
 
@@ -399,7 +401,9 @@ impl I2c1 {
         while self.i2c.status().read().txc().bit_is_clear() {}
 
         if self.i2c.if_().read().nack().bit_is_set() {
-            self.i2c.if_().write(|w| w.nack().set_bit());
+            unsafe { crate::alias::clear_window(pac::I2c0S::ptr()) }
+                .if_()
+                .write(|w| w.nack().set_bit());
             return Err(Error::Nack);
         }
 

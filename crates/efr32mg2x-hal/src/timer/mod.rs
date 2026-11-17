@@ -410,7 +410,9 @@ macro_rules! impl_timer {
             /// Clear overflow interrupt flag
             pub fn clear_overflow(&mut self) {
                 critical_section::with(|_cs| {
-                    self.timer.if_().write(|w| w.of().set_bit());
+                    unsafe { crate::alias::clear_window(pac::Timer0S::ptr()) }
+                        .if_()
+                        .write(|w| w.of().set_bit());
                 });
             }
 

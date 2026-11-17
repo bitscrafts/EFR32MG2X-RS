@@ -337,7 +337,9 @@ impl<const N: u8> Channel<N> {
                         ldma.ch0_dst().write(|w| w.bits(buffer.as_mut_ptr() as u32));
 
                         // Clear any pending interrupts
-                        ldma.if_().write(|w| w.bits(1 << N));
+                        crate::alias::clear_window(pac::LdmaS::ptr())
+                            .if_()
+                            .write(|w| w.bits(1 << N));
 
                         // Enable channel (will wait for peripheral request)
                         ldma.chen().write(|w| w.bits(1 << N));
@@ -428,7 +430,9 @@ impl<const N: u8> Channel<N> {
 
         // Clear pending interrupts
         unsafe {
-            ldma.if_().write(|w| w.bits(1 << N));
+            crate::alias::clear_window(pac::LdmaS::ptr())
+                .if_()
+                .write(|w| w.bits(1 << N));
         }
     }
 
@@ -513,7 +517,9 @@ impl<const N: u8> Channel<N> {
                         ldma.ch0_dst().write(|w| w.bits(dst.as_mut_ptr() as u32));
 
                         // Clear done flag
-                        ldma.if_().write(|w| w.bits(1 << N));
+                        crate::alias::clear_window(pac::LdmaS::ptr())
+                            .if_()
+                            .write(|w| w.bits(1 << N));
 
                         // Enable channel
                         ldma.chen().write(|w| w.bits(1 << N));
@@ -541,7 +547,9 @@ impl<const N: u8> Channel<N> {
                 // Clear done flag
                 // SAFETY: Writing to IF register clears the interrupt flag.
                 unsafe {
-                    ldma.if_().write(|w| w.bits(1 << N));
+                    crate::alias::clear_window(pac::LdmaS::ptr())
+                        .if_()
+                        .write(|w| w.bits(1 << N));
                 }
                 break;
             }

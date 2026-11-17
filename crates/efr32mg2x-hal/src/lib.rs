@@ -107,6 +107,7 @@ pub use efr32mg2x_pac as pac;
 
 // HAL modules
 pub mod adc;
+mod alias;
 #[cfg(feature = "rt")]
 pub use cortex_m_rt::entry;
 
