@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-sysrtc-core"
+version = "0.1.0"
+edition = "2021"
+description = "Deadline arithmetic across the 32-bit wrap: 36.4 hours of counter, 18.2 of horizon"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

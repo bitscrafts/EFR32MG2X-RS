@@ -215,25 +215,22 @@ impl Adc {
     /// offset. `microphone.rs` shows the shape of the missing piece: it configures its own input end to end, including
     /// the bus, which is why the microphone works and this driver does not.
     pub fn read_on(&mut self, port: crate::pin::Port, pin: u8) -> Result<u16, Error> {
-        // The PAC's own encoding: ground is 0, then one value per port starting at 8.
-        let port_code: u8 = match port {
-            crate::pin::Port::A => 8,
-            crate::pin::Port::B => 9,
-            crate::pin::Port::C => 10,
-            crate::pin::Port::D => 11,
+        // The word comes from `efr32mg2x-adc-core`, where the four fields and their positions are measured on the host
+        // (64 inputs, 64 distinct words, every one parseable back). This block only writes it.
+        let port_enum = match port {
+            crate::pin::Port::A => efr32mg2x_adc_core::Port::A,
+            crate::pin::Port::B => efr32mg2x_adc_core::Port::B,
+            crate::pin::Port::C => efr32mg2x_adc_core::Port::C,
+            crate::pin::Port::D => efr32mg2x_adc_core::Port::D,
         };
+        let input = match efr32mg2x_adc_core::Input::new(port_enum, pin) {
+            Ok(input) => input,
+            Err(_) => return Err(Error::Timeout), // no such pin: refused before anything is written
+        };
+        let word = input.single_word();
         critical_section::with(|_cs| {
-            // SAFETY: PORT/PIN fields take the values the PAC documents; port_code is one of 8..=11 and pin < 16.
-            self.adc.single().write(|w| unsafe {
-                w.portpos()
-                    .bits(port_code)
-                    .pinpos()
-                    .bits(pin)
-                    .portneg()
-                    .bits(0) // Ground (single-ended)
-                    .pinneg()
-                    .bits(0)
-            });
+            // SAFETY: the word is built by the core crate from the fields the PAC documents.
+            self.adc.single().write(|w| unsafe { w.bits(word) });
         });
         self.adc.cmd().write(|w| w.singlestart().set_bit());
         const TIMEOUT_CYCLES: u32 = 100_000;

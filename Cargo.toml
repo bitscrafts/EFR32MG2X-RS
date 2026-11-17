@@ -12,10 +12,12 @@ members = [
     "crates/xiao-mg24-bsp",
     "crates/xiao-expansion-base-bsp",
     # `libraries/` is domain policy: no hardware, builds and tests on the host.
+    "libraries/adc-core",
     "libraries/clock-core",
     "libraries/gpio-core",
     "libraries/dma-core",
     "libraries/spi-core",
+    "libraries/sysrtc-core",
     "libraries/usart-core",
     "libraries/i2c-core",
     "libraries/motion-detection",

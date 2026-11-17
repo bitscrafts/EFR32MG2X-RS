@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-adc-core"
+version = "0.1.0"
+edition = "2021"
+description = "The IADC single-conversion word: port and pin encoding, with the bus table left as measurement"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
