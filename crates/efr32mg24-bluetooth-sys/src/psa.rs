@@ -142,6 +142,113 @@ const EMPTY_OP: MacOp = MacOp {
 
 static mut MAC_TABLE: [MacOp; MAC_OPS] = [EMPTY_OP; MAC_OPS];
 
+// ---- keeping the key table across a reset --------------------------------------------------------------
+//
+// Written up at `SLOTS_TABLE` below; this is the machinery. One NVM3 object per key, in a range of our own, holding
+// the type, the length and the bytes. The flash is written whenever the table changes, so the two never disagree.
+
+/// Key range for persisted keys: clear of the stack's own keys and of the bonding records at `0xE0000`.
+const PERSIST_BASE: u32 = 0xD_0000;
+/// A persisted key: `key_type` (4) + `key_len` (2) + bytes.
+const PERSIST_HEADER: usize = 6;
+
+extern "C" {
+    static mut nvm3_defaultHandle: *mut u8;
+    fn nvm3_writeData(handle: *mut u8, key: u32, data: *const u8, length: usize) -> u32;
+    fn nvm3_readData(handle: *mut u8, key: u32, data: *mut u8, length: usize) -> u32;
+    fn nvm3_deleteObject(handle: *mut u8, key: u32) -> u32;
+    fn nvm3_enumObjects(handle: *mut u8, key_list: *mut u32, key_list_size: usize) -> usize;
+}
+
+fn persist_key_for(id: u32) -> u32 {
+    PERSIST_BASE | (id % 0x1_0000)
+}
+
+/// Write one slot to flash. Called on every change, so a key that exists in the table always exists on the device.
+fn persist_slot(slot: &Slot) {
+    if !slot.used || slot.id == 0 || slot.key_len == 0 {
+        return;
+    }
+    let mut buf = [0u8; PERSIST_HEADER + MAX_KEY];
+    buf[..4].copy_from_slice(&slot.key_type.to_le_bytes());
+    buf[4..6].copy_from_slice(&(slot.key_len as u16).to_le_bytes());
+    buf[PERSIST_HEADER..PERSIST_HEADER + slot.key_len].copy_from_slice(&slot.key[..slot.key_len]);
+    // SAFETY: the buffer outlives the call and the length is its own.
+    unsafe {
+        nvm3_writeData(
+            nvm3_defaultHandle,
+            persist_key_for(slot.id),
+            buf.as_ptr(),
+            PERSIST_HEADER + slot.key_len,
+        );
+    }
+}
+
+/// Remove one slot from flash.
+fn forget_slot(id: u32) {
+    // SAFETY: deleting a key that is not there is not an error in NVM3.
+    unsafe {
+        nvm3_deleteObject(nvm3_defaultHandle, persist_key_for(id));
+    }
+}
+
+/// Load every persisted key back into the table, once per boot, and restore the id counter above them.
+///
+/// The counter matters as much as the keys: ids are handed out from `NEXT_ID`, which starts at 1 on every boot, so
+/// without this a new import would take the id of a key that survived and overwrite it.
+fn restore_slots_once() {
+    static mut DONE: bool = false;
+    // SAFETY: single-core, called from the PSA entry points before they touch the table, and guarded by `DONE`.
+    unsafe {
+        if *ptr::addr_of!(DONE) {
+            return;
+        }
+        *ptr::addr_of_mut!(DONE) = true;
+
+        let mut keys = [0u32; 24];
+        let found = nvm3_enumObjects(nvm3_defaultHandle, keys.as_mut_ptr(), keys.len());
+        let mut highest = 0u32;
+        for key in keys.iter().take(found.min(keys.len())) {
+            // Same range as `PERSIST_BASE`, compared by the high half so this does not depend on a bit mask.
+            if *key / 0x1_0000 != PERSIST_BASE / 0x1_0000 {
+                continue;
+            }
+            let mut buf = [0u8; PERSIST_HEADER + MAX_KEY];
+            let rc = nvm3_readData(
+                nvm3_defaultHandle,
+                *key,
+                buf.as_mut_ptr(),
+                PERSIST_HEADER + MAX_KEY,
+            );
+            if rc != 0 {
+                continue;
+            }
+            let key_type = u32::from_le_bytes([buf[0], buf[1], buf[2], buf[3]]);
+            let key_len = u16::from_le_bytes([buf[4], buf[5]]) as usize;
+            if key_len == 0 || key_len > MAX_KEY {
+                continue;
+            }
+            let id = *key % 0x1_0000;
+            let table = slots();
+            if let Some(free) = table.iter_mut().find(|s| !s.used) {
+                let mut bytes = [0u8; MAX_KEY];
+                bytes[..key_len].copy_from_slice(&buf[PERSIST_HEADER..PERSIST_HEADER + key_len]);
+                *free = Slot {
+                    used: true,
+                    id,
+                    key_len,
+                    key: bytes,
+                    key_type,
+                };
+                highest = highest.max(id);
+            }
+        }
+        if highest >= *ptr::addr_of!(NEXT_ID) {
+            *ptr::addr_of_mut!(NEXT_ID) = highest + 1;
+        }
+    }
+}
+
 fn slots() -> &'static mut [Slot; SLOTS] {
     // SAFETY: single-core, no interrupts touch this table (the timer is polled and the stack runs in the main
     // loop), and every mutation happens inside a function that is not re-entered.
@@ -294,6 +401,7 @@ unsafe fn psa_import_key_inner(
     key: *mut u32,
 ) -> i32 {
     bump(3);
+    restore_slots_once();
     if data.is_null() || key.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -406,6 +514,7 @@ unsafe fn psa_import_key_inner(
 #[no_mangle]
 pub unsafe extern "C" fn psa_destroy_key(key: u32) -> i32 {
     bump(6);
+    restore_slots_once();
     let id = key;
     if id == 0 {
         return PSA_ERROR_INVALID_HANDLE;
@@ -417,6 +526,7 @@ pub unsafe extern "C" fn psa_destroy_key(key: u32) -> i32 {
             slot.id = 0;
             slot.key_len = 0;
             slot.key = [0; MAX_KEY];
+            forget_slot(id);
             return PSA_SUCCESS;
         }
     }

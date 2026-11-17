@@ -77,7 +77,10 @@ pub fn stats() -> (u32, u32, u32, u32, u32, u32) {
 #[no_mangle]
 pub extern "C" fn sli_bt_external_bonding_get_database_type() -> u32 {
     CALLS_DB_TYPE.fetch_add(1, Ordering::Relaxed);
-    1
+    // The vendor's own defaults answer 1 from the builtin database and 2 from the external one. Answering 1 here --
+    // which is what this did until it was measured -- tells the stack that the builtin database is running while the
+    // bridge is in place, and the pairing then fails authentication with nothing in the record to say why.
+    2
 }
 
 /// Which slot a record should occupy, or -1 when the store is full.
@@ -124,8 +127,9 @@ pub unsafe extern "C" fn sli_bt_external_bonding_alloc(record: *const u8) -> i8 
 #[no_mangle]
 pub extern "C" fn sli_bt_external_bonding_is_bonded(bonding: u8) -> bool {
     CALLS_IS_BONDED.fetch_add(1, Ordering::Relaxed);
-    // 0xFF is the "no bonding" handle. The vendor's external default answers `(handle + 1) != 0`, and asking NVM3
-    // instead would report a record as absent while the stack is still filling it in.
+    // The record is there when NVM3 holds it. The vendor's external default answers `(handle + 1) != 0` -- true for
+    // every handle but 0xFF -- and copying that was a real defect: the stack asked "is slot 0 bonded?", was told yes,
+    // concluded a bond already existed and never ran the pairing exchange (measured: ec=0,0,0 and no crypto at all).
     let mut obj_type = 0u32;
     let mut length = 0usize;
     let exists = unsafe {
@@ -136,7 +140,7 @@ pub extern "C" fn sli_bt_external_bonding_is_bonded(bonding: u8) -> bool {
             &mut length,
         )
     } == 0;
-    bonding != 0xFF || exists
+    exists
 }
 
 /// Store one piece of a bonding record. 0 is success; 0x406 is the status the internal implementation returns for a

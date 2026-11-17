@@ -395,3 +395,27 @@ and much better-understood change than implementing the remaining database API, 
 
 If that does not close it, the remaining functions named above are the fallback, and the honest product decision is
 the one already taken: no `enable_pairing` in the dosimeter until a reconnect works.
+
+## External database: four defects of ours found, and the reason it still does not close
+
+Each of these was measured, and each was ours rather than the vendor's:
+
+```
+get_database_type answered 1   the builtin database answers 1 and the external one 2; answering 1 told the stack the
+                               builtin database was running while the bridge held its symbols
+is_bonded answered true for    copied from the vendor's external default `(handle + 1) != 0`; the stack asked "is slot
+  every handle but 0xFF        0 bonded?", was told yes, concluded a bond existed and never ran the exchange -- visible
+                               as ec=0,0,0 and no crypto at all
+max_bondings answered 0        told the security manager the store could hold no bonds
+get_data was a bridge stub     answered success without touching the buffer
+```
+
+All four are fixed and the storage writes to NVM3 with the PSA key table now persisted across a reset. What remains is
+not storage: with the external database active the device connects, our callbacks are called, `store_data` is never
+invoked and the pairing exchange never starts (`ec=0,0,0`, `gen=0`). The security manager is not initiating the
+exchange in this mode, which is a question about how the external database is meant to be initialised with this
+stack, not about where bytes are kept.
+
+Decision taken: the feature stays off, the builtin database stays as it is, and the product decision recorded earlier
+stands -- no `enable_pairing` in the dosimeter until a reconnect works, because pairing without reconnecting is worse
+for the app than not pairing.
