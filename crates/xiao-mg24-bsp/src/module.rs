@@ -51,6 +51,11 @@ impl Module {
     }
 
     pub fn take() -> Option<Self> {
+        // Before anything can touch the flash: the emlib's write and erase routines live in `.ram` and must execute
+        // from RAM. `memory.x` links that section with its load image in flash; this copies it, once, here — every
+        // entry path in this BSP goes through `take`, and the flash controller is used by NVM3 as soon as the
+        // Bluetooth stack starts.
+        unsafe { ramfunc_init() };
         Some(Self {
             board: HalBoard::take()?,
         })
@@ -108,5 +113,47 @@ impl Module {
         // PC8: enable, active high. PC9 stays in disabled mode so the ADC owns the pad.
         self.board.output_on(Port::C, 8, false).on();
         self.board.converter().microphone()
+    }
+
+    /// The matrix/vector processor, enabled and ready.
+    ///
+    /// The driver lives in the HAL (`efr32mg2x_hal::mvp`) and this is the board's way of handing it out,
+    /// for the same reason every other peripheral here is handed out: an example or an application should
+    /// not have to name a PAC type, and enabling the block needs the CMU as well as the peripheral.
+    ///
+    /// Measured on this board (2026-11-17): 64 element `binary16` additions cost 289 cycles through the
+    /// MVP against 921 in a software loop, self-check pass. That is the floor for its advantage, not a
+    /// claim about a whole model.
+    ///
+    /// # Errors
+    ///
+    /// [`efr32mg2x_hal::mvp::Error::StuckDisabling`] when the block will not leave its disabled state,
+    /// which is what a missing clock gate looks like from the outside.
+    pub fn mvp(&self) -> Result<efr32mg2x_hal::mvp::Mvp, efr32mg2x_hal::mvp::Error> {
+        self.board.mvp()
+    }
+}
+
+/// Copy the RAM-resident functions from their load image in flash to where they are linked to run.
+///
+/// `memory.x` gives `.ramfunc` a RAM VMA and a flash LMA; the reset handler from `cortex-m-rt` copies `.data` and
+/// knows nothing about this section, so without this the flash routines run from the flash they are programming and
+/// the write silently does nothing (measured: NVM3 reported success and no bond survived a reset).
+///
+/// # Safety
+///
+/// Call once, before any code that writes or erases flash, and never while interrupts can be using those routines.
+unsafe fn ramfunc_init() {
+    extern "C" {
+        static mut __ramfunc_start: u32;
+        static mut __ramfunc_end: u32;
+        static __ramfunc_load: u32;
+    }
+    let start = core::ptr::addr_of_mut!(__ramfunc_start);
+    let end = core::ptr::addr_of_mut!(__ramfunc_end);
+    let load = core::ptr::addr_of!(__ramfunc_load);
+    let words = (end as usize - start as usize) / 4;
+    for i in 0..words {
+        core::ptr::write_volatile(start.add(i), core::ptr::read_volatile(load.add(i)));
     }
 }

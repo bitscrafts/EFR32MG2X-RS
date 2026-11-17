@@ -70,7 +70,7 @@ fn main() -> ! {
 
     let mut buf = [0u8; 64];
     let mut at = 4;
-    buf[..6].copy_from_slice(b"mic ");
+    buf[..4].copy_from_slice(b"mic ");
     buf[at..at + b"rms=".len()].copy_from_slice(b"rms=");
     at += 4;
     at = push_dec(&mut buf, at, u32::from(window.rms));

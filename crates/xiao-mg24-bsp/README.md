@@ -28,6 +28,7 @@ Read from the source, so it cannot drift:
 | `clock` | `src/module.rs` |
 | `delay` | `src/module.rs` |
 | `microphone` | `src/module.rs` |
+| `mvp` | `src/module.rs` |
 | `pin` | `src/module.rs` |
 
 ### What this crate uses from `efr32mg2x-pac`
@@ -47,6 +48,7 @@ Read from the source, so it cannot drift:
 | `clock` | `src/module.rs` |
 | `delay` | `src/module.rs` |
 | `microphone` | `src/module.rs` |
+| `mvp` | `src/module.rs` |
 | `pin` | `src/module.rs` |
 
 ### What this crate uses from `efr32mg2x-pac`

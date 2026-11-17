@@ -78,3 +78,27 @@ required-features = ["sense", "stack"]
 [[example]]
 name = "module_ble_beacon"
 required-features = ["stack"]
+
+# The dosimeter service needs the link-layer handler, like the other BLE examples.
+[[example]]
+name = "module_ble_dosimeter"
+required-features = ["stack", "sense"]
+
+[[example]]
+name = "module_heap_probe"
+required-features = ["stack"]
+
+[[example]]
+name = "module_pairing_probe"
+required-features = ["stack"]
+
+[[example]]
+name = "module_dev_scan"
+required-features = ["stack"]
+
+[[example]]
+name = "module_nvm3_probe"
+required-features = ["stack"]
+
+[[example]]
+name = "module_flash_probe"
