@@ -150,7 +150,8 @@ fn main() {
                 let manifest = std::path::PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
                 let emlib_vendor = manifest.join("../efr32mg24-emlib-sys/vendor");
                 let rail_vendor = manifest.join("../efr32mg24-rail-sys/vendor");
-                cc::Build::new()
+                let mut bt_stack = cc::Build::new();
+                bt_stack
                     .file("vendor/bt_stack/sl_bt_stack_init.c")
                     // The one generated object the initialiser needs; see the file's header for why it is hand-written.
                     .file("config/sli_bt_connection_config.c")
@@ -182,7 +183,6 @@ fn main() {
                     // The initialiser refuses to compile without this, and it is the switch that makes it include
                     // `sl_component_catalog.h` -- the file in `vendor/bt_stack/` that lists the components.
                     .define("SL_COMPONENT_CATALOG_PRESENT", None)
-                    .define("SL_BT_EXTERNAL_BONDING", None)
                     // Values the component system normally generates: connections and advertisers reserved by
                     // components other than the application. This firmware has no such components, and the
                     // `_SUM` macros in `sl_bluetooth_config.h` add them to the application's own counts.
@@ -191,8 +191,14 @@ fn main() {
                     .flag_if_supported("-mcmse")
                     .flag_if_supported("-ffunction-sections")
                     .flag_if_supported("-fdata-sections")
-                    .flag_if_supported("-Wno-everything")
-                    .compile("bt_stack_init");
+                    .flag_if_supported("-Wno-everything");
+                // Only when the feature is on: the header picks the builtin or the external bonding database from
+                // this macro, and defining it unconditionally selected the external one in every build -- which then
+                // left the default build linking our strong symbols over the builtin database's own.
+                if external_bonding {
+                    bt_stack.define("SL_BT_EXTERNAL_BONDING", None);
+                }
+                bt_stack.compile("bt_stack_init");
                 println!("cargo:rerun-if-changed=vendor/bt_stack/");
 
                 // **The real NVM3.** `sli_bt_start_stack` calls `nvm3_open` and returns its error if it fails -- the

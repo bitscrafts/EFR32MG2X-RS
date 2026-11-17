@@ -51,3 +51,23 @@ and then refuses to reconnect is worse for the app than one that does not pair a
 
 `cycles=2350470467` for sixty seconds of audio at 19 MHz is 206% of real time -- the open item written up in
 `APP-LOOP-WITH-BLE-OPEN.md`, and the reason the capture cannot yet be called real-time with the stack running.
+
+## Two traps that made earlier measurements lie
+
+Both cost real time today and both are invisible at the point they bite:
+
+**A feature-gated module was compiled always.** `bonding_ext.rs` defines `sli_bt_bonding_get_data`,
+`get_max_bondings`, `is_valid_handle` and `store_data` as strong symbols. It existed unconditionally, so the DEFAULT
+build -- the one that links the vendor's builtin bonding database -- had those definitions overriding the database's
+own. The module is now behind `#[cfg(feature = "external-bonding")]`, and the same for its re-exports.
+
+**The component-catalogue macro was defined unconditionally.** `SL_BT_EXTERNAL_BONDING` was passed to the C compiler
+regardless of the cargo feature, so the header selected the external database in every build. With both mistakes
+live, a build "without the feature" was in fact the external one, and the pairing failures that followed were read as
+defects in the builtin path. Verified after the fix by disassembly: `sli_bt_bonding_store_data` has the builtin
+database's body again, and `ubt_pskey_write_callback` is linked.
+
+**Cargo keeps one binary per feature set and links the plain name to the last one built.** `target/.../examples/X` and
+`X-<hash>`; after building with `--features external-bonding`, flashing `X` can flash the *feature* build while you
+believe you are flashing the default one. Check the artefact before believing a measurement: the builtin database
+links `ubt_pskey_write_callback` and the external one does not.

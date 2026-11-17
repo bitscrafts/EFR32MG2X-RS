@@ -124,4 +124,5 @@ pub use blocking::*;
 #[link(name = "cmsis_stubs", kind = "static")]
 extern "C" {}
 
+#[cfg(feature = "external-bonding")]
 pub mod bonding_ext;

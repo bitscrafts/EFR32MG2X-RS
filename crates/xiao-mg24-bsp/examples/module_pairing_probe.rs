@@ -259,8 +259,12 @@ fn main() -> ! {
                 live.hex(*b as u32);
             }
             // Are the external-bonding callbacks the ones running? Counters, not assumptions.
+            #[cfg(feature = "external-bonding")]
             let (bx_is, bx_store, bx_type, bx_del, bx_res, bx_err) =
                 efr32mg24_radio::bonding_ext_stats();
+            #[cfg(not(feature = "external-bonding"))]
+            let (bx_is, bx_store, bx_type, bx_del, bx_res, bx_err) =
+                (0u32, 0u32, 0u32, 0u32, 0u32, 0u32);
             let bx_alloc = 0u32;
             live.s(b" bxc=");
             live.u(bx_alloc);

@@ -76,4 +76,5 @@ compile_error!(
                  docs/04-reference/RADIO-NOTES.md"
 );
 
+#[cfg(feature = "external-bonding")]
 pub use efr32mg24_bluetooth_sys::bonding_ext::stats as bonding_ext_stats;
