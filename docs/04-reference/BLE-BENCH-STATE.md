@@ -110,3 +110,35 @@ crates/xiao-mg24-bsp/examples/module_clock_probe.rs        leaves SYSRTC running
 - Nothing here is a certification.
 - The BLE link was proven **from the host** (`gatttool` at `sec-level=medium`, BlueZ). The phone's own run is the next
   measurement, not a conclusion of this document.
+
+## Two traps that cost time after the fix, both operational
+
+**The board may be running an example, not the product.** Measured 2026-11-17: the app could not find the dosimeter
+while `bluetoothctl` showed the address advertising as `xiao-pair-probe`. A probe or any other example left on the
+board does not carry the service UUID in its advertisement, so an app that filters by that UUID — which is the generic
+way, and the one we want — cannot see it. Before every handover: flash the product, then confirm the advertised name
+and UUID with `bluetoothctl info`.
+
+**The user LED is not a "firmware running" indicator.** `module_ble_dosimeter` never drives it; the only code that
+touches the LED is the bond-clear path. An LED that is off means nothing about the firmware, and the LED that is on
+during charging is the charger's. The instrument is the mailbox record and the advertised name.
+
+## The app defects found on a real phone (same night, same shape)
+
+All three were the same failure mode — a step that fails without saying so:
+
+```
+never paired                        the app subscribed without ever calling createBond, and with the
+                                    characteristics requiring a bond the subscription would fail silently
+paired but the app did not know     the receiver was RECEIVER_NOT_EXPORTED and ACTION_BOND_STATE_CHANGED comes
+                                    from the system Bluetooth app, so the event never arrived; the device was
+                                    listed as paired in the phone's own settings while the app said "pairing"
+connected but no values             Android allows one pending GATT operation per link: three reads (and
+                                    three CCCD writes) in a burst meant the first was accepted and the other
+                                    two returned false with no visible error
+```
+
+The fixes, in `dosimeter-mg24`: pair before subscribing; register the receiver exported and also poll
+`device.bondState` every 400 ms; one GATT operation at a time, each callback asking for the next, with a two-second
+guard. The general rule this night produced: **prefer reading a state to waiting for an event, and never leave a
+failure path without a line on the screen.**
