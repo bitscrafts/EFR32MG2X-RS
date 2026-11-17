@@ -33,7 +33,7 @@ Read from the source, so it cannot drift:
 | `I2c0Ns` | `src/i2c/mod.rs` |
 | `I2c0S` | `src/i2c/mod.rs` |
 | `I2c1S` | `src/i2c/mod.rs` |
-| `Iadc0S` | `src/adc/mod.rs`, `src/board.rs` |
+| `Iadc0S` | `src/adc/mod.rs`, `src/board.rs`, `src/microphone.rs` |
 | `Interrupt` | `src/sysrtc.rs` |
 | `LdmaS` | `src/dma/mod.rs` |
 | `LdmaxbarS` | `src/dma/mod.rs` |

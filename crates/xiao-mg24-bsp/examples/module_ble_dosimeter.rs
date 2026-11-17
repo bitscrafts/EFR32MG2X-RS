@@ -482,6 +482,8 @@ fn main() -> ! {
             t.u(dwt::since(started));
             t.s(b" timer=");
             t.u(mic.timer_active() as u32);
+            t.s(b" ovf=");
+            t.u(mic.overflows());
             t.s(b" rms=");
             t.u(last_rms as u32);
             t.s(b" b0=");

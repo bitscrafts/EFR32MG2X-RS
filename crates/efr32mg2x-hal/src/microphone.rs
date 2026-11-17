@@ -332,6 +332,9 @@ impl<'a> Microphone<'a> {
         while !self.adc.status().read().singlefifodv().bit_is_set() {
             spin += 1;
             if spin > BUDGET {
+                // The budget expired, which is exactly when the FIFO may have overrun: the converter kept converting
+                // while the CPU was somewhere else. Look at the flag before giving up on the sample.
+                self.note_overflow();
                 return None;
             }
         }
@@ -339,6 +342,33 @@ impl<'a> Microphone<'a> {
         // for the next conversion. Reading SINGLEDATA left the flag set and the paced loop returned the same
         // value instantly — 256 samples in 8 741 cycles under a 16 kHz timer, measured 2026-11-17.
         Some(self.adc.singlefifodata().read().data().bits() as u16)
+    }
+
+    /// Count a FIFO overflow if the converter set one, and clear it.
+    ///
+    /// The converter keeps converting whether or not the CPU reads: when a second sample arrives before the previous
+    /// one was popped, the FIFO overflows and the oldest sample is **dropped**. Nothing in this crate read that flag
+    /// until now, so a window could be short of samples while still counting `WINDOW` of them -- and a window whose
+    /// real duration is unknown produces a dose that looks right and is not.
+    ///
+    /// The flag is cleared through the `_CLR` alias (see `crate::alias`); it is sticky, so one missed clear would make
+    /// every later window look overrun.
+    fn note_overflow(&self) {
+        if self.adc.if_().read().singlefifoof().bit_is_set() {
+            // SAFETY: the alias window belongs to the IADC this driver holds.
+            unsafe { crate::alias::clear_window(pac::Iadc0S::ptr()) }
+                .if_()
+                .write(|w| w.singlefifoof().set_bit());
+            OVERFLOWS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+        }
+    }
+
+    /// How many FIFO overflows this converter has reported since boot.
+    ///
+    /// Report it next to any level or band energy: a non-zero count means at least one window was measured over fewer
+    /// samples than its nominal length, and the number computed from it is not the number its label claims.
+    pub fn overflows(&self) -> u32 {
+        OVERFLOWS.load(core::sync::atomic::Ordering::Relaxed)
     }
 
     /// Fill a whole window with paced samples, returning how many actually arrived.
@@ -377,10 +407,13 @@ impl<'a> Microphone<'a> {
         while !self.adc.status().read().singlefifodv().bit_is_set() {
             spin += 1;
             if spin > 20_000 {
+                self.note_overflow();
                 return None;
             }
         }
-        Some(self.adc.singledata().read().data().bits() as u16)
+        let raw = self.adc.singledata().read().data().bits() as u16;
+        self.note_overflow();
+        Some(raw)
     }
 
     /// RMS and peak amplitude over `window` samples, about the window's **own mean**.
@@ -447,6 +480,9 @@ impl<'a> Microphone<'a> {
         }
     }
 }
+
+/// FIFO overflows seen since boot, across every microphone in the process. There is one converter on this board.
+static OVERFLOWS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
 
 /// Largest window `level()` will measure, and the buffer it needs: 128 samples is 256 bytes of stack, and it is two
 /// windows of the dosimeter's 63-sample second. Asking for more returns this many rather than overflowing.

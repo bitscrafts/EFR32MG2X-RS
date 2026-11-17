@@ -169,6 +169,8 @@ fn main() -> ! {
     t.u(r2048);
     t.s(b" rmean=");
     t.u(rmean);
+    t.s(b" ovf=");
+    t.u(mic.overflows());
     t.s(b" first=");
     for v in samples.iter().take(4.min(taken)) {
         t.u(*v as u32);
