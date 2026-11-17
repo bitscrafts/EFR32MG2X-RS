@@ -265,6 +265,27 @@ fn main() -> ! {
     mic.start_timer();
 
     let _ = ble.set_device_name("xiao-mg24-dosimeter");
+
+    // Pairing, and what it costs the phone.
+    //
+    // The bond now survives a reset of the MCU (measured 2026-11-17 with the external bonding database: the host
+    // reconnects `Bonded: yes` after `probe-rs reset`, without pairing again), which is the condition this was
+    // waiting for. Before that, a device that pairs and then forgets is worse for the phone than one that never
+    // pairs at all: the user has to forget the device before every session.
+    //
+    // `enable_pairing_with(0x84, 0x03)`: flags 0x84 = bonding required + MITM ("authenticated"), IO capability 0x03 =
+    // NoInputNoOutput, i.e. Just Works. That keeps the phone's dialog simple; a passkey would be stricter but this
+    // product has no display to show one on.
+    let _ = ble.enable_pairing_with(0x84, 0x03);
+    // With the builtin database the stack needs to be told how many bonds to keep. With the external one that command
+    // is documented as NOT_AVAILABLE and the count lives in `bonding_ext`.
+    #[cfg(not(feature = "external-bonding"))]
+    let _ = ble.store_bonding_configuration(8, 1);
+
+    // Run the core fast while the stack is on: at 19 MHz the capture loop leaves the stack about a third of the time
+    // it needs. Measured ratios against the IADC timer: 38 MHz 1.99x, 56 MHz 2.93x, 80 MHz 4.19x.
+    // `Module` derefs to the board this example already owns.
+    let boosted = module.hal().boost_to_80_mhz();
     let _ = ble.start_connectable(200, 0);
 
     // Calibrate the pace against the core clock instead of trusting the timer's nominal clock: one window is
@@ -294,7 +315,31 @@ fn main() -> ! {
     unsafe { dwt::start() };
     let started = dwt::cycles();
 
-    for second in 0..SECONDS {
+    // The loop runs until the board is reset: a product does not stop measuring after a minute. `SECONDS` is the
+    // reporting period, not a lifetime -- and a device that stops advertising after a minute is unusable from the
+    // phone, because the bond is only worth something while the peripheral is there to use it.
+    for second in 0.. {
+        if second % SECONDS == 0 && second > 0 {
+            // Publish a summary of the last period, then carry on.
+            let mut t = Text::new();
+            t.s(b"ble: seconds=");
+            t.u(second);
+            t.s(b" windows=");
+            t.u(windows_total);
+            t.s(b" published=");
+            t.u(published);
+            t.s(b" notifies=");
+            t.u(notifications);
+            t.s(b" cycles=");
+            t.u(dwt::since(started));
+            t.s(b" timer=");
+            t.u(mic.timer_active() as u32);
+            t.s(b" rms=");
+            t.u(last_rms as u32);
+            t.s(b" b0=");
+            t.u(last_band0);
+            mailbox::info(t.bytes());
+        }
         let mut window = [0u16; WINDOW];
         let mut bands_acc = [0u32; 8];
         let mut rms_of_second = 0u16;
@@ -308,6 +353,12 @@ fn main() -> ! {
                         bands.step(v);
                         window[got] = v;
                         got += 1;
+                        // Service the stack while sampling, not only between seconds. A connection lives on the
+                        // stack's own scheduling, and the SMP exchange of a pairing needs the application to drain
+                        // the BGAPI queue often enough to answer it: measured 2026-11-17, the product example failed
+                        // to pair three times out of three while the probe example, whose loop has nothing else to do,
+                        // paired first time. One call per sample costs a compare in the common case.
+                        while let Some(_event) = ble.poll_event() {}
                     }
                     None => break,
                 }
@@ -352,6 +403,12 @@ fn main() -> ! {
         last_band0 = bands_acc[0];
 
         // Drain the stack's events between seconds: a connection only stays alive while its events are read.
+        //
+        // Once per second is not enough with the stack running: at 19 MHz the loop costs about 206 % of real time
+        // (docs/04-reference/APP-LOOP-WITH-BLE-OPEN.md), so "one second" of loop is two seconds of wall clock, and the
+        // connection interval is 250 ms (200 x 1.25 ms). Measured 2026-11-17: pairing the product example failed three
+        // times out of three while the probe example, which has no capture loop, pairs first time. The clock boost is
+        // what buys the margin back.
         let _ = second;
         while let Some(_event) = ble.poll_event() {}
     }
