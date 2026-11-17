@@ -190,4 +190,83 @@ mod tests {
         assert_eq!(slave2.trace_str(), "SWRRP");
         assert_eq!(out, [0x10, 0x11], "a plain read starts at register 0");
     }
+
+    /// The control: the same mock bus, the old two-transaction sequence, and the wrong bytes.
+    ///
+    /// This is what makes the test above a check rather than a tautology. If the mock could not tell the two sequences
+    /// apart, `write_read_is_one_transaction_with_a_repeated_start` would pass either way and the STOP-in-the-middle
+    /// defect would come back unnoticed. Until 2026-11-17 this control was produced by reverting the code by hand, so the
+    /// evidence lived in a terminal and could not be re-run.
+    #[test]
+    fn the_control_takes_the_wrong_path() {
+        // The correct sequence: one transaction, repeated START.
+        let mut good = Slave::new();
+        let mut out_good = [0u8; 3];
+        {
+            let mut bus = MockBus { slave: &mut good };
+            write_read(&mut bus, 0x6A, 0x03, &mut out_good).expect("a good read");
+        }
+
+        // The old sequence: write, STOP, read.
+        let mut bad = Slave::new();
+        let mut out_bad = [0u8; 3];
+        {
+            let mut bus = MockBus { slave: &mut bad };
+            write_read_the_defective_way(&mut bus, 0x6A, 0x03, &mut out_bad)
+                .expect("the control runs");
+        }
+
+        assert_eq!(
+            good.trace_str(),
+            "SWWSWRRRP",
+            "one transaction, repeated START"
+        );
+        assert_eq!(
+            bad.trace_str(),
+            "SWWPSWRRRP",
+            "the control emits a STOP between the write and the read"
+        );
+        assert_ne!(
+            out_good, out_bad,
+            "if these were equal the mock would not distinguish the defect from the fix"
+        );
+        assert_eq!(
+            out_bad,
+            [0x10, 0x11, 0x12],
+            "the control reads register 0, because the pointer was lost at the STOP"
+        );
+    }
+}
+/// The old `write_read`, kept as a control so the test that catches it can be shown to fail.
+///
+/// The HAL's `write_read` used to be `write(register)` followed by `read(buffer)` -- two transactions, so the bus was
+/// released between them and the slave lost the register pointer it had just been given. Measured on the board before the
+/// fix: reading after a write returned register 0's bytes.
+///
+/// This function is **not** wired to anything. It exists so that the property tested above has a near miss that must
+/// take the wrong path: on 2026-11-17 the control was produced by reverting the code by hand, which meant the evidence
+/// lived in a terminal and could not be re-run. A control that cannot be re-run is a claim, not a measurement.
+#[cfg(test)]
+pub fn write_read_the_defective_way<B: Bus + ?Sized>(
+    bus: &mut B,
+    addr: u8,
+    register: u8,
+    out: &mut [u8],
+) -> Result<(), Error> {
+    if out.is_empty() {
+        return Err(Error::InvalidData);
+    }
+    bus.start()?;
+    bus.write((addr << 1) & 0xFE)?; // address, write
+    bus.write(register)?;
+    // The defect: the bus is released here, so the slave forgets the register pointer it was just given.
+    bus.stop()?;
+    bus.start()?;
+    bus.write(((addr << 1) & 0xFE) | 1)?; // same address, read -- of register 0
+    let last = out.len() - 1;
+    for (i, slot) in out.iter_mut().enumerate() {
+        *slot = bus.read(i != last)?;
+    }
+    bus.stop()?;
+    Ok(())
 }

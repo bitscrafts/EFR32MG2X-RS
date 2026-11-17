@@ -39,6 +39,13 @@ mod mailbox;
 const TARGET_HZ: u32 = 16_000;
 const TIMER_CLK_HZ: u32 = 19_000_000;
 const WINDOW: usize = 256;
+/// How many samples pass between two polls of the Bluetooth stack.
+///
+/// 16 000 / 16 = 1 000 polls a second. The pairing failure that the per-sample poll fixed was a poll rate of one per
+/// *second*, with the connection interval at 250 ms; this is four orders of magnitude above that failure and a hundred
+/// times above the 7.5 ms floor of the connection interval itself.
+const POLL_EVERY_SAMPLES: u32 = 16;
+
 /// One second of audio: 62,5 windows, so the loop counts to 63 and notifies.
 const WINDOWS_PER_SECOND: usize = 63;
 /// How long to run before writing the record. The loop is endless; the record is the proof it ran.
@@ -293,6 +300,28 @@ impl Text {
             self.s(&[b]);
         }
     }
+    /// A 64-bit count, for values that outlive a 32-bit counter.
+    ///
+    /// The DWT wraps every 104.4 s at the measured 41.15 MHz, so a `cycles` figure accumulated in 32 bits is only correct
+    /// for the first period. This prints the real total.
+    fn u64(&mut self, mut v: u64) {
+        if v == 0 {
+            self.s(b"0");
+            return;
+        }
+        let mut d = [0u8; 20];
+        let mut n = 0;
+        while v > 0 {
+            d[n] = b'0' + (v % 10) as u8;
+            v /= 10;
+            n += 1;
+        }
+        while n > 0 {
+            n -= 1;
+            let b = d[n];
+            self.s(&[b]);
+        }
+    }
     fn bytes(&self) -> &[u8] {
         &self.buf[..self.len]
     }
@@ -409,7 +438,7 @@ fn main() -> ! {
                     1u32
                 };
                 // Say so on the LED: three short pulses means the bonds are gone.
-                let mut led = module.led();
+                let led = module.led();
                 for _ in 0..3 {
                     led.on();
                     delay.delay_ms(60);
@@ -463,6 +492,26 @@ fn main() -> ! {
     unsafe { dwt::start() };
     let started = dwt::cycles();
 
+    // Filled by each iteration: the core's clock as measured against the sample timer, and the cycles one sample costs.
+    let mut core_hz = 0u32;
+    let mut per_sample = 0u32;
+    // Where the cycles go: the stack poll is charged separately from the rest of the sample path, because "the loop is
+    // full" is not a diagnosis -- "the loop spends N cycles in the stack poll and M in the filters" is.
+    let mut stack_cycles = 0u64;
+    let mut polls = 0u32;
+    // Cycles inside `read_paced`, where the paced wait lives.
+    let mut sample_cycles = 0u64;
+    // Total cycles, accumulated in 64 bits.
+    //
+    // `dwt::since(started)` is a 32-bit difference and the DWT counter wraps: at the measured 41.15 MHz that is every
+    // 104.4 s, so `cycles=` was correct for the first period and a fraction of the truth afterwards (measured
+    // 2026-11-17: at `seconds=180` it read 3 202 755 253 where the elapsed total was about 7.4e9). The same class of
+    // defect as H25, found the same way -- by a number that did not grow when the time did.
+    let mut total_cycles = 0u64;
+    // Cycles that are work rather than waiting, and the rate they imply, for the record.
+    let mut work_hz = 0u32;
+    let mut cpu_permille = 0u32;
+
     // The loop runs until the board is reset: a product does not stop measuring after a minute. `SECONDS` is the
     // reporting period, not a lifetime -- and a device that stops advertising after a minute is unusable from the
     // phone, because the bond is only worth something while the peripheral is there to use it.
@@ -479,7 +528,25 @@ fn main() -> ! {
             t.s(b" notifies=");
             t.u(notifications);
             t.s(b" cycles=");
-            t.u(dwt::since(started));
+            t.u64(total_cycles);
+            t.s(b" hz=");
+            t.u(core_hz);
+            t.s(b" ps=");
+            t.u(per_sample);
+            t.s(b" work=");
+            t.u(work_hz);
+            t.s(b" cpu=");
+            t.u(cpu_permille);
+            t.s(b" polls=");
+            t.u(polls);
+            t.s(b" pollcyc=");
+            t.u(stack_cycles as u32);
+            t.s(b" perpoll=");
+            t.u(if polls == 0 {
+                0
+            } else {
+                (stack_cycles / polls as u64) as u32
+            });
             t.s(b" timer=");
             t.u(mic.timer_active() as u32);
             t.s(b" ovf=");
@@ -518,21 +585,48 @@ fn main() -> ! {
         let mut bands_acc = [0u32; 8];
         let mut rms_of_second = 0u16;
 
+        // The core's frequency is not read anywhere in this HAL (review H21/H22: `19_000_000` appears in three places
+        // as a constant). It is measured here against the one time base that cannot lie: the sample timer. 16 000
+        // samples a second is not a figure from a header, it is what `read_paced` waits for, so
+        // `cycles / samples * 16000` is the core's clock as the board actually runs it.
+        let iteration_start = dwt::cycles();
+        let sample_cycles_at_start = sample_cycles;
+        let mut samples_this_iteration = 0u32;
+
         for _ in 0..WINDOWS_PER_SECOND {
             let mut bands = Bands::new();
             let mut got = 0usize;
             while got < WINDOW {
-                match mic.read_paced() {
+                // `read_paced` waits for the sample timer as well as reading the converter, so its cycles are mostly
+                // the paced wait -- which is the one thing "cycles per sample" cannot tell you. Charging it separately
+                // leaves the rest as the work the loop chose to do, and that is the number with headroom in it.
+                let read_start = dwt::cycles();
+                let read = mic.read_paced();
+                sample_cycles += dwt::since(read_start) as u64;
+                match read {
                     Some(v) => {
                         window[got] = v;
                         got += 1;
+                        samples_this_iteration += 1;
                         // Service the stack while sampling, not only between seconds. A connection lives on the
                         // stack's own scheduling, and the SMP exchange of a pairing needs the application to drain
                         // the BGAPI queue often enough to answer it: measured 2026-11-17, the product example failed
                         // to pair three times out of three while the probe example, whose loop has nothing else to do,
                         // paired first time. One call per sample costs a compare in the common case.
-                        if service_stack(&mut ble, &mut link) {
-                            notifications = 0;
+                        // The stack does not need a poll per sample. Measured 2026-11-17: one poll per sample cost
+                        // `perpoll=929` cycles sixteen thousand times a second, 35 % of a core that is already full
+                        // (`ps=2621` against `hz=41 904 093`, which is 100 % of the CPU at 16 kHz). The constraint that
+                        // forced a poll inside the sampling loop was the pairing exchange, and the number that matters
+                        // there is the connection interval, not the sample rate: one poll every
+                        // `POLL_EVERY_SAMPLES` samples is 1 008 polls a second, still more than a hundred times the
+                        // 7.5 ms floor of a BLE connection interval.
+                        if samples_this_iteration % POLL_EVERY_SAMPLES == 0 {
+                            let poll_start = dwt::cycles();
+                            if service_stack(&mut ble, &mut link) {
+                                notifications = 0;
+                            }
+                            stack_cycles += dwt::since(poll_start) as u64;
+                            polls += 1;
                         }
                     }
                     None => break,
@@ -583,6 +677,32 @@ fn main() -> ! {
 
         last_rms = rms_of_second;
         last_band0 = bands_acc[0];
+
+        // Two numbers from one measurement: the core clock, and what one sample costs the loop.
+        //
+        // `per_sample` is the one that decides whether the product keeps up: at 16 kHz a loop that costs more than
+        // `hz / 16000` cycles per sample cannot sample and serve the stack at the same time, whatever the duty cycle
+        // looks like from outside.
+        let iteration_cycles = dwt::since(iteration_start);
+        total_cycles += iteration_cycles as u64;
+        let iteration_sample_cycles = sample_cycles - sample_cycles_at_start;
+        if samples_this_iteration > 0 {
+            core_hz = (iteration_cycles as u64 * 16_000 / samples_this_iteration as u64) as u32;
+            per_sample = (iteration_cycles / samples_this_iteration) as u32;
+
+            // Work = everything that is not the paced wait. A sample's read_paced includes both its own register work and
+            // the wait for the timer, so this is an upper bound on the wait and a lower bound on the work -- stated that
+            // way on purpose, because the alternative is to claim a precision the instrument does not have.
+            let work =
+                iteration_cycles as u64 - iteration_sample_cycles.min(iteration_cycles as u64);
+            let work_per_sample = work / samples_this_iteration as u64;
+            work_hz = (work_per_sample * 16_000) as u32;
+            cpu_permille = if core_hz == 0 {
+                0
+            } else {
+                ((work_hz as u64 * 1000) / core_hz as u64) as u32
+            };
+        }
 
         // Drain the stack's events between seconds: a connection only stays alive while its events are read.
         //

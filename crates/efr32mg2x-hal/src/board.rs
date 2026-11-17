@@ -197,7 +197,7 @@ impl Board {
             }
         }
         // The peripheral bus and the radio clock are derived from the core clock and both have a ceiling:
-        // PCLK at 50 MHz and the radio clock at 40 MHz (`em_cmu.c:98,101`). The vendor divides them after every
+        // PCLK at 50 MHz and the radio clock at 40 MHz (`em_cmu.c:99,102`). The vendor divides them after every
         // frequency change (`pclkDivOptimize`, `rhclkPrescOptimize`, called from `CMU_ClockFreqGet`'s siblings at
         // `em_cmu.c:4463`), and this function did not -- so at 80 MHz both were running undivided and out of spec,
         // with the Bluetooth stack on. Measured 2026-11-17 by the review that read the vendor source; the divider

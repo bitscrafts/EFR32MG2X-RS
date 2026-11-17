@@ -6,7 +6,7 @@
 //! (`Clocks::new` configured nothing and returned the frequency the caller stated) and H22 (`19_000_000` written into
 //! three places, wrong after any boost).
 //!
-//! The ceilings are not opinions: `em_cmu.c:98,101` gives `CMU_MAX_PCLK_FREQ 50000000` and `CMU_MAX_RHCLK_FREQ
+//! The ceilings are not opinions: `em_cmu.c:99,102` gives `CMU_MAX_PCLK_FREQ 50000000` and `CMU_MAX_RHCLK_FREQ
 //! 40000000`, and the vendor divides both after every frequency change (`pclkDivOptimize`, `rhclkPrescOptimize`).
 //!
 //! This crate decides the whole plan from one number, and the tests check the invariants over **every** frequency from
@@ -14,7 +14,7 @@
 
 #![no_std]
 
-/// The peripheral bus must stay at or below this (`em_cmu.c:98`).
+/// The peripheral bus must stay at or below this (`em_cmu.c:99`).
 pub const MAX_PCLK_HZ: u32 = 50_000_000;
 /// The radio clock must stay at or below this (`em_cmu.c:101`).
 pub const MAX_RHCLK_HZ: u32 = 40_000_000;

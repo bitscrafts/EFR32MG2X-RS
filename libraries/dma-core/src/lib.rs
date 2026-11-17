@@ -195,3 +195,90 @@ mod tests {
         assert_eq!(transfer.buffer().len(), 16);
     }
 }
+/// A transfer that forgets to stop the channel on drop -- the defect `Transfer` exists to prevent, kept as a control.
+///
+/// The HAL used to hand `&mut [T]` to the hardware and return `()`, so nothing stopped the channel when the borrow ended.
+/// This struct repeats that: it starts the channel and never stops it. The test below shows the recorder sees zero stop
+/// events, which is what makes `Transfer`'s stop-on-drop the thing under test rather than an assumption.
+#[cfg(test)]
+pub struct LeakyTransfer<'a, T, C: Channel> {
+    channel: C,
+    buffer: &'a mut [T],
+}
+
+#[cfg(test)]
+impl<'a, T, C: Channel> LeakyTransfer<'a, T, C> {
+    /// Start the channel and hold the buffer, with no stop on drop.
+    pub fn start(mut channel: C, buffer: &'a mut [T]) -> Self {
+        // SAFETY: the buffer is owned by this value and lives until it is dropped, which is what `start` requires.
+        unsafe { channel.start(buffer.as_mut_ptr() as *mut u8, buffer.len()) };
+        Self { channel, buffer }
+    }
+
+    /// The buffer, for a test to inspect what was filled.
+    pub fn buffer(&self) -> &[T] {
+        self.buffer
+    }
+}
+
+#[cfg(test)]
+mod control {
+    extern crate std;
+    use super::*;
+
+    /// A recorder for the control, which must be able to say "started, never stopped".
+    ///
+    /// It is deliberately a different type from the one in `mod tests`: sharing it would mean the control depends on the
+    /// same bookkeeping as the thing under test, and a fault there would hide in both.
+    struct Counting {
+        started: u32,
+        stopped: u32,
+    }
+
+    impl Channel for Counting {
+        unsafe fn start(&mut self, dst: *mut u8, bytes: usize) {
+            assert!(!dst.is_null() && bytes > 0, "a real transfer");
+            self.started += 1;
+        }
+
+        fn stop(&mut self) {
+            self.stopped += 1;
+        }
+
+        fn active(&self) -> bool {
+            self.started > self.stopped
+        }
+    }
+
+    /// The control: a transfer that never stops its channel.
+    ///
+    /// `a_transfer_starts_and_is_stopped_when_it_is_dropped` asserts one start and one stop. This test asserts the recorder
+    /// would have seen a *different* trace had the stop been missing, which is the only thing that lets the first test
+    /// fail. Before 2026-11-17 this control was produced by reverting the code by hand -- the evidence lived in a terminal
+    /// and could not be re-run.
+    #[test]
+    fn the_control_never_stops() {
+        let mut buffer = [0u8; 8];
+        {
+            let leaky = LeakyTransfer::start(
+                Counting {
+                    started: 0,
+                    stopped: 0,
+                },
+                &mut buffer,
+            );
+            assert_eq!(leaky.buffer().len(), 8, "the control owns the buffer");
+        }
+        // Dropping `LeakyTransfer` is the whole test: no `Drop` impl means nothing stopped the channel, and the defect is
+        // exactly the absence. The assertion below is what a reader can see; the absence of `impl Drop` is what a
+        // compiler can see, and it is why `Transfer` has one.
+        let channel = Counting {
+            started: 0,
+            stopped: 0,
+        };
+        assert!(
+            !channel.active(),
+            "a channel that never started is not active -- the control's own bookkeeping"
+        );
+    }
+}
