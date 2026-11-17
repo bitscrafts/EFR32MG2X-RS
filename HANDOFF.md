@@ -172,3 +172,35 @@ number of drops after dropping.
 - The ring's unwritten slots read as zero, and a zero sample looks exactly like free fall.
   Analyse only `TOTAL` samples.
 - A replug resets the board and loses the RAM log. A log that must survive belongs in BURAM.
+
+## 2026-11-17 (night) — the bond across a reset, and where it stands
+
+**State: pairing green; persistence green; reconnect after a reset still open.** Tree clean, gate PASS,
+six commits. Full chain with every number: `docs/04-reference/BOND-ACROSS-RESET-2026-11-17.md`.
+
+Fixed and measured tonight (all in `crates/efr32mg24-bluetooth-sys/src/psa.rs` unless noted):
+
+1. `nvm3_readData` refuses a length larger than the object; the restore asked for header+MAX_KEY (73) against
+   40-byte objects, so every read failed. Read `nvm3_getObjectInfo` first.
+2. The restore took its "done" flag before checking the NVM3 handle — the first PSA call of a boot arrives
+   before the stack opens the instance, so one silent attempt per boot and never again.
+3. The retry flag was a function-local `static mut`: a separate variable per function in Rust, so the helper
+   cleared nothing. Module scope now.
+4. The stack names the key it wants (`bondingdb_psa_add_ecb_key` writes `0x48000 | type | (handle << 8)` into
+   the attributes at offset 8, then imports); we handed out our own id. Honour the requested one.
+5. An identifier names one key: a re-import under an existing id now replaces the slot instead of appending a
+   second one (the lookup was answering with a stale key and the host cancelled the pairing).
+6. The key id was stored inside the NVM3 object key, which is 20 bits: `0x48003` came back as `0x8003`. The id
+   now travels in the object's payload.
+
+Instrument fixes: the mailbox record was capped at 200 bytes and cut the fields that explained the failure
+(512 now), and the host pairing step retries.
+
+**Open:** after a reset the stack destroys two keys during initialisation (`del=2`, `dl=1`) and the lookups then
+ask for `0x48003`, which the restore did not put back in the last runs. Next two measurements, one cycle each:
+does that run's pairing ever import under `0x48003` (`latr=` shows the attributes of the last 16-byte import),
+and what exactly does the boot delete (`dl=`)?
+
+**Unattended work in place:** `scripts/ble-bond-cycle.sh` reproduces the whole cycle and logs to
+`_tmp/ble-bond-cycle.log`; a cron runs it every three hours; an analysis dispatch for the identifier question
+runs after the account window reopens (`scripts/run-bond-id-review.sh`, brief in `_tmp/review-bond-id/brief.md`).
