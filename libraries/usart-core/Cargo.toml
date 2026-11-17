@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-usart-core"
+version = "0.1.0"
+edition = "2021"
+description = "The USART baud-rate divider, as arithmetic, so it can be measured on the host"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

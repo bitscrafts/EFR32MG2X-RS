@@ -92,6 +92,11 @@ pub enum Error {
     Parity,
     /// Overrun error (data lost)
     Overrun,
+    /// The requested baud rate cannot be produced by this clock.
+    ///
+    /// Added 2026-11-17 with the divider fix: the driver used to program a wrapped number instead of refusing, so a rate
+    /// this clock cannot reach produced a console at the wrong speed and no error anywhere.
+    InvalidBaudrate,
 }
 
 impl embedded_hal_nb::serial::Error for Error {
@@ -100,6 +105,8 @@ impl embedded_hal_nb::serial::Error for Error {
             Error::Framing => embedded_hal_nb::serial::ErrorKind::FrameFormat,
             Error::Parity => embedded_hal_nb::serial::ErrorKind::Parity,
             Error::Overrun => embedded_hal_nb::serial::ErrorKind::Overrun,
+            // `embedded-hal-nb` has no kind for "this rate is impossible"; the driver's `Display` says which one it is.
+            Error::InvalidBaudrate => embedded_hal_nb::serial::ErrorKind::Other,
         }
     }
 }

@@ -78,12 +78,14 @@ impl Usart0 {
     ///
     /// let usart = Usart0::new(dp.USART0_S, config, &clocks);
     /// ```
-    pub fn new(usart: pac::Usart0S, config: Config, clocks: &FrozenClocks) -> Self {
+    pub fn new(usart: pac::Usart0S, config: Config, clocks: &FrozenClocks) -> Result<Self, Error> {
         // Enable USART0 clock in CMU using safe accessor
+        // Typed accessor, not a bit number. The previous code set bit 1 and commented it "USART0 clock enable";
+        // `CLKEN0` bit 1 is `LDMAXBAR` and USART0 is bit 9 (both read from the generated PAC's field documentation), so
+        // the peripheral was never clocked and the bus it needs was. With the accessor the bit cannot drift from the
+        // name.
         clocks.enable_peripheral_clock(|cmu| {
-            cmu.clken0().modify(|r, w| unsafe {
-                w.bits(r.bits() | (1 << 1)) // USART0 clock enable
-            });
+            cmu.clken0().modify(|_r, w| w.usart0().set_bit());
         });
 
         // Enable USART peripheral
@@ -112,15 +114,19 @@ impl Usart0 {
             }
         });
 
-        // Calculate and set baud rate
-        // CLKDIV = 256 * (fPCLK / (oversample * baudrate) - 1)
-        // For async mode, oversample = 16
+        // The divider comes from `efr32mg2x-usart-core`, where it is measured on the host. The expression that used to be
+        // here multiplied in `u32`: at 19 MHz `256 * 19 000 000` is 4 864 000 000, which wraps, and the value written to
+        // `DIV` was 52 where the correct divider is 2382 -- a console at the wrong speed and no error anywhere.
         let pclk: u32 = clocks.pclk().into();
         let oversample = 16;
-        let clkdiv = (256 * pclk / (oversample * config.baudrate)) - 256;
-        usart
-            .clkdiv()
-            .write(|w| unsafe { w.div().bits(clkdiv & 0xFFFFF) });
+        let clkdiv = match efr32mg2x_usart_core::clkdiv(pclk, config.baudrate, oversample) {
+            Ok(div) => div,
+            Err(_) => {
+                // A rate this clock cannot produce is refused rather than programmed as a wrapped number.
+                return Err(crate::usart::Error::InvalidBaudrate);
+            }
+        };
+        usart.clkdiv().write(|w| unsafe { w.div().bits(clkdiv) });
 
         // Enable TX and RX
         usart.cmd().write(|w| {
@@ -128,7 +134,7 @@ impl Usart0 {
             w.rxen().set_bit()
         });
 
-        Self { usart }
+        Ok(Self { usart })
     }
 
     /// Write a single byte (blocking)
