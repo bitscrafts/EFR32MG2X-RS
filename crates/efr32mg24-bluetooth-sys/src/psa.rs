@@ -229,8 +229,42 @@ pub unsafe extern "C" fn psa_set_key_domain_parameters(
 /// # Safety
 ///
 /// `data` must point to `data_length` readable bytes and `key` to four writable bytes.
+/// The last refused import, packed as `(code << 16) | length`.
+///
+/// A count of failures ("imp=15/14") says that one import was refused and nothing about which, and a refusal in the
+/// middle of a pairing leaves a bonding record the stack discards at the next boot -- measured: the bond reaches
+/// flash, survives a reset, and is deleted while the stack initialises. This records the code and the length of the
+/// last refusal so the next run can name the key that was missing.
+static mut IMPORT_FAILED: u32 = 0;
+
+pub fn import_failed() -> u32 {
+    unsafe { core::ptr::read_volatile(core::ptr::addr_of!(IMPORT_FAILED)) }
+}
+
+/// Import a key, recording the code and length of the last refusal.
+///
+/// # Safety
+///
+/// `data` must point to `data_length` readable bytes and `key` to four writable bytes, and both must stay valid for
+/// the duration of the call. This is the C entry point the stack's blob calls; it is not reachable from safe Rust.
 #[no_mangle]
 pub unsafe extern "C" fn psa_import_key(
+    attributes: *const u8,
+    data: *const u8,
+    data_length: usize,
+    key: *mut u32,
+) -> i32 {
+    let rc = psa_import_key_inner(attributes, data, data_length, key);
+    if rc != 0 {
+        core::ptr::write_volatile(
+            core::ptr::addr_of_mut!(IMPORT_FAILED),
+            (((rc as u32) & 0xFFFF) << 16) | ((data_length as u32) & 0xFFFF),
+        );
+    }
+    rc
+}
+
+unsafe fn psa_import_key_inner(
     _attributes: *const u8,
     data: *const u8,
     data_length: usize,

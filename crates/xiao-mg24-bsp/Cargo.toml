@@ -100,5 +100,3 @@ required-features = ["stack"]
 name = "module_nvm3_probe"
 required-features = ["stack"]
 
-[[example]]
-name = "module_flash_probe"

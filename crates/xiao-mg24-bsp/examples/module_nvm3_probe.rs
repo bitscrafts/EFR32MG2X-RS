@@ -153,7 +153,11 @@ fn main() -> ! {
     // needed to interpret that.
     let mut readback = [0u8; 4];
     let got = unsafe { nvm3_readData(handle, KEY, readback.as_mut_ptr(), readback.len()) };
-    let previous = if got == 0 { u32::from_le_bytes(readback) } else { 0 };
+    let previous = if got == 0 {
+        u32::from_le_bytes(readback)
+    } else {
+        0
+    };
     let next = previous.saturating_add(1);
     let status = unsafe { nvm3_writeData(handle, KEY, next.to_le_bytes().as_ptr(), 4) };
 
@@ -175,7 +179,8 @@ fn main() -> ! {
     let same = unsafe { nvm3_readData(handle, KEY, same_session.as_mut_ptr(), same_session.len()) };
     let repack = unsafe { nvm3_repack(handle) };
     let mut after_repack = [0u8; 4];
-    let repacked = unsafe { nvm3_readData(handle, KEY, after_repack.as_mut_ptr(), after_repack.len()) };
+    let repacked =
+        unsafe { nvm3_readData(handle, KEY, after_repack.as_mut_ptr(), after_repack.len()) };
 
     // The flash path with no NVM3 in the way: one page above the image (the image ends well below 0x0803E000) is
     // erased, written and read back. If this fails, NVM3 cannot be expected to work and the defect is the controller.

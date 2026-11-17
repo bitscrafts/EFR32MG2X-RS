@@ -140,7 +140,7 @@ fn main() -> ! {
         // left NVM3 with zero objects and the next boot answered 0x1006 to a peer that still had the keys.
         // CLEAR_BONDS makes the test reproducible: the device forgets, the host is unpaired explicitly, and the
         // pairing that follows is the first either side has ever seen.
-        const CLEAR_BONDS: bool = true;
+        const CLEAR_BONDS: bool = false;
         if CLEAR_BONDS {
             let _ = ble.delete_bondings();
         }
@@ -169,6 +169,11 @@ fn main() -> ! {
     let mut sec_event: u32 = 0;
     let mut sec_reason: u32 = 0;
     let mut nvm_cached = 0u32;
+    // NVM3 is not reentrant and the stack uses this same handle from its own context, so the enumeration happens
+    // once a second and the live line reads the cache. Enumerating per iteration returned zeros and looked like an
+    // empty store (measured, the hard way).
+    let mut key_cache = [0u32; 8];
+    let mut key_count = 0usize;
     let mut unknown: u32 = 0;
     let mut last_unknown: u32 = 0;
 
@@ -221,12 +226,22 @@ fn main() -> ! {
             // Enumerate once a second. This is a read-only walk of the NVM3 page index; the earlier suspicion that it
             // broke pairing was wrong, and leaving it disabled turned nvm= into a constant zero that cost an hour.
             if tick % 1_000 == 0 {
-                nvm_cached = nvm3_object_count();
+                key_count = unsafe {
+                    nvm3_enumObjects(nvm3_defaultHandle, key_cache.as_mut_ptr(), key_cache.len())
+                };
+                nvm_cached = key_count as u32;
             }
             live.s(b" st=0x");
             live.hex(sm_store as u32);
             live.s(b" nvm=");
             live.u(nvm_cached);
+            live.s(b" k=");
+            for (i, k) in key_cache.iter().take(key_count.min(8)).enumerate() {
+                if i > 0 {
+                    live.s(b",");
+                }
+                live.hex(*k);
+            }
             live.s(b" bc=");
             live.u(efr32mg24_radio::psa_last_call());
             let gen = efr32mg24_radio::psa_generate_stats();
@@ -234,6 +249,8 @@ fn main() -> ! {
             live.u(gen.0);
             live.s(b" uns=0x");
             live.hex(gen.1);
+            live.s(b" imf=0x");
+            live.hex(efr32mg24_radio::psa_import_failed());
             live.s(b" ref=0x");
             live.hex(efr32mg24_radio::psa_import_refused());
             let imp = efr32mg24_radio::psa_import_stats();
