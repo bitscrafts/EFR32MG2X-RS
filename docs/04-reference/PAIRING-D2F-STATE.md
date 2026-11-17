@@ -326,3 +326,28 @@ from the vendor's bonding-database source or by an architectural decision not to
 
 Until then the product decision stands: `enable_pairing` stays out of the dosimeter example. A dosimeter that pairs
 and then refuses to reconnect is worse for the app than one that never pairs.
+
+## Own bonding storage: the wire is proven, the pairing is not yet
+
+With the `external-bonding` feature on, the host archive is derived without `bondingdb.c` and the vendor's bridge
+takes its place. Measured on the board, in order:
+
+```
+counters at boot                                     is=0 store=0 db_type=1 read=0
+after a pairing attempt                              is=1 store=2 db_type=3 read=0
+store errors                                         0        -- NVM3 accepted both pieces
+sli_bt_bonding_store_data in the ELF                 b.w sli_bt_external_bonding_store_data   (the bridge)
+sli_bt_bonding_get_data in the ELF                   a real prologue   -- our strong definition beat the stub
+the pairing itself                                   Failed to pair: org.bluez.Error.AuthenticationFailed
+```
+
+So the storage side is reachable and works: the stack asks, our code answers, and NVM3 accepts the record. What the
+counters also show is that the stack never reads the record back during the pairing (`read=0`), so the failure is in
+the pairing flow and not in the storage -- which is a different question from the one this work started with, and a
+smaller one: the external database changes what the stack expects of `sli_bt_bonding_alloc`, and the vendor's own
+default for it answers with the signed byte at offset 112 of the record (`ldrsb.w r0, [r0, #0x70]`), which this
+implementation copies. Either the stack expects a different `alloc` contract, or something else in the flow that the
+builtin database satisfied is now missing.
+
+The feature stays off by default and the builtin database stays as it was: a device that pairs inside a session is
+worth more to the app than one that does not pair at all.
