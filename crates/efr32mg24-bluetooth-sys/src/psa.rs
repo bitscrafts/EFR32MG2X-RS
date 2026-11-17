@@ -542,8 +542,13 @@ unsafe fn take_id(attributes: *const u8) -> u32 {
     value.max(1)
 }
 
-/// `sizeof(psa_key_attributes_t)` measured for this project's mbedtls headers.
-const PSA_KEY_ATTRIBUTES_BYTES: usize = 232;
+/// `sizeof(psa_key_attributes_t)` **as this implementation reports it to the allocator**.
+///
+/// This must equal `sli_psa_context_get_size(6)` in `support.rs`: that call is what sizes the heap block the stack
+/// hands us, and everything written into it has to fit. It was 232 while the allocator was told 64, so every reset
+/// wrote 168 bytes past the block -- heap corruption in code nobody looks at, which is the shape of the unspecified
+/// SMP failures seen with the external bonding database (measured and named by the review of 2026-11-17).
+const PSA_KEY_ATTRIBUTES_BYTES: usize = 64;
 
 /// Record a key type on an attributes structure. The stack passes `PSA_KEY_TYPE_AES` and no domain data.
 ///

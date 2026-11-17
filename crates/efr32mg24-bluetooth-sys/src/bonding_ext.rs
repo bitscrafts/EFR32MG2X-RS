@@ -259,11 +259,23 @@ pub extern "C" fn sli_bt_external_bonding_is_bonded(bonding: u8) -> bool {
 ///
 /// `data` must point to `length` readable bytes.
 #[no_mangle]
+// The argument order is the CALLER's, and it is not the one that reads naturally: the stack passes
+// `(handle, type, length, data)`. Measured in the blob, at the site that fetches the identity address:
+//
+//     mov  r3, r4        ; data
+//     movs r2, #6        ; length
+//     movs r1, #1        ; type
+//     mov  r0, r5        ; handle
+//     bl   sli_bt_bonding_get_data
+//
+// Declaring `(handle, type, data, length)` instead -- which is how this file first had it -- makes every store read
+// its length from the data pointer and every read write `data` bytes to the address `length`: garbage in, and a heap
+// write to a wild address out.
 pub unsafe extern "C" fn sli_bt_external_bonding_store_data(
     bonding: u8,
     piece: u8,
-    data: *const u8,
     length: usize,
+    data: *const u8,
 ) -> u32 {
     CALLS_STORE.fetch_add(1, Ordering::Relaxed);
     trace(3, piece as u32, length as u32);
@@ -346,8 +358,8 @@ pub unsafe extern "C" fn sli_bt_external_bonding_resolve_address(
 pub unsafe extern "C" fn sli_bt_bonding_get_data(
     bonding: u8,
     piece: u8,
-    data: *mut u8,
     length: usize,
+    data: *mut u8,
 ) -> u32 {
     CALLS_READ.fetch_add(1, Ordering::Relaxed);
     trace(4, piece as u32, 0);

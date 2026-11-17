@@ -40,8 +40,10 @@ pub extern "C" fn sli_psa_context_get_size(ctx_type: u32) -> usize {
         3 => 448,  // psa_mac_operation_t             400
         4 => 512,  // psa_aead_operation_t            480
         5 => 640,  // psa_key_derivation_operation_t  568
-        6 => 64,   // psa_key_attributes_t             48
-        _ => 0,    // the vendor returns 0 for anything it does not know
+        // Must equal PSA_KEY_ATTRIBUTES_BYTES in `psa.rs`: that is the buffer every attributes write is bounded by,
+        // and the two disagreeing is heap corruption (they did: 64 allocated, 232 written).
+        6 => 64, // psa_key_attributes_t             48
+        _ => 0,  // the vendor returns 0 for anything it does not know
     }
 }
 
