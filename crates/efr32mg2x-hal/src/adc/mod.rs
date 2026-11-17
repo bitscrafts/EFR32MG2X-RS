@@ -200,6 +200,57 @@ impl Adc {
     /// # let mut adc = Adc::new(dp.iadc0_s, Config::default(), &dp.cmu_s);
     /// let value = adc.read(Channel::Ch0).unwrap();
     /// ```
+    /// Read one single-ended channel on a **named port**, instead of always Port A.
+    ///
+    /// `read` hard-codes `portpos = 8`, which is Port A, so `Channel::Ch5` always meant PA5 no matter what the caller
+    /// wanted; the board's own analogue inputs are elsewhere (the microphone is on PC9). The port encoding is the
+    /// PAC's: `8` = Port A, `9` = B, `10` = C, `11` = D (`iadc0_s/single.rs`, "Port A - Select pin number using
+    /// PINNEG"), and the negative input stays ground.
+    ///
+    /// **The analogue bus is not allocated here, and that is deliberate.** Routing a pin to the ADC needs
+    /// `GPIO->ABUSALLOC`, whose fields select *analogue buses* (`adc0`, `aodd0`, `aeven0`, ...), not pins: which bus a
+    /// given pin lands on is a table in the reference manual, and this project does not have that table. Getting it
+    /// wrong does not fail loudly — it reads a different pin's voltage and returns a plausible number — so the honest
+    /// state is a function that fixes the port and says the other half is missing, rather than one that guesses an
+    /// offset. `microphone.rs` shows the shape of the missing piece: it configures its own input end to end, including
+    /// the bus, which is why the microphone works and this driver does not.
+    pub fn read_on(&mut self, port: crate::pin::Port, pin: u8) -> Result<u16, Error> {
+        // The PAC's own encoding: ground is 0, then one value per port starting at 8.
+        let port_code: u8 = match port {
+            crate::pin::Port::A => 8,
+            crate::pin::Port::B => 9,
+            crate::pin::Port::C => 10,
+            crate::pin::Port::D => 11,
+        };
+        critical_section::with(|_cs| {
+            // SAFETY: PORT/PIN fields take the values the PAC documents; port_code is one of 8..=11 and pin < 16.
+            self.adc.single().write(|w| unsafe {
+                w.portpos()
+                    .bits(port_code)
+                    .pinpos()
+                    .bits(pin)
+                    .portneg()
+                    .bits(0) // Ground (single-ended)
+                    .pinneg()
+                    .bits(0)
+            });
+        });
+        self.adc.cmd().write(|w| w.singlestart().set_bit());
+        const TIMEOUT_CYCLES: u32 = 100_000;
+        let mut timeout = 0;
+        while self.adc.status().read().singlefifodv().bit_is_clear() {
+            timeout += 1;
+            if timeout >= TIMEOUT_CYCLES {
+                return Err(Error::Timeout);
+            }
+        }
+        Ok(self.adc.singledata().read().data().bits() as u16)
+    }
+
+    /// Read one single-ended channel, always on **Port A**.
+    ///
+    /// Kept as it was for callers that rely on it, with the limitation named: `Channel` carries a pin number and the
+    /// port is fixed to Port A by the code below. Use [`Adc::read_on`] to name the port.
     pub fn read(&mut self, channel: Channel) -> Result<u16, Error> {
         // Configure single conversion for the selected channel
         // Use critical section for atomic configuration
