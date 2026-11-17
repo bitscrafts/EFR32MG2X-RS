@@ -285,8 +285,24 @@ impl<const N: u8> Channel<N> {
                     // SAFETY: Configuring CH0_LINK to point back to CH0_CFG creates circular operation.
                     // This is safe as long as buffer remains valid during DMA operation.
                     unsafe {
-                        // Calculate descriptor address (points to CH0_CTRL)
-                        let descriptor_addr = pac::LdmaS::ptr() as u32 + 0x50; // CH0_CTRL offset
+                        // The descriptor address the LINK register points back to, which is what makes the transfer
+                        // circular: the channel re-reads its own CTRL when the count runs out.
+                        //
+                        // `LDMA->CH0_CTRL` is at **0x64**. The register at **0x50** is `LDMA->IF`, the interrupt flags,
+                        // so the constant that used to be here (0x50, commented "CH0_CTRL offset") made the channel
+                        // fetch its descriptor out of the interrupt-flag register: a wrong transfer size, a wrong
+                        // count, and memory written where nothing expects it, with no error anywhere. Found by the
+                        // 2026-11-17 review and confirmed here against the generated PAC, where `if_()` is documented
+                        // at 0x50 and `ch0_ctrl()` at 0x64.
+                        //
+                        // The address is taken through the PAC so it cannot drift from the register it names, and the
+                        // assertion below turns "it cannot drift" from a hope into a check that fires on the board.
+                        let descriptor_addr = ldma.ch0_ctrl() as *const _ as u32;
+                        assert_eq!(
+                            descriptor_addr - pac::LdmaS::ptr() as u32,
+                            0x64,
+                            "LDMA->CH0_CTRL is not at 0x64 in this PAC: the circular LINK points at the wrong register"
+                        );
 
                         // Configure LINK register for circular mode
                         // LINK register format:
