@@ -17,3 +17,4 @@ o mesmo movimento para i2c-core, com o check a cobrir dois cores
 
 ## 2026-11-18T20:09:32Z — C1
 mover spi-core para dentro do HAL e provar que só existe uma cópia
+- worker: rc=1, 1413s, log `_tmp/queue/worker.log`

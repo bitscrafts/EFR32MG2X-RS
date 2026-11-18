@@ -26,7 +26,7 @@ def analisar(lib: pathlib.Path, raiz: pathlib.Path):
     if esperado not in alvo.parents:
         return False, f"{lib} compiles {alvo}, which is outside crates/efr32mg2x-hal/src"
     uteis = [l for l in texto.splitlines()
-             if l.strip() and not l.strip().startswith(("//", "#[path", "mod ", "pub use"))]
+             if l.strip() and not l.strip().startswith(("//", "#!", "#[path", "mod ", "pub use"))]
     if len(uteis) > LIMITE_SHIM:
         return False, f"{lib} holds code of its own ({len(uteis)} lines); it must be a shim"
     return True, f"shim -> {alvo.relative_to(raiz)}"
