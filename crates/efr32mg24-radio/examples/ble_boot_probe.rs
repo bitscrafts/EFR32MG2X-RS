@@ -212,7 +212,10 @@ fn main() -> ! {
     // 2. The timer, now that the radio owns the counter. `board.sysrtc()` returns immediately on a running module.
     let rtc = board.sysrtc();
     let mut handle = [0u8; 32];
-    let period_ticks = sleeptimer::sl_sleeptimer_ms32_to_tick(50);
+    // The vendor contract returns a status and writes the ticks through a pointer (`sl_sleeptimer.h:707`); this
+    // example used to call it as if it returned the value, which is how `B5` survived unnoticed.
+    let mut period_ticks: u32 = 0;
+    let status = unsafe { sleeptimer::sl_sleeptimer_ms32_to_tick(50, &mut period_ticks) };
     let sched = unsafe {
         sleeptimer::sl_sleeptimer_restart_timer(
             handle.as_mut_ptr(),

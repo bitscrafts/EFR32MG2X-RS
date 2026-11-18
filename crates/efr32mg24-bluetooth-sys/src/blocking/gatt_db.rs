@@ -112,6 +112,14 @@ impl ServiceHandles {
     }
 }
 
+/// End an uncommitted session, so the next `new_session` can start.
+///
+/// A session that is abandoned without this stays open inside the stack and every later `new_session` fails
+/// with "wrong state" -- including the next boot's attempt to add the same service (`B14`).
+fn abort_session(session: u16) {
+    let _ = unsafe { bt::sl_bt_gattdb_abort(session) };
+}
+
 /// Add a primary service with a 128-bit UUID and the characteristics described by `characteristics`.
 ///
 /// Each entry is `(uuid, properties)`, where `properties` is a bitmask of [`PROP_READ`], [`PROP_WRITE`] and
@@ -134,6 +142,7 @@ pub fn add_service(
         bt::sl_bt_gattdb_add_service(session, PRIMARY_SERVICE, 0, 16, uuid.as_ptr(), &mut service)
     };
     if status != 0 {
+        abort_session(session);
         return Err(BleError::BgapiError(status as u16));
     }
 
@@ -165,16 +174,23 @@ pub fn add_service(
         if status != 0 {
             return Err(BleError::BgapiError(status as u16));
         }
-        let _ = handles.push(handle);
+        if handles.push(handle).is_err() {
+            // A characteristic without a handle is invisible to the caller: the service would be published with
+            // fewer characteristics than were asked for and nothing would say so.
+            abort_session(session);
+            return Err(BleError::BufferOverflow);
+        }
     }
 
     let status = unsafe { bt::sl_bt_gattdb_start_service(session, service) };
     if status != 0 {
+        abort_session(session);
         return Err(BleError::BgapiError(status as u16));
     }
 
     let status = unsafe { bt::sl_bt_gattdb_commit(session) };
     if status != 0 {
+        abort_session(session);
         return Err(BleError::BgapiError(status as u16));
     }
 
@@ -212,6 +228,7 @@ pub fn add_service_uuid16(
         )
     };
     if status != 0 {
+        abort_session(session);
         return Err(BleError::BgapiError(status as u16));
     }
 
@@ -244,15 +261,22 @@ pub fn add_service_uuid16(
         if status != 0 {
             return Err(BleError::BgapiError(status as u16));
         }
-        let _ = handles.push(handle);
+        if handles.push(handle).is_err() {
+            // A characteristic without a handle is invisible to the caller: the service would be published with
+            // fewer characteristics than were asked for and nothing would say so.
+            abort_session(session);
+            return Err(BleError::BufferOverflow);
+        }
     }
 
     let status = unsafe { bt::sl_bt_gattdb_start_service(session, service) };
     if status != 0 {
+        abort_session(session);
         return Err(BleError::BgapiError(status as u16));
     }
     let status = unsafe { bt::sl_bt_gattdb_commit(session) };
     if status != 0 {
+        abort_session(session);
         return Err(BleError::BgapiError(status as u16));
     }
 

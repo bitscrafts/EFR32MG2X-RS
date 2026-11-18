@@ -37,13 +37,13 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 |---|---|---|---|---|
 | B3 | `bt/psa.rs` | Local `PSA_ALG_CMAC = 0x03C0_0000` shadows the right `0x03C00200`; the GATT hash always fails. | Delete the local constant. | GATT hash reported OK |
 | B4 | `bt/psa.rs` | `psa_mac_sign_setup` treats the key id as "the Nth used slot". | Use `slot_for`. | host test on the lookup |
-| B5 | `bt/sleeptimer.rs` | `ms32_to_tick` / `tick64_to_ms` return the value; the contract returns a status and writes through a pointer. | Match the prototypes. | header lines + board timer |
+| ~~B5~~ **done** | `bt/sleeptimer.rs` | `ms32_to_tick` / `tick64_to_ms` return the value; the contract returns a status and writes through a pointer. | Match the prototypes. | header lines + board timer |
 | B7 | `bt/sleeptimer.rs` | 64-bit tick is the 32-bit counter widened; wraps after 36.4 h. | Extend with an overflow count. | host test across the wrap |
 | B9 | `bt/sleeptimer.rs` | Callback called with one argument; the contract is `(handle, data)`. | Pass the handle. | header line |
-| B10 | `bt/sleeptimer.rs` | 32 ticks/ms is 2.4 % short; accuracy reported as 500 ppm against 6000 recorded. | 64-bit conversion; report the measured figure. | arithmetic test |
+| ~~B10~~ **done** | `bt/sleeptimer.rs` | 32 ticks/ms is 2.4 % short; accuracy reported as 500 ppm against 6000 recorded. | 64-bit conversion; report the measured figure. | arithmetic test |
 | B11 | `bt/psa.rs` | Unknown id returns −140 (accepts only 0/−136); table-full −143; short buffers −135 instead of −138. | Three constants. | the call site |
 | B12 | `bt/psa.rs` | `psa_import_key` ignores type/algorithm/usage; `psa_mac_compute` truncates at 128 bytes and reports success. | Honour attributes; reject over-length. | host test |
-| B14 | `bt/blocking/gatt_db.rs` | A failed step returns without `sl_bt_gattdb_abort`; `handles.push` beyond 8 is discarded. | Abort on error; error at capacity. | host test |
+| ~~B14~~ **done** | `bt/blocking/gatt_db.rs` | A failed step returns without `sl_bt_gattdb_abort`; `handles.push` beyond 8 is discarded. | Abort on error; error at capacity. | host test |
 | B16 | `bt/stack_init.rs` | The link layer is served from PendSV, which blocks any RTOS. | Move it to a dedicated software interrupt. | board: stack still runs |
 | B18 | `radio-sys/src/ble_config.rs` | The generator is outside the repository; the once-guard hands a second caller an unfilled table. | Commit the generator; fix the guard. | the generator in-tree |
 

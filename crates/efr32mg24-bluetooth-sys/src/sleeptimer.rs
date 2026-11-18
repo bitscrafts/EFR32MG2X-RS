@@ -138,7 +138,8 @@ pub fn irq_stats() -> u32 {
 /// The counter runs at 32 968 Hz measured (nominal 32 768). The nominal is reported because the stack converts
 /// through it and a 0.6% error over a connection interval is smaller than the interval's own quantisation.
 const TICKS_PER_SECOND: u32 = 32_768;
-const TICKS_PER_MS: u32 = TICKS_PER_SECOND / 1000; // 32, rounded down; see the note in the HAL
+/// `SL_STATUS_INVALID_PARAMETER`, the status the vendor returns for a null pointer.
+const PSA_LIKE_INVALID_ARGUMENT: u32 = 0x0021;
 
 /// `SL_STATUS_OK` and the two failures this layer can produce.
 const SL_STATUS_OK: u32 = 0;
@@ -349,22 +350,59 @@ pub extern "C" fn sl_sleeptimer_get_clock_accuracy() -> u16 {
 
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_ms_to_tick(ms: u16) -> u32 {
-    ms as u32 * TICKS_PER_MS
+    // Exact conversion, through 64 bits: `32768/1000` is 32.768, and dropping the fraction made every duration
+    // 2.4 % short (`B10`). 2^32 ticks is 36.4 h, so the 64-bit intermediate is needed for large `ms` anyway.
+    ms_to_ticks(ms as u32)
 }
 
+/// `sl_status_t sl_sleeptimer_ms32_to_tick(uint32_t time_ms, uint32_t *tick)` -- status returned, value through the
+/// pointer (`sl_sleeptimer.h:707`). This used to return the ticks and ignore the pointer, so the caller read whatever
+/// was on its stack and the stack's timeouts came out wrong (`B5`).
+///
+/// # Safety
+///
+/// `tick` must be a valid, writable `uint32_t` owned by the caller.
 #[no_mangle]
-pub extern "C" fn sl_sleeptimer_ms32_to_tick(ms: u32) -> u32 {
-    ms.saturating_mul(TICKS_PER_MS)
+pub unsafe extern "C" fn sl_sleeptimer_ms32_to_tick(ms: u32, tick: *mut u32) -> u32 {
+    if tick.is_null() {
+        return PSA_LIKE_INVALID_ARGUMENT;
+    }
+    *tick = ms_to_ticks(ms);
+    0
 }
 
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_tick_to_ms(ticks: u32) -> u32 {
-    ticks / TICKS_PER_MS
+    ticks_to_ms(ticks as u64) as u32
 }
 
+/// `sl_status_t sl_sleeptimer_tick64_to_ms(uint64_t tick, uint64_t *ms)` -- same shape as above (`B5`).
+///
+/// # Safety
+///
+/// `ms` must be a valid, writable `uint64_t` owned by the caller.
 #[no_mangle]
-pub extern "C" fn sl_sleeptimer_tick64_to_ms(ticks: u64) -> u64 {
-    ticks / TICKS_PER_MS as u64
+pub unsafe extern "C" fn sl_sleeptimer_tick64_to_ms(ticks: u64, ms: *mut u64) -> u32 {
+    if ms.is_null() {
+        return PSA_LIKE_INVALID_ARGUMENT;
+    }
+    *ms = ticks_to_ms(ticks);
+    0
+}
+
+/// Milliseconds to ticks, exactly: `ms * 32768 / 1000` in 64-bit arithmetic, saturating at the counter's range.
+fn ms_to_ticks(ms: u32) -> u32 {
+    let ticks = (ms as u64 * TICKS_PER_SECOND as u64) / 1000;
+    if ticks > u32::MAX as u64 {
+        u32::MAX
+    } else {
+        ticks as u32
+    }
+}
+
+/// Ticks to milliseconds, exactly.
+fn ticks_to_ms(ticks: u64) -> u64 {
+    (ticks * 1000) / TICKS_PER_SECOND as u64
 }
 
 /// Run every callback whose deadline has passed. **The application loop must call this.**
