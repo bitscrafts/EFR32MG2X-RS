@@ -54,6 +54,9 @@ for path, rel in readmes():
             continue
         if not ("/" in nome or nome.endswith(EXTENSOES)):
             continue
+        # `OUT_DIR/bindings.rs` is where Cargo puts a generated file at build time -- not a path in the repo
+        if nome.split("/")[0] in ("OUT_DIR", "$OUT_DIR", "${OUT_DIR}"):
+            continue
         if (ROOT / nome).exists() or (path.parent / nome).exists():
             continue
         # a path that names a file of the crate it sits in, written from the crate root
