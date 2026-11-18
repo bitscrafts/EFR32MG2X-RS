@@ -309,3 +309,14 @@ All documents should include:
 
 **Last Updated**: December 13, 2025
 **Total Documents**: 16+ (docs folder + HAL docs + module READMEs + project management)
+
+## Operating the work queue and the core move (2026-11-18)
+
+- `05-operations/CORE-MOVE-PROCEDURE.md` — move a `libraries/*-core` into the HAL: six steps, the
+  traps measured on the first one, and why an item may never have two owners.
+- `05-operations/QUEUE.md` — what is next, in order. `[ ]` runs, `[~]` is decided but spec-less.
+- `05-operations/QUEUE-METHOD.md` — how an item is written, added and proved; the model rule.
+- `05-operations/QUEUE-RUN-LOG.md` — what the gate said, per attempt.
+- `05-operations/SCHEDULER-STATE-2026-11-18.md` — what the scheduler does, its four open holes,
+  and why it is parked: four orchestrators written here, none of them moved a HAL line.
+- `specs/09-one-core-moves-and-the-pattern-proves-itself.md` — the C1 spec, model for C2..C6.
