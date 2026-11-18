@@ -61,7 +61,7 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 
 ## Estado no fim desta sessão (2026-11-18, 12:20Z)
 
-**Fechados, com gate verde e commit próprio — catorze itens:**
+**Fechados, com gate verde e commit próprio — dezasseis itens:**
 
 | Item | Commit | O que mudou |
 |---|---|---|
@@ -79,12 +79,13 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 | B7 | `5d798ba` | tick de 64 bits conta as voltas (`WideTick`, 5 testes) |
 | B9 | `d357c68` | callback do timer recebe `(handle, data)` como o contrato |
 | B12 | `a7c0ccb` | **parcial**: MAC sobre mensagem truncada é recusado |
+| B18 | `7db09c6` + `e215335` | o gerador do `ble_config.rs` passou para `scripts/`, e o gate regenera e compara |
 
 **Continua aberto, e a razão é a mesma de antes:**
 
 | # | Porque não foi feito |
 |---|---|
-| H17 | `DOUT_SET`/`DOUT_CLR` estão nos aliases `+0x1000`/`+0x2000`, mas a prova exigida é a placa: o bit-bang tem de continuar a receber ACK. Mexer nisto sem a placa livre é fechar às cegas — e é o caminho que a app usa. |
+| H17 | Os aliases `+0x1000`/`+0x2000` existem, mas a prova exigida é o bit-bang a receber ACK de um dispositivo real. **Verificado esta noite: não há exemplo de bit-bang no BSP nem dispositivo conhecido identificado na bancada** — um teste assim falharia pela sua própria razão. Precisa de (a) um exemplo que fale com o OLED ou o PCF8563 e (b) a placa. |
 | H21/H22 | Um valor de relógio em runtime que `Board` possui: mexe em `usart`, `spi`, `i2c`, `timer`, `pwm` e `delay` ao mesmo tempo. |
 | H28 | Entrada e saída de EM2 só se provam na placa. |
 | B12 (resto) | `psa_import_key` honrar os atributos exige os valores que o stack passa, de `audit-blobs.sh callers` — não de memória. |
