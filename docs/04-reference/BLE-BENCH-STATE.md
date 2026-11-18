@@ -215,3 +215,46 @@ every time, so every connection looks like a new peer.
    the reboot reports `sec=1` with `cfb=0` — no new bond created. That is the measurement that closes this.
 
 Until then, the demonstration-safe rule stands: pair once and do not power-cycle the dosimeter.
+
+## The actual cause of the re-pairing: two callbacks we never defined
+
+Found by reading the library's own undefined symbols instead of guessing:
+
+```
+arm-none-eabi-nm libbluetooth_host_efr32xg24_gcc_release.a | grep "U sli_bt_external_bonding"
+    sli_bt_external_bonding_alloc                 defined by us
+    sli_bt_external_bonding_bonding_data_ready   NOT defined by us
+    sli_bt_external_bonding_get_database_type    defined by us
+    sli_bt_external_bonding_is_bonded            defined by us
+    sli_bt_external_bonding_request_bonding_data NOT defined by us
+    sli_bt_external_bonding_store_data           defined by us
+```
+
+The host asks our database for a stored record through `request_bonding_data`, and expects to be answered through
+`bonding_data_ready`. We define neither, so the vendor's weak stubs answer instead — and the stack never receives the
+record it needs to read the peer's IRK. Without the IRK it cannot resolve the phone's private address, so every
+connection looks like a new peer: a new bond is created, the phone's key no longer matches, and the link dies with
+`0x1006` (see above). That is the whole re-pairing story, and none of it is the phone's fault.
+
+Two corollaries worth writing down, because both cost time tonight:
+
+- **`sli_bt_external_bonding_resolve_address` (ours, `bonding_ext.rs:585`) is dead code.** It is not in the host's
+  undefined list; the host resolves addresses itself with the data we are supposed to hand it. Its `return 0`
+  (instead of the vendor's `0xFFFFFFFF` sentinel, visible in
+  `objects/bondingdb-stubs.c.obj`: `mov.w r0, #4294967295`) is therefore not the bug — but it is a trap for whoever
+  reads it next.
+- The plumbing to fix it is already in the file: `note_data_request`, `queue_data_answer`,
+  `take_queued_data_answer`. What is missing is the two `extern "C"` entry points that the host links against.
+
+### The fix, concretely
+
+```
+sli_bt_external_bonding_request_bonding_data(connection, bonding, data_type)
+    -> read the piece from NVM3, then answer with sli_bt_external_bonding_bonding_data_ready(bonding, len, data)
+sli_bt_external_bonding_bonding_data_ready(bonding, len, data)
+    -> the answer path; the host keeps the buffer until it has consumed it
+```
+
+Disassemble `objects/bondingdb-stubs.c.obj` for the exact argument counts and return conventions before writing the
+bodies, and keep the vendor's sentinel values. Then prove it where it fails: pair once, power-cycle the board, and
+read `cfb=0` with `sec=1` on the first connection afterwards.
