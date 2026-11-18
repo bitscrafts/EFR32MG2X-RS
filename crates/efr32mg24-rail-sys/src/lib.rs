@@ -65,6 +65,8 @@ include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 
 /// The Radio Configurator's BLE 39 MHz channel configuration, generated into Rust (see the module note).
 pub mod ble_config;
+pub mod ieee802154;
+pub mod rx;
 
 // The vendor blob references the `CORE_*` helpers as external symbols, and nothing in Rust calls
 // them — so without this `#[link]` the archive is dropped by the linker and every one of those

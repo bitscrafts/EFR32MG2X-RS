@@ -209,6 +209,11 @@ fn main() {
             // from Rust. Adding the protocol header is what makes them callable.
             .header("vendor/rail/protocol/ble/rail_ble.h")
             .clang_arg("-Ivendor/rail/protocol/ble")
+            // Same reason, second protocol: rail.h does not pull in the 802.15.4 header either, so
+            // RAIL_IEEE802154_Init and RAIL_IEEE802154_Config2p4GHzRadio existed in the blob and in
+            // the header and were unreachable from Rust.
+            .header("vendor/rail/protocol/ieee802154/rail_ieee802154.h")
+            .clang_arg("-Ivendor/rail/protocol/ieee802154")
             // Add clang arguments
             .clang_args(&clang_args)
             // Use core instead of std (for no_std compatibility)
