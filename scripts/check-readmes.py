@@ -73,6 +73,12 @@ for path, rel in readmes():
             continue
         print(f"{rel}: names a path that does not exist: {nome}")
         problems += 1
+    # Um {{placeholder}} que o gerador nao substituiu e' um README quebrado que passa todos os outros checks:
+    # o check-publishable compara README com template e os dois ficam iguais.
+    for m in re.finditer(r"\{\{[a-z_]+\}\}", text):
+        linha = text[: m.start()].count("\n") + 1
+        print(f"{rel}:{linha}: unsubstituted placeholder {m.group(0)}")
+        problems += 1
     for m in LOCAL.finditer(text):
         linha = text[: m.start()].count("\n") + 1
         print(f"{rel}:{linha}: points at a local machine: {m.group(1)}")

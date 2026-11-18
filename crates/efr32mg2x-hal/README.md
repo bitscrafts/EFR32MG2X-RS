@@ -114,7 +114,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-efr32mg2x-hal = { version = "0.1.0", features = ["rt"] }
+efr32mg2x-hal = { version = "0.1.1", features = ["rt"] }
 cortex-m = "0.7"
 cortex-m-rt = "0.7"
 panic-halt = "0.2"

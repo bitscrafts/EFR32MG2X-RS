@@ -26,7 +26,7 @@ Add this to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-efr32mg2x-pac = "0.1.0"
+efr32mg2x-pac = "0.1.1"
 # the architecture crate supplies the critical-section implementation that the generated
 # modify() needs; without this feature the build fails to link with
 # "undefined symbol: _critical_section_1_0_acquire"

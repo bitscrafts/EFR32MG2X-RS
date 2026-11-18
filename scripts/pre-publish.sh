@@ -10,16 +10,15 @@ export PATH=/usr/local/cargo/bin:$PATH
 
 CRATE="${1:-crates/efr32mg2x-pac}"
 [ -d "$CRATE" ] || { echo "no such crate: $CRATE"; exit 1; }
-NOME=$(grep -m1 '^name' "$CRATE/Cargo.toml" | cut -d'"' -f2)
-VER=$(grep -m1 '^version' "$CRATE/Cargo.toml" | cut -d'"' -f2)
-[ "$VER" = "" ] && VER=$(python3 - "$CRATE/Cargo.toml" <<'PY'
-import re,sys
-t=open(sys.argv[1]).read()
-m=re.search(r'version\.workspace\s*=\s*true', t)
-print("" if m else "")
-PY
-)
-[ -z "$VER" ] && VER=$(grep -A20 '^\[workspace.package\]' Cargo.toml | grep -m1 '^version' | cut -d'"' -f2)
+# A versão pode vir do manifest da crate ou por herança do workspace (`version.workspace = true`), e o `cut`
+# devolve a linha inteira quando não há aspas -- foi assim que este script leu "version.workspace = true" como
+# se fosse um número e reprovou cinco verificações em cascata.
+NOME=$(grep -m1 '^name' "$CRATE/Cargo.toml" | sed -n 's/.*"\([^"]*\)".*/\1/p')
+VER=$(grep -m1 '^version' "$CRATE/Cargo.toml" | sed -n 's/.*"\([^"]*\)".*/\1/p')
+if [ -z "$VER" ]; then
+  VER=$(grep -A12 '^\[workspace.package\]' Cargo.toml | grep -m1 '^version' | sed -n 's/.*"\([^"]*\)".*/\1/p')
+fi
+[ -n "$NOME" ] && [ -n "$VER" ] || { echo "cannot read name/version from $CRATE/Cargo.toml"; exit 1; }
 FAILED=0
 LINHAS=0
 
