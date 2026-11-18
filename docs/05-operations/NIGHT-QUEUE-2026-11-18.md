@@ -59,24 +59,39 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 - A fix that cannot be proven as stated is **not** marked done: it is recorded with what blocked it.
 - No publishing, no flash beyond `scripts/flash.sh --confirm`, no destructive filesystem command.
 
-## Estado no fim desta sessão (2026-11-18, 06:05Z)
+## Estado no fim desta sessão (2026-11-18, 12:20Z)
 
-**Fechados, com gate verde e commit próprio:** H25 (`d4245b2`), B8 (`9f5fb46`), H12+H30+H31 (`ad9e09c`),
-H27 — refutado pela fonte, com o defeito adjacente corrigido (`a638e5a`), B3+B4 (`17c8128`),
-B5+B10+B14 (`3964dc8`).
+**Fechados, com gate verde e commit próprio — catorze itens:**
 
-**Continua aberto, e porquê:**
+| Item | Commit | O que mudou |
+|---|---|---|
+| H25 | `d4245b2` | deadline no passado dispara em vez de esperar 36,4 h; 5 testes no host |
+| B8 | `9f5fb46` | a mesma decisão, partilhada com o stack (`sysrtc_core::compare_target`) |
+| H12 | `ad9e09c` | MVP recusa acima de 1024 (os campos são de 10 bits) |
+| H30 | `ad9e09c` | `gpio_static` usa o ponteiro da PAC em vez de um endereço NS |
+| H31 | `ad9e09c` | `memory.x` do HAL e do BSP concordam em 1472K |
+| H27 | `a638e5a` | **refutado pela fonte** (`LOCK` reseta em `0xABE8`), e o defeito real ao lado: o watchdog nunca era re-bloqueado |
+| B3 | `17c8128` | `PSA_ALG_CMAC` local sombreava o valor da especificação |
+| B4 | `17c8128` | id de chave pelo id guardado, não pela "N-ésima usada" |
+| B5 | `3964dc8` | protótipos do timer devolvem status e escrevem por ponteiro |
+| B10 | `3964dc8` | conversão exacta ms↔ticks (32768/1000), não 32 |
+| B14 | `3964dc8` | sessão GATT abortada no erro; handle em excesso é erro |
+| B7 | `5d798ba` | tick de 64 bits conta as voltas (`WideTick`, 5 testes) |
+| B9 | `d357c68` | callback do timer recebe `(handle, data)` como o contrato |
+| B12 | `a7c0ccb` | **parcial**: MAC sobre mensagem truncada é recusado |
 
-| # | Porque não foi feito nesta sessão |
+**Continua aberto, e a razão é a mesma de antes:**
+
+| # | Porque não foi feito |
 |---|---|
-| H17 | Precisa de `DOUT_SET`/`DOUT_CLR`; a PAC não expõe os aliases (`+0x1000`/`+0x2000`). Primeiro estender a PAC ou escrever por offset, e o teste tem de ser na placa (bit-bang a ACK-ar). |
-| H21/H22 | É a mudança maior do lote: um valor de relógio em runtime que `Board` possui, e todos os divisores a consumi-lo. Mexe em `usart`, `spi`, `i2c`, `timer`, `pwm` e `delay` ao mesmo tempo — não é trabalho para o fim de uma sessão sem a placa para medir. |
-| H28 | Exige a placa para provar a entrada e saída de EM2 (o `wfi` sem verificação de evento pendente não se valida no host). |
-| B7 | Precisa de um contador de overflow alimentado pelo SYSRTC, o que cruza o HAL e o stack; e o teste tem de simular 36,4 h. Faz-se com a mesma técnica do `compare_target`: função pura em `libraries/`, testada no host, e depois ligada. |
-| B9 | O contrato do callback é `(handle, data)`; mudar a assinatura obriga a rever quem chama (RAIL incluído), e o único chamador observado ainda não foi medido com a assinatura nova. |
-| B12 | `psa_import_key` honrar atributos e `psa_mac_compute` recusar acima de 128 bytes: precisa dos valores de atributo que o stack passa, que saem de `audit-blobs.sh callers` — não de memória. |
-| B16 | Mover a link layer de PendSV para uma interrupção própria. É a mudança de maior risco do relatório: se falhar, o stack não arranca e a placa fica sem rádio. Só com a placa disponível e tempo para reverter. |
-| B18 | O gerador do `ble_config.rs` não está no repositório; é preciso encontrá-lo (ou reescrevê-lo a partir do ficheiro gerado) antes de o commitar. |
+| H17 | `DOUT_SET`/`DOUT_CLR` estão nos aliases `+0x1000`/`+0x2000`, mas a prova exigida é a placa: o bit-bang tem de continuar a receber ACK. Mexer nisto sem a placa livre é fechar às cegas — e é o caminho que a app usa. |
+| H21/H22 | Um valor de relógio em runtime que `Board` possui: mexe em `usart`, `spi`, `i2c`, `timer`, `pwm` e `delay` ao mesmo tempo. |
+| H28 | Entrada e saída de EM2 só se provam na placa. |
+| B12 (resto) | `psa_import_key` honrar os atributos exige os valores que o stack passa, de `audit-blobs.sh callers` — não de memória. |
+| B16 | Mover a link layer de PendSV: o maior risco do relatório; sem tempo de reverter, não se toca. |
+| B18 | O gerador do `ble_config.rs` não está no repositório. |
 
-**Regra que fica:** cada um destes precisa da sua prova. Fechar um item com um commit e sem a prova que a
-tabela pede é a mesma classe de erro que "um check que passa com o caminho vivo avariado".
+**O padrão que se confirmou esta noite:** três vezes o defeito estava *ao lado* do que o relatório apontava
+(H27: a premissa era falsa, o watchdog sem re-lock era real; B3/B4: duas constantes na mesma função; B5: o
+exemplo que compilava provava que o protótipo estava errado). Ler o sítio antes de aceitar a acusação pagou
+três vezes em catorze.
