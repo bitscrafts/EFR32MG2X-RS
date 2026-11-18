@@ -313,7 +313,7 @@ impl Sysrtc {
         self.wait_sync();
         // A decisao (deadline no passado, ou igual a agora) vive em `libraries/sysrtc-core`, onde o host a
         // testa; este crate e' so' cross-compilado, logo aritmetica aqui nunca seria exercida. H25/B8.
-        let (target, passed) = efr32mg2x_sysrtc_core::compare_target(self.now(), deadline);
+        let (target, passed) = crate::cores::sysrtc::compare_target(self.now(), deadline);
         wr(self.regs as usize + off::GRP0_CMP0VALUE, target);
         wr(self.regs as usize + off::GRP0_IEN, bits::GRP0_CMP0);
         passed
