@@ -92,6 +92,7 @@ Research, analysis, and reference materials.
 
 **Overview:**
 - [Reference README](04-reference/README.md) - Reference documentation overview
+- [HAL, radio and BLE review](04-reference/HAL-RADIO-BLE-REVIEW-2026-11-17.md) - independent review at `101114f`: 31 HAL defects, 18 BLE defects, with the status of each after the 2026-11-18 pass
 
 **Bootloader Research:**
 - [Gecko Bootloader Research](04-reference/GECKO_BOOTLOADER_RESEARCH.md) - Silicon Labs bootloader analysis
