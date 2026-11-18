@@ -1,0 +1,21 @@
+[package]
+name = "embassy-efr32"
+description = "Embassy time driver for Silicon Labs EFR32MG24, on top of efr32mg2x-hal"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+embassy-time-driver = "0.2"
+critical-section = "1"
+cortex-m = "0.7"
+
+[dev-dependencies]
+cortex-m-rt = "0.7"
+panic-halt = "0.2"
+
+[features]
+default = []
+# Installs the `time_driver_impl!` instance so `embassy-time` finds this driver.
+driver = []

@@ -4,6 +4,7 @@ resolver = "2"
 members = [
     "crates/cmsis-stubs",
     "crates/efr32mg2x-pac",
+    "crates/embassy-efr32",
     "crates/efr32mg2x-hal",
     "crates/efr32mg24-emlib-sys",
     "crates/efr32mg24-rail-sys",
