@@ -34,6 +34,52 @@ pub fn has_passed(now: u32, deadline: u32) -> bool {
     !is_future(now, deadline)
 }
 
+/// A 32-bit counter read as a 64-bit tick, by counting the wraps.
+///
+/// `0xFFFF_FFFF` ticks at 32768 Hz is 36.4 h, and a stack that keeps time with a 32-bit counter goes backwards
+/// after a day and a half (`B7`). Widening the counter by casting it -- which is what this project did -- reproduces
+/// the wrap instead of fixing it, because the high word is always zero.
+///
+/// The rule that makes this work without an interrupt: between two reads, the counter can wrap at most once. Every
+/// read must therefore happen more often than 36.4 h, which `poll()` and the compare interrupt both guarantee.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct WideTick {
+    ultimo: u32,
+    voltas: u32,
+}
+
+impl WideTick {
+    /// A zeroed tick, which is what a  needs.
+    pub const fn new() -> Self {
+        Self {
+            ultimo: 0,
+            voltas: 0,
+        }
+    }
+
+    /// Feed a counter reading and get the widened tick.
+    ///
+    /// A reading smaller than the previous one can only mean the counter wrapped, so the high word advances by one.
+    /// The first reading establishes the baseline and reports zero wraps, whatever its value.
+    pub fn update(&mut self, counter: u32) -> u64 {
+        if counter < self.ultimo {
+            self.voltas = self.voltas.wrapping_add(1);
+        }
+        self.ultimo = counter;
+        ((self.voltas as u64) << 32) | counter as u64
+    }
+
+    /// The widened tick without feeding a new reading.
+    pub fn value(&self) -> u64 {
+        ((self.voltas as u64) << 32) | self.ultimo as u64
+    }
+
+    /// How many times the counter has wrapped, for diagnostics.
+    pub fn wraps(&self) -> u32 {
+        self.voltas
+    }
+}
+
 /// What to program into a compare register for `deadline`, and whether it had already gone.
 ///
 /// Two cases are easy to get wrong and both hang the waiter until the 32-bit counter wraps (36.4 h):
@@ -215,5 +261,57 @@ mod tests {
             atrasado,
             "acima de meio intervalo o codigo trata como passado; e' o limite do contador"
         );
+    }
+
+    #[test]
+    fn o_tick_largo_comeca_no_valor_lido() {
+        let mut w = WideTick::default();
+        assert_eq!(w.update(1_000), 1_000);
+        assert_eq!(w.wraps(), 0);
+    }
+
+    #[test]
+    fn o_tick_largo_sobe_sem_volta() {
+        let mut w = WideTick::default();
+        w.update(1_000);
+        assert_eq!(w.update(2_000), 2_000);
+        assert_eq!(w.wraps(), 0);
+    }
+
+    #[test]
+    fn o_tick_largo_conta_uma_volta() {
+        // O defeito B7: alargar o contador sem contar a volta devolve 5 depois de 0xFFFF_FFF0, ou seja o tempo
+        // anda para trás. Aqui tem de devolver 2^32 + 5.
+        let mut w = WideTick::default();
+        w.update(0xFFFF_FFF0);
+        let depois = w.update(5);
+        assert_eq!(
+            depois,
+            (1u64 << 32) + 5,
+            "a volta tem de aparecer no word alto"
+        );
+        assert_eq!(w.wraps(), 1);
+    }
+
+    #[test]
+    fn o_tick_largo_conta_duas_voltas() {
+        let mut w = WideTick::default();
+        w.update(0xFFFF_FF00);
+        w.update(10);
+        let depois = w.update(0xFFFF_FF10);
+        w.update(3);
+        assert_eq!(w.wraps(), 2);
+        assert_eq!(w.value(), (2u64 << 32) + 3);
+    }
+
+    #[test]
+    fn controlo_negativo_o_valor_repetido_nao_e_volta() {
+        // Controlo: ler o mesmo valor duas vezes nao pode inventar uma volta. Se este teste falhasse, o relogio
+        // saltaria 36,4 h a cada poll.
+        let mut w = WideTick::default();
+        w.update(500);
+        w.update(500);
+        assert_eq!(w.wraps(), 0);
+        assert_eq!(w.value(), 500);
     }
 }

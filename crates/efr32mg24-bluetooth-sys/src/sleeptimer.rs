@@ -15,6 +15,7 @@
 //! The offset was measured with `offsetof` against the vendor headers and confirmed against the RAIL blob.
 
 use core::ffi::c_void;
+use sysrtc_core::WideTick;
 
 /// `SYSRTC0->CNT` (non-secure alias). Measured, and confirmed by `RTCCSYNC_GetRtccCount` in the RAIL blob,
 /// which reads `[r3, #24]` from the same base.
@@ -118,6 +119,9 @@ pub extern "C" fn SYSRTC_APP_IRQHandler() {
 /// Clear the flag first, then run what is due and re-arm: clearing first means a callback that takes longer than
 /// the next deadline still gets its own interrupt instead of finding a stuck flag.
 pub(crate) fn on_compare_interrupt() {
+    // Feeding the widened tick here is what makes the wrap count reliable: the interrupt is the one event that is
+    // guaranteed to happen while the counter is running, so no wrap goes unseen (`B7`).
+    let _ = tick64();
     unsafe {
         core::ptr::write_volatile(
             (SYSRTC_BASE + R_GRP0_IF + IF_CLEAR_ALIAS) as *mut u32,
@@ -326,6 +330,21 @@ pub extern "C" fn sl_sleeptimer_init() -> u32 {
     SL_STATUS_OK
 }
 
+/// The counter seen as a 64-bit tick. Every read of the counter feeds it, and so does the compare interrupt, so the
+/// wraps are counted rather than reproduced -- `B7`: casting the 32-bit counter to `u64` left the high word at zero
+/// and the stack's time went backwards after 36.4 h.
+static mut WIDE: WideTick = WideTick::new();
+
+/// Read the counter and advance the widened tick. Single-core, interrupt-masked by the counter read itself; the
+/// compare interrupt and `poll()` both come through here.
+fn tick64() -> u64 {
+    // SAFETY: single core; the only writer is this function and the compare interrupt, which cannot preempt itself.
+    unsafe {
+        let w = core::ptr::addr_of_mut!(WIDE);
+        (*w).update(now())
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_get_tick_count() -> u32 {
     now()
@@ -333,7 +352,7 @@ pub extern "C" fn sl_sleeptimer_get_tick_count() -> u32 {
 
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_get_tick_count64() -> u64 {
-    now() as u64
+    tick64()
 }
 
 #[no_mangle]
@@ -411,6 +430,8 @@ fn ticks_to_ms(ticks: u64) -> u64 {
 /// and may call back into it, so running them from an interrupt would re-enter the stack's own state machine
 /// from a context it does not expect.
 pub fn poll() {
+    // Same reason as the interrupt: every pass counts the wraps that happened since the last one.
+    let _ = tick64();
     let deadline_now = now();
     // Collect first, then run: a callback may reschedule itself, and mutating the table while iterating it is
     // exactly the kind of aliasing this language refuses to compile but a raw loop would let through.
