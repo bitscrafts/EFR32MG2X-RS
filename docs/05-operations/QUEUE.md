@@ -16,7 +16,7 @@ flasha; três vermelhos seguidos param a fila com `BLOCKED`.
 - [x] C1 | specs/09-one-core-moves-and-the-pattern-proves-itself.md | mover spi-core para dentro do HAL e provar que só existe uma cópia
 - [x] C2 | docs/05-operations/QUEUE-ITEM-C2-i2c-core.md | o mesmo movimento para i2c-core, com o check a cobrir dois cores
 - [x] C3 | docs/05-operations/QUEUE-ITEM-C3-adc-core.md | o mesmo movimento para adc-core
-- [ ] C4 | docs/05-operations/QUEUE-ITEM-C4-dma-core.md | o mesmo movimento para dma-core
+- [x] C4 | docs/05-operations/QUEUE-ITEM-C4-dma-core.md | o mesmo movimento para dma-core
 - [ ] C5 | docs/05-operations/QUEUE-ITEM-C5-usart-core.md | o mesmo movimento para usart-core
 - [ ] C6 | docs/05-operations/QUEUE-ITEM-C6-sysrtc-core.md | o mesmo movimento para sysrtc-core, o último porque o bluetooth-sys também o chama
 

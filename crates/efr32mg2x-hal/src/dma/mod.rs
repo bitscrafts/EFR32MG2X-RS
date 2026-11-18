@@ -246,7 +246,7 @@ impl<const N: u8> Channel<N> {
         peripheral_addr: u32,
         buffer: &'a mut [T],
         request: PeripheralRequest,
-    ) -> Result<efr32mg2x_dma_core::Transfer<'a, T, &'a mut Self>, DmaError>
+    ) -> Result<crate::cores::dma::Transfer<'a, T, &'a mut Self>, DmaError>
     where
         T: TransferElement,
     {
@@ -357,7 +357,7 @@ impl<const N: u8> Channel<N> {
                 _ => Err(DmaError::Unsupported),
             }
         })?;
-        Ok(efr32mg2x_dma_core::Transfer::new(self, buffer))
+        Ok(crate::cores::dma::Transfer::new(self, buffer))
     }
 
     /// Get current DMA write position in circular buffer
@@ -589,7 +589,7 @@ impl<const N: u8> Channel<N> {
 }
 
 /// The transfer layer's view of a HAL channel, held by reference so the guard does not own the peripheral.
-impl<const N: u8> efr32mg2x_dma_core::Channel for &mut Channel<N> {
+impl<const N: u8> crate::cores::dma::Channel for &mut Channel<N> {
     unsafe fn start(&mut self, _dst: *mut u8, _bytes: usize) {
         // The descriptor is already programmed by `start_peripheral_to_memory`; this only records that the buffer is
         // now owned by the transfer.

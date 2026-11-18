@@ -10,4 +10,6 @@ pub mod spi;
 #[allow(missing_docs)]
 pub mod adc;
 #[allow(missing_docs)]
+pub mod dma;
+#[allow(missing_docs)]
 pub mod i2c;
