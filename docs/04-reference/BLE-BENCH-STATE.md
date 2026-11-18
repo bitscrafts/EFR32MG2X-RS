@@ -285,3 +285,26 @@ is type **6**, not 5. `piece_for` uses the type as the NVM3 key and round-trips 
 defect; finding the bond for a private address is. `sli_bt_bonding_resolve_address` in the host compares against the
 local identity address, and `sli_bt_bonding_find_by_address` is a weak stub that answers `0xFFFFFFFF` — the peer lookup
 has nowhere to land. That is the function to fill, with `ah(IRK, prand)` over the stored IRK.
+
+## 2026-11-18: verified after a physical replug -- the switch works
+
+The replug was the missing step, as the note above predicted. Read from the board:
+
+```
+ble: seconds=300 windows=18900 published=300 notifies=277 cycles=... hz=42122628
+     sreq=255 sec=1 mtu=247 cfb=1 smfail=0 smrsn=0 rms=14
+```
+
+- `sreq=255` is the sentinel this code writes when `SECURITY_REQUIRED` is false: no security request was made, so the
+  phone has nothing to prompt about.
+- `smfail=0 smrsn=0` — no pairing failure at all in this session, against `smfail=7 smrsn=4102` when the device was
+  demanding a bond it could not resolve.
+- `notifies` climbing (277 → 337 in twelve seconds) means a client is subscribed and consuming: the app is receiving.
+- `sec=1` is the existing bond still encrypting the link; it is not being requested, it is already there.
+
+**Conclusion, measured, not assumed:** the pairing loop is closed for the prototype by removing the demand, and the only
+thing that was wrong with the previous four flashes was the core left halted by the probe. `probe-rs reset` did not
+clear it; unplugging the cable did, every time.
+
+**What this does not settle:** the data still flows unencrypted to any client in range, and the RPA resolution below is
+what restores `SECURITY_REQUIRED = true`.
