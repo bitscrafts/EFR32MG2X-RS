@@ -199,6 +199,15 @@ for dir in $CRATES; do
   fi
 done
 
+# The skip list above leaves efr32mg24-rail-sys out of every other step. That crate gets its own
+# check, so being excluded from the gate does not mean being unmeasured.
+echo "=== rail-sys (skipped above, checked here) ==="
+if bash scripts/check-rail-sys.sh; then
+  pass "rail-sys: builds, clippy clean, 802.15.4 bindings present"
+else
+  fail "rail-sys: $(grep -m1 'FAIL' /tmp/check-rail-sys.log 2>/dev/null || echo 'see scripts/check-rail-sys.sh')"
+fi
+
 echo "=== examples build ==="
 for dir in $CRATES; do
   pkg=$(pkg_name "$dir")
