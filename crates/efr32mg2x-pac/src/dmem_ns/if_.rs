@@ -118,7 +118,7 @@ impl W {
         Ahb3err2bW::new(self, 7)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMEM_NS IF (offset 0x020, 32 bits). Fields: AHB0ERR1B[0], AHB1ERR1B[1], AHB2ERR1B[2], AHB3ERR1B[3], AHB0ERR2B[4], AHB1ERR2B[5], AHB2ERR2B[6], AHB3ERR2B[7]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DMEM chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

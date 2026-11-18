@@ -71,7 +71,7 @@ impl R {
         LockR::new(((self.bits >> 31) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "HFRCOEM23_NS STATUS (offset 0x00C, 32 bits). Fields: RDY[0], FREQBSY[1], SYNCBUSY[2], ENS[16], LOCK[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, HFRCOEM chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct StatusSpec;
 impl crate::RegisterSpec for StatusSpec {
     type Ux = u32;

@@ -576,7 +576,7 @@ impl RegisterBlock {
     pub const fn debugen(&self) -> &Debugen {
         &self.debugen
     }
-    #[doc = "0x204 - No Description"]
+    #[doc = "0x204 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn debugstepcnt(&self) -> &Debugstepcnt {
         &self.debugstepcnt
@@ -1057,8 +1057,8 @@ pub mod cmd;
 pub type Debugen = crate::Reg<debugen::DebugenSpec>;
 #[doc = "Debug Control Register"]
 pub mod debugen;
-#[doc = "DEBUGSTEPCNT (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`debugstepcnt::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`debugstepcnt::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@debugstepcnt`] module"]
+#[doc = "DEBUGSTEPCNT (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, MVP chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`debugstepcnt::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`debugstepcnt::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@debugstepcnt`] module"]
 #[doc(alias = "DEBUGSTEPCNT")]
 pub type Debugstepcnt = crate::Reg<debugstepcnt::DebugstepcntSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, MVP chapter"]
 pub mod debugstepcnt;

@@ -123,127 +123,127 @@ pub struct RegisterBlock {
     consumer_wdog1_src1: ConsumerWdog1Src1,
 }
 impl RegisterBlock {
-    #[doc = "0x00 - No Description"]
+    #[doc = "0x00 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ipversion(&self) -> &Ipversion {
         &self.ipversion
     }
-    #[doc = "0x08 - No Description"]
+    #[doc = "0x08 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_swpulse(&self) -> &AsyncSwpulse {
         &self.async_swpulse
     }
-    #[doc = "0x0c - No Description"]
+    #[doc = "0x0c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_swlevel(&self) -> &AsyncSwlevel {
         &self.async_swlevel
     }
-    #[doc = "0x10 - No Description"]
+    #[doc = "0x10 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_peek(&self) -> &AsyncPeek {
         &self.async_peek
     }
-    #[doc = "0x14 - No Description"]
+    #[doc = "0x14 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn sync_peek(&self) -> &SyncPeek {
         &self.sync_peek
     }
-    #[doc = "0x18 - No Description"]
+    #[doc = "0x18 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch0_ctrl(&self) -> &AsyncCh0Ctrl {
         &self.async_ch0_ctrl
     }
-    #[doc = "0x1c - No Description"]
+    #[doc = "0x1c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch1_ctrl(&self) -> &AsyncCh1Ctrl {
         &self.async_ch1_ctrl
     }
-    #[doc = "0x20 - No Description"]
+    #[doc = "0x20 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch2_ctrl(&self) -> &AsyncCh2Ctrl {
         &self.async_ch2_ctrl
     }
-    #[doc = "0x24 - No Description"]
+    #[doc = "0x24 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch3_ctrl(&self) -> &AsyncCh3Ctrl {
         &self.async_ch3_ctrl
     }
-    #[doc = "0x28 - No Description"]
+    #[doc = "0x28 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch4_ctrl(&self) -> &AsyncCh4Ctrl {
         &self.async_ch4_ctrl
     }
-    #[doc = "0x2c - No Description"]
+    #[doc = "0x2c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch5_ctrl(&self) -> &AsyncCh5Ctrl {
         &self.async_ch5_ctrl
     }
-    #[doc = "0x30 - No Description"]
+    #[doc = "0x30 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch6_ctrl(&self) -> &AsyncCh6Ctrl {
         &self.async_ch6_ctrl
     }
-    #[doc = "0x34 - No Description"]
+    #[doc = "0x34 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch7_ctrl(&self) -> &AsyncCh7Ctrl {
         &self.async_ch7_ctrl
     }
-    #[doc = "0x38 - No Description"]
+    #[doc = "0x38 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch8_ctrl(&self) -> &AsyncCh8Ctrl {
         &self.async_ch8_ctrl
     }
-    #[doc = "0x3c - No Description"]
+    #[doc = "0x3c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch9_ctrl(&self) -> &AsyncCh9Ctrl {
         &self.async_ch9_ctrl
     }
-    #[doc = "0x40 - No Description"]
+    #[doc = "0x40 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch10_ctrl(&self) -> &AsyncCh10Ctrl {
         &self.async_ch10_ctrl
     }
-    #[doc = "0x44 - No Description"]
+    #[doc = "0x44 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch11_ctrl(&self) -> &AsyncCh11Ctrl {
         &self.async_ch11_ctrl
     }
-    #[doc = "0x48 - No Description"]
+    #[doc = "0x48 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch12_ctrl(&self) -> &AsyncCh12Ctrl {
         &self.async_ch12_ctrl
     }
-    #[doc = "0x4c - No Description"]
+    #[doc = "0x4c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch13_ctrl(&self) -> &AsyncCh13Ctrl {
         &self.async_ch13_ctrl
     }
-    #[doc = "0x50 - No Description"]
+    #[doc = "0x50 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch14_ctrl(&self) -> &AsyncCh14Ctrl {
         &self.async_ch14_ctrl
     }
-    #[doc = "0x54 - No Description"]
+    #[doc = "0x54 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn async_ch15_ctrl(&self) -> &AsyncCh15Ctrl {
         &self.async_ch15_ctrl
     }
-    #[doc = "0x58 - No Description"]
+    #[doc = "0x58 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn sync_ch0_ctrl(&self) -> &SyncCh0Ctrl {
         &self.sync_ch0_ctrl
     }
-    #[doc = "0x5c - No Description"]
+    #[doc = "0x5c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn sync_ch1_ctrl(&self) -> &SyncCh1Ctrl {
         &self.sync_ch1_ctrl
     }
-    #[doc = "0x60 - No Description"]
+    #[doc = "0x60 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn sync_ch2_ctrl(&self) -> &SyncCh2Ctrl {
         &self.sync_ch2_ctrl
     }
-    #[doc = "0x64 - No Description"]
+    #[doc = "0x64 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn sync_ch3_ctrl(&self) -> &SyncCh3Ctrl {
         &self.sync_ch3_ctrl
@@ -699,130 +699,130 @@ impl RegisterBlock {
         &self.consumer_wdog1_src1
     }
 }
-#[doc = "IPVERSION (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
+#[doc = "IPVERSION (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
 #[doc(alias = "IPVERSION")]
 pub type Ipversion = crate::Reg<ipversion::IpversionSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod ipversion;
-#[doc = "ASYNC_SWPULSE (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_swpulse::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_swpulse`] module"]
+#[doc = "ASYNC_SWPULSE (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_swpulse::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_swpulse`] module"]
 #[doc(alias = "ASYNC_SWPULSE")]
 pub type AsyncSwpulse = crate::Reg<async_swpulse::AsyncSwpulseSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_swpulse;
-#[doc = "ASYNC_SWLEVEL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_swlevel::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_swlevel::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_swlevel`] module"]
+#[doc = "ASYNC_SWLEVEL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_swlevel::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_swlevel::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_swlevel`] module"]
 #[doc(alias = "ASYNC_SWLEVEL")]
 pub type AsyncSwlevel = crate::Reg<async_swlevel::AsyncSwlevelSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_swlevel;
-#[doc = "ASYNC_PEEK (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_peek::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_peek`] module"]
+#[doc = "ASYNC_PEEK (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_peek::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_peek`] module"]
 #[doc(alias = "ASYNC_PEEK")]
 pub type AsyncPeek = crate::Reg<async_peek::AsyncPeekSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_peek;
-#[doc = "SYNC_PEEK (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_peek::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_peek`] module"]
+#[doc = "SYNC_PEEK (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_peek::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_peek`] module"]
 #[doc(alias = "SYNC_PEEK")]
 pub type SyncPeek = crate::Reg<sync_peek::SyncPeekSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod sync_peek;
-#[doc = "ASYNC_CH0_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch0_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch0_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch0_ctrl`] module"]
+#[doc = "ASYNC_CH0_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch0_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch0_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch0_ctrl`] module"]
 #[doc(alias = "ASYNC_CH0_CTRL")]
 pub type AsyncCh0Ctrl = crate::Reg<async_ch0_ctrl::AsyncCh0CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch0_ctrl;
-#[doc = "ASYNC_CH1_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch1_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch1_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch1_ctrl`] module"]
+#[doc = "ASYNC_CH1_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch1_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch1_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch1_ctrl`] module"]
 #[doc(alias = "ASYNC_CH1_CTRL")]
 pub type AsyncCh1Ctrl = crate::Reg<async_ch1_ctrl::AsyncCh1CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch1_ctrl;
-#[doc = "ASYNC_CH2_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch2_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch2_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch2_ctrl`] module"]
+#[doc = "ASYNC_CH2_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch2_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch2_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch2_ctrl`] module"]
 #[doc(alias = "ASYNC_CH2_CTRL")]
 pub type AsyncCh2Ctrl = crate::Reg<async_ch2_ctrl::AsyncCh2CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch2_ctrl;
-#[doc = "ASYNC_CH3_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch3_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch3_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch3_ctrl`] module"]
+#[doc = "ASYNC_CH3_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch3_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch3_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch3_ctrl`] module"]
 #[doc(alias = "ASYNC_CH3_CTRL")]
 pub type AsyncCh3Ctrl = crate::Reg<async_ch3_ctrl::AsyncCh3CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch3_ctrl;
-#[doc = "ASYNC_CH4_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch4_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch4_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch4_ctrl`] module"]
+#[doc = "ASYNC_CH4_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch4_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch4_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch4_ctrl`] module"]
 #[doc(alias = "ASYNC_CH4_CTRL")]
 pub type AsyncCh4Ctrl = crate::Reg<async_ch4_ctrl::AsyncCh4CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch4_ctrl;
-#[doc = "ASYNC_CH5_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch5_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch5_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch5_ctrl`] module"]
+#[doc = "ASYNC_CH5_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch5_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch5_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch5_ctrl`] module"]
 #[doc(alias = "ASYNC_CH5_CTRL")]
 pub type AsyncCh5Ctrl = crate::Reg<async_ch5_ctrl::AsyncCh5CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch5_ctrl;
-#[doc = "ASYNC_CH6_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch6_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch6_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch6_ctrl`] module"]
+#[doc = "ASYNC_CH6_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch6_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch6_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch6_ctrl`] module"]
 #[doc(alias = "ASYNC_CH6_CTRL")]
 pub type AsyncCh6Ctrl = crate::Reg<async_ch6_ctrl::AsyncCh6CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch6_ctrl;
-#[doc = "ASYNC_CH7_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch7_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch7_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch7_ctrl`] module"]
+#[doc = "ASYNC_CH7_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch7_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch7_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch7_ctrl`] module"]
 #[doc(alias = "ASYNC_CH7_CTRL")]
 pub type AsyncCh7Ctrl = crate::Reg<async_ch7_ctrl::AsyncCh7CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch7_ctrl;
-#[doc = "ASYNC_CH8_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch8_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch8_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch8_ctrl`] module"]
+#[doc = "ASYNC_CH8_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch8_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch8_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch8_ctrl`] module"]
 #[doc(alias = "ASYNC_CH8_CTRL")]
 pub type AsyncCh8Ctrl = crate::Reg<async_ch8_ctrl::AsyncCh8CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch8_ctrl;
-#[doc = "ASYNC_CH9_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch9_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch9_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch9_ctrl`] module"]
+#[doc = "ASYNC_CH9_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch9_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch9_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch9_ctrl`] module"]
 #[doc(alias = "ASYNC_CH9_CTRL")]
 pub type AsyncCh9Ctrl = crate::Reg<async_ch9_ctrl::AsyncCh9CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch9_ctrl;
-#[doc = "ASYNC_CH10_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch10_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch10_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch10_ctrl`] module"]
+#[doc = "ASYNC_CH10_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch10_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch10_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch10_ctrl`] module"]
 #[doc(alias = "ASYNC_CH10_CTRL")]
 pub type AsyncCh10Ctrl = crate::Reg<async_ch10_ctrl::AsyncCh10CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch10_ctrl;
-#[doc = "ASYNC_CH11_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch11_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch11_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch11_ctrl`] module"]
+#[doc = "ASYNC_CH11_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch11_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch11_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch11_ctrl`] module"]
 #[doc(alias = "ASYNC_CH11_CTRL")]
 pub type AsyncCh11Ctrl = crate::Reg<async_ch11_ctrl::AsyncCh11CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch11_ctrl;
-#[doc = "ASYNC_CH12_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch12_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch12_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch12_ctrl`] module"]
+#[doc = "ASYNC_CH12_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch12_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch12_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch12_ctrl`] module"]
 #[doc(alias = "ASYNC_CH12_CTRL")]
 pub type AsyncCh12Ctrl = crate::Reg<async_ch12_ctrl::AsyncCh12CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch12_ctrl;
-#[doc = "ASYNC_CH13_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch13_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch13_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch13_ctrl`] module"]
+#[doc = "ASYNC_CH13_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch13_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch13_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch13_ctrl`] module"]
 #[doc(alias = "ASYNC_CH13_CTRL")]
 pub type AsyncCh13Ctrl = crate::Reg<async_ch13_ctrl::AsyncCh13CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch13_ctrl;
-#[doc = "ASYNC_CH14_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch14_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch14_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch14_ctrl`] module"]
+#[doc = "ASYNC_CH14_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch14_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch14_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch14_ctrl`] module"]
 #[doc(alias = "ASYNC_CH14_CTRL")]
 pub type AsyncCh14Ctrl = crate::Reg<async_ch14_ctrl::AsyncCh14CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch14_ctrl;
-#[doc = "ASYNC_CH15_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch15_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch15_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch15_ctrl`] module"]
+#[doc = "ASYNC_CH15_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch15_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch15_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@async_ch15_ctrl`] module"]
 #[doc(alias = "ASYNC_CH15_CTRL")]
 pub type AsyncCh15Ctrl = crate::Reg<async_ch15_ctrl::AsyncCh15CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod async_ch15_ctrl;
-#[doc = "SYNC_CH0_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch0_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch0_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch0_ctrl`] module"]
+#[doc = "SYNC_CH0_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch0_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch0_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch0_ctrl`] module"]
 #[doc(alias = "SYNC_CH0_CTRL")]
 pub type SyncCh0Ctrl = crate::Reg<sync_ch0_ctrl::SyncCh0CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod sync_ch0_ctrl;
-#[doc = "SYNC_CH1_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch1_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch1_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch1_ctrl`] module"]
+#[doc = "SYNC_CH1_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch1_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch1_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch1_ctrl`] module"]
 #[doc(alias = "SYNC_CH1_CTRL")]
 pub type SyncCh1Ctrl = crate::Reg<sync_ch1_ctrl::SyncCh1CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod sync_ch1_ctrl;
-#[doc = "SYNC_CH2_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch2_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch2_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch2_ctrl`] module"]
+#[doc = "SYNC_CH2_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch2_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch2_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch2_ctrl`] module"]
 #[doc(alias = "SYNC_CH2_CTRL")]
 pub type SyncCh2Ctrl = crate::Reg<sync_ch2_ctrl::SyncCh2CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod sync_ch2_ctrl;
-#[doc = "SYNC_CH3_CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch3_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch3_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch3_ctrl`] module"]
+#[doc = "SYNC_CH3_CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, PRS chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_ch3_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`sync_ch3_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@sync_ch3_ctrl`] module"]
 #[doc(alias = "SYNC_CH3_CTRL")]
 pub type SyncCh3Ctrl = crate::Reg<sync_ch3_ctrl::SyncCh3CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, PRS chapter"]
 pub mod sync_ch3_ctrl;
 #[doc = "CONSUMER_CMU_CALDN (rw) register accessor: CALDN consumer register\n\nYou can [`read`](crate::Reg::read) this register and get [`consumer_cmu_caldn::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`consumer_cmu_caldn::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@consumer_cmu_caldn`] module"]
 #[doc(alias = "CONSUMER_CMU_CALDN")]

@@ -20,7 +20,7 @@ impl W {
         VtrtrimanaW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`bufouttrim::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bufouttrim::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "BUFOUT Trim Configuration Register\n\nYou can [`read`](crate::Reg::read) this register and get [`bufouttrim::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bufouttrim::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct BufouttrimSpec;
 impl crate::RegisterSpec for BufouttrimSpec {
     type Ux = u32;

@@ -37,7 +37,7 @@ impl R {
         Dtem23fR::new(((self.bits >> 4) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`dtfault::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DTI Fault Register\n\nYou can [`read`](crate::Reg::read) this register and get [`dtfault::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct DtfaultSpec;
 impl crate::RegisterSpec for DtfaultSpec {
     type Ux = u32;

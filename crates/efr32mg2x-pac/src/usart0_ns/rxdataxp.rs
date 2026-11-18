@@ -23,7 +23,7 @@ impl R {
         FerrpR::new(((self.bits >> 15) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdataxp::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RX Buffer Data Extended Peek Register\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdataxp::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct RxdataxpSpec;
 impl crate::RegisterSpec for RxdataxpSpec {
     type Ux = u32;

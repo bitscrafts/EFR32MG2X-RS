@@ -44,7 +44,7 @@ impl W {
         RxenatW::new(self, 15)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdatax::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "TX Buffer Data Extended Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdatax::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct TxdataxSpec;
 impl crate::RegisterSpec for TxdataxSpec {
     type Ux = u32;

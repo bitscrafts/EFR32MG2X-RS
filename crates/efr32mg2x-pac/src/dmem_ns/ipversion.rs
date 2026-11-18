@@ -9,7 +9,7 @@ impl R {
         IpversionR::new((self.bits & 3) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMEM_NS IPVERSION (offset 0x000, 32 bits). Fields: IPVERSION[1:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DMEM chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IpversionSpec;
 impl crate::RegisterSpec for IpversionSpec {
     type Ux = u32;

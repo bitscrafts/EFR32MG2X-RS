@@ -16,7 +16,7 @@ impl R {
         Rxdatap1R::new(((self.bits >> 8) & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdoublep::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Receive Buffer Double Data Peek Register\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdoublep::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct RxdoublepSpec;
 impl crate::RegisterSpec for RxdoublepSpec {
     type Ux = u32;

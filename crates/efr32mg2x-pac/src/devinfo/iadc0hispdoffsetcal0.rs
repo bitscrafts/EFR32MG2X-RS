@@ -1,16 +1,16 @@
 #[doc = "Register `IADC0HISPDOFFSETCAL0` reader"]
 pub type R = crate::R<Iadc0hispdoffsetcal0Spec>;
-#[doc = "Field `OFFSETANA1HISPD` reader - No Description"]
+#[doc = "Field `OFFSETANA1HISPD` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Offsetana1hispdR = crate::FieldReader<u16>;
-#[doc = "Field `OFFSETANA2HISPD` reader - No Description"]
+#[doc = "Field `OFFSETANA2HISPD` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Offsetana2hispdR = crate::FieldReader<u16>;
 impl R {
-    #[doc = "Bits 0:15 - No Description"]
+    #[doc = "Bits 0:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn offsetana1hispd(&self) -> Offsetana1hispdR {
         Offsetana1hispdR::new((self.bits & 0xffff) as u16)
     }
-    #[doc = "Bits 16:31 - No Description"]
+    #[doc = "Bits 16:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn offsetana2hispd(&self) -> Offsetana2hispdR {
         Offsetana2hispdR::new(((self.bits >> 16) & 0xffff) as u16)

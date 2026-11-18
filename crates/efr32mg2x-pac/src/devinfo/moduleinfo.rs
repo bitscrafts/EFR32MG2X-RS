@@ -1,8 +1,8 @@
 #[doc = "Register `MODULEINFO` reader"]
 pub type R = crate::R<ModuleinfoSpec>;
-#[doc = "Field `HWREV` reader - No Description"]
+#[doc = "Field `HWREV` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type HwrevR = crate::FieldReader;
-#[doc = "No Description\n\nValue on reset: 7"]
+#[doc = "Module Information\n\nValue on reset: 7"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u8)]
 pub enum Antenna {
@@ -25,7 +25,7 @@ impl crate::FieldSpec for Antenna {
     type Ux = u8;
 }
 impl crate::IsEnum for Antenna {}
-#[doc = "Field `ANTENNA` reader - No Description"]
+#[doc = "Field `ANTENNA` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type AntennaR = crate::FieldReader<Antenna>;
 impl AntennaR {
     #[doc = "Get enumerated values variant"]
@@ -60,9 +60,9 @@ impl AntennaR {
         *self == Antenna::Invertedf
     }
 }
-#[doc = "Field `MODNUMBER` reader - No Description"]
+#[doc = "Field `MODNUMBER` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type ModnumberR = crate::FieldReader;
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Type {
     #[doc = "0: PCB"]
@@ -76,7 +76,7 @@ impl From<Type> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `TYPE` reader - No Description"]
+#[doc = "Field `TYPE` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type TypeR = crate::BitReader<Type>;
 impl TypeR {
     #[doc = "Get enumerated values variant"]
@@ -98,7 +98,7 @@ impl TypeR {
         *self == Type::Sip
     }
 }
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lfxo {
     #[doc = "0: NONE"]
@@ -112,7 +112,7 @@ impl From<Lfxo> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `LFXO` reader - No Description"]
+#[doc = "Field `LFXO` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type LfxoR = crate::BitReader<Lfxo>;
 impl LfxoR {
     #[doc = "Get enumerated values variant"]
@@ -134,7 +134,7 @@ impl LfxoR {
         *self == Lfxo::Present
     }
 }
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Express {
     #[doc = "0: SUPPORTED"]
@@ -148,7 +148,7 @@ impl From<Express> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `EXPRESS` reader - No Description"]
+#[doc = "Field `EXPRESS` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type ExpressR = crate::BitReader<Express>;
 impl ExpressR {
     #[doc = "Get enumerated values variant"]
@@ -170,7 +170,7 @@ impl ExpressR {
         *self == Express::None
     }
 }
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lfxocalval {
     #[doc = "0: VALID"]
@@ -184,7 +184,7 @@ impl From<Lfxocalval> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `LFXOCALVAL` reader - No Description"]
+#[doc = "Field `LFXOCALVAL` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type LfxocalvalR = crate::BitReader<Lfxocalval>;
 impl LfxocalvalR {
     #[doc = "Get enumerated values variant"]
@@ -206,7 +206,7 @@ impl LfxocalvalR {
         *self == Lfxocalval::Notvalid
     }
 }
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Hfxocalval {
     #[doc = "0: VALID"]
@@ -220,7 +220,7 @@ impl From<Hfxocalval> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `HFXOCALVAL` reader - No Description"]
+#[doc = "Field `HFXOCALVAL` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type HfxocalvalR = crate::BitReader<Hfxocalval>;
 impl HfxocalvalR {
     #[doc = "Get enumerated values variant"]
@@ -242,9 +242,9 @@ impl HfxocalvalR {
         *self == Hfxocalval::Notvalid
     }
 }
-#[doc = "Field `MODNUMBERMSB` reader - No Description"]
+#[doc = "Field `MODNUMBERMSB` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type ModnumbermsbR = crate::FieldReader<u16>;
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Padcdc {
     #[doc = "0: VDCDC"]
@@ -258,7 +258,7 @@ impl From<Padcdc> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `PADCDC` reader - No Description"]
+#[doc = "Field `PADCDC` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type PadcdcR = crate::BitReader<Padcdc>;
 impl PadcdcR {
     #[doc = "Get enumerated values variant"]
@@ -280,7 +280,7 @@ impl PadcdcR {
         *self == Padcdc::Other
     }
 }
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phylimited {
     #[doc = "0: LIMITED"]
@@ -294,7 +294,7 @@ impl From<Phylimited> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `PHYLIMITED` reader - No Description"]
+#[doc = "Field `PHYLIMITED` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type PhylimitedR = crate::BitReader<Phylimited>;
 impl PhylimitedR {
     #[doc = "Get enumerated values variant"]
@@ -316,7 +316,7 @@ impl PhylimitedR {
         *self == Phylimited::Unlimited
     }
 }
-#[doc = "No Description\n\nValue on reset: 1"]
+#[doc = "DEVINFO MODULEINFO (offset 0x14C, 32 bits). Fields: HWREV[4:0], ANTENNA[7:5], MODNUMBER[14:8], TYPE[15], LFXO[16], EXPRESS[17], LFXOCALVAL[18], HFXOCALVAL[19], MODNUMBERMSB[28:20], PADCDC[29], PHYLIMITED[30], EXTVALID[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DEVINFO chapter.\n\nValue on reset: 1"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Extvalid {
     #[doc = "0: EXTUSED"]
@@ -330,7 +330,7 @@ impl From<Extvalid> for bool {
         variant as u8 != 0
     }
 }
-#[doc = "Field `EXTVALID` reader - No Description"]
+#[doc = "Field `EXTVALID` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type ExtvalidR = crate::BitReader<Extvalid>;
 impl ExtvalidR {
     #[doc = "Get enumerated values variant"]
@@ -353,62 +353,62 @@ impl ExtvalidR {
     }
 }
 impl R {
-    #[doc = "Bits 0:4 - No Description"]
+    #[doc = "Bits 0:4 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn hwrev(&self) -> HwrevR {
         HwrevR::new((self.bits & 0x1f) as u8)
     }
-    #[doc = "Bits 5:7 - No Description"]
+    #[doc = "Bits 5:7 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn antenna(&self) -> AntennaR {
         AntennaR::new(((self.bits >> 5) & 7) as u8)
     }
-    #[doc = "Bits 8:14 - No Description"]
+    #[doc = "Bits 8:14 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modnumber(&self) -> ModnumberR {
         ModnumberR::new(((self.bits >> 8) & 0x7f) as u8)
     }
-    #[doc = "Bit 15 - No Description"]
+    #[doc = "Bit 15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn type_(&self) -> TypeR {
         TypeR::new(((self.bits >> 15) & 1) != 0)
     }
-    #[doc = "Bit 16 - No Description"]
+    #[doc = "Bit 16 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn lfxo(&self) -> LfxoR {
         LfxoR::new(((self.bits >> 16) & 1) != 0)
     }
-    #[doc = "Bit 17 - No Description"]
+    #[doc = "Bit 17 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn express(&self) -> ExpressR {
         ExpressR::new(((self.bits >> 17) & 1) != 0)
     }
-    #[doc = "Bit 18 - No Description"]
+    #[doc = "Bit 18 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn lfxocalval(&self) -> LfxocalvalR {
         LfxocalvalR::new(((self.bits >> 18) & 1) != 0)
     }
-    #[doc = "Bit 19 - No Description"]
+    #[doc = "Bit 19 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn hfxocalval(&self) -> HfxocalvalR {
         HfxocalvalR::new(((self.bits >> 19) & 1) != 0)
     }
-    #[doc = "Bits 20:28 - No Description"]
+    #[doc = "Bits 20:28 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modnumbermsb(&self) -> ModnumbermsbR {
         ModnumbermsbR::new(((self.bits >> 20) & 0x01ff) as u16)
     }
-    #[doc = "Bit 29 - No Description"]
+    #[doc = "Bit 29 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn padcdc(&self) -> PadcdcR {
         PadcdcR::new(((self.bits >> 29) & 1) != 0)
     }
-    #[doc = "Bit 30 - No Description"]
+    #[doc = "Bit 30 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn phylimited(&self) -> PhylimitedR {
         PhylimitedR::new(((self.bits >> 30) & 1) != 0)
     }
-    #[doc = "Bit 31 - No Description"]
+    #[doc = "Bit 31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn extvalid(&self) -> ExtvalidR {
         ExtvalidR::new(((self.bits >> 31) & 1) != 0)

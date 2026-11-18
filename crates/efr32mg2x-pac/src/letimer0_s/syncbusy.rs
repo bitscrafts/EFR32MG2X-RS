@@ -65,7 +65,7 @@ impl R {
         Cto1R::new(((self.bits >> 9) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`syncbusy::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Synchronization Busy Register\n\nYou can [`read`](crate::Reg::read) this register and get [`syncbusy::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct SyncbusySpec;
 impl crate::RegisterSpec for SyncbusySpec {
     type Ux = u32;

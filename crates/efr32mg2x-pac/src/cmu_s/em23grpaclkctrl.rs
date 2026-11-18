@@ -89,7 +89,7 @@ impl W {
         ClkselW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`em23grpaclkctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`em23grpaclkctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "EM23 Peripheral Group a Clock Control\n\nYou can [`read`](crate::Reg::read) this register and get [`em23grpaclkctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`em23grpaclkctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Em23grpaclkctrlSpec;
 impl crate::RegisterSpec for Em23grpaclkctrlSpec {
     type Ux = u32;

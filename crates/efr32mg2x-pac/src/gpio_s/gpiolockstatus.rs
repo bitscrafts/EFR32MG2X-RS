@@ -43,7 +43,7 @@ impl R {
         LockR::new((self.bits & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`gpiolockstatus::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Lock Status\n\nYou can [`read`](crate::Reg::read) this register and get [`gpiolockstatus::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct GpiolockstatusSpec;
 impl crate::RegisterSpec for GpiolockstatusSpec {
     type Ux = u32;

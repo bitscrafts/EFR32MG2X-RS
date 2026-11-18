@@ -20,7 +20,7 @@ impl W {
         Cmp0valueW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`grp0_cmp0value::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`grp0_cmp0value::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Compare 0 Value Register\n\nYou can [`read`](crate::Reg::read) this register and get [`grp0_cmp0value::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`grp0_cmp0value::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Grp0Cmp0valueSpec;
 impl crate::RegisterSpec for Grp0Cmp0valueSpec {
     type Ux = u32;

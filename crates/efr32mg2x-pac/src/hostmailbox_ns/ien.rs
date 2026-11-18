@@ -62,7 +62,7 @@ impl W {
         Mboxien3W::new(self, 3)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ien::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ien::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "HOSTMAILBOX_NS IEN (offset 0x044, 32 bits). Fields: MBOXIEN0[0], MBOXIEN1[1], MBOXIEN2[2], MBOXIEN3[3]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, HOSTMAILBOX chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ien::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ien::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IenSpec;
 impl crate::RegisterSpec for IenSpec {
     type Ux = u32;

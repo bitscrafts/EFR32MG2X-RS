@@ -9,7 +9,7 @@ impl R {
         AuxcntR::new((self.bits & 0xffff) as u16)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`auxcnt::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Auxiliary Counter Value Register\n\nYou can [`read`](crate::Reg::read) this register and get [`auxcnt::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct AuxcntSpec;
 impl crate::RegisterSpec for AuxcntSpec {
     type Ux = u32;

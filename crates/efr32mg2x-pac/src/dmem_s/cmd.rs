@@ -30,7 +30,7 @@ impl W {
         Cleareccaddr3W::new(self, 3)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cmd::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMEM_S CMD (offset 0x004, 32 bits). Fields: CLEARECCADDR0[0], CLEARECCADDR1[1], CLEARECCADDR2[2], CLEARECCADDR3[3]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DMEM chapter.\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cmd::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct CmdSpec;
 impl crate::RegisterSpec for CmdSpec {
     type Ux = u32;

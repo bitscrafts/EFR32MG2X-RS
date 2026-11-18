@@ -9,7 +9,7 @@ impl R {
         BusyR::new((self.bits & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`chbusy::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMA Channel Busy Register\n\nYou can [`read`](crate::Reg::read) this register and get [`chbusy::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct ChbusySpec;
 impl crate::RegisterSpec for ChbusySpec {
     type Ux = u32;

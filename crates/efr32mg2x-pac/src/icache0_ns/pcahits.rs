@@ -9,7 +9,7 @@ impl R {
         PcahitsR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`pcahits::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Performance Counter Advanced Hits\n\nYou can [`read`](crate::Reg::read) this register and get [`pcahits::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct PcahitsSpec;
 impl crate::RegisterSpec for PcahitsSpec {
     type Ux = u32;

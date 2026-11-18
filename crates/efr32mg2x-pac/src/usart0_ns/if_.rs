@@ -244,7 +244,7 @@ impl W {
         Tcmp2W::new(self, 16)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "USART0_NS IF (offset 0x048, 32 bits). Fields: TXC[0], TXBL[1], RXDATAV[2], RXFULL[3], RXOF[4], RXUF[5], TXOF[6], TXUF[7], PERR[8], FERR[9], MPAF[10], SSM[11], CCF[12], TXIDLE[13], TCMP0[14], TCMP1[15], TCMP2[16]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, USART chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

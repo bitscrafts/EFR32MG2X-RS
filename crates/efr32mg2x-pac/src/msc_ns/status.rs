@@ -120,7 +120,7 @@ impl R {
         PwrupckbdfailcountR::new(((self.bits >> 28) & 0x0f) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Status Register\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct StatusSpec;
 impl crate::RegisterSpec for StatusSpec {
     type Ux = u32;

@@ -44,7 +44,7 @@ impl W {
         TamperrcclrW::new(self, 18)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cmd::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "EMU Command Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cmd::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct CmdSpec;
 impl crate::RegisterSpec for CmdSpec {
     type Ux = u32;

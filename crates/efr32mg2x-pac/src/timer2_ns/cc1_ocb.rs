@@ -20,7 +20,7 @@ impl W {
         OcbW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`cc1_ocb::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cc1_ocb::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "TIMER2_NS CC1_OCB (offset 0x090, 32 bits). Fields: OCB[15:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, TIMER chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`cc1_ocb::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cc1_ocb::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Cc1OcbSpec;
 impl crate::RegisterSpec for Cc1OcbSpec {
     type Ux = u32;

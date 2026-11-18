@@ -20,7 +20,7 @@ impl W {
         DstaddrW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ch6_dst::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch6_dst::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "LDMA_NS CH6_DST (offset 0x18C, 32 bits). Fields: DSTADDR[31:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, LDMA chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ch6_dst::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch6_dst::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch6DstSpec;
 impl crate::RegisterSpec for Ch6DstSpec {
     type Ux = u32;

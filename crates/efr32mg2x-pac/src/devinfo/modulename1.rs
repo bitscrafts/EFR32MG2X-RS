@@ -1,30 +1,30 @@
 #[doc = "Register `MODULENAME1` reader"]
 pub type R = crate::R<Modulename1Spec>;
-#[doc = "Field `MODCHAR5` reader - No Description"]
+#[doc = "Field `MODCHAR5` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar5R = crate::FieldReader;
-#[doc = "Field `MODCHAR6` reader - No Description"]
+#[doc = "Field `MODCHAR6` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar6R = crate::FieldReader;
-#[doc = "Field `MODCHAR7` reader - No Description"]
+#[doc = "Field `MODCHAR7` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar7R = crate::FieldReader;
-#[doc = "Field `MODCHAR8` reader - No Description"]
+#[doc = "Field `MODCHAR8` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar8R = crate::FieldReader;
 impl R {
-    #[doc = "Bits 0:7 - No Description"]
+    #[doc = "Bits 0:7 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar5(&self) -> Modchar5R {
         Modchar5R::new((self.bits & 0xff) as u8)
     }
-    #[doc = "Bits 8:15 - No Description"]
+    #[doc = "Bits 8:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar6(&self) -> Modchar6R {
         Modchar6R::new(((self.bits >> 8) & 0xff) as u8)
     }
-    #[doc = "Bits 16:23 - No Description"]
+    #[doc = "Bits 16:23 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar7(&self) -> Modchar7R {
         Modchar7R::new(((self.bits >> 16) & 0xff) as u8)
     }
-    #[doc = "Bits 24:31 - No Description"]
+    #[doc = "Bits 24:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar8(&self) -> Modchar8R {
         Modchar8R::new(((self.bits >> 24) & 0xff) as u8)

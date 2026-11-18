@@ -124,7 +124,7 @@ impl R {
         StateR::new(((self.bits >> 5) & 7) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`state::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "State Register\n\nYou can [`read`](crate::Reg::read) this register and get [`state::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct StateSpec;
 impl crate::RegisterSpec for StateSpec {
     type Ux = u32;

@@ -23,7 +23,7 @@ impl R {
         TempavgR::new(((self.bits >> 16) & 0x07ff) as u16)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`temp::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Temperature\n\nYou can [`read`](crate::Reg::read) this register and get [`temp::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct TempSpec;
 impl crate::RegisterSpec for TempSpec {
     type Ux = u32;

@@ -9,7 +9,7 @@ impl R {
         SynctrigR::new((self.bits & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`syncstatus::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMA Sync Trigger Status Register\n\nYou can [`read`](crate::Reg::read) this register and get [`syncstatus::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct SyncstatusSpec;
 impl crate::RegisterSpec for SyncstatusSpec {
     type Ux = u32;

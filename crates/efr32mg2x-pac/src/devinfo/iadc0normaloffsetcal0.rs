@@ -1,16 +1,16 @@
 #[doc = "Register `IADC0NORMALOFFSETCAL0` reader"]
 pub type R = crate::R<Iadc0normaloffsetcal0Spec>;
-#[doc = "Field `OFFSETANA1NORM` reader - No Description"]
+#[doc = "Field `OFFSETANA1NORM` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Offsetana1normR = crate::FieldReader<u16>;
-#[doc = "Field `OFFSETANA2NORM` reader - No Description"]
+#[doc = "Field `OFFSETANA2NORM` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Offsetana2normR = crate::FieldReader<u16>;
 impl R {
-    #[doc = "Bits 0:15 - No Description"]
+    #[doc = "Bits 0:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn offsetana1norm(&self) -> Offsetana1normR {
         Offsetana1normR::new((self.bits & 0xffff) as u16)
     }
-    #[doc = "Bits 16:31 - No Description"]
+    #[doc = "Bits 16:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn offsetana2norm(&self) -> Offsetana2normR {
         Offsetana2normR::new(((self.bits >> 16) & 0xffff) as u16)

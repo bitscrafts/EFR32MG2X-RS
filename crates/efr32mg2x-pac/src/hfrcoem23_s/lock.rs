@@ -37,7 +37,7 @@ impl W {
         LockkeyW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "HFRCOEM23_S LOCK (offset 0x01C, 32 bits). Fields: LOCKKEY[15:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, HFRCOEM chapter.\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct LockSpec;
 impl crate::RegisterSpec for LockSpec {
     type Ux = u32;

@@ -9,7 +9,7 @@ impl W {
         SyncswsetW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`syncswset::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMA Sync Trig Sw Set Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`syncswset::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct SyncswsetSpec;
 impl crate::RegisterSpec for SyncswsetSpec {
     type Ux = u32;

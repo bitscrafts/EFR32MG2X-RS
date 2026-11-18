@@ -16,7 +16,7 @@ impl R {
         EnsR::new(((self.bits >> 16) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "ULFRCO_NS STATUS (offset 0x008, 32 bits). Fields: RDY[0], ENS[16]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, ULFRCO chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct StatusSpec;
 impl crate::RegisterSpec for StatusSpec {
     type Ux = u32;

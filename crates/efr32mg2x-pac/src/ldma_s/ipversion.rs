@@ -9,7 +9,7 @@ impl R {
         IpversionR::new((self.bits & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "IP Version\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IpversionSpec;
 impl crate::RegisterSpec for IpversionSpec {
     type Ux = u32;

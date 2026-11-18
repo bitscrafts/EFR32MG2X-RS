@@ -228,7 +228,7 @@ impl W {
         DstincsignW::new(self, 21)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ch5_cfg::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch5_cfg::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "LDMA_S CH5_CFG (offset 0x14C, 32 bits). Fields: ARBSLOTS[17:16], SRCINCSIGN[20], DSTINCSIGN[21]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, LDMA chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ch5_cfg::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch5_cfg::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch5CfgSpec;
 impl crate::RegisterSpec for Ch5CfgSpec {
     type Ux = u32;

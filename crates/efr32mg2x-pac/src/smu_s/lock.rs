@@ -1,6 +1,6 @@
 #[doc = "Register `LOCK` writer"]
 pub type W = crate::W<LockSpec>;
-#[doc = "No Description\n\nValue on reset: 0"]
+#[doc = "Lock Register\n\nValue on reset: 0"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Smulockkey {
@@ -17,7 +17,7 @@ impl crate::FieldSpec for Smulockkey {
     type Ux = u32;
 }
 impl crate::IsEnum for Smulockkey {}
-#[doc = "Field `SMULOCKKEY` writer - No Description"]
+#[doc = "Field `SMULOCKKEY` writer - no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub type SmulockkeyW<'a, REG> = crate::FieldWriter<'a, REG, 24, Smulockkey>;
 impl<'a, REG> SmulockkeyW<'a, REG>
 where
@@ -31,13 +31,13 @@ where
     }
 }
 impl W {
-    #[doc = "Bits 0:23 - No Description"]
+    #[doc = "Bits 0:23 - no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
     #[inline(always)]
     pub fn smulockkey(&mut self) -> SmulockkeyW<'_, LockSpec> {
         SmulockkeyW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "SMU_S LOCK (offset 0x008, 32 bits). Fields: SMULOCKKEY[23:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, SMU chapter.\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct LockSpec;
 impl crate::RegisterSpec for LockSpec {
     type Ux = u32;

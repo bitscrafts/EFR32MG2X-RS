@@ -81,32 +81,32 @@ impl RegisterBlock {
     pub const fn status(&self) -> &Status {
         &self.status
     }
-    #[doc = "0x400 - No Description"]
+    #[doc = "0x400 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn incl_ips_hw_cfg(&self) -> &InclIpsHwCfg {
         &self.incl_ips_hw_cfg
     }
-    #[doc = "0x404 - No Description"]
+    #[doc = "0x404 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ba411e_hw_cfg_1(&self) -> &Ba411eHwCfg1 {
         &self.ba411e_hw_cfg_1
     }
-    #[doc = "0x408 - No Description"]
+    #[doc = "0x408 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ba411e_hw_cfg_2(&self) -> &Ba411eHwCfg2 {
         &self.ba411e_hw_cfg_2
     }
-    #[doc = "0x40c - No Description"]
+    #[doc = "0x40c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ba413_hw_cfg(&self) -> &Ba413HwCfg {
         &self.ba413_hw_cfg
     }
-    #[doc = "0x410 - No Description"]
+    #[doc = "0x410 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ba418_hw_cfg(&self) -> &Ba418HwCfg {
         &self.ba418_hw_cfg
     }
-    #[doc = "0x414 - No Description"]
+    #[doc = "0x414 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ba419_hw_cfg(&self) -> &Ba419HwCfg {
         &self.ba419_hw_cfg
@@ -167,33 +167,33 @@ pub mod cmd;
 pub type Status = crate::Reg<status::StatusSpec>;
 #[doc = "Status register"]
 pub mod status;
-#[doc = "INCL_IPS_HW_CFG (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`incl_ips_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@incl_ips_hw_cfg`] module"]
+#[doc = "INCL_IPS_HW_CFG (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`incl_ips_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@incl_ips_hw_cfg`] module"]
 #[doc(alias = "INCL_IPS_HW_CFG")]
 pub type InclIpsHwCfg = crate::Reg<incl_ips_hw_cfg::InclIpsHwCfgSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter"]
 pub mod incl_ips_hw_cfg;
-#[doc = "BA411E_HW_CFG_1 (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_1::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba411e_hw_cfg_1`] module"]
+#[doc = "BA411E_HW_CFG_1 (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_1::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba411e_hw_cfg_1`] module"]
 #[doc(alias = "BA411E_HW_CFG_1")]
 pub type Ba411eHwCfg1 = crate::Reg<ba411e_hw_cfg_1::Ba411eHwCfg1Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter"]
 pub mod ba411e_hw_cfg_1;
-#[doc = "BA411E_HW_CFG_2 (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_2::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba411e_hw_cfg_2`] module"]
+#[doc = "BA411E_HW_CFG_2 (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_2::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba411e_hw_cfg_2`] module"]
 #[doc(alias = "BA411E_HW_CFG_2")]
 pub type Ba411eHwCfg2 = crate::Reg<ba411e_hw_cfg_2::Ba411eHwCfg2Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter"]
 pub mod ba411e_hw_cfg_2;
-#[doc = "BA413_HW_CFG (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba413_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba413_hw_cfg`] module"]
+#[doc = "BA413_HW_CFG (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ba413_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba413_hw_cfg`] module"]
 #[doc(alias = "BA413_HW_CFG")]
 pub type Ba413HwCfg = crate::Reg<ba413_hw_cfg::Ba413HwCfgSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter"]
 pub mod ba413_hw_cfg;
-#[doc = "BA418_HW_CFG (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba418_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba418_hw_cfg`] module"]
+#[doc = "BA418_HW_CFG (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ba418_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba418_hw_cfg`] module"]
 #[doc(alias = "BA418_HW_CFG")]
 pub type Ba418HwCfg = crate::Reg<ba418_hw_cfg::Ba418HwCfgSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter"]
 pub mod ba418_hw_cfg;
-#[doc = "BA419_HW_CFG (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba419_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba419_hw_cfg`] module"]
+#[doc = "BA419_HW_CFG (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ba419_hw_cfg::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ba419_hw_cfg`] module"]
 #[doc(alias = "BA419_HW_CFG")]
 pub type Ba419HwCfg = crate::Reg<ba419_hw_cfg::Ba419HwCfgSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, RADIOAES chapter"]
 pub mod ba419_hw_cfg;

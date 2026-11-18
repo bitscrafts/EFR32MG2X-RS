@@ -35,27 +35,27 @@ pub struct RegisterBlock {
     esaumrb56: Esaumrb56,
 }
 impl RegisterBlock {
-    #[doc = "0x00 - No Description"]
+    #[doc = "0x00 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ipversion(&self) -> &Ipversion {
         &self.ipversion
     }
-    #[doc = "0x04 - No Description"]
+    #[doc = "0x04 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn status(&self) -> &Status {
         &self.status
     }
-    #[doc = "0x08 - No Description"]
+    #[doc = "0x08 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn lock(&self) -> &Lock {
         &self.lock
     }
-    #[doc = "0x0c - No Description"]
+    #[doc = "0x0c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn if_(&self) -> &If {
         &self.if_
     }
-    #[doc = "0x10 - No Description"]
+    #[doc = "0x10 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ien(&self) -> &Ien {
         &self.ien
@@ -85,7 +85,7 @@ impl RegisterBlock {
     pub const fn ppusatd1(&self) -> &Ppusatd1 {
         &self.ppusatd1
     }
-    #[doc = "0x140 - No Description"]
+    #[doc = "0x140 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ppufs(&self) -> &Ppufs {
         &self.ppufs
@@ -100,71 +100,71 @@ impl RegisterBlock {
     pub const fn bmpusatd0(&self) -> &Bmpusatd0 {
         &self.bmpusatd0
     }
-    #[doc = "0x250 - No Description"]
+    #[doc = "0x250 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn bmpufs(&self) -> &Bmpufs {
         &self.bmpufs
     }
-    #[doc = "0x254 - No Description"]
+    #[doc = "0x254 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn bmpufsaddr(&self) -> &Bmpufsaddr {
         &self.bmpufsaddr
     }
-    #[doc = "0x260 - No Description"]
+    #[doc = "0x260 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn esaurtypes0(&self) -> &Esaurtypes0 {
         &self.esaurtypes0
     }
-    #[doc = "0x264 - No Description"]
+    #[doc = "0x264 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn esaurtypes1(&self) -> &Esaurtypes1 {
         &self.esaurtypes1
     }
-    #[doc = "0x270 - No Description"]
+    #[doc = "0x270 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn esaumrb01(&self) -> &Esaumrb01 {
         &self.esaumrb01
     }
-    #[doc = "0x274 - No Description"]
+    #[doc = "0x274 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn esaumrb12(&self) -> &Esaumrb12 {
         &self.esaumrb12
     }
-    #[doc = "0x280 - No Description"]
+    #[doc = "0x280 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn esaumrb45(&self) -> &Esaumrb45 {
         &self.esaumrb45
     }
-    #[doc = "0x284 - No Description"]
+    #[doc = "0x284 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn esaumrb56(&self) -> &Esaumrb56 {
         &self.esaumrb56
     }
 }
-#[doc = "IPVERSION (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
+#[doc = "IPVERSION (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
 #[doc(alias = "IPVERSION")]
 pub type Ipversion = crate::Reg<ipversion::IpversionSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod ipversion;
-#[doc = "STATUS (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@status`] module"]
+#[doc = "STATUS (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@status`] module"]
 #[doc(alias = "STATUS")]
 pub type Status = crate::Reg<status::StatusSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod status;
-#[doc = "LOCK (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lock`] module"]
+#[doc = "LOCK (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lock`] module"]
 #[doc(alias = "LOCK")]
 pub type Lock = crate::Reg<lock::LockSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod lock;
-#[doc = "IF (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@if_`] module"]
+#[doc = "IF (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@if_`] module"]
 #[doc(alias = "IF")]
 pub type If = crate::Reg<if_::IfSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod if_;
-#[doc = "IEN (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ien::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ien::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ien`] module"]
+#[doc = "IEN (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ien::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ien::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ien`] module"]
 #[doc(alias = "IEN")]
 pub type Ien = crate::Reg<ien::IenSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod ien;
 #[doc = "M33CTRL (rw) register accessor: Holds the M33 control settings\n\nYou can [`read`](crate::Reg::read) this register and get [`m33ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`m33ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@m33ctrl`] module"]
 #[doc(alias = "M33CTRL")]
@@ -191,10 +191,10 @@ pub mod ppusatd0;
 pub type Ppusatd1 = crate::Reg<ppusatd1::Ppusatd1Spec>;
 #[doc = "Set peripheral bits to 1 to mark as secure access only"]
 pub mod ppusatd1;
-#[doc = "PPUFS (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ppufs::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ppufs`] module"]
+#[doc = "PPUFS (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ppufs::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ppufs`] module"]
 #[doc(alias = "PPUFS")]
 pub type Ppufs = crate::Reg<ppufs::PpufsSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod ppufs;
 #[doc = "BMPUPATD0 (rw) register accessor: Set master bits to 1 to mark as a privileged master\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpupatd0::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bmpupatd0::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@bmpupatd0`] module"]
 #[doc(alias = "BMPUPATD0")]
@@ -206,43 +206,43 @@ pub mod bmpupatd0;
 pub type Bmpusatd0 = crate::Reg<bmpusatd0::Bmpusatd0Spec>;
 #[doc = "Set master bits to 1 to mark as a secure master"]
 pub mod bmpusatd0;
-#[doc = "BMPUFS (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpufs::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@bmpufs`] module"]
+#[doc = "BMPUFS (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpufs::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@bmpufs`] module"]
 #[doc(alias = "BMPUFS")]
 pub type Bmpufs = crate::Reg<bmpufs::BmpufsSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod bmpufs;
-#[doc = "BMPUFSADDR (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpufsaddr::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@bmpufsaddr`] module"]
+#[doc = "BMPUFSADDR (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpufsaddr::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@bmpufsaddr`] module"]
 #[doc(alias = "BMPUFSADDR")]
 pub type Bmpufsaddr = crate::Reg<bmpufsaddr::BmpufsaddrSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod bmpufsaddr;
-#[doc = "ESAURTYPES0 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaurtypes0::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaurtypes0::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaurtypes0`] module"]
+#[doc = "ESAURTYPES0 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`esaurtypes0::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaurtypes0::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaurtypes0`] module"]
 #[doc(alias = "ESAURTYPES0")]
 pub type Esaurtypes0 = crate::Reg<esaurtypes0::Esaurtypes0Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod esaurtypes0;
-#[doc = "ESAURTYPES1 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaurtypes1::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaurtypes1::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaurtypes1`] module"]
+#[doc = "ESAURTYPES1 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`esaurtypes1::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaurtypes1::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaurtypes1`] module"]
 #[doc(alias = "ESAURTYPES1")]
 pub type Esaurtypes1 = crate::Reg<esaurtypes1::Esaurtypes1Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod esaurtypes1;
-#[doc = "ESAUMRB01 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb01::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb01::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb01`] module"]
+#[doc = "ESAUMRB01 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb01::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb01::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb01`] module"]
 #[doc(alias = "ESAUMRB01")]
 pub type Esaumrb01 = crate::Reg<esaumrb01::Esaumrb01Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod esaumrb01;
-#[doc = "ESAUMRB12 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb12::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb12::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb12`] module"]
+#[doc = "ESAUMRB12 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb12::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb12::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb12`] module"]
 #[doc(alias = "ESAUMRB12")]
 pub type Esaumrb12 = crate::Reg<esaumrb12::Esaumrb12Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod esaumrb12;
-#[doc = "ESAUMRB45 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb45::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb45::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb45`] module"]
+#[doc = "ESAUMRB45 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb45::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb45::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb45`] module"]
 #[doc(alias = "ESAUMRB45")]
 pub type Esaumrb45 = crate::Reg<esaumrb45::Esaumrb45Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod esaumrb45;
-#[doc = "ESAUMRB56 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb56::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb56::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb56`] module"]
+#[doc = "ESAUMRB56 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SMU chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`esaumrb56::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaumrb56::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@esaumrb56`] module"]
 #[doc(alias = "ESAUMRB56")]
 pub type Esaumrb56 = crate::Reg<esaumrb56::Esaumrb56Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SMU chapter"]
 pub mod esaumrb56;

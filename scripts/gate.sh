@@ -55,6 +55,16 @@ fi
 
 # The module pages are the whole point of the generated docs, and svd2rust writes none of them. A regeneration
 # that drops them must fail here, not on docs.rs where nobody would notice until somebody looked.
+# "No Description" e' o que o SVD do vendor diz 6 859 vezes; o docs.rs mostrava-o em todos os registos. Se uma
+# regeneracao o trouxer de volta, falha aqui.
+if python3 scripts/placeholder-register-docs.py --check >/tmp/gate-pac-regs.log 2>&1; then
+    printf '  PASS  pac: no register says "No Description"\n'
+else
+    printf '  FAIL  pac: registers carry a vendor No Description again\n'
+    sed -n '1,6p' /tmp/gate-pac-regs.log | sed 's/^/        /'
+    FAILED=1
+fi
+
 if python3 scripts/add-pac-module-docs.py --check >/tmp/gate-pac-docs.log 2>&1; then
     printf '  PASS  pac: every module says what it is\n'
 else

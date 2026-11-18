@@ -9,7 +9,7 @@ impl R {
         Cap0valueR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`grp0_cap0value::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Capture 0 Value Register\n\nYou can [`read`](crate::Reg::read) this register and get [`grp0_cap0value::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Grp0Cap0valueSpec;
 impl crate::RegisterSpec for Grp0Cap0valueSpec {
     type Ux = u32;

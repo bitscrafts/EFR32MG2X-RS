@@ -33,7 +33,7 @@ pub struct RegisterBlock {
     rootseswversion: Rootseswversion,
 }
 impl RegisterBlock {
-    #[doc = "0x04 - No Description"]
+    #[doc = "0x04 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ipversion(&self) -> &Ipversion {
         &self.ipversion
@@ -129,10 +129,10 @@ impl RegisterBlock {
         &self.rootseswversion
     }
 }
-#[doc = "IPVERSION (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
+#[doc = "IPVERSION (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, SYSCFG chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
 #[doc(alias = "IPVERSION")]
 pub type Ipversion = crate::Reg<ipversion::IpversionSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, SYSCFG chapter"]
 pub mod ipversion;
 #[doc = "IF (rw) register accessor: Read to get system status.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@if_`] module"]
 #[doc(alias = "IF")]

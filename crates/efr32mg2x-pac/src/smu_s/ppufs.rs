@@ -9,7 +9,7 @@ impl R {
         PpufsperiphidR::new((self.bits & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ppufs::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Fault Status\n\nYou can [`read`](crate::Reg::read) this register and get [`ppufs::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct PpufsSpec;
 impl crate::RegisterSpec for PpufsSpec {
     type Ux = u32;

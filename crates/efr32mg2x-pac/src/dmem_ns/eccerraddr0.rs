@@ -9,7 +9,7 @@ impl R {
         AddrR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`eccerraddr0::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMEM_NS ECCERRADDR0 (offset 0x00C, 32 bits). Fields: ADDR[31:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DMEM chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`eccerraddr0::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Eccerraddr0Spec;
 impl crate::RegisterSpec for Eccerraddr0Spec {
     type Ux = u32;

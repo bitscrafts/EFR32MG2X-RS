@@ -146,7 +146,7 @@ impl W {
         AbusinputconflictW::new(self, 26)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "VDAC1_S IF (offset 0x020, 32 bits). Fields: CH0CD[0], CH1CD[1], CH0OF[4], CH1OF[5], CH0UF[8], CH1UF[9], ABUSALLOCERR[18], CH0DVL[20], CH1DVL[21], ABUSINPUTCONFLICT[26]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, VDAC chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

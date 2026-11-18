@@ -9,7 +9,7 @@ impl W {
         ChdisW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`chdis::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMA Channel Disable Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`chdis::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct ChdisSpec;
 impl crate::RegisterSpec for ChdisSpec {
     type Ux = u32;

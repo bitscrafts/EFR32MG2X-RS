@@ -9,7 +9,7 @@ impl R {
         TamperrstR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`tamperrstcause::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Tamper Reset Cause\n\nYou can [`read`](crate::Reg::read) this register and get [`tamperrstcause::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct TamperrstcauseSpec;
 impl crate::RegisterSpec for TamperrstcauseSpec {
     type Ux = u32;

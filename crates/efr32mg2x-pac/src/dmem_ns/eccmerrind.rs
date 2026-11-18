@@ -30,7 +30,7 @@ impl R {
         P3R::new(((self.bits >> 3) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`eccmerrind::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMEM_NS ECCMERRIND (offset 0x01C, 32 bits). Fields: P0[0], P1[1], P2[2], P3[3]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DMEM chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`eccmerrind::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct EccmerrindSpec;
 impl crate::RegisterSpec for EccmerrindSpec {
     type Ux = u32;

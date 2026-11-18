@@ -343,7 +343,7 @@ impl W {
         AuxselW::new(self, 24)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch8_ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch8_ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "PRS_S ASYNC_CH8_CTRL (offset 0x038, 32 bits). Fields: SIGSEL[2:0], SOURCESEL[14:8], FNSEL[19:16], AUXSEL[27:24]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, PRS chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`async_ch8_ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_ch8_ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct AsyncCh8CtrlSpec;
 impl crate::RegisterSpec for AsyncCh8CtrlSpec {
     type Ux = u32;

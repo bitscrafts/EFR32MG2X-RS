@@ -9,7 +9,7 @@ impl R {
         IcfR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`cc2_icf::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "TIMER0_NS CC2_ICF (offset 0x0B4, 32 bits). Fields: ICF[31:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, TIMER chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`cc2_icf::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Cc2IcfSpec;
 impl crate::RegisterSpec for Cc2IcfSpec {
     type Ux = u32;

@@ -21,174 +21,174 @@ pub struct RegisterBlock {
     ien: Ien,
 }
 impl RegisterBlock {
-    #[doc = "0x00 - No Description"]
+    #[doc = "0x00 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ipversion(&self) -> &Ipversion {
         &self.ipversion
     }
-    #[doc = "0x04 - No Description"]
+    #[doc = "0x04 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn en(&self) -> &En {
         &self.en
     }
-    #[doc = "0x08 - No Description"]
+    #[doc = "0x08 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ctrl(&self) -> &Ctrl {
         &self.ctrl
     }
-    #[doc = "0x0c - No Description"]
+    #[doc = "0x0c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn cmd(&self) -> &Cmd {
         &self.cmd
     }
-    #[doc = "0x10 - No Description"]
+    #[doc = "0x10 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn state(&self) -> &State {
         &self.state
     }
-    #[doc = "0x14 - No Description"]
+    #[doc = "0x14 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn status(&self) -> &Status {
         &self.status
     }
-    #[doc = "0x18 - No Description"]
+    #[doc = "0x18 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn clkdiv(&self) -> &Clkdiv {
         &self.clkdiv
     }
-    #[doc = "0x1c - No Description"]
+    #[doc = "0x1c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn saddr(&self) -> &Saddr {
         &self.saddr
     }
-    #[doc = "0x20 - No Description"]
+    #[doc = "0x20 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn saddrmask(&self) -> &Saddrmask {
         &self.saddrmask
     }
-    #[doc = "0x24 - No Description"]
+    #[doc = "0x24 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn rxdata(&self) -> &Rxdata {
         &self.rxdata
     }
-    #[doc = "0x28 - No Description"]
+    #[doc = "0x28 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn rxdouble(&self) -> &Rxdouble {
         &self.rxdouble
     }
-    #[doc = "0x2c - No Description"]
+    #[doc = "0x2c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn rxdatap(&self) -> &Rxdatap {
         &self.rxdatap
     }
-    #[doc = "0x30 - No Description"]
+    #[doc = "0x30 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn rxdoublep(&self) -> &Rxdoublep {
         &self.rxdoublep
     }
-    #[doc = "0x34 - No Description"]
+    #[doc = "0x34 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn txdata(&self) -> &Txdata {
         &self.txdata
     }
-    #[doc = "0x38 - No Description"]
+    #[doc = "0x38 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn txdouble(&self) -> &Txdouble {
         &self.txdouble
     }
-    #[doc = "0x3c - No Description"]
+    #[doc = "0x3c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn if_(&self) -> &If {
         &self.if_
     }
-    #[doc = "0x40 - No Description"]
+    #[doc = "0x40 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ien(&self) -> &Ien {
         &self.ien
     }
 }
-#[doc = "IPVERSION (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
+#[doc = "IPVERSION (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
 #[doc(alias = "IPVERSION")]
 pub type Ipversion = crate::Reg<ipversion::IpversionSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod ipversion;
-#[doc = "EN (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`en::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`en::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@en`] module"]
+#[doc = "EN (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`en::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`en::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@en`] module"]
 #[doc(alias = "EN")]
 pub type En = crate::Reg<en::EnSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod en;
-#[doc = "CTRL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ctrl`] module"]
+#[doc = "CTRL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ctrl`] module"]
 #[doc(alias = "CTRL")]
 pub type Ctrl = crate::Reg<ctrl::CtrlSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod ctrl;
-#[doc = "CMD (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cmd::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@cmd`] module"]
+#[doc = "CMD (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`cmd::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@cmd`] module"]
 #[doc(alias = "CMD")]
 pub type Cmd = crate::Reg<cmd::CmdSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod cmd;
-#[doc = "STATE (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`state::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@state`] module"]
+#[doc = "STATE (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`state::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@state`] module"]
 #[doc(alias = "STATE")]
 pub type State = crate::Reg<state::StateSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod state;
-#[doc = "STATUS (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@status`] module"]
+#[doc = "STATUS (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@status`] module"]
 #[doc(alias = "STATUS")]
 pub type Status = crate::Reg<status::StatusSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod status;
-#[doc = "CLKDIV (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`clkdiv::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`clkdiv::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@clkdiv`] module"]
+#[doc = "CLKDIV (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`clkdiv::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`clkdiv::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@clkdiv`] module"]
 #[doc(alias = "CLKDIV")]
 pub type Clkdiv = crate::Reg<clkdiv::ClkdivSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod clkdiv;
-#[doc = "SADDR (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`saddr::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`saddr::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@saddr`] module"]
+#[doc = "SADDR (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`saddr::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`saddr::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@saddr`] module"]
 #[doc(alias = "SADDR")]
 pub type Saddr = crate::Reg<saddr::SaddrSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod saddr;
-#[doc = "SADDRMASK (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`saddrmask::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`saddrmask::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@saddrmask`] module"]
+#[doc = "SADDRMASK (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`saddrmask::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`saddrmask::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@saddrmask`] module"]
 #[doc(alias = "SADDRMASK")]
 pub type Saddrmask = crate::Reg<saddrmask::SaddrmaskSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod saddrmask;
-#[doc = "RXDATA (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdata::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdata`] module"]
+#[doc = "RXDATA (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdata::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdata`] module"]
 #[doc(alias = "RXDATA")]
 pub type Rxdata = crate::Reg<rxdata::RxdataSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod rxdata;
-#[doc = "RXDOUBLE (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdouble::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdouble`] module"]
+#[doc = "RXDOUBLE (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdouble::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdouble`] module"]
 #[doc(alias = "RXDOUBLE")]
 pub type Rxdouble = crate::Reg<rxdouble::RxdoubleSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod rxdouble;
-#[doc = "RXDATAP (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdatap::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdatap`] module"]
+#[doc = "RXDATAP (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdatap::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdatap`] module"]
 #[doc(alias = "RXDATAP")]
 pub type Rxdatap = crate::Reg<rxdatap::RxdatapSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod rxdatap;
-#[doc = "RXDOUBLEP (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdoublep::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdoublep`] module"]
+#[doc = "RXDOUBLEP (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdoublep::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@rxdoublep`] module"]
 #[doc(alias = "RXDOUBLEP")]
 pub type Rxdoublep = crate::Reg<rxdoublep::RxdoublepSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod rxdoublep;
-#[doc = "TXDATA (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdata::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@txdata`] module"]
+#[doc = "TXDATA (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdata::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@txdata`] module"]
 #[doc(alias = "TXDATA")]
 pub type Txdata = crate::Reg<txdata::TxdataSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod txdata;
-#[doc = "TXDOUBLE (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdouble::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@txdouble`] module"]
+#[doc = "TXDOUBLE (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdouble::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@txdouble`] module"]
 #[doc(alias = "TXDOUBLE")]
 pub type Txdouble = crate::Reg<txdouble::TxdoubleSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod txdouble;
-#[doc = "IF (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@if_`] module"]
+#[doc = "IF (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@if_`] module"]
 #[doc(alias = "IF")]
 pub type If = crate::Reg<if_::IfSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod if_;
-#[doc = "IEN (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ien::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ien::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ien`] module"]
+#[doc = "IEN (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, I2C chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ien::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ien::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ien`] module"]
 #[doc(alias = "IEN")]
 pub type Ien = crate::Reg<ien::IenSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, I2C chapter"]
 pub mod ien;

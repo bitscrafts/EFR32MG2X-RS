@@ -114,7 +114,7 @@ impl W {
         Ch15pulseW::new(self, 15)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_swpulse::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Software Pulse Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`async_swpulse::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct AsyncSwpulseSpec;
 impl crate::RegisterSpec for AsyncSwpulseSpec {
     type Ux = u32;

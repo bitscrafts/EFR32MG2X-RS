@@ -216,7 +216,7 @@ impl W {
         Icfuf2W::new(self, 26)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "TIMER3_S IF (offset 0x014, 32 bits). Fields: OF[0], UF[1], DIRCHG[2], CC0[4], CC1[5], CC2[6], ICFWLFULL0[16], ICFWLFULL1[17], ICFWLFULL2[18], ICFOF0[20], ICFOF1[21], ICFOF2[22], ICFUF0[24], ICFUF1[25], ICFUF2[26]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, TIMER chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

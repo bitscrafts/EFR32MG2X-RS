@@ -1,16 +1,16 @@
 #[doc = "Register `IADC0GAIN0` reader"]
 pub type R = crate::R<Iadc0gain0Spec>;
-#[doc = "Field `GAINCANA1` reader - No Description"]
+#[doc = "Field `GAINCANA1` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Gaincana1R = crate::FieldReader<u16>;
-#[doc = "Field `GAINCANA2` reader - No Description"]
+#[doc = "Field `GAINCANA2` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Gaincana2R = crate::FieldReader<u16>;
 impl R {
-    #[doc = "Bits 0:15 - No Description"]
+    #[doc = "Bits 0:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn gaincana1(&self) -> Gaincana1R {
         Gaincana1R::new((self.bits & 0xffff) as u16)
     }
-    #[doc = "Bits 16:31 - No Description"]
+    #[doc = "Bits 16:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn gaincana2(&self) -> Gaincana2R {
         Gaincana2R::new(((self.bits >> 16) & 0xffff) as u16)

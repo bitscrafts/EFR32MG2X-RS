@@ -30,7 +30,7 @@ impl R {
         GKeysizeR::new(((self.bits >> 24) & 7) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_1::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RADIOAES_NS BA411E_HW_CFG_1 (offset 0x404, 32 bits). Fields: g_AesModesPoss[8:0], g_CS[16], g_UseMasking[17], g_Keysize[26:24]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, RADIOAES chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_1::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ba411eHwCfg1Spec;
 impl crate::RegisterSpec for Ba411eHwCfg1Spec {
     type Ux = u32;

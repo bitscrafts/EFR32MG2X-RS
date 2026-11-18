@@ -9,7 +9,7 @@ impl R {
         RxdataR::new((self.bits & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdata::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Receive Buffer Data Register\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdata::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct RxdataSpec;
 impl crate::RegisterSpec for RxdataSpec {
     type Ux = u32;

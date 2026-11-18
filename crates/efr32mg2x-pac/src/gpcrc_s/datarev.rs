@@ -9,7 +9,7 @@ impl R {
         DatarevR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`datarev::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "GPCRC_S DATAREV (offset 0x028, 32 bits). Fields: DATAREV[31:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, GPCRC chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`datarev::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct DatarevSpec;
 impl crate::RegisterSpec for DatarevSpec {
     type Ux = u32;

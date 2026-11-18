@@ -16,7 +16,7 @@ impl W {
         CalstopW::new(self, 1)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`calcmd::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Calibration Command Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`calcmd::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct CalcmdSpec;
 impl crate::RegisterSpec for CalcmdSpec {
     type Ux = u32;

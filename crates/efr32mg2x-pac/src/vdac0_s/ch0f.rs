@@ -9,7 +9,7 @@ impl W {
         DataW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch0f::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Channel 0 Data Write Fifo\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch0f::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch0fSpec;
 impl crate::RegisterSpec for Ch0fSpec {
     type Ux = u32;

@@ -75,7 +75,7 @@ impl W {
         LinkaddrW::new(self, 2)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ch6_link::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch6_link::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "LDMA_NS CH6_LINK (offset 0x190, 32 bits). Fields: LINKMODE[0], LINK[1], LINKADDR[31:2]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, LDMA chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ch6_link::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch6_link::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch6LinkSpec;
 impl crate::RegisterSpec for Ch6LinkSpec {
     type Ux = u32;

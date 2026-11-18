@@ -30,7 +30,7 @@ impl R {
         Ch3valR::new(((self.bits >> 3) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_peek::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Sync Channel Values\n\nYou can [`read`](crate::Reg::read) this register and get [`sync_peek::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct SyncPeekSpec;
 impl crate::RegisterSpec for SyncPeekSpec {
     type Ux = u32;

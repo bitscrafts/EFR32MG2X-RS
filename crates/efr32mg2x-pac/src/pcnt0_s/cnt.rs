@@ -9,7 +9,7 @@ impl R {
         CntR::new((self.bits & 0xffff) as u16)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`cnt::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Counter Value Register\n\nYou can [`read`](crate::Reg::read) this register and get [`cnt::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct CntSpec;
 impl crate::RegisterSpec for CntSpec {
     type Ux = u32;

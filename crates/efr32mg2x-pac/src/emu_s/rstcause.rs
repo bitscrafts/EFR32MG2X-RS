@@ -100,7 +100,7 @@ impl R {
         VreginR::new(((self.bits >> 31) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rstcause::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Reset Cause\n\nYou can [`read`](crate::Reg::read) this register and get [`rstcause::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct RstcauseSpec;
 impl crate::RegisterSpec for RstcauseSpec {
     type Ux = u32;

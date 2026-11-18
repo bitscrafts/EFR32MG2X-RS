@@ -9,7 +9,7 @@ impl R {
         CalcntR::new(self.bits & 0x000f_ffff)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`calcnt::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Calibration Result Counter Register\n\nYou can [`read`](crate::Reg::read) this register and get [`calcnt::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct CalcntSpec;
 impl crate::RegisterSpec for CalcntSpec {
     type Ux = u32;

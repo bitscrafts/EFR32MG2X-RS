@@ -9,7 +9,7 @@ impl R {
         ReqpendR::new((self.bits & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`reqpend::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMA Channel Requests Pending Register\n\nYou can [`read`](crate::Reg::read) this register and get [`reqpend::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct ReqpendSpec;
 impl crate::RegisterSpec for ReqpendSpec {
     type Ux = u32;

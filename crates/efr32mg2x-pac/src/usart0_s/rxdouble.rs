@@ -16,7 +16,7 @@ impl R {
         Rxdata1R::new(((self.bits >> 8) & 0xff) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdouble::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RX FIFO Double Data Register\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdouble::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct RxdoubleSpec;
 impl crate::RegisterSpec for RxdoubleSpec {
     type Ux = u32;

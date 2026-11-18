@@ -1,30 +1,30 @@
 #[doc = "Register `MODULENAME2` reader"]
 pub type R = crate::R<Modulename2Spec>;
-#[doc = "Field `MODCHAR9` reader - No Description"]
+#[doc = "Field `MODCHAR9` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar9R = crate::FieldReader;
-#[doc = "Field `MODCHAR10` reader - No Description"]
+#[doc = "Field `MODCHAR10` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar10R = crate::FieldReader;
-#[doc = "Field `MODCHAR11` reader - No Description"]
+#[doc = "Field `MODCHAR11` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar11R = crate::FieldReader;
-#[doc = "Field `MODCHAR12` reader - No Description"]
+#[doc = "Field `MODCHAR12` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar12R = crate::FieldReader;
 impl R {
-    #[doc = "Bits 0:7 - No Description"]
+    #[doc = "Bits 0:7 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar9(&self) -> Modchar9R {
         Modchar9R::new((self.bits & 0xff) as u8)
     }
-    #[doc = "Bits 8:15 - No Description"]
+    #[doc = "Bits 8:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar10(&self) -> Modchar10R {
         Modchar10R::new(((self.bits >> 8) & 0xff) as u8)
     }
-    #[doc = "Bits 16:23 - No Description"]
+    #[doc = "Bits 16:23 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar11(&self) -> Modchar11R {
         Modchar11R::new(((self.bits >> 16) & 0xff) as u8)
     }
-    #[doc = "Bits 24:31 - No Description"]
+    #[doc = "Bits 24:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar12(&self) -> Modchar12R {
         Modchar12R::new(((self.bits >> 24) & 0xff) as u8)

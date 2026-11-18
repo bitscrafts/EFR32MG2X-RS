@@ -37,7 +37,7 @@ impl W {
         LockkeyW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`wdoglock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "WDOG Configuration Lock Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`wdoglock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct WdoglockSpec;
 impl crate::RegisterSpec for WdoglockSpec {
     type Ux = u32;

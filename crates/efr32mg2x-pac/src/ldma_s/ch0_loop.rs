@@ -20,7 +20,7 @@ impl W {
         LoopcntW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ch0_loop::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch0_loop::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "LDMA_S CH0_LOOP (offset 0x060, 32 bits). Fields: LOOPCNT[7:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, LDMA chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ch0_loop::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch0_loop::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch0LoopSpec;
 impl crate::RegisterSpec for Ch0LoopSpec {
     type Ux = u32;

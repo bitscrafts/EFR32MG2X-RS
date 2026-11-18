@@ -34,7 +34,7 @@ impl W {
         ThresselW::new(self, 1)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`vregvddcmpctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`vregvddcmpctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DC-DC VREGVDD Comparator Control Register\n\nYou can [`read`](crate::Reg::read) this register and get [`vregvddcmpctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`vregvddcmpctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct VregvddcmpctrlSpec;
 impl crate::RegisterSpec for VregvddcmpctrlSpec {
     type Ux = u32;

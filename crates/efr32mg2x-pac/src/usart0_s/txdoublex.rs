@@ -86,7 +86,7 @@ impl W {
         Rxenat1W::new(self, 31)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdoublex::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "TX Buffer Double Data Extended Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`txdoublex::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct TxdoublexSpec;
 impl crate::RegisterSpec for TxdoublexSpec {
     type Ux = u32;

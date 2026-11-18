@@ -420,7 +420,7 @@ impl W {
         CmpW::new(self, 17)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan0::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan0::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "IADC0_S SCAN0 (offset 0x0A0, 32 bits). Fields: PINNEG[3:0], PORTNEG[7:4], PINPOS[11:8], PORTPOS[15:12], CFG[16], CMP[17]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, IADC chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`scan0::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan0::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Scan0Spec;
 impl crate::RegisterSpec for Scan0Spec {
     type Ux = u32;

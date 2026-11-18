@@ -34,7 +34,7 @@ impl W {
         UdlockbitW::new(self, 4)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`misclockword::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`misclockword::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Mass Erase and User Data Page Lock Word\n\nYou can [`read`](crate::Reg::read) this register and get [`misclockword::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`misclockword::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct MisclockwordSpec;
 impl crate::RegisterSpec for MisclockwordSpec {
     type Ux = u32;

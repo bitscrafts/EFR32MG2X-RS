@@ -34,7 +34,7 @@ impl W {
         SourceselW::new(self, 16)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ch7_reqsel::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch7_reqsel::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "LDMAXBAR_S CH7_REQSEL (offset 0x020, 32 bits). Fields: SIGSEL[3:0], SOURCESEL[21:16]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, LDMAXBAR chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ch7_reqsel::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch7_reqsel::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch7ReqselSpec;
 impl crate::RegisterSpec for Ch7ReqselSpec {
     type Ux = u32;

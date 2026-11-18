@@ -48,7 +48,7 @@ impl W {
         LockfailhighW::new(self, 2)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DPLL0_S IF (offset 0x010, 32 bits). Fields: LOCK[0], LOCKFAILLOW[1], LOCKFAILHIGH[2]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DPLL chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

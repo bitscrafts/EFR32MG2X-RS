@@ -9,7 +9,7 @@ impl W {
         InputdataW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`inputdata::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Input 32-Bit Data Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`inputdata::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct InputdataSpec;
 impl crate::RegisterSpec for InputdataSpec {
     type Ux = u32;

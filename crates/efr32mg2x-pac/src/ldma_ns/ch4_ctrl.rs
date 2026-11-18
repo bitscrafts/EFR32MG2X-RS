@@ -812,7 +812,7 @@ impl W {
         DstincW::new(self, 28)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ch4_ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch4_ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "LDMA_NS CH4_CTRL (offset 0x124, 32 bits). Fields: STRUCTTYPE[1:0], STRUCTREQ[3], XFERCNT[14:4], BYTESWAP[15], BLOCKSIZE[19:16], DONEIEN[20], REQMODE[21], DECLOOPCNT[22], IGNORESREQ[23], SRCINC[25:24], SIZE[27:26], DSTINC[29:28], SRCMODE[30], DSTMODE[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, LDMA chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ch4_ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ch4_ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ch4CtrlSpec;
 impl crate::RegisterSpec for Ch4CtrlSpec {
     type Ux = u32;

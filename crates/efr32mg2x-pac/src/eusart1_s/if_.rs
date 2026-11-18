@@ -258,7 +258,7 @@ impl W {
         RxtoW::new(self, 25)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "EUSART1_S IF (offset 0x04C, 32 bits). Fields: TXC[0], TXFL[1], RXFL[2], RXFULL[3], RXOF[4], RXUF[5], TXOF[6], TXUF[7], PERR[8], FERR[9], MPAF[10], LOADERR[11], CCF[12], TXIDLE[13], STARTF[18], SIGF[19], AUTOBAUDDONE[24], RXTO[25]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, EUSART chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

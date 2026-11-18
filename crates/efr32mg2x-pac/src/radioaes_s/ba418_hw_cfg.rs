@@ -9,7 +9,7 @@ impl R {
         GSha3ctxtEnR::new((self.bits & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba418_hw_cfg::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RADIOAES_S BA418_HW_CFG (offset 0x410, 32 bits). Fields: g_Sha3CtxtEn[0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, RADIOAES chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ba418_hw_cfg::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ba418HwCfgSpec;
 impl crate::RegisterSpec for Ba418HwCfgSpec {
     type Ux = u32;

@@ -183,87 +183,87 @@ impl RegisterBlock {
     pub const fn scandata(&self) -> &Scandata {
         &self.scandata
     }
-    #[doc = "0x98 - No Description"]
+    #[doc = "0x98 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn single(&self) -> &Single {
         &self.single
     }
-    #[doc = "0xa0 - No Description"]
+    #[doc = "0xa0 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan0(&self) -> &Scan0 {
         &self.scan0
     }
-    #[doc = "0xa4 - No Description"]
+    #[doc = "0xa4 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan1(&self) -> &Scan1 {
         &self.scan1
     }
-    #[doc = "0xa8 - No Description"]
+    #[doc = "0xa8 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan2(&self) -> &Scan2 {
         &self.scan2
     }
-    #[doc = "0xac - No Description"]
+    #[doc = "0xac - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan3(&self) -> &Scan3 {
         &self.scan3
     }
-    #[doc = "0xb0 - No Description"]
+    #[doc = "0xb0 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan4(&self) -> &Scan4 {
         &self.scan4
     }
-    #[doc = "0xb4 - No Description"]
+    #[doc = "0xb4 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan5(&self) -> &Scan5 {
         &self.scan5
     }
-    #[doc = "0xb8 - No Description"]
+    #[doc = "0xb8 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan6(&self) -> &Scan6 {
         &self.scan6
     }
-    #[doc = "0xbc - No Description"]
+    #[doc = "0xbc - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan7(&self) -> &Scan7 {
         &self.scan7
     }
-    #[doc = "0xc0 - No Description"]
+    #[doc = "0xc0 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan8(&self) -> &Scan8 {
         &self.scan8
     }
-    #[doc = "0xc4 - No Description"]
+    #[doc = "0xc4 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan9(&self) -> &Scan9 {
         &self.scan9
     }
-    #[doc = "0xc8 - No Description"]
+    #[doc = "0xc8 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan10(&self) -> &Scan10 {
         &self.scan10
     }
-    #[doc = "0xcc - No Description"]
+    #[doc = "0xcc - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan11(&self) -> &Scan11 {
         &self.scan11
     }
-    #[doc = "0xd0 - No Description"]
+    #[doc = "0xd0 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan12(&self) -> &Scan12 {
         &self.scan12
     }
-    #[doc = "0xd4 - No Description"]
+    #[doc = "0xd4 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan13(&self) -> &Scan13 {
         &self.scan13
     }
-    #[doc = "0xd8 - No Description"]
+    #[doc = "0xd8 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan14(&self) -> &Scan14 {
         &self.scan14
     }
-    #[doc = "0xdc - No Description"]
+    #[doc = "0xdc - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn scan15(&self) -> &Scan15 {
         &self.scan15
@@ -399,88 +399,88 @@ pub mod scanfifostat;
 pub type Scandata = crate::Reg<scandata::ScandataSpec>;
 #[doc = "Most recent data data from scan queue conversion"]
 pub mod scandata;
-#[doc = "SINGLE (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`single::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`single::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@single`] module"]
+#[doc = "SINGLE (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`single::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`single::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@single`] module"]
 #[doc(alias = "SINGLE")]
 pub type Single = crate::Reg<single::SingleSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod single;
-#[doc = "SCAN0 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan0::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan0::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan0`] module"]
+#[doc = "SCAN0 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan0::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan0::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan0`] module"]
 #[doc(alias = "SCAN0")]
 pub type Scan0 = crate::Reg<scan0::Scan0Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan0;
-#[doc = "SCAN1 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan1::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan1::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan1`] module"]
+#[doc = "SCAN1 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan1::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan1::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan1`] module"]
 #[doc(alias = "SCAN1")]
 pub type Scan1 = crate::Reg<scan1::Scan1Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan1;
-#[doc = "SCAN2 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan2::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan2::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan2`] module"]
+#[doc = "SCAN2 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan2::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan2::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan2`] module"]
 #[doc(alias = "SCAN2")]
 pub type Scan2 = crate::Reg<scan2::Scan2Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan2;
-#[doc = "SCAN3 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan3::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan3::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan3`] module"]
+#[doc = "SCAN3 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan3::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan3::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan3`] module"]
 #[doc(alias = "SCAN3")]
 pub type Scan3 = crate::Reg<scan3::Scan3Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan3;
-#[doc = "SCAN4 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan4::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan4::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan4`] module"]
+#[doc = "SCAN4 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan4::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan4::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan4`] module"]
 #[doc(alias = "SCAN4")]
 pub type Scan4 = crate::Reg<scan4::Scan4Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan4;
-#[doc = "SCAN5 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan5::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan5::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan5`] module"]
+#[doc = "SCAN5 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan5::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan5::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan5`] module"]
 #[doc(alias = "SCAN5")]
 pub type Scan5 = crate::Reg<scan5::Scan5Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan5;
-#[doc = "SCAN6 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan6::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan6::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan6`] module"]
+#[doc = "SCAN6 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan6::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan6::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan6`] module"]
 #[doc(alias = "SCAN6")]
 pub type Scan6 = crate::Reg<scan6::Scan6Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan6;
-#[doc = "SCAN7 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan7::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan7::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan7`] module"]
+#[doc = "SCAN7 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan7::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan7::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan7`] module"]
 #[doc(alias = "SCAN7")]
 pub type Scan7 = crate::Reg<scan7::Scan7Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan7;
-#[doc = "SCAN8 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan8::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan8::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan8`] module"]
+#[doc = "SCAN8 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan8::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan8::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan8`] module"]
 #[doc(alias = "SCAN8")]
 pub type Scan8 = crate::Reg<scan8::Scan8Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan8;
-#[doc = "SCAN9 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan9::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan9::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan9`] module"]
+#[doc = "SCAN9 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan9::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan9::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan9`] module"]
 #[doc(alias = "SCAN9")]
 pub type Scan9 = crate::Reg<scan9::Scan9Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan9;
-#[doc = "SCAN10 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan10::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan10::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan10`] module"]
+#[doc = "SCAN10 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan10::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan10::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan10`] module"]
 #[doc(alias = "SCAN10")]
 pub type Scan10 = crate::Reg<scan10::Scan10Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan10;
-#[doc = "SCAN11 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan11::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan11::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan11`] module"]
+#[doc = "SCAN11 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan11::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan11::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan11`] module"]
 #[doc(alias = "SCAN11")]
 pub type Scan11 = crate::Reg<scan11::Scan11Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan11;
-#[doc = "SCAN12 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan12::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan12::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan12`] module"]
+#[doc = "SCAN12 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan12::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan12::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan12`] module"]
 #[doc(alias = "SCAN12")]
 pub type Scan12 = crate::Reg<scan12::Scan12Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan12;
-#[doc = "SCAN13 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan13::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan13::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan13`] module"]
+#[doc = "SCAN13 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan13::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan13::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan13`] module"]
 #[doc(alias = "SCAN13")]
 pub type Scan13 = crate::Reg<scan13::Scan13Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan13;
-#[doc = "SCAN14 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan14::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan14::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan14`] module"]
+#[doc = "SCAN14 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan14::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan14::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan14`] module"]
 #[doc(alias = "SCAN14")]
 pub type Scan14 = crate::Reg<scan14::Scan14Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan14;
-#[doc = "SCAN15 (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`scan15::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan15::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan15`] module"]
+#[doc = "SCAN15 (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, IADC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`scan15::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`scan15::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@scan15`] module"]
 #[doc(alias = "SCAN15")]
 pub type Scan15 = crate::Reg<scan15::Scan15Spec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, IADC chapter"]
 pub mod scan15;

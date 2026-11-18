@@ -213,7 +213,7 @@ pub struct RegisterBlock {
     usart0_txroute: Usart0Txroute,
 }
 impl RegisterBlock {
-    #[doc = "0x00 - No Description"]
+    #[doc = "0x00 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn ipversion(&self) -> &Ipversion {
         &self.ipversion
@@ -308,12 +308,12 @@ impl RegisterBlock {
     pub const fn portd_din(&self) -> &PortdDin {
         &self.portd_din
     }
-    #[doc = "0x300 - No Description"]
+    #[doc = "0x300 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn lock(&self) -> &Lock {
         &self.lock
     }
-    #[doc = "0x310 - No Description"]
+    #[doc = "0x310 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn gpiolockstatus(&self) -> &Gpiolockstatus {
         &self.gpiolockstatus
@@ -373,22 +373,22 @@ impl RegisterBlock {
     pub const fn ien(&self) -> &Ien {
         &self.ien
     }
-    #[doc = "0x42c - No Description"]
+    #[doc = "0x42c - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn em4wuen(&self) -> &Em4wuen {
         &self.em4wuen
     }
-    #[doc = "0x430 - No Description"]
+    #[doc = "0x430 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn em4wupol(&self) -> &Em4wupol {
         &self.em4wupol
     }
-    #[doc = "0x440 - No Description"]
+    #[doc = "0x440 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn dbgroutepen(&self) -> &Dbgroutepen {
         &self.dbgroutepen
     }
-    #[doc = "0x444 - No Description"]
+    #[doc = "0x444 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn traceroutepen(&self) -> &Traceroutepen {
         &self.traceroutepen
@@ -1079,10 +1079,10 @@ impl RegisterBlock {
         &self.usart0_txroute
     }
 }
-#[doc = "IPVERSION (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
+#[doc = "IPVERSION (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`ipversion::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@ipversion`] module"]
 #[doc(alias = "IPVERSION")]
 pub type Ipversion = crate::Reg<ipversion::IpversionSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod ipversion;
 #[doc = "PORTA_CTRL (rw) register accessor: Port control\n\nYou can [`read`](crate::Reg::read) this register and get [`porta_ctrl::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`porta_ctrl::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@porta_ctrl`] module"]
 #[doc(alias = "PORTA_CTRL")]
@@ -1174,15 +1174,15 @@ pub mod portd_dout;
 pub type PortdDin = crate::Reg<portd_din::PortdDinSpec>;
 #[doc = "data in"]
 pub mod portd_din;
-#[doc = "LOCK (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lock`] module"]
+#[doc = "LOCK (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lock`] module"]
 #[doc(alias = "LOCK")]
 pub type Lock = crate::Reg<lock::LockSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod lock;
-#[doc = "GPIOLOCKSTATUS (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`gpiolockstatus::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@gpiolockstatus`] module"]
+#[doc = "GPIOLOCKSTATUS (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`gpiolockstatus::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@gpiolockstatus`] module"]
 #[doc(alias = "GPIOLOCKSTATUS")]
 pub type Gpiolockstatus = crate::Reg<gpiolockstatus::GpiolockstatusSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod gpiolockstatus;
 #[doc = "ABUSALLOC (rw) register accessor: A Bus allocation\n\nYou can [`read`](crate::Reg::read) this register and get [`abusalloc::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`abusalloc::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@abusalloc`] module"]
 #[doc(alias = "ABUSALLOC")]
@@ -1239,25 +1239,25 @@ pub mod if_;
 pub type Ien = crate::Reg<ien::IenSpec>;
 #[doc = "Interrupt Enable"]
 pub mod ien;
-#[doc = "EM4WUEN (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`em4wuen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`em4wuen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@em4wuen`] module"]
+#[doc = "EM4WUEN (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`em4wuen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`em4wuen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@em4wuen`] module"]
 #[doc(alias = "EM4WUEN")]
 pub type Em4wuen = crate::Reg<em4wuen::Em4wuenSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod em4wuen;
-#[doc = "EM4WUPOL (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`em4wupol::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`em4wupol::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@em4wupol`] module"]
+#[doc = "EM4WUPOL (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`em4wupol::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`em4wupol::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@em4wupol`] module"]
 #[doc(alias = "EM4WUPOL")]
 pub type Em4wupol = crate::Reg<em4wupol::Em4wupolSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod em4wupol;
-#[doc = "DBGROUTEPEN (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`dbgroutepen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`dbgroutepen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@dbgroutepen`] module"]
+#[doc = "DBGROUTEPEN (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`dbgroutepen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`dbgroutepen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@dbgroutepen`] module"]
 #[doc(alias = "DBGROUTEPEN")]
 pub type Dbgroutepen = crate::Reg<dbgroutepen::DbgroutepenSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod dbgroutepen;
-#[doc = "TRACEROUTEPEN (rw) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`traceroutepen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`traceroutepen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@traceroutepen`] module"]
+#[doc = "TRACEROUTEPEN (rw) register accessor: no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`traceroutepen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`traceroutepen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@traceroutepen`] module"]
 #[doc(alias = "TRACEROUTEPEN")]
 pub type Traceroutepen = crate::Reg<traceroutepen::TraceroutepenSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, GPIO chapter"]
 pub mod traceroutepen;
 #[doc = "ACMP0_ROUTEEN (rw) register accessor: ACMP0 pin enable\n\nYou can [`read`](crate::Reg::read) this register and get [`acmp0_routeen::R`]. You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`acmp0_routeen::W`]. You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@acmp0_routeen`] module"]
 #[doc(alias = "ACMP0_ROUTEEN")]

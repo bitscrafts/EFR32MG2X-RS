@@ -1,9 +1,9 @@
 #[doc = "Register `RTHERM` reader"]
 pub type R = crate::R<RthermSpec>;
-#[doc = "Field `RTHERM` reader - No Description"]
+#[doc = "Field `RTHERM` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type RthermR = crate::FieldReader<u16>;
 impl R {
-    #[doc = "Bits 0:15 - No Description"]
+    #[doc = "Bits 0:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn rtherm(&self) -> RthermR {
         RthermR::new((self.bits & 0xffff) as u16)

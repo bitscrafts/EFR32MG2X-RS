@@ -1,30 +1,30 @@
 #[doc = "Register `MODULENAME4` reader"]
 pub type R = crate::R<Modulename4Spec>;
-#[doc = "Field `MODCHAR17` reader - No Description"]
+#[doc = "Field `MODCHAR17` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar17R = crate::FieldReader;
-#[doc = "Field `MODCHAR18` reader - No Description"]
+#[doc = "Field `MODCHAR18` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar18R = crate::FieldReader;
-#[doc = "Field `MODCHAR19` reader - No Description"]
+#[doc = "Field `MODCHAR19` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar19R = crate::FieldReader;
-#[doc = "Field `MODCHAR20` reader - No Description"]
+#[doc = "Field `MODCHAR20` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar20R = crate::FieldReader;
 impl R {
-    #[doc = "Bits 0:7 - No Description"]
+    #[doc = "Bits 0:7 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar17(&self) -> Modchar17R {
         Modchar17R::new((self.bits & 0xff) as u8)
     }
-    #[doc = "Bits 8:15 - No Description"]
+    #[doc = "Bits 8:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar18(&self) -> Modchar18R {
         Modchar18R::new(((self.bits >> 8) & 0xff) as u8)
     }
-    #[doc = "Bits 16:23 - No Description"]
+    #[doc = "Bits 16:23 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar19(&self) -> Modchar19R {
         Modchar19R::new(((self.bits >> 16) & 0xff) as u8)
     }
-    #[doc = "Bits 24:31 - No Description"]
+    #[doc = "Bits 24:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar20(&self) -> Modchar20R {
         Modchar20R::new(((self.bits >> 24) & 0xff) as u8)

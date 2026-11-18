@@ -9,7 +9,7 @@ impl R {
         UserdatasizeR::new((self.bits & 0x3f) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`userdatasize::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "User Data Region Size Register\n\nYou can [`read`](crate::Reg::read) this register and get [`userdatasize::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct UserdatasizeSpec;
 impl crate::RegisterSpec for UserdatasizeSpec {
     type Ux = u32;

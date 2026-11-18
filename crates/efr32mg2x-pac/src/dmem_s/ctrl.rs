@@ -185,7 +185,7 @@ impl W {
         WaitstatesW::new(self, 7)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "DMEM_S CTRL (offset 0x008, 32 bits). Fields: ECCEN[0], ECCWEN[1], ECCERRFAULTEN[2], AHBPORTPRIORITY[5:3], ADDRFAULTEN[6], WAITSTATES[7]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, DMEM chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`ctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct CtrlSpec;
 impl crate::RegisterSpec for CtrlSpec {
     type Ux = u32;

@@ -9,7 +9,7 @@ impl R {
         BmpufsaddrR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpufsaddr::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Fault Status Address\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpufsaddr::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct BmpufsaddrSpec;
 impl crate::RegisterSpec for BmpufsaddrSpec {
     type Ux = u32;

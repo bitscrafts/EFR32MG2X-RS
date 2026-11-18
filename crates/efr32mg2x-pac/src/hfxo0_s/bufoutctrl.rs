@@ -10,9 +10,9 @@ pub type XoutbiasanaW<'a, REG> = crate::FieldWriter<'a, REG, 4>;
 pub type XoutcfanaR = crate::FieldReader;
 #[doc = "Field `XOUTCFANA` writer - Buffer Gain"]
 pub type XoutcfanaW<'a, REG> = crate::FieldWriter<'a, REG, 4>;
-#[doc = "Field `XOUTGMANA` reader - No Description"]
+#[doc = "Field `XOUTGMANA` reader - no vendor description; see the EFR32xG24 Reference Manual, HFXO chapter"]
 pub type XoutgmanaR = crate::FieldReader;
-#[doc = "Field `XOUTGMANA` writer - No Description"]
+#[doc = "Field `XOUTGMANA` writer - no vendor description; see the EFR32xG24 Reference Manual, HFXO chapter"]
 pub type XoutgmanaW<'a, REG> = crate::FieldWriter<'a, REG, 4>;
 #[doc = "Peak Detector Threshold for XOUT\n\nValue on reset: 3"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -755,7 +755,7 @@ impl R {
     pub fn xoutcfana(&self) -> XoutcfanaR {
         XoutcfanaR::new(((self.bits >> 4) & 0x0f) as u8)
     }
-    #[doc = "Bits 8:11 - No Description"]
+    #[doc = "Bits 8:11 - no vendor description; see the EFR32xG24 Reference Manual, HFXO chapter"]
     #[inline(always)]
     pub fn xoutgmana(&self) -> XoutgmanaR {
         XoutgmanaR::new(((self.bits >> 8) & 0x0f) as u8)
@@ -792,7 +792,7 @@ impl W {
     pub fn xoutcfana(&mut self) -> XoutcfanaW<'_, BufoutctrlSpec> {
         XoutcfanaW::new(self, 4)
     }
-    #[doc = "Bits 8:11 - No Description"]
+    #[doc = "Bits 8:11 - no vendor description; see the EFR32xG24 Reference Manual, HFXO chapter"]
     #[inline(always)]
     pub fn xoutgmana(&mut self) -> XoutgmanaW<'_, BufoutctrlSpec> {
         XoutgmanaW::new(self, 8)
@@ -818,7 +818,7 @@ impl W {
         MinimumstartupdelayW::new(self, 31)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`bufoutctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bufoutctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "BUFOUT Control Register\n\nYou can [`read`](crate::Reg::read) this register and get [`bufoutctrl::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bufoutctrl::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct BufoutctrlSpec;
 impl crate::RegisterSpec for BufoutctrlSpec {
     type Ux = u32;

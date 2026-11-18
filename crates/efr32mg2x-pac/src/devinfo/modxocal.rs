@@ -1,23 +1,23 @@
 #[doc = "Register `MODXOCAL` reader"]
 pub type R = crate::R<ModxocalSpec>;
-#[doc = "Field `HFXOCTUNEXIANA` reader - No Description"]
+#[doc = "Field `HFXOCTUNEXIANA` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type HfxoctunexianaR = crate::FieldReader;
-#[doc = "Field `HFXOCTUNEXOANA` reader - No Description"]
+#[doc = "Field `HFXOCTUNEXOANA` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type HfxoctunexoanaR = crate::FieldReader;
-#[doc = "Field `LFXOCAPTUNE` reader - No Description"]
+#[doc = "Field `LFXOCAPTUNE` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type LfxocaptuneR = crate::FieldReader;
 impl R {
-    #[doc = "Bits 0:7 - No Description"]
+    #[doc = "Bits 0:7 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn hfxoctunexiana(&self) -> HfxoctunexianaR {
         HfxoctunexianaR::new((self.bits & 0xff) as u8)
     }
-    #[doc = "Bits 8:15 - No Description"]
+    #[doc = "Bits 8:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn hfxoctunexoana(&self) -> HfxoctunexoanaR {
         HfxoctunexoanaR::new(((self.bits >> 8) & 0xff) as u8)
     }
-    #[doc = "Bits 16:22 - No Description"]
+    #[doc = "Bits 16:22 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn lfxocaptune(&self) -> LfxocaptuneR {
         LfxocaptuneR::new(((self.bits >> 16) & 0x7f) as u8)

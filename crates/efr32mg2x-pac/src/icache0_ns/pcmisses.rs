@@ -9,7 +9,7 @@ impl R {
         PcmissesR::new(self.bits)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`pcmisses::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Performance Counter Misses\n\nYou can [`read`](crate::Reg::read) this register and get [`pcmisses::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct PcmissesSpec;
 impl crate::RegisterSpec for PcmissesSpec {
     type Ux = u32;

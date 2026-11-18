@@ -79,7 +79,7 @@ impl R {
         TxbufcntR::new(((self.bits >> 10) & 3) as u8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Status Register\n\nYou can [`read`](crate::Reg::read) this register and get [`status::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct StatusSpec;
 impl crate::RegisterSpec for StatusSpec {
     type Ux = u32;

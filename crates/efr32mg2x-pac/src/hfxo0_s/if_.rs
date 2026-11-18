@@ -174,7 +174,7 @@ impl W {
         CorebiasopterrW::new(self, 31)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "HFXO0_S IF (offset 0x070, 32 bits). Fields: RDY[0], COREBIASOPTRDY[1], PRSRDY[2], BUFOUTRDY[3], BUFOUTFROZEN[15], PRSERR[20], BUFOUTERR[21], BUFOUTFREEZEERR[27], BUFOUTDNSERR[28], DNSERR[29], LFTIMEOUTERR[30], COREBIASOPTERR[31]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, HFXO chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`if_::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`if_::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct IfSpec;
 impl crate::RegisterSpec for IfSpec {
     type Ux = u32;

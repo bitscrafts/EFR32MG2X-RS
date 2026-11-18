@@ -64,12 +64,12 @@ impl RegisterBlock {
     pub const fn syncbusy(&self) -> &Syncbusy {
         &self.syncbusy
     }
-    #[doc = "0x40 - No Description"]
+    #[doc = "0x40 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn lock(&self) -> &Lock {
         &self.lock
     }
-    #[doc = "0x44 - No Description"]
+    #[doc = "0x44 - register without a vendor description; see the Reference Manual"]
     #[inline(always)]
     pub const fn lockstatus(&self) -> &Lockstatus {
         &self.lockstatus
@@ -120,13 +120,13 @@ pub mod status;
 pub type Syncbusy = crate::Reg<syncbusy::SyncbusySpec>;
 #[doc = "Syncbusy Status Register"]
 pub mod syncbusy;
-#[doc = "LOCK (w) register accessor: No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lock`] module"]
+#[doc = "LOCK (w) register accessor: no vendor description; see the EFR32xG24 Reference Manual, DCDC chapter\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`lock::W`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lock`] module"]
 #[doc(alias = "LOCK")]
 pub type Lock = crate::Reg<lock::LockSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, DCDC chapter"]
 pub mod lock;
-#[doc = "LOCKSTATUS (r) register accessor: No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`lockstatus::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lockstatus`] module"]
+#[doc = "LOCKSTATUS (r) register accessor: no vendor description; see the EFR32xG24 Reference Manual, DCDC chapter\n\nYou can [`read`](crate::Reg::read) this register and get [`lockstatus::R`]. See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [`mod@lockstatus`] module"]
 #[doc(alias = "LOCKSTATUS")]
 pub type Lockstatus = crate::Reg<lockstatus::LockstatusSpec>;
-#[doc = "No Description"]
+#[doc = "no vendor description; see the EFR32xG24 Reference Manual, DCDC chapter"]
 pub mod lockstatus;

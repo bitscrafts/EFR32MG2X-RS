@@ -9,7 +9,7 @@ impl W {
         InputdatahwordW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`inputdatahword::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Input 16-Bit Data Register\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`inputdatahword::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct InputdatahwordSpec;
 impl crate::RegisterSpec for InputdatahwordSpec {
     type Ux = u32;

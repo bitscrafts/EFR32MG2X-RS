@@ -20,7 +20,7 @@ impl W {
         Esaur3nsW::new(self, 12)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`esaurtypes0::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaurtypes0::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Region Types 0\n\nYou can [`read`](crate::Reg::read) this register and get [`esaurtypes0::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`esaurtypes0::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Esaurtypes0Spec;
 impl crate::RegisterSpec for Esaurtypes0Spec {
     type Ux = u32;

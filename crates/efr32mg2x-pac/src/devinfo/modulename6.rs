@@ -1,23 +1,23 @@
 #[doc = "Register `MODULENAME6` reader"]
 pub type R = crate::R<Modulename6Spec>;
-#[doc = "Field `MODCHAR25` reader - No Description"]
+#[doc = "Field `MODCHAR25` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar25R = crate::FieldReader;
-#[doc = "Field `MODCHAR26` reader - No Description"]
+#[doc = "Field `MODCHAR26` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type Modchar26R = crate::FieldReader;
-#[doc = "Field `RSV` reader - No Description"]
+#[doc = "Field `RSV` reader - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
 pub type RsvR = crate::FieldReader<u16>;
 impl R {
-    #[doc = "Bits 0:7 - No Description"]
+    #[doc = "Bits 0:7 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar25(&self) -> Modchar25R {
         Modchar25R::new((self.bits & 0xff) as u8)
     }
-    #[doc = "Bits 8:15 - No Description"]
+    #[doc = "Bits 8:15 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn modchar26(&self) -> Modchar26R {
         Modchar26R::new(((self.bits >> 8) & 0xff) as u8)
     }
-    #[doc = "Bits 16:31 - No Description"]
+    #[doc = "Bits 16:31 - no vendor description; see the EFR32xG24 Reference Manual, DEVINFO chapter"]
     #[inline(always)]
     pub fn rsv(&self) -> RsvR {
         RsvR::new(((self.bits >> 16) & 0xffff) as u16)

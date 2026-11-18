@@ -43,7 +43,7 @@ impl R {
         SmunslockR::new((self.bits & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`nsstatus::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "SMU_NS_CFGNS NSSTATUS (offset 0x004, 32 bits). Fields: SMUNSLOCK[0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, SMU_NS_CFGNS chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`nsstatus::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct NsstatusSpec;
 impl crate::RegisterSpec for NsstatusSpec {
     type Ux = u32;

@@ -132,7 +132,7 @@ impl W {
         SeextdmaW::new(self, 8)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpunspatd0::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bmpunspatd0::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "SMU_S_CFGNS BMPUNSPATD0 (offset 0x150, 32 bits). Fields: RADIOAES[0], RADIOSUBSYSTEM[1], LDMA[2], MVPAHBDATA0[3], MVPAHBDATA1[4], MVPAHBDATA2[5], RFECA0[6], RFECA1[7], SEEXTDMA[8]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, SMU_S_CFGNS chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`bmpunspatd0::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`bmpunspatd0::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Bmpunspatd0Spec;
 impl crate::RegisterSpec for Bmpunspatd0Spec {
     type Ux = u32;

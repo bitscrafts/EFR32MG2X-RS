@@ -44,7 +44,7 @@ impl R {
         Ferrp1R::new(((self.bits >> 31) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdoublexp::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RX Buffer Double Data Extended Peek R...\n\nYou can [`read`](crate::Reg::read) this register and get [`rxdoublexp::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct RxdoublexpSpec;
 impl crate::RegisterSpec for RxdoublexpSpec {
     type Ux = u32;

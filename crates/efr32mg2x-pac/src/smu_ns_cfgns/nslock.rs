@@ -1,6 +1,6 @@
 #[doc = "Register `NSLOCK` writer"]
 pub type W = crate::W<NslockSpec>;
-#[doc = "No Description\n\nValue on reset: 0"]
+#[doc = "SMU_NS_CFGNS NSLOCK (offset 0x008, 32 bits). Fields: SMUNSLOCKKEY[23:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, SMU_NS_CFGNS chapter.\n\nValue on reset: 0"]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Smunslockkey {
@@ -17,7 +17,7 @@ impl crate::FieldSpec for Smunslockkey {
     type Ux = u32;
 }
 impl crate::IsEnum for Smunslockkey {}
-#[doc = "Field `SMUNSLOCKKEY` writer - No Description"]
+#[doc = "Field `SMUNSLOCKKEY` writer - no vendor description; see the EFR32xG24 Reference Manual, SMU_NS_CFGNS chapter"]
 pub type SmunslockkeyW<'a, REG> = crate::FieldWriter<'a, REG, 24, Smunslockkey>;
 impl<'a, REG> SmunslockkeyW<'a, REG>
 where
@@ -31,13 +31,13 @@ where
     }
 }
 impl W {
-    #[doc = "Bits 0:23 - No Description"]
+    #[doc = "Bits 0:23 - no vendor description; see the EFR32xG24 Reference Manual, SMU_NS_CFGNS chapter"]
     #[inline(always)]
     pub fn smunslockkey(&mut self) -> SmunslockkeyW<'_, NslockSpec> {
         SmunslockkeyW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`nslock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "SMU_NS_CFGNS NSLOCK (offset 0x008, 32 bits). Fields: SMUNSLOCKKEY[23:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, SMU_NS_CFGNS chapter.\n\nYou can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`nslock::W`](W). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct NslockSpec;
 impl crate::RegisterSpec for NslockSpec {
     type Ux = u32;

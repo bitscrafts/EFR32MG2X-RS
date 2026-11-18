@@ -79,7 +79,7 @@ impl R {
         GIncludeNdrngR::new(((self.bits >> 10) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`incl_ips_hw_cfg::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RADIOAES_NS INCL_IPS_HW_CFG (offset 0x400, 32 bits). Fields: g_IncludeAES[0], g_IncludeAESGCM[1], g_IncludeAESXTS[2], g_IncludeDES[3], g_IncludeHASH[4], g_IncludeChachaPoly[5], g_IncludeSHA3[6], g_IncludeZUC[7], g_IncludeSM4[8], g_IncludePKE[9], g_IncludeNDRNG[10]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, RADIOAES chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`incl_ips_hw_cfg::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct InclIpsHwCfgSpec;
 impl crate::RegisterSpec for InclIpsHwCfgSpec {
     type Ux = u32;

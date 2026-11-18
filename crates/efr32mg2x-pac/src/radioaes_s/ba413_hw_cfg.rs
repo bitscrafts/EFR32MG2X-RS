@@ -30,7 +30,7 @@ impl R {
         GHashVerifyDigestR::new(((self.bits >> 18) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba413_hw_cfg::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RADIOAES_S BA413_HW_CFG (offset 0x40C, 32 bits). Fields: g_HashMaskFunc[6:0], g_HashPadding[16], g_HMAC_enabled[17], g_HashVerifyDigest[18]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, RADIOAES chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ba413_hw_cfg::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ba413HwCfgSpec;
 impl crate::RegisterSpec for Ba413HwCfgSpec {
     type Ux = u32;

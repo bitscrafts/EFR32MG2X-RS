@@ -20,7 +20,7 @@ impl W {
         PtrW::new(self, 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`msgptr2::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`msgptr2::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "HOSTMAILBOX_S MSGPTR2 (offset 0x008, 32 bits). Fields: PTR[31:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, HOSTMAILBOX chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`msgptr2::R`](R). You can [`reset`](crate::Reg::reset), [`write`](crate::Reg::write), [`write_with_zero`](crate::Reg::write_with_zero) this register using [`msgptr2::W`](W). You can also [`modify`](crate::Reg::modify) this register. See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Msgptr2Spec;
 impl crate::RegisterSpec for Msgptr2Spec {
     type Ux = u32;

@@ -9,7 +9,7 @@ impl R {
         GCtrSizeR::new((self.bits & 0xffff) as u16)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_2::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "RADIOAES_S BA411E_HW_CFG_2 (offset 0x408, 32 bits). Fields: g_CtrSize[15:0]. The vendor SVD gives no description; see the EFR32xG24 Reference Manual, RADIOAES chapter.\n\nYou can [`read`](crate::Reg::read) this register and get [`ba411e_hw_cfg_2::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct Ba411eHwCfg2Spec;
 impl crate::RegisterSpec for Ba411eHwCfg2Spec {
     type Ux = u32;

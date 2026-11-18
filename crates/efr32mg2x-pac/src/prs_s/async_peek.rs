@@ -114,7 +114,7 @@ impl R {
         Ch15valR::new(((self.bits >> 15) & 1) != 0)
     }
 }
-#[doc = "No Description\n\nYou can [`read`](crate::Reg::read) this register and get [`async_peek::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
+#[doc = "Async Channel Values\n\nYou can [`read`](crate::Reg::read) this register and get [`async_peek::R`](R). See [API](https://docs.rs/svd2rust/#read--modify--write-api)."]
 pub struct AsyncPeekSpec;
 impl crate::RegisterSpec for AsyncPeekSpec {
     type Ux = u32;
