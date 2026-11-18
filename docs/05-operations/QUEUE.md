@@ -41,3 +41,4 @@ Quando chegar, o HAL fica pronto para a primeira publicação — que continua a
 expressa e não é feita por esta fila.
 
 - [~] B8 | (sem spec) | `queue-run-once.sh` tem dois defeitos provados em 2026-11-18: marca o item antes de commitar (dois itens ficaram "feitos" sem trabalho nem commit), e aceita um gate PASS sobre uma árvore inalterada como se fosse trabalho feito. Corrigir antes de voltar a ligar o cron.
+- [~] B9 | (sem spec) | integração com o Embassy — hoje só existe como referência em docs, nenhum trait implementado. O menor passo útil é `embassy-time-driver`: implementar `now()`, `schedule_wake()` e `set_alarm()` sobre o SYSRTC, o que passa a dar `embassy-time`, `embassy-sync` e `embassy-executor` a funcionar neste HAL. Depois disso, `embedded-hal-async` para i2c/spi (depende da rota de pinos) e `embedded-io-async` para usart. Evidence: grep embassy -> só links em READMEs e docs/04-reference.

@@ -76,7 +76,7 @@ if [ "$ORIG" = "0x08006000" ]; then ok "linker script starts at 0x08006000 (afte
 
 # 10. The version in the README's install line must be the version being published, or the snippet installs an
 #     older crate than the page describes.
-if grep -q "$NOME = \"$VER\"" "$CRATE/README.md" 2>/dev/null; then ok "README install line matches version $VER"; else bad "README install line does not say $NOME = \"$VER\""; fi
+if grep -qE "$NOME *= *(\\{ *version *= *\"$VER\"|\"$VER\")" "$CRATE/README.md" 2>/dev/null; then ok "README install line matches version $VER"; else bad "README install line does not say $NOME = \"$VER\""; fi
 
 # 11. Whether this version is already taken. Publishing a version is irreversible, so this is read first.
 INDICE=$(curl -s --max-time 25 "https://index.crates.io/${NOME:0:2}/${NOME:2:2}/$NOME" 2>/dev/null | grep -c "\"vers\":\"$VER\"")

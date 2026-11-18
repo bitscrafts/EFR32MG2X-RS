@@ -10,7 +10,7 @@ keywords = ["arm", "cortex-m", "efr32", "silabs", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
-efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.0" }
+efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.1" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 embedded-hal = { workspace = true }
 critical-section = { workspace = true }
