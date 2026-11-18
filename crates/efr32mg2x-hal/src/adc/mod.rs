@@ -218,12 +218,12 @@ impl Adc {
         // The word comes from `efr32mg2x-adc-core`, where the four fields and their positions are measured on the host
         // (64 inputs, 64 distinct words, every one parseable back). This block only writes it.
         let port_enum = match port {
-            crate::pin::Port::A => efr32mg2x_adc_core::Port::A,
-            crate::pin::Port::B => efr32mg2x_adc_core::Port::B,
-            crate::pin::Port::C => efr32mg2x_adc_core::Port::C,
-            crate::pin::Port::D => efr32mg2x_adc_core::Port::D,
+            crate::pin::Port::A => crate::cores::adc::Port::A,
+            crate::pin::Port::B => crate::cores::adc::Port::B,
+            crate::pin::Port::C => crate::cores::adc::Port::C,
+            crate::pin::Port::D => crate::cores::adc::Port::D,
         };
-        let input = match efr32mg2x_adc_core::Input::new(port_enum, pin) {
+        let input = match crate::cores::adc::Input::new(port_enum, pin) {
             Ok(input) => input,
             Err(_) => return Err(Error::Timeout), // no such pin: refused before anything is written
         };
