@@ -60,7 +60,7 @@
 mod traits;
 mod types;
 
-pub use efr32mg2x_i2c_core as proto;
+pub use crate::cores::i2c as proto;
 pub use types::{Config, Error, Speed};
 
 use crate::clock::FrozenClocks;
@@ -85,9 +85,9 @@ struct HwBus<'a, P> {
 /// The primitives, written once for both I2C instances.
 macro_rules! impl_hw_bus {
     ($ty:ty) => {
-        impl efr32mg2x_i2c_core::Bus for HwBus<'_, $ty> {
-            fn start(&mut self) -> Result<(), efr32mg2x_i2c_core::Error> {
-                use efr32mg2x_i2c_core::Error as Proto;
+        impl crate::cores::i2c::Bus for HwBus<'_, $ty> {
+            fn start(&mut self) -> Result<(), crate::cores::i2c::Error> {
+                use crate::cores::i2c::Error as Proto;
                 self.i2c.cmd().write(|w| w.start().set_bit());
                 let mut polls = 0u32;
                 while self.i2c.status().read().pstart().bit_is_set() {
@@ -99,8 +99,8 @@ macro_rules! impl_hw_bus {
                 Ok(())
             }
 
-            fn write(&mut self, byte: u8) -> Result<(), efr32mg2x_i2c_core::Error> {
-                use efr32mg2x_i2c_core::Error as Proto;
+            fn write(&mut self, byte: u8) -> Result<(), crate::cores::i2c::Error> {
+                use crate::cores::i2c::Error as Proto;
                 let mut polls = 0u32;
                 while self.i2c.status().read().txbl().bit_is_clear() {
                     polls += 1;
@@ -125,8 +125,8 @@ macro_rules! impl_hw_bus {
                 Ok(())
             }
 
-            fn read(&mut self, ack: bool) -> Result<u8, efr32mg2x_i2c_core::Error> {
-                use efr32mg2x_i2c_core::Error as Proto;
+            fn read(&mut self, ack: bool) -> Result<u8, crate::cores::i2c::Error> {
+                use crate::cores::i2c::Error as Proto;
                 let mut polls = 0u32;
                 while self.i2c.status().read().rxdatav().bit_is_clear() {
                     polls += 1;
@@ -142,8 +142,8 @@ macro_rules! impl_hw_bus {
                 Ok(self.i2c.rxdata().read().bits() as u8)
             }
 
-            fn stop(&mut self) -> Result<(), efr32mg2x_i2c_core::Error> {
-                use efr32mg2x_i2c_core::Error as Proto;
+            fn stop(&mut self) -> Result<(), crate::cores::i2c::Error> {
+                use crate::cores::i2c::Error as Proto;
                 self.i2c.cmd().write(|w| w.stop().set_bit());
                 let mut polls = 0u32;
                 while self.i2c.status().read().pstop().bit_is_set() {
@@ -375,12 +375,12 @@ impl I2c0 {
         // `efr32mg2x-i2c-core`. The old body here called `write` and then `read`, which released the bus in the middle
         // and let a device drop the register pointer it had just been given.
         let bus = HwBus { i2c: &self.i2c };
-        efr32mg2x_i2c_core::write_read(&mut HwBus { i2c: bus.i2c }, addr, register, buffer).map_err(
+        crate::cores::i2c::write_read(&mut HwBus { i2c: bus.i2c }, addr, register, buffer).map_err(
             |e| match e {
-                efr32mg2x_i2c_core::Error::Nack => Error::Nack,
-                efr32mg2x_i2c_core::Error::Bus => Error::Bus,
-                efr32mg2x_i2c_core::Error::InvalidData => Error::InvalidData,
-                efr32mg2x_i2c_core::Error::Timeout => Error::Timeout,
+                crate::cores::i2c::Error::Nack => Error::Nack,
+                crate::cores::i2c::Error::Bus => Error::Bus,
+                crate::cores::i2c::Error::InvalidData => Error::InvalidData,
+                crate::cores::i2c::Error::Timeout => Error::Timeout,
             },
         )
     }

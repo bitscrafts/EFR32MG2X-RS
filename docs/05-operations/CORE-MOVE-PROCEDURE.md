@@ -74,3 +74,33 @@ refuses. `cargo check` on the host is the most that can be asked of it.
 
 Commit only the paths the spec's `Files` block names. `git add -A` has already committed one item's
 half-work inside another item's commit.
+
+## What the second core added, and the first could not have taught
+
+`C2` (i2c) cost four more red gates than `C1`, and none of them was about i2c either. Each one is
+now a step, because a core simpler than `spi` does not exist:
+
+**A core with submodules is a directory module.** `i2c-core/src/sim.rs` meant `mod sim;` inside the
+moved file had nowhere to resolve: a flat `cores/i2c.rs` looks for `cores/sim.rs`. The source becomes
+`cores/i2c/mod.rs` plus `cores/i2c/sim.rs`, and the shim points at `cores/i2c/mod.rs`. The library's
+own copy of the submodule moves to `_trash/` -- leaving it there is a second copy that no check sees.
+
+**No `crate::` paths in a file two crates compile.** In the HAL, `crate::` is the HAL root; in the
+library, it is the library root. `crate::Bus` resolved in one and failed in the other, and the error
+surfaces in whichever crate you were not looking at. Use `self::` inside the module file and
+`super::` from a submodule: relative paths have the same meaning under both roots.
+
+**A re-export without `::` survives a search-and-replace.** `pub use efr32mg2x_i2c_core as proto;`
+was missed by a substitution keyed on `efr32mg2x_i2c_core::`. Grep for the crate name, not for the
+path form.
+
+**`deny(missing_docs)` on the HAL rejects the moved items.** The sources were written under the
+libraries' lint budget. `#[allow(missing_docs)]` on the module declaration, with a comment saying
+documenting them as HAL API is a separate item -- not a silent removal of the lint crate-wide.
+
+**`//!` is only legal at the top of a module.** Three lines of inner doc comment inserted after
+`pub mod spi;` cost a gate cycle; they are ordinary `//` comments.
+
+**Validate with the command the gate runs.** `cargo build -p <crate> --examples` without the
+features the gate passes reports missing `entry` symbols that are not missing. A manual check that
+disagrees with the gate is a wrong check, not a discovery.

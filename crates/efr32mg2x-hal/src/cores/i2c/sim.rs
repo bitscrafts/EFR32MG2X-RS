@@ -4,7 +4,7 @@
 //! master writes one, and **loses it when the bus is released**. A master that emits STOP between the write and the read
 //! therefore reads from register 0, which is exactly the failure the HAL's old `write_read` had.
 
-use crate::{write_read, Bus, Error};
+use super::{write_read, Bus, Error};
 
 /// A slave that keeps a register file and records the conversation.
 ///
