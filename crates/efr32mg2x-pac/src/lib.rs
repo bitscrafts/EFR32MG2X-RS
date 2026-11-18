@@ -488,95 +488,95 @@ unsafe impl cortex_m::interrupt::InterruptNumber for Interrupt {
         self as u16
     }
 }
-#[doc = "ACMP0_NS Registers"]
+#[doc = "Analog Comparator"]
 pub type Acmp0Ns = crate::Periph<acmp0_ns::RegisterBlock, 0x5900_8000>;
 impl core::fmt::Debug for Acmp0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Acmp0Ns").finish()
     }
 }
-#[doc = "ACMP0_NS Registers"]
+#[doc = "Analog Comparator"]
 pub mod acmp0_ns;
-#[doc = "ACMP0_S Registers"]
+#[doc = "Analog Comparator"]
 pub type Acmp0S = crate::Periph<acmp0_s::RegisterBlock, 0x4900_8000>;
 impl core::fmt::Debug for Acmp0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Acmp0S").finish()
     }
 }
-#[doc = "ACMP0_S Registers"]
+#[doc = "Analog Comparator"]
 pub mod acmp0_s;
-#[doc = "ACMP1_NS Registers"]
+#[doc = "Analog Comparator"]
 pub type Acmp1Ns = crate::Periph<acmp1_ns::RegisterBlock, 0x5900_c000>;
 impl core::fmt::Debug for Acmp1Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Acmp1Ns").finish()
     }
 }
-#[doc = "ACMP1_NS Registers"]
+#[doc = "Analog Comparator"]
 pub mod acmp1_ns;
-#[doc = "ACMP1_S Registers"]
+#[doc = "Analog Comparator"]
 pub type Acmp1S = crate::Periph<acmp1_s::RegisterBlock, 0x4900_c000>;
 impl core::fmt::Debug for Acmp1S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Acmp1S").finish()
     }
 }
-#[doc = "ACMP1_S Registers"]
+#[doc = "Analog Comparator"]
 pub mod acmp1_s;
-#[doc = "BURAM_NS Registers"]
+#[doc = "Backup RAM"]
 pub type BuramNs = crate::Periph<buram_ns::RegisterBlock, 0x5008_0000>;
 impl core::fmt::Debug for BuramNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("BuramNs").finish()
     }
 }
-#[doc = "BURAM_NS Registers"]
+#[doc = "Backup RAM"]
 pub mod buram_ns;
-#[doc = "BURAM_S Registers"]
+#[doc = "Backup RAM"]
 pub type BuramS = crate::Periph<buram_s::RegisterBlock, 0x4008_0000>;
 impl core::fmt::Debug for BuramS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("BuramS").finish()
     }
 }
-#[doc = "BURAM_S Registers"]
+#[doc = "Backup RAM"]
 pub mod buram_s;
-#[doc = "BURTC_NS Registers"]
+#[doc = "Back-Up Real Time Counter"]
 pub type BurtcNs = crate::Periph<burtc_ns::RegisterBlock, 0x5006_4000>;
 impl core::fmt::Debug for BurtcNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("BurtcNs").finish()
     }
 }
-#[doc = "BURTC_NS Registers"]
+#[doc = "Back-Up Real Time Counter"]
 pub mod burtc_ns;
-#[doc = "BURTC_S Registers"]
+#[doc = "Back-Up Real Time Counter"]
 pub type BurtcS = crate::Periph<burtc_s::RegisterBlock, 0x4006_4000>;
 impl core::fmt::Debug for BurtcS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("BurtcS").finish()
     }
 }
-#[doc = "BURTC_S Registers"]
+#[doc = "Back-Up Real Time Counter"]
 pub mod burtc_s;
-#[doc = "CMU_NS Registers"]
+#[doc = "Clock Management Unit"]
 pub type CmuNs = crate::Periph<cmu_ns::RegisterBlock, 0x5000_8000>;
 impl core::fmt::Debug for CmuNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("CmuNs").finish()
     }
 }
-#[doc = "CMU_NS Registers"]
+#[doc = "Clock Management Unit"]
 pub mod cmu_ns;
-#[doc = "CMU_S Registers"]
+#[doc = "Clock Management Unit"]
 pub type CmuS = crate::Periph<cmu_s::RegisterBlock, 0x4000_8000>;
 impl core::fmt::Debug for CmuS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("CmuS").finish()
     }
 }
-#[doc = "CMU_S Registers"]
+#[doc = "Clock Management Unit"]
 pub mod cmu_s;
 #[doc = "DCDC_NS Registers"]
 pub type DcdcNs = crate::Periph<dcdc_ns::RegisterBlock, 0x5009_4000>;
@@ -614,149 +614,149 @@ impl core::fmt::Debug for DmemS {
 }
 #[doc = "DMEM_S Registers"]
 pub mod dmem_s;
-#[doc = "DPLL0_NS Registers"]
+#[doc = "Digital Phased Locked Loop"]
 pub type Dpll0Ns = crate::Periph<dpll0_ns::RegisterBlock, 0x5001_c000>;
 impl core::fmt::Debug for Dpll0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Dpll0Ns").finish()
     }
 }
-#[doc = "DPLL0_NS Registers"]
+#[doc = "Digital Phased Locked Loop"]
 pub mod dpll0_ns;
-#[doc = "DPLL0_S Registers"]
+#[doc = "Digital Phased Locked Loop"]
 pub type Dpll0S = crate::Periph<dpll0_s::RegisterBlock, 0x4001_c000>;
 impl core::fmt::Debug for Dpll0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Dpll0S").finish()
     }
 }
-#[doc = "DPLL0_S Registers"]
+#[doc = "Digital Phased Locked Loop"]
 pub mod dpll0_s;
-#[doc = "EMU_NS Registers"]
+#[doc = "Energy Management Unit"]
 pub type EmuNs = crate::Periph<emu_ns::RegisterBlock, 0x5000_4000>;
 impl core::fmt::Debug for EmuNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("EmuNs").finish()
     }
 }
-#[doc = "EMU_NS Registers"]
+#[doc = "Energy Management Unit"]
 pub mod emu_ns;
-#[doc = "EMU_S Registers"]
+#[doc = "Energy Management Unit"]
 pub type EmuS = crate::Periph<emu_s::RegisterBlock, 0x4000_4000>;
 impl core::fmt::Debug for EmuS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("EmuS").finish()
     }
 }
-#[doc = "EMU_S Registers"]
+#[doc = "Energy Management Unit"]
 pub mod emu_s;
-#[doc = "EUSART0_NS Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub type Eusart0Ns = crate::Periph<eusart0_ns::RegisterBlock, 0x5b01_0000>;
 impl core::fmt::Debug for Eusart0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Eusart0Ns").finish()
     }
 }
-#[doc = "EUSART0_NS Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub mod eusart0_ns;
-#[doc = "EUSART0_S Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub type Eusart0S = crate::Periph<eusart0_s::RegisterBlock, 0x4b01_0000>;
 impl core::fmt::Debug for Eusart0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Eusart0S").finish()
     }
 }
-#[doc = "EUSART0_S Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub mod eusart0_s;
-#[doc = "EUSART1_NS Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub type Eusart1Ns = crate::Periph<eusart1_ns::RegisterBlock, 0x500a_0000>;
 impl core::fmt::Debug for Eusart1Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Eusart1Ns").finish()
     }
 }
-#[doc = "EUSART1_NS Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub mod eusart1_ns;
-#[doc = "EUSART1_S Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub type Eusart1S = crate::Periph<eusart1_s::RegisterBlock, 0x400a_0000>;
 impl core::fmt::Debug for Eusart1S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Eusart1S").finish()
     }
 }
-#[doc = "EUSART1_S Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub mod eusart1_s;
-#[doc = "FSRCO_NS Registers"]
+#[doc = "Fast Start RCO"]
 pub type FsrcoNs = crate::Periph<fsrco_ns::RegisterBlock, 0x5001_8000>;
 impl core::fmt::Debug for FsrcoNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("FsrcoNs").finish()
     }
 }
-#[doc = "FSRCO_NS Registers"]
+#[doc = "Fast Start RCO"]
 pub mod fsrco_ns;
-#[doc = "FSRCO_S Registers"]
+#[doc = "Fast Start RCO"]
 pub type FsrcoS = crate::Periph<fsrco_s::RegisterBlock, 0x4001_8000>;
 impl core::fmt::Debug for FsrcoS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("FsrcoS").finish()
     }
 }
-#[doc = "FSRCO_S Registers"]
+#[doc = "Fast Start RCO"]
 pub mod fsrco_s;
-#[doc = "GPCRC_NS Registers"]
+#[doc = "General Purpose Cyclic Redundancy Check"]
 pub type GpcrcNs = crate::Periph<gpcrc_ns::RegisterBlock, 0x5008_8000>;
 impl core::fmt::Debug for GpcrcNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("GpcrcNs").finish()
     }
 }
-#[doc = "GPCRC_NS Registers"]
+#[doc = "General Purpose Cyclic Redundancy Check"]
 pub mod gpcrc_ns;
-#[doc = "GPCRC_S Registers"]
+#[doc = "General Purpose Cyclic Redundancy Check"]
 pub type GpcrcS = crate::Periph<gpcrc_s::RegisterBlock, 0x4008_8000>;
 impl core::fmt::Debug for GpcrcS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("GpcrcS").finish()
     }
 }
-#[doc = "GPCRC_S Registers"]
+#[doc = "General Purpose Cyclic Redundancy Check"]
 pub mod gpcrc_s;
-#[doc = "GPIO_NS Registers"]
+#[doc = "General Purpose Input/Output"]
 pub type GpioNs = crate::Periph<gpio_ns::RegisterBlock, 0x5003_c000>;
 impl core::fmt::Debug for GpioNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("GpioNs").finish()
     }
 }
-#[doc = "GPIO_NS Registers"]
+#[doc = "General Purpose Input/Output"]
 pub mod gpio_ns;
-#[doc = "GPIO_S Registers"]
+#[doc = "General Purpose Input/Output"]
 pub type GpioS = crate::Periph<gpio_s::RegisterBlock, 0x4003_c000>;
 impl core::fmt::Debug for GpioS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("GpioS").finish()
     }
 }
-#[doc = "GPIO_S Registers"]
+#[doc = "General Purpose Input/Output"]
 pub mod gpio_s;
-#[doc = "HFRCO0_NS Registers"]
+#[doc = "High-Frequency RC Oscillator"]
 pub type Hfrco0Ns = crate::Periph<hfrco0_ns::RegisterBlock, 0x5001_0000>;
 impl core::fmt::Debug for Hfrco0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Hfrco0Ns").finish()
     }
 }
-#[doc = "HFRCO0_NS Registers"]
+#[doc = "High-Frequency RC Oscillator"]
 pub mod hfrco0_ns;
-#[doc = "HFRCO0_S Registers"]
+#[doc = "High-Frequency RC Oscillator"]
 pub type Hfrco0S = crate::Periph<hfrco0_s::RegisterBlock, 0x4001_0000>;
 impl core::fmt::Debug for Hfrco0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Hfrco0S").finish()
     }
 }
-#[doc = "HFRCO0_S Registers"]
+#[doc = "High-Frequency RC Oscillator"]
 pub mod hfrco0_s;
 #[doc = "HFRCOEM23_NS Registers"]
 pub type Hfrcoem23Ns = crate::Periph<hfrcoem23_ns::RegisterBlock, 0x5a00_0000>;
@@ -776,23 +776,23 @@ impl core::fmt::Debug for Hfrcoem23S {
 }
 #[doc = "HFRCOEM23_S Registers"]
 pub mod hfrcoem23_s;
-#[doc = "HFXO0_NS Registers"]
+#[doc = "High Frequency Crystal Oscillator"]
 pub type Hfxo0Ns = crate::Periph<hfxo0_ns::RegisterBlock, 0x5a00_4000>;
 impl core::fmt::Debug for Hfxo0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Hfxo0Ns").finish()
     }
 }
-#[doc = "HFXO0_NS Registers"]
+#[doc = "High Frequency Crystal Oscillator"]
 pub mod hfxo0_ns;
-#[doc = "HFXO0_S Registers"]
+#[doc = "High Frequency Crystal Oscillator"]
 pub type Hfxo0S = crate::Periph<hfxo0_s::RegisterBlock, 0x4a00_4000>;
 impl core::fmt::Debug for Hfxo0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Hfxo0S").finish()
     }
 }
-#[doc = "HFXO0_S Registers"]
+#[doc = "High Frequency Crystal Oscillator"]
 pub mod hfxo0_s;
 #[doc = "HOSTMAILBOX_NS Registers"]
 pub type HostmailboxNs = crate::Periph<hostmailbox_ns::RegisterBlock, 0x5009_8000>;
@@ -812,95 +812,95 @@ impl core::fmt::Debug for HostmailboxS {
 }
 #[doc = "HOSTMAILBOX_S Registers"]
 pub mod hostmailbox_s;
-#[doc = "I2C0_NS Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub type I2c0Ns = crate::Periph<i2c0_ns::RegisterBlock, 0x5b00_0000>;
 impl core::fmt::Debug for I2c0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("I2c0Ns").finish()
     }
 }
-#[doc = "I2C0_NS Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub mod i2c0_ns;
-#[doc = "I2C0_S Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub type I2c0S = crate::Periph<i2c0_s::RegisterBlock, 0x4b00_0000>;
 impl core::fmt::Debug for I2c0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("I2c0S").finish()
     }
 }
-#[doc = "I2C0_S Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub mod i2c0_s;
-#[doc = "I2C1_NS Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub type I2c1Ns = crate::Periph<i2c1_ns::RegisterBlock, 0x5006_8000>;
 impl core::fmt::Debug for I2c1Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("I2c1Ns").finish()
     }
 }
-#[doc = "I2C1_NS Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub mod i2c1_ns;
-#[doc = "I2C1_S Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub type I2c1S = crate::Periph<i2c1_s::RegisterBlock, 0x4006_8000>;
 impl core::fmt::Debug for I2c1S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("I2c1S").finish()
     }
 }
-#[doc = "I2C1_S Registers"]
+#[doc = "Inter-Integrated Circuit Interface"]
 pub mod i2c1_s;
-#[doc = "IADC0_NS Registers"]
+#[doc = "Incremental Analog to Digital Converter"]
 pub type Iadc0Ns = crate::Periph<iadc0_ns::RegisterBlock, 0x5900_4000>;
 impl core::fmt::Debug for Iadc0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Iadc0Ns").finish()
     }
 }
-#[doc = "IADC0_NS Registers"]
+#[doc = "Incremental Analog to Digital Converter"]
 pub mod iadc0_ns;
-#[doc = "IADC0_S Registers"]
+#[doc = "Incremental Analog to Digital Converter"]
 pub type Iadc0S = crate::Periph<iadc0_s::RegisterBlock, 0x4900_4000>;
 impl core::fmt::Debug for Iadc0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Iadc0S").finish()
     }
 }
-#[doc = "IADC0_S Registers"]
+#[doc = "Incremental Analog to Digital Converter"]
 pub mod iadc0_s;
-#[doc = "ICACHE0_NS Registers"]
+#[doc = "Instruction Cache"]
 pub type Icache0Ns = crate::Periph<icache0_ns::RegisterBlock, 0x5003_4000>;
 impl core::fmt::Debug for Icache0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Icache0Ns").finish()
     }
 }
-#[doc = "ICACHE0_NS Registers"]
+#[doc = "Instruction Cache"]
 pub mod icache0_ns;
-#[doc = "ICACHE0_S Registers"]
+#[doc = "Instruction Cache"]
 pub type Icache0S = crate::Periph<icache0_s::RegisterBlock, 0x4003_4000>;
 impl core::fmt::Debug for Icache0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Icache0S").finish()
     }
 }
-#[doc = "ICACHE0_S Registers"]
+#[doc = "Instruction Cache"]
 pub mod icache0_s;
-#[doc = "KEYSCAN_NS Registers"]
+#[doc = "Keyboard Scan"]
 pub type KeyscanNs = crate::Periph<keyscan_ns::RegisterBlock, 0x500b_0000>;
 impl core::fmt::Debug for KeyscanNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("KeyscanNs").finish()
     }
 }
-#[doc = "KEYSCAN_NS Registers"]
+#[doc = "Keyboard Scan"]
 pub mod keyscan_ns;
-#[doc = "KEYSCAN_S Registers"]
+#[doc = "Keyboard Scan"]
 pub type KeyscanS = crate::Periph<keyscan_s::RegisterBlock, 0x400b_0000>;
 impl core::fmt::Debug for KeyscanS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("KeyscanS").finish()
     }
 }
-#[doc = "KEYSCAN_S Registers"]
+#[doc = "Keyboard Scan"]
 pub mod keyscan_s;
 #[doc = "LDMAXBAR_NS Registers"]
 pub type LdmaxbarNs = crate::Periph<ldmaxbar_ns::RegisterBlock, 0x5004_4000>;
@@ -920,149 +920,149 @@ impl core::fmt::Debug for LdmaxbarS {
 }
 #[doc = "LDMAXBAR_S Registers"]
 pub mod ldmaxbar_s;
-#[doc = "LDMA_NS Registers"]
+#[doc = "Linked DMA"]
 pub type LdmaNs = crate::Periph<ldma_ns::RegisterBlock, 0x5004_0000>;
 impl core::fmt::Debug for LdmaNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("LdmaNs").finish()
     }
 }
-#[doc = "LDMA_NS Registers"]
+#[doc = "Linked DMA"]
 pub mod ldma_ns;
-#[doc = "LDMA_S Registers"]
+#[doc = "Linked DMA"]
 pub type LdmaS = crate::Periph<ldma_s::RegisterBlock, 0x4004_0000>;
 impl core::fmt::Debug for LdmaS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("LdmaS").finish()
     }
 }
-#[doc = "LDMA_S Registers"]
+#[doc = "Linked DMA"]
 pub mod ldma_s;
-#[doc = "LETIMER0_NS Registers"]
+#[doc = "Low Energy Timer"]
 pub type Letimer0Ns = crate::Periph<letimer0_ns::RegisterBlock, 0x5900_0000>;
 impl core::fmt::Debug for Letimer0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Letimer0Ns").finish()
     }
 }
-#[doc = "LETIMER0_NS Registers"]
+#[doc = "Low Energy Timer"]
 pub mod letimer0_ns;
-#[doc = "LETIMER0_S Registers"]
+#[doc = "Low Energy Timer"]
 pub type Letimer0S = crate::Periph<letimer0_s::RegisterBlock, 0x4900_0000>;
 impl core::fmt::Debug for Letimer0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Letimer0S").finish()
     }
 }
-#[doc = "LETIMER0_S Registers"]
+#[doc = "Low Energy Timer"]
 pub mod letimer0_s;
-#[doc = "LFRCO_NS Registers"]
+#[doc = "Low-Frequency RC Oscillator"]
 pub type LfrcoNs = crate::Periph<lfrco_ns::RegisterBlock, 0x5002_4000>;
 impl core::fmt::Debug for LfrcoNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("LfrcoNs").finish()
     }
 }
-#[doc = "LFRCO_NS Registers"]
+#[doc = "Low-Frequency RC Oscillator"]
 pub mod lfrco_ns;
-#[doc = "LFRCO_S Registers"]
+#[doc = "Low-Frequency RC Oscillator"]
 pub type LfrcoS = crate::Periph<lfrco_s::RegisterBlock, 0x4002_4000>;
 impl core::fmt::Debug for LfrcoS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("LfrcoS").finish()
     }
 }
-#[doc = "LFRCO_S Registers"]
+#[doc = "Low-Frequency RC Oscillator"]
 pub mod lfrco_s;
-#[doc = "LFXO_NS Registers"]
+#[doc = "Low-Frequency Crystal Oscillator"]
 pub type LfxoNs = crate::Periph<lfxo_ns::RegisterBlock, 0x5002_0000>;
 impl core::fmt::Debug for LfxoNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("LfxoNs").finish()
     }
 }
-#[doc = "LFXO_NS Registers"]
+#[doc = "Low-Frequency Crystal Oscillator"]
 pub mod lfxo_ns;
-#[doc = "LFXO_S Registers"]
+#[doc = "Low-Frequency Crystal Oscillator"]
 pub type LfxoS = crate::Periph<lfxo_s::RegisterBlock, 0x4002_0000>;
 impl core::fmt::Debug for LfxoS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("LfxoS").finish()
     }
 }
-#[doc = "LFXO_S Registers"]
+#[doc = "Low-Frequency Crystal Oscillator"]
 pub mod lfxo_s;
-#[doc = "MSC_NS Registers"]
+#[doc = "Memory System Controller"]
 pub type MscNs = crate::Periph<msc_ns::RegisterBlock, 0x5003_0000>;
 impl core::fmt::Debug for MscNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("MscNs").finish()
     }
 }
-#[doc = "MSC_NS Registers"]
+#[doc = "Memory System Controller"]
 pub mod msc_ns;
-#[doc = "MSC_S Registers"]
+#[doc = "Memory System Controller"]
 pub type MscS = crate::Periph<msc_s::RegisterBlock, 0x4003_0000>;
 impl core::fmt::Debug for MscS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("MscS").finish()
     }
 }
-#[doc = "MSC_S Registers"]
+#[doc = "Memory System Controller"]
 pub mod msc_s;
-#[doc = "MVP_NS Registers"]
+#[doc = "Matrix Vector Processor"]
 pub type MvpNs = crate::Periph<mvp_ns::RegisterBlock, 0x5d00_0000>;
 impl core::fmt::Debug for MvpNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("MvpNs").finish()
     }
 }
-#[doc = "MVP_NS Registers"]
+#[doc = "Matrix Vector Processor"]
 pub mod mvp_ns;
-#[doc = "MVP_S Registers"]
+#[doc = "Matrix Vector Processor"]
 pub type MvpS = crate::Periph<mvp_s::RegisterBlock, 0x4d00_0000>;
 impl core::fmt::Debug for MvpS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("MvpS").finish()
     }
 }
-#[doc = "MVP_S Registers"]
+#[doc = "Matrix Vector Processor"]
 pub mod mvp_s;
-#[doc = "PCNT0_NS Registers"]
+#[doc = "Pulse Counter"]
 pub type Pcnt0Ns = crate::Periph<pcnt0_ns::RegisterBlock, 0x5903_0000>;
 impl core::fmt::Debug for Pcnt0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Pcnt0Ns").finish()
     }
 }
-#[doc = "PCNT0_NS Registers"]
+#[doc = "Pulse Counter"]
 pub mod pcnt0_ns;
-#[doc = "PCNT0_S Registers"]
+#[doc = "Pulse Counter"]
 pub type Pcnt0S = crate::Periph<pcnt0_s::RegisterBlock, 0x4903_0000>;
 impl core::fmt::Debug for Pcnt0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Pcnt0S").finish()
     }
 }
-#[doc = "PCNT0_S Registers"]
+#[doc = "Pulse Counter"]
 pub mod pcnt0_s;
-#[doc = "PRS_NS Registers"]
+#[doc = "Peripheral Reflex System"]
 pub type PrsNs = crate::Periph<prs_ns::RegisterBlock, 0x5003_8000>;
 impl core::fmt::Debug for PrsNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("PrsNs").finish()
     }
 }
-#[doc = "PRS_NS Registers"]
+#[doc = "Peripheral Reflex System"]
 pub mod prs_ns;
-#[doc = "PRS_S Registers"]
+#[doc = "Peripheral Reflex System"]
 pub type PrsS = crate::Periph<prs_s::RegisterBlock, 0x4003_8000>;
 impl core::fmt::Debug for PrsS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("PrsS").finish()
     }
 }
-#[doc = "PRS_S Registers"]
+#[doc = "Peripheral Reflex System"]
 pub mod prs_s;
 #[doc = "RADIOAES_NS Registers"]
 pub type RadioaesNs = crate::Periph<radioaes_ns::RegisterBlock, 0x5400_0000>;
@@ -1118,14 +1118,14 @@ impl core::fmt::Debug for SemailboxSHost {
 }
 #[doc = "SEMAILBOX_S_HOST Registers"]
 pub mod semailbox_s_host;
-#[doc = "SMU_NS Registers"]
+#[doc = "Security Management Unit"]
 pub type SmuNs = crate::Periph<smu_ns::RegisterBlock, 0x5400_8000>;
 impl core::fmt::Debug for SmuNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("SmuNs").finish()
     }
 }
-#[doc = "SMU_NS Registers"]
+#[doc = "Security Management Unit"]
 pub mod smu_ns;
 #[doc = "SMU_NS_CFGNS Registers"]
 pub type SmuNsCfgns = crate::Periph<smu_ns_cfgns::RegisterBlock, 0x5400_c000>;
@@ -1136,14 +1136,14 @@ impl core::fmt::Debug for SmuNsCfgns {
 }
 #[doc = "SMU_NS_CFGNS Registers"]
 pub mod smu_ns_cfgns;
-#[doc = "SMU_S Registers"]
+#[doc = "Security Management Unit"]
 pub type SmuS = crate::Periph<smu_s::RegisterBlock, 0x4400_8000>;
 impl core::fmt::Debug for SmuS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("SmuS").finish()
     }
 }
-#[doc = "SMU_S Registers"]
+#[doc = "Security Management Unit"]
 pub mod smu_s;
 #[doc = "SMU_S_CFGNS Registers"]
 pub type SmuSCfgns = crate::Periph<smu_s_cfgns::RegisterBlock, 0x4400_c000>;
@@ -1154,14 +1154,14 @@ impl core::fmt::Debug for SmuSCfgns {
 }
 #[doc = "SMU_S_CFGNS Registers"]
 pub mod smu_s_cfgns;
-#[doc = "SYSCFG_NS Registers"]
+#[doc = "System Configuration"]
 pub type SyscfgNs = crate::Periph<syscfg_ns::RegisterBlock, 0x5007_c000>;
 impl core::fmt::Debug for SyscfgNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("SyscfgNs").finish()
     }
 }
-#[doc = "SYSCFG_NS Registers"]
+#[doc = "System Configuration"]
 pub mod syscfg_ns;
 #[doc = "SYSCFG_NS_CFGNS Registers"]
 pub type SyscfgNsCfgns = crate::Periph<syscfg_ns_cfgns::RegisterBlock, 0x5007_8000>;
@@ -1172,14 +1172,14 @@ impl core::fmt::Debug for SyscfgNsCfgns {
 }
 #[doc = "SYSCFG_NS_CFGNS Registers"]
 pub mod syscfg_ns_cfgns;
-#[doc = "SYSCFG_S Registers"]
+#[doc = "System Configuration"]
 pub type SyscfgS = crate::Periph<syscfg_s::RegisterBlock, 0x4007_c000>;
 impl core::fmt::Debug for SyscfgS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("SyscfgS").finish()
     }
 }
-#[doc = "SYSCFG_S Registers"]
+#[doc = "System Configuration"]
 pub mod syscfg_s;
 #[doc = "SYSCFG_S_CFGNS Registers"]
 pub type SyscfgSCfgns = crate::Periph<syscfg_s_cfgns::RegisterBlock, 0x4007_8000>;
@@ -1190,230 +1190,230 @@ impl core::fmt::Debug for SyscfgSCfgns {
 }
 #[doc = "SYSCFG_S_CFGNS Registers"]
 pub mod syscfg_s_cfgns;
-#[doc = "SYSRTC0_NS Registers"]
+#[doc = "System RTC"]
 pub type Sysrtc0Ns = crate::Periph<sysrtc0_ns::RegisterBlock, 0x500a_8000>;
 impl core::fmt::Debug for Sysrtc0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Sysrtc0Ns").finish()
     }
 }
-#[doc = "SYSRTC0_NS Registers"]
+#[doc = "System RTC"]
 pub mod sysrtc0_ns;
-#[doc = "SYSRTC0_S Registers"]
+#[doc = "System RTC"]
 pub type Sysrtc0S = crate::Periph<sysrtc0_s::RegisterBlock, 0x400a_8000>;
 impl core::fmt::Debug for Sysrtc0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Sysrtc0S").finish()
     }
 }
-#[doc = "SYSRTC0_S Registers"]
+#[doc = "System RTC"]
 pub mod sysrtc0_s;
-#[doc = "TIMER0_NS Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer0Ns = crate::Periph<timer0_ns::RegisterBlock, 0x5004_8000>;
 impl core::fmt::Debug for Timer0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer0Ns").finish()
     }
 }
-#[doc = "TIMER0_NS Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer0_ns;
-#[doc = "TIMER0_S Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer0S = crate::Periph<timer0_s::RegisterBlock, 0x4004_8000>;
 impl core::fmt::Debug for Timer0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer0S").finish()
     }
 }
-#[doc = "TIMER0_S Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer0_s;
-#[doc = "TIMER1_NS Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer1Ns = crate::Periph<timer1_ns::RegisterBlock, 0x5004_c000>;
 impl core::fmt::Debug for Timer1Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer1Ns").finish()
     }
 }
-#[doc = "TIMER1_NS Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer1_ns;
-#[doc = "TIMER1_S Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer1S = crate::Periph<timer1_s::RegisterBlock, 0x4004_c000>;
 impl core::fmt::Debug for Timer1S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer1S").finish()
     }
 }
-#[doc = "TIMER1_S Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer1_s;
-#[doc = "TIMER2_NS Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer2Ns = crate::Periph<timer2_ns::RegisterBlock, 0x5005_0000>;
 impl core::fmt::Debug for Timer2Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer2Ns").finish()
     }
 }
-#[doc = "TIMER2_NS Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer2_ns;
-#[doc = "TIMER2_S Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer2S = crate::Periph<timer2_s::RegisterBlock, 0x4005_0000>;
 impl core::fmt::Debug for Timer2S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer2S").finish()
     }
 }
-#[doc = "TIMER2_S Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer2_s;
-#[doc = "TIMER3_NS Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer3Ns = crate::Periph<timer3_ns::RegisterBlock, 0x5005_4000>;
 impl core::fmt::Debug for Timer3Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer3Ns").finish()
     }
 }
-#[doc = "TIMER3_NS Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer3_ns;
-#[doc = "TIMER3_S Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer3S = crate::Periph<timer3_s::RegisterBlock, 0x4005_4000>;
 impl core::fmt::Debug for Timer3S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer3S").finish()
     }
 }
-#[doc = "TIMER3_S Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer3_s;
-#[doc = "TIMER4_NS Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer4Ns = crate::Periph<timer4_ns::RegisterBlock, 0x5005_8000>;
 impl core::fmt::Debug for Timer4Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer4Ns").finish()
     }
 }
-#[doc = "TIMER4_NS Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer4_ns;
-#[doc = "TIMER4_S Registers"]
+#[doc = "Timer/Counter"]
 pub type Timer4S = crate::Periph<timer4_s::RegisterBlock, 0x4005_8000>;
 impl core::fmt::Debug for Timer4S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Timer4S").finish()
     }
 }
-#[doc = "TIMER4_S Registers"]
+#[doc = "Timer/Counter"]
 pub mod timer4_s;
-#[doc = "ULFRCO_NS Registers"]
+#[doc = "Ultra Low Frequency RC Oscillator"]
 pub type UlfrcoNs = crate::Periph<ulfrco_ns::RegisterBlock, 0x5002_8000>;
 impl core::fmt::Debug for UlfrcoNs {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("UlfrcoNs").finish()
     }
 }
-#[doc = "ULFRCO_NS Registers"]
+#[doc = "Ultra Low Frequency RC Oscillator"]
 pub mod ulfrco_ns;
-#[doc = "ULFRCO_S Registers"]
+#[doc = "Ultra Low Frequency RC Oscillator"]
 pub type UlfrcoS = crate::Periph<ulfrco_s::RegisterBlock, 0x4002_8000>;
 impl core::fmt::Debug for UlfrcoS {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("UlfrcoS").finish()
     }
 }
-#[doc = "ULFRCO_S Registers"]
+#[doc = "Ultra Low Frequency RC Oscillator"]
 pub mod ulfrco_s;
-#[doc = "USART0_NS Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub type Usart0Ns = crate::Periph<usart0_ns::RegisterBlock, 0x5005_c000>;
 impl core::fmt::Debug for Usart0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Usart0Ns").finish()
     }
 }
-#[doc = "USART0_NS Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub mod usart0_ns;
-#[doc = "USART0_S Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub type Usart0S = crate::Periph<usart0_s::RegisterBlock, 0x4005_c000>;
 impl core::fmt::Debug for Usart0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Usart0S").finish()
     }
 }
-#[doc = "USART0_S Registers"]
+#[doc = "Universal Synchronous Asynchronous Receiver/Transmitter"]
 pub mod usart0_s;
-#[doc = "VDAC0_NS Registers"]
+#[doc = "Digital to Analog Converter"]
 pub type Vdac0Ns = crate::Periph<vdac0_ns::RegisterBlock, 0x5902_4000>;
 impl core::fmt::Debug for Vdac0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Vdac0Ns").finish()
     }
 }
-#[doc = "VDAC0_NS Registers"]
+#[doc = "Digital to Analog Converter"]
 pub mod vdac0_ns;
-#[doc = "VDAC0_S Registers"]
+#[doc = "Digital to Analog Converter"]
 pub type Vdac0S = crate::Periph<vdac0_s::RegisterBlock, 0x4902_4000>;
 impl core::fmt::Debug for Vdac0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Vdac0S").finish()
     }
 }
-#[doc = "VDAC0_S Registers"]
+#[doc = "Digital to Analog Converter"]
 pub mod vdac0_s;
-#[doc = "VDAC1_NS Registers"]
+#[doc = "Digital to Analog Converter"]
 pub type Vdac1Ns = crate::Periph<vdac1_ns::RegisterBlock, 0x5902_8000>;
 impl core::fmt::Debug for Vdac1Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Vdac1Ns").finish()
     }
 }
-#[doc = "VDAC1_NS Registers"]
+#[doc = "Digital to Analog Converter"]
 pub mod vdac1_ns;
-#[doc = "VDAC1_S Registers"]
+#[doc = "Digital to Analog Converter"]
 pub type Vdac1S = crate::Periph<vdac1_s::RegisterBlock, 0x4902_8000>;
 impl core::fmt::Debug for Vdac1S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Vdac1S").finish()
     }
 }
-#[doc = "VDAC1_S Registers"]
+#[doc = "Digital to Analog Converter"]
 pub mod vdac1_s;
-#[doc = "WDOG0_NS Registers"]
+#[doc = "Watch Dog Timer"]
 pub type Wdog0Ns = crate::Periph<wdog0_ns::RegisterBlock, 0x5b00_4000>;
 impl core::fmt::Debug for Wdog0Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Wdog0Ns").finish()
     }
 }
-#[doc = "WDOG0_NS Registers"]
+#[doc = "Watch Dog Timer"]
 pub mod wdog0_ns;
-#[doc = "WDOG0_S Registers"]
+#[doc = "Watch Dog Timer"]
 pub type Wdog0S = crate::Periph<wdog0_s::RegisterBlock, 0x4b00_4000>;
 impl core::fmt::Debug for Wdog0S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Wdog0S").finish()
     }
 }
-#[doc = "WDOG0_S Registers"]
+#[doc = "Watch Dog Timer"]
 pub mod wdog0_s;
-#[doc = "WDOG1_NS Registers"]
+#[doc = "Watch Dog Timer"]
 pub type Wdog1Ns = crate::Periph<wdog1_ns::RegisterBlock, 0x5b00_8000>;
 impl core::fmt::Debug for Wdog1Ns {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Wdog1Ns").finish()
     }
 }
-#[doc = "WDOG1_NS Registers"]
+#[doc = "Watch Dog Timer"]
 pub mod wdog1_ns;
-#[doc = "WDOG1_S Registers"]
+#[doc = "Watch Dog Timer"]
 pub type Wdog1S = crate::Periph<wdog1_s::RegisterBlock, 0x4b00_8000>;
 impl core::fmt::Debug for Wdog1S {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Wdog1S").finish()
     }
 }
-#[doc = "WDOG1_S Registers"]
+#[doc = "Watch Dog Timer"]
 pub mod wdog1_s;
-#[doc = "DEVINFO Registers"]
+#[doc = "Device Info Page"]
 pub type Devinfo = crate::Periph<devinfo::RegisterBlock, 0x0fe0_8000>;
 impl core::fmt::Debug for Devinfo {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         f.debug_struct("Devinfo").finish()
     }
 }
-#[doc = "DEVINFO Registers"]
+#[doc = "Device Info Page"]
 pub mod devinfo;
 #[no_mangle]
 static mut DEVICE_PERIPHERALS: bool = false;

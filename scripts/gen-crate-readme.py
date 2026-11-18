@@ -77,6 +77,12 @@ def block_usage(crate, name, version):
                  '# "undefined symbol: _critical_section_1_0_acquire"\n'
                  'cortex-m = { version = "0.7", features = ["critical-section-single-core"] }\n'
                  'cortex-m-rt = "0.7"\n')
+    # A dependencia que o proprio codigo do exemplo exige nao pode ficar de fora da lista: o 0.1.0 publicado
+    # mandava fazer `use panic_halt as _;` sem panic-halt no Cargo.toml, e quem copiava o bloco recebia
+    # "unresolved import `panic_halt`". Ler o corpo e' o que impede a lista de voltar a divergir do codigo.
+    if "use panic_halt" in body and "panic-halt" not in extra:
+        extra += "# the program below declares panic_halt as its panic handler\npanic-halt = \"0.2\"\n"
+
     note = ""
     if lib:
         note = f"The package is `{name}`; the **library** it exports is `{lib.group(1)}`, so the `use` line is not a typo.\n\n"

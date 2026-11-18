@@ -63,6 +63,16 @@ else
     FAILED=1
 fi
 
+# O exemplo que o README manda copiar tem de compilar, como um estranho o leria. Todos os outros checks leem a
+# crate; este le o par (Cargo.toml, programa) que o leitor recebe, e foi o unico que apanhou o panic-halt em falta.
+if python3 scripts/check-readme-example.py crates/efr32mg2x-pac/README.md /tmp/gate-readme-example --target thumbv8m.main-none-eabihf >/tmp/gate-readme-example.log 2>&1; then
+    printf '  PASS  docs: the README example builds in an empty crate\n'
+else
+    printf '  FAIL  docs: the README example does not build\n'
+    sed -n '1,6p' /tmp/gate-readme-example.log | sed 's/^/        /'
+    FAILED=1
+fi
+
 if python3 scripts/gen-pac-examples-doc.py --check >/tmp/gate-examples-doc.log 2>&1; then
   pass "crate docs: the example list matches the tree"
 else
