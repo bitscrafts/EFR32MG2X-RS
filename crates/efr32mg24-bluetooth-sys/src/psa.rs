@@ -914,27 +914,20 @@ pub unsafe extern "C" fn psa_mac_sign_setup(operation: *mut u8, key: u32, alg: u
     if operation.is_null() {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
-    // PSA_ALG_CMAC = 0x03C00000, and the truncated variants are (PSA_ALG_CMAC | (length << 16) | 0x001F0000).
-    // Only full-length CMAC is supported; a truncated request would need a different output length.
-    const PSA_ALG_CMAC: u32 = 0x03C0_0000;
+    // The module-level `PSA_ALG_CMAC` is 0x03c0_0200, which is the value in the PSA specification and the one the
+    // stack passes (transcribed from `gatt_db_calculate_hash+0x1c0`). A local constant of 0x03C0_0000 used to shadow
+    // it and every CMAC request was refused, so the GATT database hash could never be computed -- `B3`.
     if alg != PSA_ALG_CMAC {
         return PSA_ERROR_NOT_SUPPORTED;
     }
 
-    let id = key;
-    let table = slots();
-    let mut seen = 0u32;
-    let mut found: Option<usize> = None;
-    for (i, slot) in table.iter().enumerate() {
-        if slot.used {
-            seen += 1;
-            if seen == id {
-                found = Some(i);
-                break;
-            }
-        }
+    // The id is the value `psa_import_key` handed out and every other function matches it with `slot_for`. This one
+    // used to treat it as "the Nth slot currently in use", so after any key was destroyed the same id addressed a
+    // different key -- a MAC computed with the wrong material, reported as success (`B4`).
+    if slot_for(key).is_none() {
+        return PSA_ERROR_INVALID_HANDLE;
     }
-    let Some(index) = found else {
+    let Some(index) = slots().iter().position(|s| s.used && s.id == key) else {
         return PSA_ERROR_INVALID_HANDLE;
     };
 
