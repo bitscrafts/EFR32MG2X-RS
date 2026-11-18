@@ -251,7 +251,7 @@ impl Spi1 {
                 .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
-        let sdiv = match efr32mg2x_spi_core::sdiv(clocks.hfclk().into(), config.frequency) {
+        let sdiv = match crate::cores::spi::sdiv(clocks.hfclk().into(), config.frequency) {
             Ok(value) => value as u8,
             Err(_) => 0xFF, // the slowest expressible rate: reported by `actual_frequency`, never silent
         };
@@ -378,7 +378,7 @@ impl Spi2 {
                 .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
-        let sdiv = match efr32mg2x_spi_core::sdiv(clocks.hfclk().into(), config.frequency) {
+        let sdiv = match crate::cores::spi::sdiv(clocks.hfclk().into(), config.frequency) {
             Ok(value) => value as u8,
             Err(_) => 0xFF,
         };

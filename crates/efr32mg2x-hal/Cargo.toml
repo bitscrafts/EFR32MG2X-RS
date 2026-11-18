@@ -14,7 +14,6 @@ efr32mg2x-i2c-core = { path = "../../libraries/i2c-core" }
 efr32mg2x-adc-core = { path = "../../libraries/adc-core" }
 efr32mg2x-dma-core = { path = "../../libraries/dma-core" }
 efr32mg2x-usart-core = { path = "../../libraries/usart-core" }
-efr32mg2x-spi-core = { path = "../../libraries/spi-core" }
 efr32mg2x-sysrtc-core = { path = "../../libraries/sysrtc-core" }
 efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.0" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }

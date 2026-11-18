@@ -115,6 +115,7 @@ pub mod board;
 pub mod bus;
 pub mod buzzer;
 pub mod clock;
+pub mod cores;
 pub mod delay;
 pub mod display;
 pub mod dma;
