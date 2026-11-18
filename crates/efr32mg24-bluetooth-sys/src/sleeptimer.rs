@@ -150,7 +150,10 @@ const SL_STATUS_OK: u32 = 0;
 const SL_STATUS_INVALID_PARAMETER: u32 = 0x21;
 const SL_STATUS_ALLOCATION_FAILED: u32 = 0x01;
 
-pub type TimerCallback = extern "C" fn(*mut c_void);
+/// `sl_sleeptimer.h:74` declares `void (*)(sl_sleeptimer_timer_handle_t *handle, void *data)`.
+/// The handle was dropped and only `data` reached the callback, which the one host callback seen
+/// survived by ignoring its first argument -- `B9`.
+pub type TimerCallback = extern "C" fn(*mut c_void, *mut c_void);
 
 /// One scheduled callback.
 #[derive(Clone, Copy)]
@@ -435,8 +438,8 @@ pub fn poll() {
     let deadline_now = now();
     // Collect first, then run: a callback may reschedule itself, and mutating the table while iterating it is
     // exactly the kind of aliasing this language refuses to compile but a raw loop would let through.
-    let mut due: [(Option<TimerCallback>, *mut c_void); MAX_TIMERS] =
-        [(None, core::ptr::null_mut()); MAX_TIMERS];
+    let mut due: [(Option<TimerCallback>, *mut c_void, *mut c_void); MAX_TIMERS] =
+        [(None, core::ptr::null_mut(), core::ptr::null_mut()); MAX_TIMERS];
     let mut due_count = 0usize;
 
     unsafe {
@@ -447,7 +450,7 @@ pub fn poll() {
             }
             // Wraparound-safe: the timer is due when `now - deadline` is small in the unsigned sense.
             if deadline_now.wrapping_sub(t.deadline) < 0x8000_0000 {
-                due[due_count] = (t.callback, t.data);
+                due[due_count] = (t.callback, t.handle as *mut c_void, t.data);
                 due_count += 1;
                 if t.period != 0 {
                     t.deadline = t.deadline.wrapping_add(t.period);
@@ -464,9 +467,9 @@ pub fn poll() {
         });
     }
 
-    for (cb, data) in due.iter().take(due_count) {
+    for (cb, handle, data) in due.iter().take(due_count) {
         if let Some(f) = cb {
-            f(*data);
+            f(*handle, *data);
         }
     }
 

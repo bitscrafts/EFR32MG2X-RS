@@ -41,7 +41,7 @@ pub static mut ENTROPY_REPORT: [u32; 3] = [0; 3];
 /// Counts how many times the timer callback ran. Written from an interrupt, read from the main loop.
 static mut TICKS: u32 = 0;
 
-extern "C" fn on_tick(_data: *mut c_void) {
+extern "C" fn on_tick(_handle: *mut c_void, _data: *mut c_void) {
     unsafe {
         let p = core::ptr::addr_of_mut!(TICKS);
         core::ptr::write_volatile(p, core::ptr::read_volatile(p).wrapping_add(1));
