@@ -19,6 +19,7 @@ Three details the generator has to get right, each of which cost a wrong first a
 """
 
 import pathlib
+import sys
 import re
 
 AQUI = pathlib.Path(__file__).resolve().parent.parent
@@ -262,6 +263,30 @@ pub fn config() -> &'static RAIL_ChannelConfig_t {{
     unsafe {{ &*core::ptr::addr_of!(CONFIG).cast::<RAIL_ChannelConfig_t>() }}
 }}
 '''
+
+# `--check`: regenerate into a temporary file, format it the same way the repository does, and compare. The gate runs
+# this, so the committed table cannot drift from its generator without the build saying so -- which is what happened
+# when the generator lived outside the repository (`B18`).
+if "--check" in sys.argv:
+    import subprocess
+    import tempfile
+
+    with tempfile.TemporaryDirectory() as tmp:
+        alvo = pathlib.Path(tmp) / "ble_config.rs"
+        alvo.write_text(module)
+        # rustfmt is what the repository applies after generating; without it the comparison fails on line wrapping
+        # alone, which is not drift.
+        try:
+            subprocess.run(["rustfmt", "--edition", "2021", str(alvo)], check=True, capture_output=True)
+        except (OSError, subprocess.CalledProcessError):
+            pass  # no rustfmt here: compare the raw output
+        esperado = alvo.read_text()
+    atual = OUT.read_text()
+    if atual == esperado:
+        print(f"PASS  {OUT.name}: the generated table matches its generator")
+        sys.exit(0)
+    print(f"FAIL  {OUT.name} is out of date -- run: python3 scripts/emit-ble-config.py && cargo fmt --all")
+    sys.exit(1)
 
 OUT.write_text(module)
 print(f"wrote {OUT} ({OUT.stat().st_size} bytes)")
