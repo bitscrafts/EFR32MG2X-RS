@@ -329,8 +329,6 @@ Rust bindings source code: MIT OR Apache-2.0
 Binary blobs (librail_*.a): MSLA only
 
 See:
-- [LICENSE-MIT](../LICENSE-MIT)
-- [LICENSE-APACHE](../LICENSE-APACHE)
 - [LICENSE-MSLA](LICENSE-MSLA)
 
 ---

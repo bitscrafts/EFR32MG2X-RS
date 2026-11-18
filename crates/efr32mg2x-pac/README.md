@@ -1,5 +1,10 @@
 # efr32mg2x-pac
 
+[![crates.io](https://img.shields.io/crates/v/efr32mg2x-pac.svg)](https://crates.io/crates/efr32mg2x-pac)
+[![docs.rs](https://docs.rs/efr32mg2x-pac/badge.svg)](https://docs.rs/efr32mg2x-pac)
+[![CI](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/build-and-test.yml/badge.svg)](https://github.com/bitscrafts/EFR32MG2X-RS/actions/workflows/build-and-test.yml)
+[![license](https://img.shields.io/crates/l/efr32mg2x-pac.svg)](#license)
+
 Peripheral Access Crate (PAC) for the Silicon Labs EFR32MG24, generated from the vendor SVD.
 
 ## Overview

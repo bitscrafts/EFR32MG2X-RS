@@ -1,4 +1,12 @@
-# EFR32MG24 SVD Files
+# EFR32MG24 SVD files
+
+**What is in this folder: one file — `EFR32MG24B220F1536IM48.svd`.** It is the part this crate is generated
+from (`crates/efr32mg2x-pac/src`), and it is the only one vendored here. The other 40 devices of the pack are
+listed at the end of this file for reference only; they are not present and nothing in the build reads them.
+
+```
+EFR32MG24B220F1536IM48.svd   sha256 45c4e7bd78ff9eee6604a879007421b15123567575f8c055ff92ae0320646ed5  (1 of the pack's 41 devices)
+```
 
 ## Source
 
@@ -8,11 +16,10 @@
 - **Date**: October 6, 2025
 - **Download**: https://www.keil.arm.com/packs/geckoplatform_efr32mg24_dfp-siliconlabs/devices/
 
-## Device Coverage
+## The pack's coverage
 
-Total: **41 SVD files**
-- **A-series**: 27 variants
-- **B-series**: 14 variants
+The upstream pack carries **41 devices** — 27 A-series and 14 B-series. **One is vendored here** (the B220
+above); the rest are named below so the gap between "the pack" and "this folder" is visible instead of implied.
 
 ### A-Series Variants (27)
 
@@ -180,6 +187,6 @@ default = ["efr32mg24b220f1536"]
 
 ---
 
-**Last Updated**: December 3, 2025
 **Pack Version**: 2025.6.2 (October 6, 2025)
-**Total Devices**: 41 variants
+**Devices in the pack**: 41 variants
+**Devices vendored here**: 1 (`EFR32MG24B220F1536IM48.svd`)

@@ -4,9 +4,6 @@ Documentation for developers working on this project.
 
 ## Contents
 
-- [Development Workflow](workflow.md) - How to develop and contribute
-- [Contributing Guidelines](contributing.md) - Contribution guidelines
-- [Testing Guide](testing.md) - How to write and run tests
 
 ## Related Sections
 

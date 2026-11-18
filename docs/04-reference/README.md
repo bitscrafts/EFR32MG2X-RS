@@ -4,9 +4,6 @@ Technical reference documentation.
 
 ## Contents
 
-- [API Reference](api.md) - API documentation
-- [CLI Reference](cli.md) - Command-line interface documentation
-- [Configuration](configuration.md) - Configuration options
 
 ## Related Sections
 

@@ -187,7 +187,6 @@ cargo build --target thumbv8m.main-none-eabihf
 
 **Build time**: ~2-3 minutes (after PAC and dependencies)
 
-**Output**: `target/thumbv8m.main-none-eabihf/debug/libefr32mg24_bluetooth_sys.rlib`
 
 ## Graceful Degradation
 
@@ -325,7 +324,7 @@ efr32mg24-zigbee-sys = "0.1"    # Zigbee (when available)
 
 RAIL's hardware scheduler automatically time-slices radio access between protocols.
 
-See `docs/RADIO_ARCHITECTURE_SYS_CRATES.md` for details.
+See `docs/02-architecture/UNIFIED_RADIO_ARCHITECTURE.md` and `docs/02-architecture/RADIO_ARCHITECTURE.md`.
 
 ## Troubleshooting
 
@@ -397,15 +396,12 @@ bindgen --version
 - **README.md** (this file) - Quick start and overview
 - **blobs/README.md** - Binary blob extraction guide
 - **vendor/README.md** - Header extraction guide
-- **docs/RADIO_ARCHITECTURE_SYS_CRATES.md** - Complete architecture explanation
 
 ## Examples
 
 See `xiao-mg24-bsp` for working examples using safe abstractions:
 
 - `ble_beacon.rs` - Non-connectable advertising
-- `ble_peripheral.rs` - Connectable peripheral
-- `ble_gatt_server.rs` - Heart rate sensor
 
 ## Contributing
 

@@ -41,7 +41,7 @@ on the board itself, not merely built -- an example nobody has ever run is an ex
 //! PAC-only blink, baseline: one ON/OFF pulse group, 1_000_000 NOP iterations
 //! per phase, no gap -- i.e. the continuous blink the board has been running.
 //!
-//! Compare against `pac_blink_double`. Verified over SWD, not by eye:
+//! Compare against `pac_led_blink_double`. Verified over SWD, not by eye:
 //! `scripts/read-led.sh` (mode7=4, DOUT toggles, DIN follows) and
 //! `scripts/measure-blink-rate.sh` (toggle counter read from the mailbox twice,
 //! divided by the wall-clock gap).

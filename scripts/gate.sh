@@ -43,6 +43,16 @@ fi
 echo "=== message buffers ==="
 # The crate documentation's example page is generated. If it does not match the tree it is naming examples that no
 # longer exist -- which is a documentation defect that compiles and looks fine on the page.
+# Every README, always: a dead link or a path that is not there is the documentation equivalent of a test
+# that passes while the code is broken.
+if python3 scripts/check-readmes.py --check >/tmp/gate-readmes-all.log 2>&1; then
+    printf '  PASS  docs: every README points at something that exists\n'
+else
+    printf '  FAIL  docs: a README points at something that is not there\n'
+    sed -n '1,20p' /tmp/gate-readmes-all.log | sed 's/^/        /'
+    FAILED=1
+fi
+
 if python3 scripts/gen-pac-examples-doc.py --check >/tmp/gate-examples-doc.log 2>&1; then
   pass "crate docs: the example list matches the tree"
 else

@@ -81,15 +81,9 @@ board that is transmitting perfectly.
 These lived in this directory and were moved out rather than deleted. Each one either performed a one-off migration, was
 superseded by a script above, or bypassed a guard that exists for a reason.
 
-- `ble-example-matrix.sh`, `ble-examples-status.sh`, `ble-run-and-report.sh`, `ble-examples-required-features.sh` —
   superseded by `ble-matrix-all.sh`, which does all of it in one pass and cannot report a row it did not run.
-- `host-env-probe.py`, `host-env-read.sh`, `host-env-session.sh`, `host-env-bluetoothctl.sh` — the attempts that led to
   `host-env-verify.py`. They kept failing in ways that taught the rules in the table above; the rules survive them.
-- `flash-mass-erase.sh`, `flash-bootloader-test.sh`, `erase_and_flash.sh`, `flash-app-only.sh`,
-  `flash-bootloader-arduino.sh`, `flash-arduino-only.sh` — the bootloader-era helpers. They could write below
+  `flash-bootloader-arduino.sh` and `flash-arduino-only.sh` (both removed) — the bootloader-era helpers. They could write below
   `0x08006000`; `flash.sh` refuses to. The bootloader work is finished and recorded in
   `docs/03-development/bootloader-session.md`.
-- `repo-tidy-*.sh`, `restructure-crates.sh`, `rewrite-crate-paths.py`, `inventory-pac-examples.py` — one-off migrations,
   already applied.
-- `build-container.sh`, `build-pac-examples.sh` — subsets of `gate.sh`.
-- `ralph.sh`, `run-claude-finish.sh` — agent dispatch harnesses belonging to an orchestrator, not to this crate.

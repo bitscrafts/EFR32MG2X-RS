@@ -1101,7 +1101,7 @@ rsync -av --include='*.rs' --include='*.toml' --exclude='*' \
 ///
 /// # Implementation Details
 ///
-/// See [EFR32MG24 Reference Manual, Section 25.3.3](efr32mg24_rm.pdf)
+/// See EFR32MG24 Reference Manual, Section 25.3.3
 /// and actual implementation: efr32mg2x-hal/src/usart/mod.rs:45-67
 ///
 /// [book: chapter-05-usart, section-05-02]

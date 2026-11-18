@@ -4,8 +4,6 @@ Documentation about system architecture and design decisions.
 
 ## Contents
 
-- [Design Overview](design.md) - System design and architecture decisions
-- [Component Architecture](components.md) - Component structure and interactions
 
 ## Related Sections
 
