@@ -82,6 +82,8 @@ pub struct Wdog {
 
 /// Unlock key for WDOG configuration registers
 const UNLOCK_KEY: u16 = 0xABE8; // 44008 decimal
+/// The value that locks the configuration again: anything that is not the unlock key.
+const LOCK_KEY: u16 = 0x0000;
 
 impl Wdog {
     /// Creates a new Watchdog instance and enables it with the given configuration
@@ -165,6 +167,12 @@ impl Wdog {
         // Wait for enable to synchronize
         Self::wait_syncbusy()?;
 
+        // Lock the configuration again. The vendor's own `WDOG_Init` ends by writing `~WDOG_LOCK_UNLOCK`, and
+        // without it a watchdog that exists to protect the product stays reconfigurable by any later code --
+        // including a stray write, which is exactly what the lock is for. Measured on the header: `LOCK` reset
+        // value is 0x0000ABE8 (unlocked), so this is the only place the lock is ever applied.
+        Self::lock_config();
+
         // Watchdog is now running
         Ok(Self { _wdog: wdog })
     }
@@ -214,6 +222,13 @@ impl Wdog {
     ///
     /// **Note**: This is called internally by `new()`. You typically don't need
     /// to call this unless you locked the configuration and want to change it.
+    fn lock_config() {
+        // SAFETY: LOCK is a plain writable register whose reset value is the unlock key (0xABE8); writing 0
+        // locks the configuration. `STATUS.LOCK` then reports it.
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
+        wdog.lock().write(|w| unsafe { w.lockkey().bits(LOCK_KEY) });
+    }
+
     fn unlock_config() {
         // SAFETY: LOCK register write is safe. Writing UNLOCK_KEY unlocks configuration.
         let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };

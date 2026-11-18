@@ -20,7 +20,7 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 
 | # | Where | Defect | Fix | Proof |
 |---|---|---|---|---|
-| H27 | `hal/wdog/mod.rs:126` | `LOCK` written while the module is disabled. Claimed to be the faulting kind. | Decide against `em_wdog.h`/the vendor `WDOG_Init`: if the vendor writes `LOCK` while disabled, the claim is refuted and that is recorded; otherwise reorder. | the vendor line, quoted, plus a board read |
+| ~~H27~~ **refuted, adjacent defect fixed** | `hal/wdog/mod.rs` | Claim: `LOCK` written disabled is the faulting kind. **Header says otherwise**: `_WDOG_LOCK_RESETVALUE 0x0000ABE8` (unlocked out of reset) and `STATUS.LOCK` is read-only, so `LOCK` is an ordinary writable register, not a config register under the TIMER rule. | The real gap found while checking: the watchdog was **never re-locked** after configuration, leaving a protection register open to any later write. | `lock_config()` after enable, as the vendor's `WDOG_Init` does |
 | ~~H30~~ **done** | `hal/board.rs` | `gpio_static` casts `0x5003_C000`, which is `GPIO_NS_BASE`, to `gpio_s`. | Use the PAC pointer. | gate + board example still runs |
 | H17 | `hal/pin.rs`, `hal/bus/bitbang.rs` | `DOUT` read-modify-write across the whole port; an interrupt touching the same port is lost. | Write the `+0x1000`/`+0x2000` SET/CLR aliases. | board: bit-bang still ACKs; host: the helper is unit-tested |
 
