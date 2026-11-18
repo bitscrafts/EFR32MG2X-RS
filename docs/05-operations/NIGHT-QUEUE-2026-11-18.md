@@ -45,7 +45,7 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 | ~~B12~~ **parcial** | `bt/psa.rs` | `psa_import_key` ignores type/algorithm/usage; `psa_mac_compute` truncates at 128 bytes and reports success. | Honour attributes; reject over-length. | host test |
 | ~~B14~~ **done** | `bt/blocking/gatt_db.rs` | A failed step returns without `sl_bt_gattdb_abort`; `handles.push` beyond 8 is discarded. | Abort on error; error at capacity. | host test |
 | B16 | `bt/stack_init.rs` | The link layer is served from PendSV, which blocks any RTOS. | Move it to a dedicated software interrupt. | board: stack still runs |
-| B18 | `radio-sys/src/ble_config.rs` | The generator is outside the repository; the once-guard hands a second caller an unfilled table. | Commit the generator; fix the guard. | the generator in-tree |
+| ~~B18~~ **done** | `radio-sys/src/ble_config.rs` | The generator is outside the repository; the once-guard hands a second caller an unfilled table. | Commit the generator; fix the guard. | the generator in-tree |
 
 ## Group 5 — needs hardware, do only if the board is free
 

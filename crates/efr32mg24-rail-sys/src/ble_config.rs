@@ -1,6 +1,6 @@
 //! The Radio Configurator's BLE 1 Mbps Viterbi 39 MHz configuration, as Rust data.
 //!
-//! **Generated** by `/projects/_tmp/efr32mg24-rs/emit-ble-config.py` from the Gecko SDK's own
+//! **Generated** by `scripts/emit-ble-config.py` from the Gecko SDK's own
 //! `sl_rail_ble_config_39MHz.c` (Zlib, Silicon Laboratories). Regenerate rather than edit.
 //!
 //! Why this file exists: RAIL refuses to configure a radio whose crystal frequency it does not know, asserting
