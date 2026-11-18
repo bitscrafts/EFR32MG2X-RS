@@ -182,3 +182,36 @@ Until that is done, the demonstration-safe procedure is: **pair once and do not 
 Resetting the phone's app is harmless; resetting the board costs a re-pair. `CALLS_RESOLVE` already counts these calls
 in `bonding_ext.rs` but is not published anywhere yet — exposing it in the record is the first step of the fix, because
 it turns "the stack probably calls this" into a number.
+
+## The bond is not held: 0x1006, and the plan that makes the fix finite
+
+Measured on the board at the end of the night, with the phone trying to reconnect:
+
+```
+cfb=9  cfok=9  cfno=0  smfail=7  smrsn=4102
+4102 = 0x1006 = SL_STATUS_BT_CTRL_PIN_OR_KEY_MISSING
+       (vendor/bluetooth/sl_status.h:218: "Pairing failed because of missing PIN, or authentication
+        failed because of missing Key")
+```
+
+Read as a sequence: the phone tries to encrypt with the key it kept, the device cannot find that key, the
+link fails with `0x1006`, the phone drops its bond and pairs again — nine accepted bonds and seven failed
+authentications in one boot. The reason the device cannot find the key is the one already written above: the
+phone presents a Resolvable Private Address and `sli_bt_external_bonding_resolve_address` answers "not mine"
+every time, so every connection looks like a new peer.
+
+### The plan, so the next session does not start from zero
+
+1. **Learn what the pieces are, from the stack itself.** `sli_bt_external_bondingdb_data_request_event_id`
+   (`sli_bt_api.h:644`) tells us which piece the stack wants, and `bonding_ext::note_data_request` already
+   records those calls. Log the piece index and the length for one full pairing, then dump the same pieces:
+   the IRK is the 16-byte piece that is neither all zeros nor equal to the identity address.
+2. **Implement `ah`.** `ah(IRK, prand)` is AES-128 of `prand` with the IRK; the top 24 bits are compared with the
+   hash part of the address. `libraries/aes-modes` already carries ECB, so this is a small function with the
+   Core Specification vectors as tests (three published vectors are enough to catch a wrong byte order).
+3. **Fill in `resolve_address`**: walk the stored bonds, fetch the IRK piece, run `ah`, return the matching
+   handle. It must return `0xFFFFFFFF`/0 for "no match" and never guess.
+4. **Prove it where it can fail**: pair once, power-cycle the board, and check that the first connection after
+   the reboot reports `sec=1` with `cfb=0` — no new bond created. That is the measurement that closes this.
+
+Until then, the demonstration-safe rule stands: pair once and do not power-cycle the dosimeter.
