@@ -258,3 +258,30 @@ sli_bt_external_bonding_bonding_data_ready(bonding, len, data)
 Disassemble `objects/bondingdb-stubs.c.obj` for the exact argument counts and return conventions before writing the
 bodies, and keep the vendor's sentinel values. Then prove it where it fails: pair once, power-cycle the board, and
 read `cfb=0` with `sec=1` on the first connection afterwards.
+
+## 2026-11-18, end of night: the board does not advertise, and what is unverified
+
+**State measured.** After the NVM3 wipe (`module_nvm3_wipe`) and a verified flash of the product, the board stops
+writing its mailbox (`record still being written after 5 attempts (core halts mid-write)`) and does not appear in
+`hcitool lescan`. The same message appears with `module_dosimeter_offline`, which has no radio at all, so the halt
+message is not evidence about the BLE stack: it is what the probe says when it cannot stop the core.
+
+**What is NOT verified, and must not be presented as working.** `SECURITY_REQUIRED = false` in
+`module_ble_dosimeter.rs` is committed to remove the pairing dialog: the device cannot resolve the phone's private
+address, so every connection ended in `0x1006 PIN_OR_KEY_MISSING`, the phone dropped its bond and asked to pair again.
+With the switch off there is no `increase_security` and no security demand on the characteristics. **This change has not
+been seen running on hardware** — it was flashed four times and the board never wrote a record afterwards.
+
+**First thing next session, in this order.**
+1. Power-cycle the board by hand (remove the USB cable, not a `probe-rs reset`): the probe keeps the core halted in a
+   way a reset does not clear, and every earlier recovery tonight needed a physical replug.
+2. Read the mailbox. A `ble: seconds=…` line means the image runs; no line means the image is bad, not the radio.
+3. Only then decide about `SECURITY_REQUIRED`. If the image runs with it false, the demo is unblocked and the RPA work
+   below is what restores `true`.
+
+**The RPA work, now with the map found in the vendor header.** `sl_bt_api.h` documents the external bonding data types
+and they are NOT the `sl_bt_sm_bonding_data_t` indices: the external enum inserts `remote_address_type` at 1, so the IRK
+is type **6**, not 5. `piece_for` uses the type as the NVM3 key and round-trips consistently, so storage is not the
+defect; finding the bond for a private address is. `sli_bt_bonding_resolve_address` in the host compares against the
+local identity address, and `sli_bt_bonding_find_by_address` is a weak stub that answers `0xFFFFFFFF` — the peer lookup
+has nowhere to land. That is the function to fill, with `ah(IRK, prand)` over the stored IRK.

@@ -41,6 +41,20 @@ mod mailbox;
 const TARGET_HZ: u32 = 16_000;
 const TIMER_CLK_HZ: u32 = 19_000_000;
 const WINDOW: usize = 256;
+/// Whether the link asks for a bond, and whether the characteristics demand one.
+///
+/// **Off for the demonstrable prototype, and here is exactly what that costs.** With this `false`, any client in radio
+/// range can read the level and the eight bands without pairing, so the data on this link is not protected. It is off
+/// because the honest alternative is worse for the operator: the device holds the bond (`cfok=1`, measured), but the
+/// phone presents a private address and this firmware cannot resolve it back to the stored record, so every connection
+/// ends in `0x1006 PIN_OR_KEY_MISSING`, the phone drops the bond, and it asks to pair again -- a dialog on every single
+/// connection, forever. A demo that loops on pairing demonstrates nothing; a demo that reads, with the gap named in the
+/// documentation, demonstrates the instrument and states its limit.
+///
+/// The resolution work is the way back to `true`: `sli_bt_bonding_resolve_address` needs the stored IRK (external
+/// bonding data type 6) and `ah(IRK, prand)` compared against the address hash. Until that lands, this stays `false`.
+const SECURITY_REQUIRED: bool = false;
+
 /// How long after power-on a new bond may be created, in seconds.
 ///
 /// The re-pairing policy, decided 2026-11-17. A device that keeps a bond its owner's phone has forgotten can never be
@@ -288,7 +302,11 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool
                 // unencrypted: measured 2026-11-17, `sec=0` on a link whose pairing had completed, with the host
                 // reporting `Bonded: yes` throughout. `sl_bt_api.h:10646` is explicit that this command is what
                 // encrypts the connection and, when there is no bond yet, starts the bonding.
-                link.security_request = ble.increase_security(connection);
+                link.security_request = if SECURITY_REQUIRED {
+                    ble.increase_security(connection)
+                } else {
+                    0xFF // "nao pedido": nenhum dialogo de pareamento no telefone
+                };
             }
             BleEvent::Disconnected { .. } => {
                 link.disc += 1;
@@ -423,7 +441,11 @@ fn main() -> ! {
     //
     // The notify requirement is not decoration: without it a client can subscribe to the stream and receive every value
     // without ever reading the characteristic it protects.
-    let sec = SEC_BONDED_READ | SEC_BONDED_NOTIFY;
+    let sec = if SECURITY_REQUIRED {
+        SEC_BONDED_READ | SEC_BONDED_NOTIFY
+    } else {
+        0 // sem exigencia de seguranca: leitura aberta, e' o que o protótipo de demonstracao usa
+    };
     let characteristics = [
         Characteristic {
             uuid: UUID_RMS,
