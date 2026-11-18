@@ -4,7 +4,7 @@ MEMORY
   /* Application flash: 0x08006000 - 0x0817FFFF (1512 KB)
      The first 24 KB (0x08000000-0x08005FFF) is reserved for the Gecko
      bootloader and MUST NOT be overwritten by applications. */
-  FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
+  FLASH : ORIGIN = 0x08006000, LENGTH = 1472K
   /* SRAM - starts at 0x20000000. 252K of the 256K: the top 4 KB page (0x2003F000..0x2003FFFF) is
      not the stack's. The SWD mailbox lives there, and measured frames reached 0x2003F5AC while the
      stack still started at 0x20040000, so any fixed address in that page could be overwritten by the

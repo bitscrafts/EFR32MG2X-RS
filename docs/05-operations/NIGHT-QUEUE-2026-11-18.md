@@ -13,15 +13,15 @@ Already closed in earlier sessions: H1–H11, H13–H16, H18–H20, H23, H24, H2
 |---|---|---|---|---|
 | ~~H25~~ **done** | `hal/sysrtc.rs` `schedule_at` | A deadline already in the past never fires until the 32-bit counter wraps (36.4 h). No re-read after arming. | Re-read the counter; if the deadline has passed, program `now + 1` and report it. | host test on the pure decision function + board: `schedule_at(now - 1000)` fires within 2 ticks |
 | B8 | `bt/sleeptimer.rs` | Same class: arming a past deadline stalls the stack timer. | Same decision function, reused (`sysrtc_core::compare_target`). | host test |
-| H12 | `hal/mvp/mod.rs` | Accepts `n <= 65_536`; `SIZE` and `NUMITERS` are 10-bit fields, so above 1024 the length spills into neighbouring fields. | Reject `n > 1024` with an error. | host test that 1025 is refused and 1024 accepted |
-| H31 | `hal/memory.x` | `FLASH LENGTH = 1512K` covers the NVM3 pages; the BSP says 1472K. | Same length in both. | gate: the two files agree |
+| ~~H12~~ **done** | `hal/mvp/mod.rs` | Accepts `n <= 65_536`; `SIZE` and `NUMITERS` are 10-bit fields, so above 1024 the length spills into neighbouring fields. | Reject `n > 1024` with an error. | host test that 1025 is refused and 1024 accepted |
+| ~~H31~~ **done** | `hal/memory.x` | `FLASH LENGTH = 1512K` covers the NVM3 pages; the BSP says 1472K. | Same length in both. | gate: the two files agree |
 
 ## Group 2 — register sequence, decidable from the vendor headers
 
 | # | Where | Defect | Fix | Proof |
 |---|---|---|---|---|
 | H27 | `hal/wdog/mod.rs:126` | `LOCK` written while the module is disabled. Claimed to be the faulting kind. | Decide against `em_wdog.h`/the vendor `WDOG_Init`: if the vendor writes `LOCK` while disabled, the claim is refuted and that is recorded; otherwise reorder. | the vendor line, quoted, plus a board read |
-| H30 | `hal/board.rs` | `gpio_static` casts `0x5003_C000`, which is `GPIO_NS_BASE`, to `gpio_s`. | Use the PAC pointer. | gate + board example still runs |
+| ~~H30~~ **done** | `hal/board.rs` | `gpio_static` casts `0x5003_C000`, which is `GPIO_NS_BASE`, to `gpio_s`. | Use the PAC pointer. | gate + board example still runs |
 | H17 | `hal/pin.rs`, `hal/bus/bitbang.rs` | `DOUT` read-modify-write across the whole port; an interrupt touching the same port is lost. | Write the `+0x1000`/`+0x2000` SET/CLR aliases. | board: bit-bang still ACKs; host: the helper is unit-tested |
 
 ## Group 3 — one runtime clock value (the 206 % question)

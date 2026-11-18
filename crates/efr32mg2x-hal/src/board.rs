@@ -473,7 +473,9 @@ pub fn i2c_static(bus: crate::bus::Bus) -> crate::bus::BitBangI2c<'static> {
 /// by the bus being owned by one place.
 #[must_use]
 pub(crate) fn gpio_static() -> &'static pac::gpio_s::RegisterBlock {
-    // GPIO base from the device memory map.
-    const GPIO_BASE: usize = 0x5003_C000;
-    unsafe { &*(GPIO_BASE as *const pac::gpio_s::RegisterBlock) }
+    // The type is the **secure** GPIO block (`gpio_s`), and `0x5003_C000` is `GPIO_NS_BASE`
+    // (`efr32mg24b220f1536im48.h:588` against `:537` for `GPIO_S_BASE`). With TrustZone off the two alias the
+    // same registers, which is why this never showed up as a fault -- but a pointer whose address and type
+    // name different blocks is a trap for whoever enables secure mode. Take the address from the PAC.
+    unsafe { &*pac::GpioS::ptr() }
 }

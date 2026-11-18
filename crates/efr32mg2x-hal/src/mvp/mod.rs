@@ -63,6 +63,9 @@ pub struct Mvp {
     reg: pac::MvpNs,
 }
 
+/// Largest element count the MVP can encode: `SIZE` and `NUMITERS` are 10-bit fields (`0x3FF`).
+pub const MVP_MAX_LEN: usize = 1024;
+
 impl Mvp {
     /// Take the block, turn its clock gate on, enable it and wait for the enable to settle.
     ///
@@ -93,7 +96,12 @@ impl Mvp {
     /// mismatch would have the MVP read past the end of a slice.
     pub fn add_fp16(&mut self, a: &[u16], b: &[u16], out: &mut [u16]) -> Result<(), Error> {
         let n = a.len();
-        if n == 0 || n > 65_536 {
+        // `SIZE` and `NUMITERS` are **10-bit** fields (`_MVP_ARRAYDIM0CFG_SIZE_MASK 0x3FF`,
+        // `_MVP_LOOPCFG_NUMITERS_MASK 0x3FF`), so 1024 is the largest length that fits without spilling into the
+        // neighbouring fields of the register. The bound used to be 65_536, which is ten times more than the
+        // hardware can encode: anything above 1024 wrote into the fields next door and the result was silence or
+        // corruption rather than an error.
+        if n == 0 || n > MVP_MAX_LEN {
             return Err(Error::LengthOutOfRange);
         }
         if b.len() != n || out.len() != n {
