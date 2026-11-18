@@ -687,6 +687,9 @@ fn main() -> ! {
         let mut window = [0u16; WINDOW];
         let mut bands_acc = [0u32; 8];
         let mut rms_of_second = 0u16;
+        // Energia acumulada no segundo (soma dos quadrados dos RMS de cada janela). O valor publicado passa a ser o
+        // Leq de 1 s, e nao o RMS da ultima janela de 16 ms.
+        let mut energia_do_segundo: u64 = 0;
 
         // The core's frequency is not read anywhere in this HAL (review H21/H22: `19_000_000` appears in three places
         // as a constant). It is measured here against the one time base that cannot lie: the sample timer. 16 000
@@ -749,11 +752,23 @@ fn main() -> ! {
             for b in 0..8 {
                 bands_acc[b] = bands_acc[b].saturating_add(powers[b]);
             }
-            rms_of_second = rms;
+            energia_do_segundo += (rms as u64) * (rms as u64);
             windows_total += 1;
         }
 
         // The numbers for this second, on the wire.
+        //
+        // Leq(1 s) e nao uma amostra de 16 ms: `rms_of_second = sqrt(media das energias das 63 janelas)`. Medido
+        // 2026-11-17: a versao anterior publicava o RMS da ULTIMA janela e chama-lhe o nivel do segundo -- num som
+        // que variava, isso e' uma amostra de 16 ms a representar 1000 ms, e errava o nivel pela variacao do som.
+        // A energia e o que se soma; os niveis somam-se em potencia, nao em dB.
+        let janelas_no_segundo = if windows_total % (WINDOWS_PER_SECOND as u32) == 0 {
+            WINDOWS_PER_SECOND as u64
+        } else {
+            (windows_total % (WINDOWS_PER_SECOND as u32)) as u64
+        };
+        rms_of_second = isqrt_u64(energia_do_segundo / janelas_no_segundo.max(1)) as u16;
+        energia_do_segundo = 0;
         let rms_value = rms_of_second.to_le_bytes();
         let mut bands_value = [0u8; 32];
         for b in 0..8 {
@@ -867,4 +882,18 @@ fn main() -> ! {
     loop {
         cortex_m::asm::wfi();
     }
+}
+
+/// Raiz quadrada inteira, sem biblioteca de virgula flutuante: o caminho da publicacao corre a cada segundo.
+fn isqrt_u64(v: u64) -> u64 {
+    if v < 2 {
+        return v;
+    }
+    let mut x = v;
+    let mut y = (x + 1) / 2;
+    while y < x {
+        x = y;
+        y = (x + v / x) / 2;
+    }
+    x
 }
