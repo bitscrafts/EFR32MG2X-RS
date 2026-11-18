@@ -34,6 +34,27 @@ pub fn has_passed(now: u32, deadline: u32) -> bool {
     !is_future(now, deadline)
 }
 
+/// What to program into a compare register for `deadline`, and whether it had already gone.
+///
+/// Two cases are easy to get wrong and both hang the waiter until the 32-bit counter wraps (36.4 h):
+///
+/// - a deadline **in the past** can never be matched again;
+/// - a deadline **equal to now** will not match either, because the compare fires when the counter
+///   reaches the value, and it is already sitting on it.
+///
+/// Both are turned into "one tick from now", which fires on the next compare and gets the waiter moving.
+/// The caller learns it was late from the returned flag rather than from a silence that lasts a day and a
+/// half. `H25` and `B8` in the review are this function; it lives here, where the host can test it, because
+/// the HAL and the Bluetooth stack are only ever cross-compiled.
+pub fn compare_target(now: u32, deadline: u32) -> (u32, bool) {
+    let passed = now == deadline || has_passed(now, deadline);
+    if passed {
+        (now.wrapping_add(1), true)
+    } else {
+        (deadline, false)
+    }
+}
+
 /// The tick count for a duration in milliseconds, saturating at the counter's range.
 pub fn ticks_for_ms(ms: u32) -> u32 {
     let ticks = (ms as u64 * COUNTER_HZ as u64) / 1000;
@@ -138,6 +159,61 @@ mod tests {
         assert!(
             (horizon_hours - 18.2).abs() < 0.1,
             "the horizon is {horizon_hours} hours"
+        );
+    }
+
+    #[test]
+    fn um_deadline_no_passado_vira_um_tick_a_frente() {
+        // O defeito H25: sem isto o waiter esperava pelo wrap do contador, 36,4 h.
+        let (alvo, atrasado) = compare_target(10_000, 9_000);
+        assert!(
+            atrasado,
+            "um deadline no passado tem de ser reportado como atrasado"
+        );
+        assert_eq!(alvo, 10_001, "tem de ser reprogramado para o tick seguinte");
+    }
+
+    #[test]
+    fn um_deadline_igual_a_agora_tambem_conta_como_passado() {
+        // O caso que faltava: o comparador so' dispara quando o contador ATINGE o valor, e ja' esta' nele.
+        let (alvo, atrasado) = compare_target(500, 500);
+        assert!(atrasado);
+        assert_eq!(alvo, 501);
+    }
+
+    #[test]
+    fn um_deadline_no_futuro_fica_como_esta() {
+        let (alvo, atrasado) = compare_target(500, 1_500);
+        assert!(
+            !atrasado,
+            "um deadline futuro nao pode ser reportado como atrasado"
+        );
+        assert_eq!(alvo, 1_500, "nao se mexe no valor pedido");
+    }
+
+    #[test]
+    fn a_decisao_sobrevive_ao_contador_a_passar_por_zero() {
+        // O contador esta' quase no topo e o deadline cai ja' depois do zero: 100 ticks a frente.
+        let now = 0xFFFF_FF00u32;
+        let deadline = now.wrapping_add(100);
+        let (alvo, atrasado) = compare_target(now, deadline);
+        assert!(
+            !atrasado,
+            "atravessar o zero nao pode transformar futuro em passado"
+        );
+        assert_eq!(alvo, deadline);
+    }
+
+    #[test]
+    fn controlo_negativo_o_limite_de_18_horas() {
+        // Controlo: um deadline a mais de meio intervalo (18,2 h) e' indistinguivel de um no passado.
+        // Este teste existe para que o limite seja uma decisao escrita, e nao uma surpresa.
+        let now = 0u32;
+        let longe = 0x8000_0001u32; // metade do intervalo + 1
+        let (_, atrasado) = compare_target(now, longe);
+        assert!(
+            atrasado,
+            "acima de meio intervalo o codigo trata como passado; e' o limite do contador"
         );
     }
 }

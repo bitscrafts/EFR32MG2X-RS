@@ -305,17 +305,24 @@ impl Sysrtc {
     }
 
     /// Fire an interrupt when the counter reaches `deadline` (absolute, not a delay).
+    ///
+    /// Returns `true` when the deadline had already gone, in which case it is programmed one tick ahead
+    /// instead of being left armed against a value the counter will not reach until it wraps.
     #[inline]
-    pub fn schedule_at(&self, deadline: u32) {
+    pub fn schedule_at(&self, deadline: u32) -> bool {
         self.wait_sync();
-        wr(self.regs as usize + off::GRP0_CMP0VALUE, deadline);
+        // A decisao (deadline no passado, ou igual a agora) vive em `libraries/sysrtc-core`, onde o host a
+        // testa; este crate e' so' cross-compilado, logo aritmetica aqui nunca seria exercida. H25/B8.
+        let (target, passed) = efr32mg2x_sysrtc_core::compare_target(self.now(), deadline);
+        wr(self.regs as usize + off::GRP0_CMP0VALUE, target);
         wr(self.regs as usize + off::GRP0_IEN, bits::GRP0_CMP0);
+        passed
     }
 
     /// Schedule `ticks` from now.
     #[inline]
-    pub fn schedule_in(&self, ticks: u32) {
-        self.schedule_at(self.now().wrapping_add(ticks));
+    pub fn schedule_in(&self, ticks: u32) -> bool {
+        self.schedule_at(self.now().wrapping_add(ticks))
     }
 
     /// True if compare channel 0 fired, and acknowledge it.
