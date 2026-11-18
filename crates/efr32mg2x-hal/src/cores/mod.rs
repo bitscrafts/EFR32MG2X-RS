@@ -13,3 +13,5 @@ pub mod adc;
 pub mod dma;
 #[allow(missing_docs)]
 pub mod i2c;
+#[allow(missing_docs)]
+pub mod usart;

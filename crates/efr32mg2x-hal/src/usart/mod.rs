@@ -119,7 +119,7 @@ impl Usart0 {
         // `DIV` was 52 where the correct divider is 2382 -- a console at the wrong speed and no error anywhere.
         let pclk: u32 = clocks.pclk().into();
         let oversample = 16;
-        let clkdiv = match efr32mg2x_usart_core::clkdiv(pclk, config.baudrate, oversample) {
+        let clkdiv = match crate::cores::usart::clkdiv(pclk, config.baudrate, oversample) {
             Ok(div) => div,
             Err(_) => {
                 // A rate this clock cannot produce is refused rather than programmed as a wrapped number.

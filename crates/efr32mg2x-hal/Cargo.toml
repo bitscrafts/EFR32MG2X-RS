@@ -10,7 +10,6 @@ keywords = ["arm", "cortex-m", "efr32", "silabs", "embedded-hal"]
 categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
-efr32mg2x-usart-core = { path = "../../libraries/usart-core" }
 efr32mg2x-sysrtc-core = { path = "../../libraries/sysrtc-core" }
 efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.0" }
 cortex-m = { workspace = true, features = ["critical-section-single-core"] }
