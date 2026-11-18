@@ -61,7 +61,12 @@ static mut IRQ_HITS: u32 = 0;
 ///
 /// Touches SYSRTC and NVIC registers; call only with the module enabled and running.
 unsafe fn arm(next: u32) {
-    core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_CMP0) as *mut u32, next);
+    // `B8`, the same defect as the HAL's `H25`: a compare value the counter has already passed cannot match
+    // again until the counter wraps -- 36.4 h at 32768 Hz -- and the stack's timer would stall for that long.
+    // The decision is shared through `libraries/sysrtc-core`, which the host tests, so the two backends
+    // cannot drift apart on it.
+    let (alvo, _atrasado) = sysrtc_core::compare_target(now(), next);
+    core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_CMP0) as *mut u32, alvo);
     core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IF + IF_CLEAR_ALIAS) as *mut u32, 0xFF);
     core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IEN) as *mut u32, IEN_CMP0);
 
