@@ -1,3 +1,4 @@
+//! Universal Synchronous Asynchronous Receiver/Transmitter. Registers of `USART0_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

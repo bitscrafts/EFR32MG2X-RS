@@ -1,3 +1,4 @@
+//! Analog Comparator. Registers of `ACMP1_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

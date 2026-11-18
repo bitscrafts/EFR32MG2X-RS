@@ -1,3 +1,4 @@
+//! General Purpose Cyclic Redundancy Check. Registers of `GPCRC_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

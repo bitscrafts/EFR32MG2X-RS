@@ -1,3 +1,4 @@
+//! Digital to Analog Converter. Registers of `VDAC1_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

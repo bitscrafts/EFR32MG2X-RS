@@ -1,3 +1,4 @@
+//! Ultra Low Frequency RC Oscillator. Registers of `ULFRCO_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

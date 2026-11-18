@@ -1,3 +1,4 @@
+//! Matrix Vector Processor. Registers of `MVP_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

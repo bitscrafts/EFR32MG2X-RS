@@ -1,3 +1,4 @@
+//! Peripheral Reflex System. Registers of `PRS_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

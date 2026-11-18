@@ -1,3 +1,4 @@
+//! Security Management Unit. Registers of `SMU_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

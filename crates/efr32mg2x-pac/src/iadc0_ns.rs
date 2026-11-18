@@ -1,3 +1,4 @@
+//! Incremental Analog to Digital Converter. Registers of `IADC0_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

@@ -1,3 +1,4 @@
+//! Low-Frequency RC Oscillator. Registers of `LFRCO_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

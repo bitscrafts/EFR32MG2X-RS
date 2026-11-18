@@ -1,3 +1,4 @@
+//! Fast Start RCO. Registers of `FSRCO_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

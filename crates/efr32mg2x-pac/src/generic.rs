@@ -1,3 +1,4 @@
+//! GENERIC. Register block; neither the vendor datasheet nor the reference manual's chapter list describes this block.
 use core::marker;
 
 /// Generic peripheral accessor

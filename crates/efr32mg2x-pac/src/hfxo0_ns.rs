@@ -1,3 +1,4 @@
+//! High Frequency Crystal Oscillator. Registers of `HFXO0_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

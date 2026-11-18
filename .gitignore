@@ -78,3 +78,4 @@ _trash/
 # Reverse-engineering tooling: the container recipe is a bench tool, not part of the crate
 # (and the images it builds are large).
 docker/
+docs/vendor/

@@ -1,3 +1,4 @@
+//! Energy Management Unit. Registers of `EMU_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

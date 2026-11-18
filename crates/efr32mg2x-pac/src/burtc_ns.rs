@@ -1,3 +1,4 @@
+//! Back-Up Real Time Counter. Registers of `BURTC_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

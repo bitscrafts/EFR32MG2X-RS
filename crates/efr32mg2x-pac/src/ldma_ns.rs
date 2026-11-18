@@ -1,3 +1,4 @@
+//! Linked DMA. Registers of `LDMA_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

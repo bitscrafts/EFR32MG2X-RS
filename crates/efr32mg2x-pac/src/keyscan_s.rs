@@ -1,3 +1,4 @@
+//! Keyboard Scan. Registers of `KEYSCAN_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

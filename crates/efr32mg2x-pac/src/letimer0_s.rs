@@ -1,3 +1,4 @@
+//! Low Energy Timer. Registers of `LETIMER0_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

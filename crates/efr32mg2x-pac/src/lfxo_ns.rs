@@ -1,3 +1,4 @@
+//! Low-Frequency Crystal Oscillator. Registers of `LFXO_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

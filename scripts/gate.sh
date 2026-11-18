@@ -53,6 +53,16 @@ else
     FAILED=1
 fi
 
+# The module pages are the whole point of the generated docs, and svd2rust writes none of them. A regeneration
+# that drops them must fail here, not on docs.rs where nobody would notice until somebody looked.
+if python3 scripts/add-pac-module-docs.py --check >/tmp/gate-pac-docs.log 2>&1; then
+    printf '  PASS  pac: every module says what it is\n'
+else
+    printf '  FAIL  pac: module descriptions missing or stale\n'
+    sed -n '1,10p' /tmp/gate-pac-docs.log | sed 's/^/        /'
+    FAILED=1
+fi
+
 if python3 scripts/gen-pac-examples-doc.py --check >/tmp/gate-examples-doc.log 2>&1; then
   pass "crate docs: the example list matches the tree"
 else

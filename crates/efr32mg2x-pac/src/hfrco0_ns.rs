@@ -1,3 +1,4 @@
+//! High-Frequency RC Oscillator. Registers of `HFRCO0_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

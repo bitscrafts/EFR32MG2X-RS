@@ -1,3 +1,4 @@
+//! Digital Phased Locked Loop. Registers of `DPLL0_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

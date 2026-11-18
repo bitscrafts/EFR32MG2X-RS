@@ -1,3 +1,4 @@
+//! Device Info Page. Registers of `DEVINFO`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

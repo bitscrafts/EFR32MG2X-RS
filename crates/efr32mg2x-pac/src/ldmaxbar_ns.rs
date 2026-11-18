@@ -1,3 +1,4 @@
+//! LDMAXBAR_NS. Register block; neither the vendor datasheet nor the reference manual's chapter list describes this block.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

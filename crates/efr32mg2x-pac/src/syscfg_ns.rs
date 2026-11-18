@@ -1,3 +1,4 @@
+//! System Configuration. Registers of `SYSCFG_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

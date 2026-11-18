@@ -1,3 +1,4 @@
+//! Memory System Controller. Registers of `MSC_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

@@ -1,3 +1,4 @@
+//! Clock Management Unit. Registers of `CMU_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

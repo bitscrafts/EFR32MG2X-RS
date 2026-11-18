@@ -1,3 +1,4 @@
+//! Backup RAM. Registers of `BURAM_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

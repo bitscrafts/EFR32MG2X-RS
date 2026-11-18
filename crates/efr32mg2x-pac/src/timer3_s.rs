@@ -1,3 +1,4 @@
+//! Timer/Counter. Registers of `TIMER3_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

@@ -1,3 +1,4 @@
+//! Instruction Cache. Registers of `ICACHE0_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

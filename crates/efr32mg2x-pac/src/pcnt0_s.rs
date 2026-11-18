@@ -1,3 +1,4 @@
+//! Pulse Counter. Registers of `PCNT0_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

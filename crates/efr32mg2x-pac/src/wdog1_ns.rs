@@ -1,3 +1,4 @@
+//! Watch Dog Timer. Registers of `WDOG1_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

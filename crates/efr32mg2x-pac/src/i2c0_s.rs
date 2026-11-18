@@ -1,3 +1,4 @@
+//! Inter-Integrated Circuit Interface. Registers of `I2C0_S`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {

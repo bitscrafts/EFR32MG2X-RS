@@ -1,3 +1,4 @@
+//! General Purpose Input/Output. Registers of `GPIO_NS`.
 #[repr(C)]
 #[doc = "Register block"]
 pub struct RegisterBlock {
