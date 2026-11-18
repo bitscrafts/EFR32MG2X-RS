@@ -73,6 +73,19 @@ else
     FAILED=1
 fi
 
+# libraries/: a crate here that reaches the hardware stack cannot be tested on the host,
+# and that is the whole reason the folder exists. It reads the cargo metadata graph, not a
+# grep of cargo tree output: the shell version stayed green while checking nothing, and its
+# control proved neither direction. Control: add [dependencies.efr32mg2x-pac] to a library
+# in a clone and run this script -- it must print VERDICT: FAIL.
+if python3 scripts/check-library-purity.py >/tmp/purity.out 2>&1; then
+    printf '  PASS  libraries: all of them stay testable on the host\n'
+else
+    printf '  FAIL  libraries: one of them reaches the hardware stack\n'
+    sed 's/^/        /' /tmp/purity.out | head -5
+    FAILED=1
+fi
+
 # O exemplo que o README manda copiar tem de compilar, como um estranho o leria. Todos os outros checks leem a
 # crate; este le o par (Cargo.toml, programa) que o leitor recebe, e foi o unico que apanhou o panic-halt em falta.
 if python3 scripts/check-readme-example.py crates/efr32mg2x-pac/README.md /tmp/gate-readme-example --target thumbv8m.main-none-eabihf >/tmp/gate-readme-example.log 2>&1; then
