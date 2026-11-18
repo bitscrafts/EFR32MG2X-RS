@@ -1195,10 +1195,15 @@ pub unsafe extern "C" fn psa_mac_compute(
     }
     let mut block = [0u8; 16];
     block.copy_from_slice(&slot.key[..16]);
+    // A message longer than the buffer used to be truncated and the MAC returned as if it were the real one -- a
+    // wrong answer reported as success, which is worse than a refusal, because the peer compares a tag over
+    // different bytes and the pairing fails with no reason anywhere (`B12`).
+    if input_length > MAX_MAC_INPUT {
+        return PSA_ERROR_INVALID_ARGUMENT;
+    }
     let mut msg = [0u8; MAX_MAC_INPUT];
-    let n = input_length.min(MAX_MAC_INPUT);
-    core::ptr::copy_nonoverlapping(input, msg.as_mut_ptr(), n);
-    let tag = aes_modes::cmac(&block, &msg[..n]);
+    core::ptr::copy_nonoverlapping(input, msg.as_mut_ptr(), input_length);
+    let tag = aes_modes::cmac(&block, &msg[..input_length]);
     core::ptr::copy_nonoverlapping(tag.as_ptr(), mac, 16);
     if !mac_length.is_null() {
         *mac_length = 16;
