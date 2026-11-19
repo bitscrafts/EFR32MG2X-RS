@@ -46,6 +46,8 @@ fn main() -> ! {
 
     // The sensor is behind a power gate: an unpowered IMU is indistinguishable from an absent one.
     let _power = board.output_on(Port::D, 5, true);
+    // The sensor needs time to come up. Without this the first read races the power gate.
+    board.delay().delay_ms(50);
 
     // SDA = PB2, SCL = PB3. Mode first, then route, then enable -- the Board does that order.
     match board.route_i2c0((Port::B, 3), (Port::B, 2), PinMode::OpenDrainPullUp) {
