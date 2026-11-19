@@ -42,6 +42,68 @@ impl Board {
         Some(Self { dp, _cp: cp })
     }
 
+    /// Points I2C0's SCL and SDA at real pins, and puts those pins in open-drain.
+    ///
+    /// ## Why the Board does this and not the caller
+    ///
+    /// The routing registers live on the GPIO block and the pin-mode registers on the port, both
+    /// reached through the PAC. Handing that to a caller would put the generated crate in the HAL's
+    /// public API, which is the one thing the layering keeps out: a caller must never have to name
+    /// `pac::GpioNs` to drive an I2C bus.
+    ///
+    /// ## What it writes, and in what order
+    ///
+    /// The pin mode first, then the route, then the enable. A signal enabled before its pin is
+    /// driven correctly puts a floating line on the bus for a few cycles.
+    ///
+    /// Only port B is wired: that is where this board's I2C lives (SDA = PB2, SCL = PB3). Any other
+    /// port is refused rather than routed by the arithmetic and left undriven.
+    pub fn route_i2c0(
+        &self,
+        scl: (crate::pin::Port, u8),
+        sda: (crate::pin::Port, u8),
+        mode: crate::route::PinMode,
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::pin::Port;
+        use crate::route::{route_value, RouteError};
+
+        if !matches!(scl.0, Port::B) || !matches!(sda.0, Port::B) {
+            return Err(RouteError::PortDoesNotExist(0));
+        }
+        if scl.1 > crate::route::PIN_MAX {
+            return Err(RouteError::PinDoesNotExist(scl.1));
+        }
+        if sda.1 > crate::route::PIN_MAX {
+            return Err(RouteError::PinDoesNotExist(sda.1));
+        }
+        let scl_valor = route_value(1, scl.1)?;
+        let sda_valor = route_value(1, sda.1)?;
+
+        // The pin mode first: open-drain, with the number the manual gives.
+        for pino in [scl.1, sda.1] {
+            let desloc = 4 * u32::from(pino);
+            self.dp.gpio_ns.portb_model().modify(|r, w| unsafe {
+                let limpo = r.bits() & !(0xF << desloc);
+                w.bits(limpo | (u32::from(mode.value()) << desloc))
+            });
+        }
+
+        // Then the route, then the enable.
+        self.dp
+            .gpio_ns
+            .i2c0_sclroute()
+            .write(|w| unsafe { w.bits(scl_valor) });
+        self.dp
+            .gpio_ns
+            .i2c0_sdaroute()
+            .write(|w| unsafe { w.bits(sda_valor) });
+        self.dp
+            .gpio_ns
+            .i2c0_routeen()
+            .modify(|_, w| w.sclpen().set_bit().sdapen().set_bit());
+        Ok(())
+    }
+
     /// Gate the SYSRTC's clocks without starting it. The state the Bluetooth stack needs before it configures the
     /// radio; see `sysrtc::Sysrtc::enable_clocks` for the two faults that bracket this state.
     pub fn prepare_sysrtc_clocks(&self) {

@@ -210,33 +210,6 @@ impl I2c0 {
         Self { i2c }
     }
 
-    /// Points I2C0's SCL and SDA at real pins, and enables both.
-    ///
-    /// Without this the peripheral runs perfectly and reaches no pad: the numbers below go into
-    /// `GPIO_I2C0_SCLROUTE`/`SDAROUTE` (PORT in [1:0], PIN in [19:16]) and then `ROUTEEN` turns the two
-    /// signals on. The arithmetic is in [`crate::route`], tested on the host.
-    ///
-    /// # What this does not do
-    ///
-    /// It does not set the pins' own mode. On this part an I2C line must be open-drain, and
-    /// `GPIO_Px_MODEL` lives on the *port* peripheral, not on the GPIO block reached here --
-    /// [`crate::route::PinMode`] gives the number the manual gives for it. A routed but wrongly
-    /// driven pin gives a bus that almost works, which is worse than one that does not.
-    pub fn route(
-        &mut self,
-        gpio: &pac::GpioNs,
-        scl: (u8, u8),
-        sda: (u8, u8),
-    ) -> Result<(), crate::route::RouteError> {
-        let scl_valor = crate::route::route_value(scl.0, scl.1)?;
-        let sda_valor = crate::route::route_value(sda.0, sda.1)?;
-        gpio.i2c0_sclroute().write(|w| unsafe { w.bits(scl_valor) });
-        gpio.i2c0_sdaroute().write(|w| unsafe { w.bits(sda_valor) });
-        gpio.i2c0_routeen()
-            .modify(|_, w| w.sclpen().set_bit().sdapen().set_bit());
-        Ok(())
-    }
-
     /// Calculate clock divider value for desired I2C speed
     ///
     /// CLKDIV = (fHCLK / (8 * fSCL)) - 1
