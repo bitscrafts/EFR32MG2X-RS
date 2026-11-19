@@ -35,8 +35,8 @@
 //!
 //! // Configure clocks
 //! let clocks = Clocks::new(dp.cmu_s, ClockConfig {
-//!     hfxo: Some(HfxoConfig::new(39_000_000)),
-//!     lfxo: Some(Default::default()),
+//!     hfxo: None,
+//!     lfxo: None,
 //! }).freeze();
 //!
 //! // Create ADC with default configuration (12-bit, VBGR reference)
@@ -86,8 +86,8 @@ impl Adc {
     /// # use efr32mg2x_hal::{adc::{Adc, Config}, clock::{Clocks, ClockConfig, HfxoConfig}, pac};
     /// # let dp = pac::Peripherals::take().unwrap();
     /// # let clocks = Clocks::new(dp.cmu_s, ClockConfig {
-    /// #     hfxo: Some(HfxoConfig::new(39_000_000)),
-    /// #     lfxo: Some(Default::default()),
+    /// #     hfxo: None,
+    /// #     lfxo: None,
     /// # }).freeze();
     /// let adc = Adc::new(dp.iadc0_s, Config::default(), &dp.cmu_s);
     /// ```
@@ -194,8 +194,8 @@ impl Adc {
     /// # use efr32mg2x_hal::{adc::{Adc, Config, Channel}, clock::{Clocks, ClockConfig, HfxoConfig}, pac};
     /// # let dp = pac::Peripherals::take().unwrap();
     /// # let clocks = Clocks::new(dp.cmu_s, ClockConfig {
-    /// #     hfxo: Some(HfxoConfig::new(39_000_000)),
-    /// #     lfxo: Some(Default::default()),
+    /// #     hfxo: None,
+    /// #     lfxo: None,
     /// # }).freeze();
     /// # let mut adc = Adc::new(dp.iadc0_s, Config::default(), &dp.cmu_s);
     /// let value = adc.read(Channel::Ch0).unwrap();

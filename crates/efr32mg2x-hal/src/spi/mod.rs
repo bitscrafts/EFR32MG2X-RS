@@ -36,8 +36,8 @@
 //!
 //! // Configure clocks
 //! let clocks = Clocks::new(dp.cmu_s, ClockConfig {
-//!     hfxo: Some(HfxoConfig::new(39_000_000)),
-//!     lfxo: Some(Default::default()),
+//!     hfxo: None,
+//!     lfxo: None,
 //! }).freeze();
 //!
 //! // Create SPI instance (1 MHz, Mode 0)

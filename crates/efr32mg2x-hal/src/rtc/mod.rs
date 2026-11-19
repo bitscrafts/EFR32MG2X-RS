@@ -62,7 +62,7 @@
 //! let (clocks, cmu) = Clocks::new(
 //!     dp.cmu_s,
 //!     ClockConfig {
-//!         hfxo: Some(HfxoConfig::new(39_000_000)),
+//!         hfxo: None,
 //!         lfxo: Some(LfxoConfig::default()),  // Enable LFXO for RTC
 //!     },
 //! ).expect("Clock config failed");

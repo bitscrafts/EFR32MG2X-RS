@@ -69,7 +69,7 @@ impl Clocks {
     /// let clocks = Clocks::new(
     ///     dp.cmu_s,
     ///     ClockConfig {
-    ///         hfxo: Some(HfxoConfig::new(39_000_000)),
+    ///         hfxo: None,
     ///         lfxo: None, // Use internal LFRCO
     ///     }
     /// )?;
@@ -79,6 +79,32 @@ impl Clocks {
         cmu: crate::pac::CmuS,
         config: ClockConfig,
     ) -> Result<(Self, crate::pac::CmuS), ClockError> {
+        // ## Porque e' que isto recusa em vez de aceitar
+
+        // Este construtor NAO liga o HFXO nem o LFXO, e nao muda o `CLKSEL`: o comentario mais abaixo
+        // dizia-o em letra pequena ("we just track the requested frequency") e o efeito era o HAL
+        // afirmar uma frequencia que nao estava em vigor. Quem pedisse 39 MHz recebia `hfclk() == 39
+        // MHz` com o nucleo a correr a 19 -- e desse numero dependem o divisor do I2C, o SysTick do
+        // delay e o pace da amostragem. Tudo compila, tudo corre, e os numeros saem errados por um
+        // factor de dois, sem um unico erro.
+
+        // Ate a sequencia (enable, esperar RDY, so' depois CLKSEL) estar implementada e provada na
+        // placa, pedir um cristal e' recusado no arranque. Um erro alto no arranque e' melhor do que
+        // um divisor errado em producao.
+        assert!(
+            config.hfxo.is_none(),
+            "Clocks::new does not switch SYSCLK to HFXO yet: asking for {:?} would report a \
+             frequency the core is not running at, and every divisor computed from it would be wrong. \
+             Pass hfxo: None until the enable/wait/select sequence is implemented.",
+            config.hfxo.map(|h| h.frequency)
+        );
+        assert!(
+            config.lfxo.is_none(),
+            "Clocks::new does not configure LFXO yet: asking for {:?} would report a low-frequency \
+             clock that is not selected. Pass lfxo: None until the sequence is implemented.",
+            config.lfxo.map(|l| l.frequency)
+        );
+
         // Determine the frequencies based on configuration
         //
         // WARNING: This function does NOT switch SYSCLK to HFXO. The previous
