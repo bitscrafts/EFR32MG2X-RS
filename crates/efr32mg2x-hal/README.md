@@ -180,7 +180,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-12 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+13 examples, **3 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -189,6 +189,7 @@ mean it works.
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | -- |
 | `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |
+| `hal_i2c_hardware_imu.rs` | The IMU on the hardware I2C bus: routed pins, a power gate, one byte back. | -- |
 | `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- |
 | `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | -- |

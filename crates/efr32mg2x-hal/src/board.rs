@@ -356,7 +356,7 @@ impl Board {
         // TOP is written with the timer ENABLED, which is the order `pwm::Timer0::take` proves works. Written
         // with EN=0 it raised a precise bus error at 0x4004_801C (TIMER0 + TOP): measured 2026-11-17 from
         // CFSR=0x00008200 (PRECISERR|BFARVALID), HFSR=0x40000000, BFAR=0x4004801C.
-        let period = 19_000_000u32 / hz;
+        let period = u32::from(self.clock_hz()) / hz;
         self.dp.timer0_s.en().write(|w| w.en().set_bit());
         self.dp
             .timer0_s
@@ -372,6 +372,17 @@ impl Board {
     /// separated from a timer that was never clocked — the two look identical from the mailbox.
     pub fn timer0_counter(&self) -> u32 {
         self.dp.timer0_s.cnt().read().bits()
+    }
+
+    /// The frequency this board is running at.
+    ///
+    /// One place, because there were two: `pace_microphone` typed `19_000_000` into its period and
+    /// `delay` used `DEFAULT_SYSCLK_HZ`, so a board that was boosted would have one of them right and
+    /// the other wrong, silently. Callers that need a frequency -- `i2c0` wants one to divide down to
+    /// a bus rate -- read it here instead of carrying their own copy.
+    #[must_use]
+    pub fn clock_hz(&self) -> crate::clock::Hertz {
+        crate::clock::Hertz::from(crate::clock::DEFAULT_SYSCLK_HZ)
     }
 
     /// A millisecond delay on SysTick.
