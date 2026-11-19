@@ -182,13 +182,13 @@ impl I2c0 {
     /// # Example
     ///
     /// ```no_run
-    /// let i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), &clocks);
+    /// let i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), clocks.hfclk());
     /// ```
-    pub fn new(i2c: pac::I2c0Ns, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable I2C0 clock in CMU using safe accessor
-        clocks.enable_peripheral_clock(|cmu| {
-            cmu.clken0().modify(|_, w| w.i2c0().set_bit());
-        });
+    pub fn new(i2c: pac::I2c0Ns, config: Config, hfclk: crate::clock::Hertz) -> Self {
+        // The clock itself was enabled by whoever owns the CMU: this driver only needs the number,
+        // to divide it down to the bus rate. Taking `&FrozenClocks` here made the driver a second
+        // owner of the CMU, and the CMU can only have one -- which is why no `Board` could ever
+        // build an `I2c0`, and why the product fell back to bit-banging.
 
         // Enable I2C peripheral
         i2c.en().write(|w| w.en().set_bit());
@@ -204,7 +204,7 @@ impl I2c0 {
         });
 
         // Calculate and set clock divider
-        let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.speed);
+        let clkdiv = Self::calculate_clkdiv(hfclk.into(), config.speed);
         i2c.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         Self { i2c }

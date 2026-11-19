@@ -42,6 +42,19 @@ impl Board {
         Some(Self { dp, _cp: cp })
     }
 
+    /// The hardware I2C0, with its clock enabled and its two lines still unrouted.
+    ///
+    /// `hfclk` is passed in rather than read here: the `Board` holds the CMU inside `Peripherals`
+    /// and does not own a `FrozenClocks`, so it would have to guess the frequency. The caller knows
+    /// it -- `clocks.hfclk()` -- and a wrong frequency here is a wrong bus rate, which shows up as a
+    /// device that never acknowledges.
+    ///
+    /// Route the pins before using it: [`Board::route_i2c0`].
+    pub fn i2c0(&self, config: crate::i2c::Config, hfclk: crate::clock::Hertz) -> crate::i2c::I2c0 {
+        self.dp.cmu_s.clken0().modify(|_, w| w.i2c0().set_bit());
+        crate::i2c::I2c0::new(unsafe { pac::I2c0Ns::steal() }, config, hfclk)
+    }
+
     /// Points I2C0's SCL and SDA at real pins, and puts those pins in open-drain.
     ///
     /// ## Why the Board does this and not the caller

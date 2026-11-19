@@ -32,7 +32,7 @@ Read from the source, so it cannot drift:
 | `Eusart1S` | `src/spi/mod.rs` |
 | `GpioNs` | `src/board.rs` |
 | `GpioS` | `src/board.rs` |
-| `I2c0Ns` | `src/i2c/mod.rs` |
+| `I2c0Ns` | `src/board.rs`, `src/i2c/mod.rs` |
 | `I2c0S` | `src/i2c/mod.rs` |
 | `I2c1S` | `src/i2c/mod.rs` |
 | `Iadc0S` | `src/adc/mod.rs`, `src/board.rs`, `src/microphone.rs` |
