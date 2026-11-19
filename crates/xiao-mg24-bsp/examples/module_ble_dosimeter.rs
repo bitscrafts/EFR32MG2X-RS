@@ -72,7 +72,18 @@ const SECURITY_REQUIRED: bool = false;
 /// "a emparelhar" and nothing else, with no way to tell a refusal from a slow pairing. Two minutes is right for a product
 /// in daily use, where pairing happens once at the moment the device is switched on. It is wrong for a demonstration,
 /// where the device is powered before the explanation starts.
-const PAIRING_WINDOW_SECONDS: u32 = 600;
+/// Quantos segundos depois do arranque o aparelho aceita emparelhar.
+///
+/// Era 600 -- dez minutos, o tempo do criterio de aceitacao E1-BLE.2. Na pratica isso e' uma
+/// armadilha: passados dez minutos o aparelho continua a medir e a anunciar mas recusa ligacoes, sem
+/// dizer porquê, e uma demonstracao que comeca meia hora depois do arranque nao liga. Medido
+/// 2026-11-19: a placa foi ligada as 01:09 e as 03:15 nao havia como emparelhar.
+///
+/// Para a demonstracao a janela fica aberta sem limite: o aparelho tem de funcionar sem ninguem lhe
+/// tocar. Isto e' uma decisao de demonstracao, nao de produto -- um produto a serio quer uma janela
+/// curta E visivel (a app a dizer quanto falta), porque uma janela invisivel e' indistinguivel de
+/// uma avaria.
+const PAIRING_WINDOW_SECONDS: u32 = u32::MAX;
 
 /// How many samples pass between two polls of the Bluetooth stack.
 ///
