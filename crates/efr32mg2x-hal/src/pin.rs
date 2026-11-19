@@ -138,14 +138,28 @@ impl<'a> Output<'a> {
     }
 
     /// Assert or release the pin, honouring the polarity it was built with.
+    ///
+    /// ## Why this is inside a critical section
+    ///
+    /// `DOUT` has no atomic set/clear register on this part -- the reference manual and the SVD have
+    /// neither `DOUTSET` nor `DOUTCLR` (measured 2026-11-19: zero occurrences in both), so changing one
+    /// bit means reading the whole port, changing the bit, and writing the port back. If anything else
+    /// writes `DOUT` between that read and that write -- the bit-banged bus driving another pin, or an
+    /// interrupt -- the other pin's bit is lost. That is a silent defect: the pin simply does not move.
+    ///
+    /// Reading and writing under one critical section makes the pair indivisible. It is the same
+    /// guarantee the missing registers would have given, obtained in software because the hardware
+    /// does not offer it.
     pub fn set(&self, on: bool) {
         let level = on != self.active_low;
-        let latch = if level {
-            read_dout(self.gpio, self.port) | self.mask
-        } else {
-            read_dout(self.gpio, self.port) & !self.mask
-        };
-        write_dout(self.gpio, self.port, latch);
+        critical_section::with(|_cs| {
+            let latch = if level {
+                read_dout(self.gpio, self.port) | self.mask
+            } else {
+                read_dout(self.gpio, self.port) & !self.mask
+            };
+            write_dout(self.gpio, self.port, latch);
+        });
     }
 
     /// Assert the pin.
@@ -159,12 +173,17 @@ impl<'a> Output<'a> {
     }
 
     /// Invert the pin.
+    ///
+    /// Same read-modify-write as [`Self::set`], so the same critical section: an inversion is a
+    /// read and a write too, and losing the other pins' bits is just as silent.
     pub fn toggle(&self) {
-        write_dout(
-            self.gpio,
-            self.port,
-            read_dout(self.gpio, self.port) ^ self.mask,
-        );
+        critical_section::with(|_cs| {
+            write_dout(
+                self.gpio,
+                self.port,
+                read_dout(self.gpio, self.port) ^ self.mask,
+            );
+        });
     }
 }
 
