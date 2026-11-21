@@ -69,6 +69,8 @@ mod bits {
     /// what this header describes. **The header was right and the code was wrong** -- recorded because the
     /// opposite claim was written here first.
     pub const GRP0_CMP0: u32 = 1 << 1;
+    /// The counter wrapped past 2^32 (GRP0_IF bit 0).
+    pub const GRP0_OVF: u32 = 1 << 0;
     /// Compare channel 1's flag, same shift.
     pub const GRP0_CMP1: u32 = 1 << 2;
     /// Bits 4..7 mirror the channel flags at group level. Clearing them all is harmless and stops a stale
@@ -99,9 +101,33 @@ fn rd(addr: usize) -> u32 {
 ///
 /// One global rather than a field on `Sysrtc`: a time source is a singleton, and the point of the widened tick is
 /// that every caller sees the same number. See [`Sysrtc::now_wide`].
+/// Wraps of the 32-bit counter, counted by the overflow interrupt.
+///
+/// One wrap is 2^32 / 32768 s = 36.4 hours. Polling cannot see a wrap it was not awake for; this cannot miss one.
+static WRAPS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+/// True once the overflow interrupt is unmasked, which makes [`WRAPS`] the high word and retires the polling path.
+///
+/// The two mechanisms must never both be live: polling would see the counter go backwards and count a wrap the
+/// interrupt already counted, and the tick would jump 36.4 hours.
+static WRAPS_ARE_COUNTED: core::sync::atomic::AtomicBool =
+    core::sync::atomic::AtomicBool::new(false);
+
 /// The SYSRTC register base, recorded by [`Sysrtc::take`] so the global accessors work without a handle. Zero
 /// means the module was never taken.
 static REGS_BASE: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
+/// The 64-bit tick from one reading of the counter, taking the high word from whichever mechanism is armed.
+#[inline]
+fn now_wide_from(counter: u32) -> u64 {
+    if WRAPS_ARE_COUNTED.load(core::sync::atomic::Ordering::Relaxed) {
+        return crate::cores::sysrtc::wide_from_wraps(
+            WRAPS.load(core::sync::atomic::Ordering::Relaxed),
+            counter,
+        );
+    }
+    critical_section::with(|cs| WIDE.borrow(cs).borrow_mut().update(counter))
+}
 
 static WIDE: critical_section::Mutex<core::cell::RefCell<crate::cores::sysrtc::WideTick>> =
     critical_section::Mutex::new(core::cell::RefCell::new(
@@ -302,7 +328,7 @@ impl Sysrtc {
     }
 
     /// Write the counter, across a synchronisation wait.
-    fn set_counter(&self, value: u32) {
+    fn set_counter_raw(&self, value: u32) {
         self.wait_sync();
         self.regs_ref().cnt().write(|w| unsafe { w.bits(value) });
         self.wait_sync();
@@ -331,17 +357,23 @@ impl Sysrtc {
     ///
     /// ## What this costs, stated plainly
     ///
-    /// It widens **when called**: it must run at least once every 36.4 hours or a wrap goes uncounted, and the tick
-    /// then jumps backwards by 36.4 hours. The peripheral raises an overflow interrupt (`GRP0_IF.OVF`, in this
-    /// SVD) which would remove that requirement; it is not wired here yet, and the honest description of today's
-    /// code is a polled widening, not a free-running clock.
+    /// It widens **when called** unless [`Sysrtc::enable_overflow_interrupt`] is armed: then the peripheral counts
+    /// the wraps and this can go unread for as long as the counter keeps running. Arming the interrupt is what
+    /// turns a polled widening into a free-running clock, and it is the difference between "call this every 36.4
+    /// hours" and "call this whenever you like".
     pub fn now_wide(&self) -> u64 {
-        let counter = self.now();
-        critical_section::with(|cs| WIDE.borrow(cs).borrow_mut().update(counter))
+        now_wide_from(self.now())
     }
 
-    /// How many wraps the widened tick has counted, for a record or a test.
+    /// How many wraps have been counted, by whichever mechanism is armed.
+    ///
+    /// The number is the same question whether the wrap was noticed by polling or delivered by the overflow
+    /// interrupt; only the source differs, and it differs so that a polled clock (which must be called every
+    /// 36.4 h) and a counted one (which need not) never add up to two counts of the same event.
     pub fn wraps(&self) -> u32 {
+        if WRAPS_ARE_COUNTED.load(core::sync::atomic::Ordering::Relaxed) {
+            return WRAPS.load(core::sync::atomic::Ordering::Relaxed);
+        }
         critical_section::with(|cs| WIDE.borrow(cs).borrow().wraps())
     }
 
@@ -384,7 +416,7 @@ impl Sysrtc {
             }
         }
         let counter = regs.cnt().read().bits();
-        critical_section::with(|cs| WIDE.borrow(cs).borrow_mut().update(counter))
+        now_wide_from(counter)
     }
 
     /// Arm the comparator **without a handle**, the companion of [`Sysrtc::now_wide_global`].
@@ -462,6 +494,73 @@ impl Sysrtc {
     pub fn unmask_interrupt(&self) {
         // SAFETY: the caller installs `SYSRTC_APP_IRQHandler` before calling this.
         unsafe { cortex_m::peripheral::NVIC::unmask(efr32mg2x_pac::Interrupt::SYSRTC_APP) };
+    }
+
+    /// Count the counter's wraps with the overflow interrupt instead of polling for them.
+    ///
+    /// Polling costs a caller every 36.4 hours: a `now_wide` that is never called cannot notice that the counter
+    /// returned to zero, and the tick silently loses 36.4 h. With this armed, the interrupt does the counting and
+    /// `now_wide` needs no caller at all.
+    ///
+    /// The handler must call [`Sysrtc::service_interrupts`]; unmasking without serving leaves the flag set and the
+    /// interrupt re-entering forever.
+    pub fn enable_overflow_interrupt(&self) {
+        WRAPS.store(0, core::sync::atomic::Ordering::Relaxed);
+        WRAPS_ARE_COUNTED.store(true, core::sync::atomic::Ordering::Relaxed);
+        self.wait_sync();
+        // OR, not store: the compare channel is already enabled and this must not disarm it.
+        let ja = self.regs_ref().grp0_ien().read().bits();
+        self.regs_ref()
+            .grp0_ien()
+            .write(|w| unsafe { w.bits(ja | bits::GRP0_OVF) });
+        self.wait_sync();
+        // Um overflow que já esteja no flag é consumido agora, senão o handler dispara por um evento antigo.
+        Self::service_interrupts();
+    }
+
+    /// Clear whichever of the two events are pending, and count an overflow.
+    ///
+    /// Returns what was pending, so a handler can tell an alarm from a wrap. Both share one vector, so a handler
+    /// that only acknowledges the compare leaves the overflow flag set and the vector re-enters.
+    pub fn service_interrupts() -> (bool, bool) {
+        // SAFETY: as in `acknowledge_compare_interrupt` -- a raw view of a flag register whose only operation is
+        // write-1-to-clear, and the peripheral exists because this crate was taken from the same silicon.
+        let rtc = unsafe { efr32mg2x_pac::Sysrtc0Ns::steal() };
+        let regs: &RegisterBlock = &rtc;
+        let pendentes = rd(regs as *const RegisterBlock as usize + off::GRP0_IF);
+        let mut comparador = false;
+        if pendentes & bits::GRP0_CMP0 != 0 {
+            wr(
+                regs as *const RegisterBlock as usize + off::GRP0_IF + 0x2000,
+                bits::GRP0_CMP0,
+            );
+            comparador = true;
+        }
+        let mut volta = false;
+        if pendentes & bits::GRP0_OVF != 0 {
+            wr(
+                regs as *const RegisterBlock as usize + off::GRP0_IF + 0x2000,
+                bits::GRP0_OVF,
+            );
+            if WRAPS_ARE_COUNTED.load(core::sync::atomic::Ordering::Relaxed) {
+                WRAPS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+            }
+            volta = true;
+        }
+        (comparador, volta)
+    }
+
+    /// Move the counter, for a bench test that cannot wait 36.4 hours for a wrap.
+    ///
+    /// **This changes the time base.** The widened tick restarts from the new value: an interval measured across
+    /// this call measures the jump, not the passage of time. It exists because the overflow path is 36.4 hours
+    /// away and a path nobody exercises is a path nobody has.
+    pub fn set_counter(&self, value: u32) {
+        self.set_counter_raw(value);
+        WRAPS.store(0, core::sync::atomic::Ordering::Relaxed);
+        critical_section::with(|cs| {
+            *WIDE.borrow(cs).borrow_mut() = crate::cores::sysrtc::WideTick::new();
+        });
     }
 
     /// Acknowledge the compare interrupt from a handler, where no `Sysrtc` instance is reachable.

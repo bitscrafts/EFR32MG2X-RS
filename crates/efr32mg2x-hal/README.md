@@ -182,7 +182,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-16 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+17 examples, **3 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -200,6 +200,7 @@ mean it works.
 | `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways. | -- |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
+| `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | -- |
 | `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | -- |

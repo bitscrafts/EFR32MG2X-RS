@@ -114,6 +114,18 @@ pub fn ms_for_ticks(ticks: u32) -> u32 {
     ((ticks as u64 * 1000) / COUNTER_HZ as u64) as u32
 }
 
+/// The 64-bit tick, when the counter's wraps are counted by the overflow interrupt.
+///
+/// `wraps` is the count kept by that interrupt, and `counter` is the live 32-bit value. There is no race here and
+/// no state: the high word comes from the interrupt, the low word from the register, and the join is arithmetic.
+///
+/// This is the companion of [`WideTick`], which widens by *polling* -- it compares each reading with the last and
+/// counts a wrap when the value goes backwards. Polling needs a caller every 36.4 hours; counting does not, which
+/// is why both exist and why only one of them is authoritative at a time: mixing them would count the wrap twice.
+pub const fn wide_from_wraps(wraps: u32, counter: u32) -> u64 {
+    ((wraps as u64) << 32) | counter as u64
+}
+
 #[cfg(test)]
 mod tests {
     extern crate std;
@@ -311,5 +323,22 @@ mod tests {
         w.update(500);
         assert_eq!(w.wraps(), 0);
         assert_eq!(w.value(), 500);
+    }
+
+    #[test]
+    fn the_join_of_wraps_and_counter_is_the_tick() {
+        assert_eq!(wide_from_wraps(0, 5), 5);
+        assert_eq!(wide_from_wraps(1, 0), 1 << 32);
+        assert_eq!(wide_from_wraps(2, 7), (2 << 32) + 7);
+    }
+
+    #[test]
+    fn the_tick_does_not_go_backwards_across_a_wrap() {
+        // O que este parenteses prova: o tick tem de ser monotónico na volta, senão uma espera a cavalo dela
+        // mede 36,4 h a menos e o comparador arma-se contra um instante que já passou.
+        let antes = wide_from_wraps(0, u32::MAX - 2);
+        let depois = wide_from_wraps(1, 1);
+        assert!(depois > antes, "{depois} deve ser maior que {antes}");
+        assert_eq!(depois - antes, 4);
     }
 }
