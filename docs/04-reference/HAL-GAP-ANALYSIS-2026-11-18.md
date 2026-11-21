@@ -44,10 +44,10 @@ with why it cannot close in software:
 
 | id | what it is | why it is still open |
 |---|---|---|
-| H17 | `DOUT` written by read-modify-write instead of the `DOUT_SET`/`DOUT_CLR` aliases | flash a bit-bang example and see whether the ACK still arrives; the module's IMU on the bus is a real peer |
-| H21/H22 | `19_000_000` written where the bus clock is 39 MHz after the radio starts | measure the actual clock on the board -- a baud rate that comes out wrong is the instrument |
-| H28 | EM2 entry and exit sequence | flash and watch whether the wake-up happens; the current meter is optional, not required |
-| B12 (rest) | `psa_import_key` attributes type/bits not validated | re-pair with the phone after the change; the phone is the instrument |
+| ~~H17~~ | `DOUT` written by read-modify-write instead of the `DOUT_SET`/`DOUT_CLR` aliases | **CLOSED 2026-11-21, no code change**: this SVD has **zero** `DOUTSET`/`DOUTCLR`, so read-modify-write is the only way to write a bit here, and `Pin::set`/`toggle` already keep the pair inside `critical_section::with`. The item asked for a register the part does not have. |
+| ~~H21/H22~~ | `19_000_000` written where the bus clock is 39 MHz after the radio starts | **CLOSED 2026-11-21** (`af01bfc`, `d22ff65`, `cb11d3b`): the clock moved into the `Board` (`clock_hz()` follows the boost and the crystal), and the timer now takes `sysclk_hz` from the caller. Measured on the board: five `delay_ms(1000)` took 2.46 s before and 5.01 s after. |
+| ~~H28~~ | EM2 entry and exit sequence | **CLOSED 2026-11-21** (`B3`): ten ~1 s naps in EM2 woken by the SYSRTC comparator, intervals 0.92-1.03 s, mean 0.99, total 9.92 s, eleven interrupts. RTT survived every sleep. Found on the way: `Sysrtc::take` did not arm group 0's compare channel on the warm path -- no application scheduler would have had an interrupt, silently. **Still unmeasured**: EM2 current (no meter) and waking by GPIO. |
+| B12 (rest) | `psa_import_key` attributes type/bits not validated | **moved into code 2026-11-21** (`psa-shape-core`, five host tests): a declaration that contradicts what would be stored is refused; offsets 0 and 4 of the blob remain deduced from the measured offset 8, so the *hardware* half is still open. |
 
 **How to close them:** one bench session with three instruments: a logic analyser on the bus, the
 current meter for EM2, and the phone for pairing. That is a different kind of work from tonight's.
