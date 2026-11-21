@@ -130,3 +130,33 @@ B11  the MAC in pure Rust: CSMA/CA, ACK, retries, sequence numbers -- host-testa
 The evidence for the order: `embassy-nrf` ships 802.15.4 PHY/MAC and nothing above it, and
 `nrf-802154` wraps Nordic's blob for the rest. Nobody in Rust has a full Zigbee or Thread stack, so
 the floor is the honest first step and the ceiling is a decision to be taken with numbers.
+
+## O limite de prova neste workspace (medido 2026-11-21)
+
+**Não há segundo rádio 802.15.4 aqui.** A bancada tem uma placa XIAO MG24, o `lnx` e um telemóvel. Isso
+muda o que se pode chamar "provado" neste item, e é melhor escrevê-lo antes de começar do que descobri-lo
+a meio:
+
+| passo | como se mede aqui | o que isso prova |
+|---|---|---|
+| configurar o rádio e pôr um canal | `RAIL_ConfigChannels` + `RAIL_IEEE802154_Config2p4GHzRadio` a devolver `RAIL_STATUS_NO_ERROR` | que a API aceitou a configuração, **não** que o rádio está num canal |
+| transmitir um frame | `RAIL_StartTx` a terminar com `RAIL_EVENT_TX_PACKET_SENT` | que a sequência de TX correu e o rádio reportou envio |
+| receber um frame | **impossível sem par** | nada |
+
+Um `TX_PACKET_SENT` não é um frame no ar: o rádio pode reportar envio com a antena desafinada, e sem um
+receptor não há como saber. Portanto o critério deste item tem de ser mais fraco do que os do H21/H28, e
+dizer isso:
+
+```text
+provavel neste workspace   a API aceita a configuração e o evento de TX dispara
+falta para "transmite"     um segundo rádio 802.15.4 -- outra placa, ou um dongle com sniffer
+falta para "recebe"        o mesmo par, com o `rx.rs` a entregar o payload que o outro enviou
+```
+
+**Alternativa para não ficar parado:** o `RX` pode ser provado contra o **próprio** rádio? Não — um
+transceptor não se ouve a si mesmo numa banda com duplex por comutação; o `RAIL_StartTx` desliga o
+receptor.
+
+**O que fica válido mesmo assim:** o `portions()` do `rx.rs` já está provado no host (seis testes, incluindo
+pacote maior que o buffer a devolver `None`), e as duas chamadas do vendor estão ligadas e compilam. O que
+não existe é a prova de ponta a ponta — e ela precisa de hardware que o workspace não tem.
