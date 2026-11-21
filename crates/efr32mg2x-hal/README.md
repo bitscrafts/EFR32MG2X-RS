@@ -47,6 +47,7 @@ Read from the source, so it cannot drift:
 | `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `cmu_s` | `src/board.rs` |
+| `emu_ns` | `src/sleep.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
 | `iadc0_s` | `src/board.rs`, `src/microphone.rs` |
 | `timer0_s` | `src/pwm.rs` |
@@ -181,13 +182,14 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-13 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+14 examples, **3 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
 | example | what it shows | watched on hardware |
 |---|---|---|
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | -- |
+| `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | -- |
 | `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |
 | `hal_i2c_hardware_imu.rs` | The IMU on the hardware I2C bus: routed pins, a power gate, one byte back. | -- |

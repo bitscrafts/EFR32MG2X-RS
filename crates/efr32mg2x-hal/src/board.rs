@@ -148,6 +148,14 @@ impl Board {
         crate::sysrtc::Sysrtc::take(&self.dp.cmu_ns, &self.dp.sysrtc0_ns)
     }
 
+    /// Entry and exit of EM2, carrying the `EMU` it drives.
+    ///
+    /// Handed out here for the same reason the timer is: EM2 is where the core stops running from the
+    /// high-frequency clock, and the decision to do that belongs to whoever owns the board's clocks.
+    pub fn sleep(&self) -> crate::sleep::Sleep<'_> {
+        crate::sleep::Sleep::new(&self.dp.emu_ns)
+    }
+
     /// The matrix/vector processor, enabled and ready.
     ///
     /// The board hands it out for the same reason it hands out the others: an example outside the PAC must
