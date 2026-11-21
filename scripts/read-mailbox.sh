@@ -25,13 +25,41 @@ WORDS=72          # 288 bytes: 16 of header + 272 of message. 64 truncated the r
 CFG=/tmp/openocd-mg24-mini.cfg
 ATTEMPTS=5
 
-read_words() {
+# ## Dois leitores, porque um deles deixa de funcionar sem avisar
+#
+# O OpenOCD e' o leitor principal desde o incidente de sessao presa com o probe-rs. Medido em 2026-11-21, o
+# contrario aconteceu: o OpenOCD devolveu nada em cinco tentativas sobre uma imagem sabida boa, enquanto o
+# `probe-rs read` devolveu o registo na primeira. Foi um controlo sobre o `rail_init` -- uma imagem que ja' tinha
+# escrito o mailbox -- que provou que o leitor e' que estava avariado, e nao o firmware em teste.
+#
+# Portanto: tentar o OpenOCD e, se nao render nada, ler as mesmas palavras com o probe-rs. Ambos devolvem uma
+# lista plana de palavras, que e' o que o analisador abaixo consome. Um leitor que falha em silencio e' pior do
+# que nenhum: transforma "o firmware nao escreveu nada" e "nao consegui olhar" na mesma mensagem.
+read_words_openocd() {
   local out
   out="$(ssh -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \
     "sudo -n openocd -f interface/cmsis-dap.cfg -f ${CFG} \
        -c 'init; halt' -c 'mdw ${ADDR} ${WORDS}' -c 'resume; shutdown'" 2>&1)"
   # OpenOCD prints 8 words per line; take every line of the dump, in order.
-  printf '%s\n' "${out}" | sed -n 's/^0x2003f[0-9a-f][0-9a-f][0-9a-f]: \(.*\)/\1/p' | tr '\n' ' ' | sed 's/[[:space:]]*$//' 
+  printf '%s\n' "${out}" | sed -n 's/^0x2003f[0-9a-f][0-9a-f][0-9a-f]: \(.*\)/\1/p' | tr '\n' ' ' | sed 's/[[:space:]]*$//'
+}
+
+read_words_probe_rs() {
+  local out
+  out="$(ssh -o ConnectTimeout=10 "${USER_NAME}@${HOST}" \
+    "sudo -n probe-rs read --chip EFR32MG24B220F1536IM48 b32 ${ADDR} ${WORDS}" 2>&1)"
+  # probe-rs prints "<addr>: w w w ..." with eight words per line.
+  printf '%s\n' "${out}" | sed -n 's/^2003f[0-9a-f][0-9a-f][0-9a-f]: \(.*\)/\1/p' | tr '\n' ' ' | sed 's/[[:space:]]*$//'
+}
+
+read_words() {
+  local words
+  words="$(read_words_openocd)"
+  if [ -z "${words}" ]; then
+    echo "note: openocd returned nothing, falling back to probe-rs" >&2
+    words="$(read_words_probe_rs)"
+  fi
+  printf '%s' "${words}"
 }
 
 for attempt in $(seq 1 "${ATTEMPTS}"); do
