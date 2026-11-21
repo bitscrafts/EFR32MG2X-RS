@@ -160,3 +160,40 @@ receptor.
 **O que fica válido mesmo assim:** o `portions()` do `rx.rs` já está provado no host (seis testes, incluindo
 pacote maior que o buffer a devolver `None`), e as duas chamadas do vendor estão ligadas e compilam. O que
 não existe é a prova de ponta a ponta — e ela precisa de hardware que o workspace não tem.
+
+## O que ficou medido, chamada a chamada (2026-11-21, `rail_ieee802154_tx`)
+
+O exemplo existe e corre na placa. O registo final, lido com `probe-rs read b32 0x2003F000 28`:
+
+```text
+154: init=0 phy=0 pa=0 dbm=0 w=14 tx=0 hw=0
+          ^       ^     ^      ^      ^       ^
+          |       |     |      |      |       +-- o radio NAO reportou TX_PACKET_SENT
+          |       |     |      |      +---------- RAIL_StartTx aceitou (NO_ERROR)
+          |       |     |      +----------------- 14 bytes entraram na FIFO
+          |       |     +------------------------ potencia a 200 (20 dBm) aceite
+          |       +------------------------------ Config2p4GHzRadio aceite
+          +-------------------------------------- IEEE802154_Init aceite
+```
+
+**Quatro coisas ficaram aprendidas por medicao, e cada uma custou um ciclo:**
+
+1. **`RAIL_StartTx` não leva o pacote.** Os bytes vão para a FIFO antes (`RAIL_WriteTxFifo`); a assinatura tem
+   `channel`, `options` e `schedulerInfo`, e nada mais.
+2. **A tabela de canais não se escreve.** `RAIL_IEEE802154_Config2p4GHzRadio` traz os canais 11–26 (documentado
+   no header). O item pedia uma tabela à mão por leitura incompleta do header.
+3. **`RAIL_IEEE802154_Init` exige transições de estado não nulas.** Com a estrutura toda a zero devolvia
+   `1` (`INVALID_PARAMETER`); com as transições a `RAIL_RF_STATE_RX` (2) e as timings do exemplo do header
+   devolve `0`. Zero é `RAIL_RF_STATE_INACTIVE`, que não é um estado para onde voltar.
+4. **A ordem é Init do protocolo depois do PHY.** `Config2p4GHzRadio` toma o lugar de `RAIL_ConfigChannels`, e
+   o `RAIL_IEEE802154_Init` valida parâmetros que precisam de um canal já definido.
+
+**O que falta, em uma pergunta:** porque é que o rádio aceita a transmissão (`tx=0`) e não levanta
+`RAIL_EVENT_TX_PACKET_SENT`. Testado e descartado: dimensão da FIFO (128), alinhamento do buffer (agora
+`repr(align(4))`), `RAIL_ConfigData` em PACKET_MODE, posição da FIFO (antes e depois do init do protocolo),
+e a máscara de eventos pedida antes ou depois da configuração do PHY. Nenhuma dessas mudanças alterou `hw=0`.
+
+**Como continuar sem repetir isto:** o critério do exemplo já está certo -- `hw > 0` é a condição de PASS, e
+ele reporta `Fail` enquanto não houver evento. O próximo passo honesto é comparar com o exemplo de 802.15.4 do
+Gecko SDK (`rail_simple_802154` ou equivalente) lado a lado com este ficheiro, procurando a chamada que falta
+entre `StartTx` e o evento. **Não é uma tabela de canais que falta** -- isso está resolvido.
