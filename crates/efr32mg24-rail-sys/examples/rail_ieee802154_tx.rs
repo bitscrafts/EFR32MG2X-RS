@@ -2,11 +2,22 @@
 //!
 //! ## O que este exemplo prova, e o que não prova
 //!
-//! Prova que a API aceita a configuração de 802.15.4 e que a transmissão chega ao evento de "pacote
-//! enviado" do rádio. **Não prova que um frame saiu no ar**: não há um segundo rádio 802.15.4 nesta bancada,
-//! e um transceptor não se ouve a si mesmo (`RAIL_StartTx` desliga o receptor). Um rádio reporta envio com a
-//! antena desafinada, portanto o relato do próprio rádio é a evidência mais forte que este workspace permite
-//! — e é mais fraca do que os testes do EM2 e do HFXO, que tinham tempo de parede do lado do host.
+//! Prova que o rádio transmite um frame 802.15.4 e o reporta: `hw=1`, com `RAIL_EVENT_TX_PACKET_SENT`
+//! levantado. **Não prova que um frame saiu no ar**: não há um segundo rádio 802.15.4 nesta bancada, e um
+//! transceptor não se ouve a si mesmo (`RAIL_StartTx` desliga o receptor). Um rádio reporta envio com a antena
+//! desafinada, portanto o relato do próprio rádio é a evidência mais forte que este workspace permite — e é
+//! mais fraca do que os testes do EM2 e do HFXO, que tinham tempo de parede do lado do host.
+//!
+//! ## Os dois números que custaram a noite
+//!
+//! O primeiro byte na FIFO não é o frame control: é o **comprimento**. O 802.15.4 tem um PHY header de um byte
+//! com o tamanho, e em transmissão é o transmissor que o escreve a partir do primeiro byte que encontra. Sem
+//! ele, o rádio leu `0x41` (o frame control) como 65 e levantou `RAIL_EVENT_TX_UNDERFLOW` — pediu bytes que a
+//! FIFO não tinha. É por isso que este exemplo escreve `n + 1` bytes e não `n`.
+//!
+//! E o evento pedido é a **máscara toda** de TX, não só o `TX_PACKET_SENT`: com um único bit ligado, um aborto e
+//! um silêncio dão o mesmo zero. O registo final traz o `ev=` recebido justamente para que o próximo a olhar não
+//! tenha de adivinhar qual dos dois foi.
 //!
 //! ## A tabela de canais não é escrita aqui
 //!
@@ -45,11 +56,23 @@ use panic_halt as _;
 /// interrupções do rádio, e os dois discordarem é exactamente o caso em que a API parece bem e o ar fica vazio.
 static mut TX_PACKET_SENT: u32 = 0;
 
+/// A máscara de eventos que o rádio levantou, tal como veio. Pedir só o `TX_PACKET_SENT` esconde a diferença
+/// entre "não enviei" e "tentei e fui bloqueado ou abortado" -- os dois davam o mesmo zero.
+static mut ULTIMOS_EVENTOS: u32 = 0;
+
+/// O buffer da FIFO de TX. `static` e alinhado a 4: o RAIL guarda este ponteiro e lê dele durante a transmissão,
+/// portanto não pode ser memória de pilha que o compilador é livre de reutilizar.
+#[repr(align(4))]
+struct FifoBuf([u8; 128]);
+static mut FIFO_TX: FifoBuf = FifoBuf([0u8; 128]);
+
 /// O canal 15 do 802.15.4: 2425 MHz. Os canais 11–26 vêm da chamada de configuração do vendor.
 const CHANNEL: u16 = 15;
 
 /// RAIL events. Corre em contexto de interrupção.
 unsafe extern "C" fn on_rail_event(_handle: rail::RAIL_Handle_t, events: rail::RAIL_Events_t) {
+    ULTIMOS_EVENTOS = events as u32;
+
     // bit 24 de RAIL_Events_t é RAIL_EVENT_TX_PACKET_SENT
     if (events & (1u64 << 24)) != 0 {
         TX_PACKET_SENT = TX_PACKET_SENT.wrapping_add(1);
@@ -191,15 +214,26 @@ pub extern "C" fn main() -> ! {
     mailbox::write(Status::Info, b"154: data method set");
 
     // A FIFO de TX: o `RAIL_StartTx` não leva o pacote, os bytes entram aqui primeiro.
-    // ## Alinhamento: o buffer da FIFO e' alinhado a 4 bytes de proposito
+    // ## A FIFO é `static`, não um local de pilha
     //
-    // `[0u8; 128]` na pilha tem alinhamento 1, e a `RAIL_SetTxFifo` nao regressava com ele. Um tipo com
-    // `repr(align(4))` e' a forma de dar ao vendor o que a assinatura dele espera sem inventar um endereco fixo.
-    #[repr(align(4))]
-    struct FifoBuf([u8; 128]);
-    let mut fifo = FifoBuf([0u8; 128]);
-    let tx_buf = &mut fifo.0;
-    unsafe { rail::RAIL_SetTxFifo(handle, tx_buf.as_mut_ptr(), 0, 128) };
+    // O RAIL guarda o ponteiro e continua a ler desse sítio enquanto transmite. Um buffer local na pilha
+    // sobrevive até o Rust o considerar morto -- e o compilador é livre de reutilizar essa memória para outra
+    // coisa, sem que nada aqui o impeça. Medido: com o buffer local o rádio levantou
+    // `RAIL_EVENT_TX_UNDERFLOW` (bit 30, `ev=1073741824`) e nunca `TX_PACKET_SENT` -- ficou sem dados a meio do
+    // frame. Um `static` tem endereço e vida de programa, que é o que a assinatura do vendor pressupõe (em C,
+    // `static uint8_t txFifo[...]`).
+    //
+    // O alinhamento a 4 fica: a assinatura do vendor não o documenta como opcional.
+    // O retorno e' o tamanho da FIFO em bytes, e ZERO significa erro -- descartá-lo foi o que manteve isto
+    // invisível durante toda a noite.
+    let fifo_sz = unsafe {
+        rail::RAIL_SetTxFifo(
+            handle,
+            core::ptr::addr_of_mut!(FIFO_TX.0) as *mut u8,
+            0,
+            128,
+        )
+    };
 
     // Um frame de dados 802.15.4: broadcast do PAN, curto em ambas as pontas.
     let mut frame = [0u8; 32];
@@ -213,19 +247,42 @@ pub extern "C" fn main() -> ! {
 
     mailbox::write(Status::Info, b"154: frame built");
 
-    let escrito = unsafe { rail::RAIL_WriteTxFifo(handle, frame.as_ptr(), n as u16, true) };
+    // ## O primeiro byte da FIFO e' o COMPRIMENTO
+    //
+    // O 802.15.4 tem um PHY header de um byte com o tamanho do payload, e em transmissao e' o proprio
+    // transmissor que o escreve a partir do primeiro byte da FIFO. Medido: escrevendo so' a MAC frame (14 bytes,
+    // com `frame[0] = 0x41`), a FIFO ficou com 128 de tamanho, 14 bytes dentro, `espaco=114`, e o radio
+    // levantou `RAIL_EVENT_TX_UNDERFLOW` -- pediu mais bytes do que os 14 que la' estavam. 0x41 = 65: leu o
+    // frame control como comprimento. Com o comprimento a' frente, o pacote e' 15 bytes e o radio sabe onde
+    // acaba.
+    let mut tx = [0u8; 64];
+    tx[0] = n as u8;
+    tx[1..1 + n].copy_from_slice(&frame[..n]);
+
+    let escrito = unsafe { rail::RAIL_WriteTxFifo(handle, tx.as_ptr(), (n + 1) as u16, true) };
+
+    // E o espaco que o RAIL diz ter livre DEPOIS da escrita: se 14 bytes entraram numa FIFO de 128, tem de
+    // sobrar 114. Qualquer outro numero diz que a escrita nao foi para a FIFO que o radio usa.
+    let espaco = unsafe { rail::RAIL_GetTxFifoSpaceAvailable(handle) };
 
     let mut mw = [0u8; 40];
     let mut aw = push(&mut mw, 0, b"154: wrote=");
     aw = push_num(&mut mw, aw, u32::from(escrito));
     mailbox::write(Status::Info, &mw[..aw]);
 
+    // ## O evento, pedido ANTES de transmitir
+    //
+    // Estava depois do `RAIL_StartTx`, e um frame de 802.15.4 a 250 kbps sai em menos de meio milissegundo:
+    // a máscara era ligada quando o evento já tinha passado. Pedir a máscara depois de arrancar a transmissão
+    // é pedir para ser avisado de uma coisa que já aconteceu.
+    //
+    // E pedem-se TODOS os eventos de TX (bits 23..=31), não só o 24: `TX_ABORTED` (26) e `TX_BLOCKED` (28)
+    // contam a mesma história por outro lado, e com apenas o 24 um aborto e um silêncio davam o mesmo zero.
+    let eventos_tx: u64 = 0x0000_0000_FF80_0000;
+    unsafe { rail::RAIL_ConfigEvents(handle, eventos_tx, eventos_tx) };
+
     let tx_st =
         unsafe { rail::RAIL_StartTx(handle, CHANNEL, rail::RAIL_TX_OPTIONS_DEFAULT, ptr::null()) };
-
-    // Pedir o evento DEPOIS de toda a configuracao: a configuracao do PHY pode repor a mascara, e um pedido
-    // feito antes dela nao chegaria ao rádio que transmite.
-    unsafe { rail::RAIL_ConfigEvents(handle, 1u64 << 24, 1u64 << 24) };
 
     let mut mt = [0u8; 40];
     let mut at2 = push(&mut mt, 0, b"154: started=");
@@ -257,12 +314,18 @@ pub extern "C" fn main() -> ! {
     at = push_num(&mut m, at, u32::from(pa_st));
     at = push(&mut m, at, b" dbm=");
     at = push_num(&mut m, at, u32::from(dbm_st));
+    at = push(&mut m, at, b" fifo=");
+    at = push_num(&mut m, at, u32::from(fifo_sz));
+    at = push(&mut m, at, b" espaco=");
+    at = push_num(&mut m, at, u32::from(espaco));
     at = push(&mut m, at, b" w=");
     at = push_num(&mut m, at, u32::from(escrito));
     at = push(&mut m, at, b" tx=");
     at = push_num(&mut m, at, u32::from(tx_st));
     at = push(&mut m, at, b" hw=");
     at = push_num(&mut m, at, hw);
+    at = push(&mut m, at, b" ev=");
+    at = push_num(&mut m, at, unsafe { ULTIMOS_EVENTOS });
 
     // Passa só se a configuração foi aceite (0 = RAIL_STATUS_NO_ERROR), o `StartTx` foi aceite e o rádio
     // reportou pelo menos um envio. O que isto NÃO diz é que um frame saiu no ar -- ver o topo do ficheiro.

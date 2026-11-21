@@ -188,12 +188,43 @@ O exemplo existe e corre na placa. O registo final, lido com `probe-rs read b32 
 4. **A ordem é Init do protocolo depois do PHY.** `Config2p4GHzRadio` toma o lugar de `RAIL_ConfigChannels`, e
    o `RAIL_IEEE802154_Init` valida parâmetros que precisam de um canal já definido.
 
-**O que falta, em uma pergunta:** porque é que o rádio aceita a transmissão (`tx=0`) e não levanta
-`RAIL_EVENT_TX_PACKET_SENT`. Testado e descartado: dimensão da FIFO (128), alinhamento do buffer (agora
-`repr(align(4))`), `RAIL_ConfigData` em PACKET_MODE, posição da FIFO (antes e depois do init do protocolo),
-e a máscara de eventos pedida antes ou depois da configuração do PHY. Nenhuma dessas mudanças alterou `hw=0`.
+5. **O primeiro byte da FIFO é o comprimento.** O 802.15.4 tem um PHY header de um byte com o tamanho do
+   payload, e em transmissão é o transmissor que o escreve a partir do primeiro byte da FIFO. Este era o
+   bloqueio da noite inteira.
 
-**Como continuar sem repetir isto:** o critério do exemplo já está certo -- `hw > 0` é a condição de PASS, e
-ele reporta `Fail` enquanto não houver evento. O próximo passo honesto é comparar com o exemplo de 802.15.4 do
-Gecko SDK (`rail_simple_802154` ou equivalente) lado a lado com este ficheiro, procurando a chamada que falta
-entre `StartTx` e o evento. **Não é uma tabela de canais que falta** -- isso está resolvido.
+**Como o bloqueio caiu, porque o método importa mais do que a resposta.** Eu estava a pedir um único evento,
+`RAIL_EVENT_TX_PACKET_SENT` (bit 24), e a ler um zero. Um zero assim responde "não houve envio" mas não diz se
+o rádio ficou calado ou se tentou e foi travado -- são duas falhas diferentes com o mesmo sintoma. Pedindo
+**todos** os eventos de TX (bits 23–31) a resposta apareceu à primeira:
+
+```
+154: init=0 phy=0 pa=0 dbm=0 w=14 tx=0 hw=0 ev=1073741824
+                                              ^^^^^^^^^^ 2^30 = RAIL_EVENT_TX_UNDERFLOW
+```
+
+`TX_UNDERFLOW` é "a FIFO esvaziou antes do fim do pacote". A seguir vieram dois números que separam as duas
+causas possíveis -- FIFO mal montada, ou rádio a pedir bytes a mais:
+
+```
+fifo=128    RAIL_SetTxFifo devolveu 128 (sucesso; o retorno era descartado, e 0 significa erro)
+espaco=114  depois de escrever 14, sobram 114 -> os 14 bytes ESTAVAM lá
+```
+
+FIFO sã, cheia, e mesmo assim underflow. O número que resolveu o resto: `frame[0] = 0x41` = **65**. O rádio leu
+o frame control como comprimento e foi pedir 65 bytes. Com o comprimento à frente (`w=15` em vez de `w=14`):
+
+```
+154: init=0 phy=0 pa=0 dbm=0 fifo=128 espaco=113 w=15 tx=0 hw=1 ev=16777216
+                                                              ^^^^  ^^^^^^^^ 2^24 = TX_PACKET_SENT
+status=PASS
+```
+
+**Descartado por medição, sem mexer o resultado:** tamanho da FIFO, alinhamento do buffer a 4,
+`repr(align(4))` vs pilha, `static` vs local, `RAIL_ConfigData` em PACKET_MODE, posição da FIFO antes e depois
+do init do protocolo, e a máscara de eventos pedida antes ou depois do PHY. A causa era outra, e só apareceu
+quando a pergunta passou de "porque não há este evento" para "que evento há".
+
+**O que este exemplo prova e o que não prova.** Prova que o rádio transmite um frame 802.15.4 completo e o
+reporta. **Não** prova que alguém o recebe: não há segundo nó, e um transceptor não se ouve a si mesmo. A
+recepção fica para quando houver com quem falar -- o `src/rx.rs` já existe e tem as porções da FIFO testadas no
+host.
