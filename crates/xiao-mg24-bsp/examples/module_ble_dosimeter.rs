@@ -463,6 +463,23 @@ fn main() -> ! {
             }
         }
     };
+    // ## Cada arranque comeca sem bonds
+
+    // A base de bonds em NVM3 e' o unico estado que sobrevive a um reset e que pode deixar o aparelho
+    // num estado de que ele nao se recupera sozinho. Medido 2026-11-21, na apresentacao: o aparelho
+    // anunciava (LED aceso) e ninguem conseguia ligar-se; so' um `module_nvm3_wipe` a correr de um
+    // portatil o recuperou. A causa exacta nao foi isolada -- o wipe e o reflash foram feitos juntos.
+
+    // O que se sabe sem ambiguidade: com `SECURITY_REQUIRED = false` a ligacao nao e' encriptada,
+    // portanto os bonds nao dao nada em troca. Sao estado a arder sem contrapartida, e sao o unico
+    // sitio onde o aparelho se pode trancar.
+
+    // Apagar em cada arranque torna o estado deterministico: nao ha' bond orfao possivel -- trocar a
+    // app no telemovel passa a ser indiferente --, nem base inconsistente, nem stack preso a
+    // carrega-la. Quando o produto exigir ligacao encriptada, esta linha sai e a politica passa a ser
+    // pensada em vez de herdada de um prototipo.
+    let _ = ble.delete_bondings();
+
     // Every one of these three carries a person's noise exposure, and every one of them shipped with `security: 0`,
     // which the stack reads as "an unpaired client may use it". Measured 2026-11-17: a host that had never paired read
     // the RMS characteristic over an open link. `BONDED_*` rather than `ENCRYPTED_*` because the product asks for
