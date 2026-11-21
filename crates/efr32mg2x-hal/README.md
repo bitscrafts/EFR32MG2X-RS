@@ -32,6 +32,7 @@ Read from the source, so it cannot drift:
 | `Eusart1S` | `src/spi/mod.rs` |
 | `GpioNs` | `src/board.rs` |
 | `GpioS` | `src/board.rs` |
+| `Hfxo0Ns` | `src/clock/clocks.rs` |
 | `I2c0Ns` | `src/board.rs`, `src/i2c/mod.rs` |
 | `I2c0S` | `src/i2c/mod.rs` |
 | `I2c1S` | `src/i2c/mod.rs` |
