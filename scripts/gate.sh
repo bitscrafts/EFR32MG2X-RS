@@ -171,6 +171,15 @@ else
   fail "product: $(grep -m1 '^error' /tmp/gate-dosimeter.log | sed 's/^error[^:]*: *//')"
 fi
 
+# The Embassy time driver, same story: `required-features` means the loop above builds no such target, and this is
+# the example that proves `schedule_wake` reaches a waker through the comparator.
+if PATH="/usr/local/cargo/bin:$PATH" cargo build --release -p efr32mg2x-xiao-bsp --target "$TARGET" \
+    --features "sense" --example embassy_driver_systrc >/tmp/gate-embassy.log 2>&1; then
+  pass "embassy: the time driver's example builds (waker through the comparator)"
+else
+  fail "embassy: $(grep -m1 '^error' /tmp/gate-embassy.log | sed 's/^error[^:]*: *//')"
+fi
+
 # The night queue must refuse to mark an item "done" when no work came out of the worker. The rule lives in
 # `queue-run-once.sh`; this exercises the script itself, in a throwaway repository, with a worker that is not pi
 # -- including the case where the only thing that changed was the queue file the worker edited.

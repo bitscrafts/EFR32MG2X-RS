@@ -44,6 +44,10 @@ motion-detection = { package = "efr32mg2x-motion-detection", path = "../../libra
 # Deciding when a stored bond is stale is policy too: the dosimeter's self-healing is an application of it, and
 # the rule is tested on the host where the phone cannot pretend to fail.
 efr32mg2x-ble-bond-heal-core = { path = "../../libraries/ble-bond-heal-core" }
+# The Embassy time driver, for the example that proves the comparator path end to end. A user of a GPIO must not
+# inherit it: the example opts in, the crate does not.
+embassy-efr32 = { path = "../embassy-efr32" }
+embassy-time-driver = "0.2"
 panic-halt = "0.2"
 
 [features]
@@ -63,6 +67,12 @@ targets = ["thumbv8m.main-none-eabihf"]
 # reader with a plain MG24 module gets a clean absence instead of a confusing error.
 
 # The Sense examples: same board with more parts fitted, so the feature is what gates them.
+[[example]]
+# O driver de tempo do Embassy sobre o SYSRTC. Precisa das mesmas features do `Board` e não do rádio: o que ele
+# prova é o tempo, não a pilha.
+name = "embassy_driver_systrc"
+required-features = ["sense"]
+
 [[example]]
 name = "module_imu"
 required-features = ["sense"]

@@ -99,6 +99,10 @@ fn rd(addr: usize) -> u32 {
 ///
 /// One global rather than a field on `Sysrtc`: a time source is a singleton, and the point of the widened tick is
 /// that every caller sees the same number. See [`Sysrtc::now_wide`].
+/// The SYSRTC register base, recorded by [`Sysrtc::take`] so the global accessors work without a handle. Zero
+/// means the module was never taken.
+static REGS_BASE: core::sync::atomic::AtomicUsize = core::sync::atomic::AtomicUsize::new(0);
+
 static WIDE: critical_section::Mutex<core::cell::RefCell<crate::cores::sysrtc::WideTick>> =
     critical_section::Mutex::new(core::cell::RefCell::new(
         crate::cores::sysrtc::WideTick::new(),
@@ -180,6 +184,10 @@ impl Sysrtc {
             regs,
             cmu: cmu_base,
         };
+        // O relogio global (`now_wide_global`, `schedule_at_global`) precisa do endereco sem ter um handle: um
+        // driver de tempo e' chamado de contextos que nao podem possuir o periferico. Registado aqui, nos dois
+        // caminhos do `take` (o frio e o quente).
+        REGS_BASE.store(this.regs as usize, core::sync::atomic::Ordering::Relaxed);
 
         // 1. Bus clocks: SYSRTC's, and the LFRCO's own (bit 22) -- emlib's CMU_OscillatorEnable does the
         //    same, and without it a clock source can be selected that is not actually running.
@@ -352,6 +360,57 @@ impl Sysrtc {
         wr(self.regs as usize + off::GRP0_CTRL, bits::CTRL_CMP0EN);
         wr(self.regs as usize + off::GRP0_IEN, 0);
         wr(self.regs as usize + off::GRP0_IF + 0x2000, bits::GRP0_ALL);
+    }
+
+    /// The monotonic 64-bit tick **without a handle**.
+    ///
+    /// A time driver is called from contexts that cannot own the peripheral: an interrupt, a `static` `Platform`
+    /// impl, a consumer in another crate. The register address is recorded by [`Sysrtc::take`], and the widening
+    /// state is the same single global [`Sysrtc::now_wide`] uses -- one clock, one answer.
+    ///
+    /// Returns 0 before the module is taken, which a caller can detect by comparing two reads.
+    pub fn now_wide_global() -> u64 {
+        let base = REGS_BASE.load(core::sync::atomic::Ordering::Relaxed);
+        if base == 0 {
+            return 0;
+        }
+        // SAFETY: the base is written only by `take`, points at SYSRTC0_NS, and lives for the program.
+        let regs = unsafe { &*(base as *const RegisterBlock) };
+        let mut spins = 0u32;
+        while regs.syncbusy().read().bits() != 0 {
+            spins = spins.wrapping_add(1);
+            if spins == 200_000 {
+                break;
+            }
+        }
+        let counter = regs.cnt().read().bits();
+        critical_section::with(|cs| WIDE.borrow(cs).borrow_mut().update(counter))
+    }
+
+    /// Arm the comparator **without a handle**, the companion of [`Sysrtc::now_wide_global`].
+    ///
+    /// Returns `false` when the module was never taken, and otherwise whether the deadline had already passed.
+    pub fn schedule_at_global(deadline: u32) -> bool {
+        let base = REGS_BASE.load(core::sync::atomic::Ordering::Relaxed);
+        if base == 0 {
+            return false;
+        }
+        // SAFETY: as in `now_wide_global`.
+        let regs = unsafe { &*(base as *const RegisterBlock) };
+        let mut spins = 0u32;
+        while regs.syncbusy().read().bits() != 0 {
+            spins = spins.wrapping_add(1);
+            if spins == 200_000 {
+                break;
+            }
+        }
+        let now = regs.cnt().read().bits();
+        // A decisao (prazo no passado, ou igual a agora) vive em `cores::sysrtc`, testada no host.
+        let (target, passed) = crate::cores::sysrtc::compare_target(now, deadline);
+        regs.grp0_cmp0value().write(|w| unsafe { w.bits(target) });
+        regs.grp0_ien()
+            .write(|w| unsafe { w.bits(bits::GRP0_CMP0) });
+        passed
     }
 
     /// True while the module is enabled.    /// True while the module is enabled.
