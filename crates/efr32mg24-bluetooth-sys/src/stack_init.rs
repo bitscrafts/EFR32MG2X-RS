@@ -97,6 +97,26 @@ pub struct Configuration {
 use core::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 /// Set by the host when the link layer wants servicing. This is `scheduler_callback` in the configuration.
+/// The NVIC line that serves the link layer, in place of `PendSV`.
+///
+/// `BURTC`, because nothing in this firmware enables the backup RTC: an interrupt whose peripheral is never enabled
+/// can only be pended by writing its bit, which is exactly the property a software interrupt needs. A near-miss
+/// control would be any line a peripheral can raise on its own -- there the handler would run for reasons that have
+/// nothing to do with the stack, and would look like a stack that services itself.
+///
+/// **If a feature ever enables the backup RTC, this choice moves with it.** The gate's layering checks do not see
+/// that, which is why it is written here rather than in a commit message.
+const LINK_LAYER_IRQ: u32 = 17;
+
+/// `NVIC_ISER0`: write 1 to enable the interrupt.
+const NVIC_ISER0: *mut u32 = 0xE000_E100 as *mut u32;
+/// `NVIC_ISPR0`: write 1 to pend it.
+const NVIC_ISPR0: *mut u32 = 0xE000_E200 as *mut u32;
+/// `NVIC_ICPR0`: write 1 to clear a pend.
+const NVIC_ICPR0: *mut u32 = 0xE000_E280 as *mut u32;
+/// `NVIC_IPR`: one byte of priority per interrupt.
+const NVIC_IPR: *mut u8 = 0xE000_E400 as *mut u8;
+
 static LINK_LAYER_WAITING: AtomicBool = AtomicBool::new(false);
 
 /// Set by the host when it has work for the application. This is `stack_schedule_callback`.
@@ -106,11 +126,23 @@ static STACK_WAITING: AtomicBool = AtomicBool::new(false);
 static LINK_LAYER_CALLBACKS: AtomicBool = AtomicBool::new(false);
 static STACK_CALLBACKS: AtomicBool = AtomicBool::new(false);
 
+/// Ask for link-layer service by pending the dedicated line. Public because a caller that intercepts the vendor's
+/// `PendSV` kick has exactly one thing to do with it: hand it over here.
+pub fn request_service() {
+    unsafe { core::ptr::write_volatile(NVIC_ISPR0, 1 << LINK_LAYER_IRQ) };
+}
+
 extern "C" fn on_link_layer_wakeup() {
-    // SCB->ICSR.PENDSVSET: the link layer is serviced by the `PendSV` handler, as in the vendor's bare-metal glue
-    // (`sli_btctrl_task_default_callback`). Servicing it from the application's main loop instead is far too late
-    // for the scheduler, which makes its transmit decisions in this context, tens of microseconds apart.
-    unsafe { core::ptr::write_volatile(0xE000_ED04 as *mut u32, 1 << 28) };
+    // Pend the link-layer interrupt -- **not** `PendSV`. The vendor's bare-metal glue raises `PendSV`
+    // (`sli_btctrl_task_default_callback` does `SCB->ICSR = PENDSVSET`), and that is a defect in an otherwise sound
+    // design: `PendSV` is the exception every kernel reserves for its own context switch, so a firmware that hides
+    // the link layer there cannot grow an RTOS. The vendor's own kernel build does not use it either -- its
+    // `linklayer_thread` calls the same `sl_bt_priority_handle` from a thread.
+    //
+    // The interrupt is pended by address (`NVIC_ISPR0`), the way this file already talks to the SCB. Servicing it
+    // from the application's main loop instead is far too late for the scheduler, which makes its transmit
+    // decisions in this context, tens of microseconds apart.
+    request_service();
     LINK_LAYER_WAITING.store(true, Ordering::Release);
     LINK_LAYER_CALLBACKS.store(true, Ordering::Release);
 }
@@ -133,11 +165,15 @@ extern "C" fn on_stack_wakeup() {
 /// time would clear a pending `PendSV` that a real interrupt source just raised.
 #[no_mangle]
 pub unsafe extern "C" fn sli_btctrl_events_init() {
-    // SCB->ICSR, PENDSVCLR (bit 27).
-    core::ptr::write_volatile(0xE000_ED04 as *mut u32, 1 << 27);
-    // PendSV at the lowest priority (SCB->SHPR3 byte 0xE000_ED22; this part implements 3 priority bits), so it
-    // runs after every radio interrupt has returned instead of preempting them.
-    core::ptr::write_volatile(0xE000_ED22 as *mut u8, 0xE0);
+    // Clear a pend left over from before the controller was ready -- the same reason the vendor clears
+    // `PendSV_IRQn`: the handler would otherwise run against a link layer that is not initialised.
+    core::ptr::write_volatile(NVIC_ICPR0, 1 << LINK_LAYER_IRQ);
+    // The lowest priority (0xE0 with this part's 3 priority bits, which is 7), so the handler runs after every
+    // radio interrupt has returned instead of preempting them -- the priority `PendSV` used to have, because it
+    // was the lowest exception by design.
+    core::ptr::write_volatile(NVIC_IPR.add(LINK_LAYER_IRQ as usize), 0xE0);
+    // Unmask. An external interrupt, unlike `PendSV`, is *not* deliverable until this is written.
+    core::ptr::write_volatile(NVIC_ISER0, 1 << LINK_LAYER_IRQ);
 }
 
 extern "C" {
@@ -146,6 +182,9 @@ extern "C" {
     fn sl_rail_util_pa_init();
     /// The link-layer servicing function the vendor's own `linklayer_thread` calls.
     fn sl_bt_priority_handle();
+    /// Installs the callback the controller uses to ask for link-layer service. Passing `NULL` restores the vendor
+    /// default, which pends `PendSV`.
+    fn ll_task_init(callback: Option<extern "C" fn()>);
     /// The host's own processing: GAP/GATT state and its software timers. The vendor's `sl_bt_step` is
     /// `sl_bt_run()` + `sl_bt_event_pending_len()` + `sl_bt_pop_event()`, and `sl_bt_run` is the part that makes the
     /// host advance; without it a started stack answers synchronous commands and queues nothing.
@@ -395,6 +434,23 @@ pub unsafe fn start(config: Configuration) -> u32 {
     // defines, and produced no event). The vendor's own `bluetooth_thread` calls `sli_bt_system_start_bluetooth()`
     // to start the host, and the BGAPI command `sl_bt_system_start_bluetooth` is a different thing entirely: it
     // exists only in on-demand-start builds and answers `SL_STATUS_NOT_AVAILABLE` here, which is correct.
+    // **The kick, on a line of our own.** The host's `bglib` initialiser calls `ll_task_init(NULL)`, which installs
+    // the vendor's default callback. Disassembled from the archive, that default is, in full:
+    //
+    //     mov r2, #0x10000000      ; PENDSVSET
+    //     ldr r3, =0xE000ED00      ; SCB base
+    //     str r2, [r3, #4]         ; SCB->ICSR = PENDSVSET
+    //
+    // so every link-layer request in this firmware went through `PendSV` -- the one exception an RTOS reserves for
+    // its own context switch. `ll_task_init` takes a callback, so the seam exists; installing ours here moves the
+    // kick to `LINK_LAYER_IRQ` without touching a blob. It has to come after `sl_bt_stack_init` (which is what runs
+    // the `bglib` initialiser that sets the default) and before the start, which is the first thing that needs it.
+    unsafe { ll_task_init(Some(on_link_layer_wakeup)) };
+    // The start raised at least one link-layer event while the vendor default was still installed; that event is
+    // sitting in the controller's accumulator. Pend our own line and let it be served now, so the compensation does
+    // not depend on somebody noticing a lost kick.
+    request_service();
+
     trace(6, 0xFFFF_FFFF);
     // **Three questions answered by one flash, because the low byte cannot tell them apart.**
     //
@@ -409,6 +465,12 @@ pub unsafe fn start(config: Configuration) -> u32 {
     let rng_before = crate::psa::stats().2;
     let started = sli_bt_system_start_bluetooth();
     trace(7, started);
+
+    // **The last word.** Measured: with the callback installed only before the start, `stack_init` and the start
+    // both return 0 and the firmware then stops inside `PendSV` (`ICSR` reading `0x80e`, vector 14) at the first
+    // link-layer event -- the start path had already put the vendor default back. `ll_task_init` stores one
+    // pointer, so installing it again is free and this is the only ordering that survives a reset of the seam.
+    unsafe { ll_task_init(Some(on_link_layer_wakeup)) };
     unsafe {
         extern "C" {
             static ll_radio: [u32; 16];

@@ -33,6 +33,25 @@ use panic_halt as _;
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
 mod mailbox;
 
+/// **Instrumento temporário.** Quantas vezes o `PendSV` foi entregue, publicado em `0x2003_F628` para se ler por SWD.
+///
+/// Existe para responder a uma pergunta só: depois de a cola da link layer ter sido movida para a linha 17, o
+/// vendor ainda levanta o `PendSV`? Se este contador subir, sim — e o `B16` fica bloqueado pelo blob, não pelo nosso
+/// código. Se ficar em zero e a publicidade funcionar, o `PendSV` está livre para um RTOS.
+static PENDSV_KICKS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+/// O endereço onde o contador fica legível por SWD.
+const PENDSV_KICKS_SLOT: usize = 0x2003_F628;
+
+#[no_mangle]
+pub extern "C" fn PendSV() {
+    let n = PENDSV_KICKS.fetch_add(1, core::sync::atomic::Ordering::Relaxed) + 1;
+    unsafe { core::ptr::write_volatile(PENDSV_KICKS_SLOT as *mut u32, n) };
+    // **Redireccionar, não servir.** O serviço acontece num sítio só -- o handler da linha 17 -- para que o caminho
+    // medido seja o caminho do produto. Aqui só se entrega o kick a quem o serve.
+    efr32mg24_bluetooth_sys::stack_init::request_service();
+}
+
 fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
     let mut digits = [0u8; 10];
     let mut n = 0;

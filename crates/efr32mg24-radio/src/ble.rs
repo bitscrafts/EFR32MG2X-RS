@@ -33,17 +33,22 @@ pub const LEGACY_ADV_MTU: usize = 31;
 /// The ATT MTU this stack negotiates by default.
 pub const DEFAULT_ATT_MTU: u16 = 247;
 
-/// **The handler the vendor's bare-metal design requires, in the library so every example has it.**
+/// **The handler the vendor's design requires, in the library so every example has it.**
 ///
-/// Without a kernel, the host asks for link-layer work by setting `PENDSVSET`; `sl_bluetooth.c.jinja` defines
-/// `PendSV_Handler()` as `sl_bt_priority_handle()` for exactly that reason. Measured on this board: with the start
-/// finally succeeding and no handler defined, the firmware sat in `DefaultHandler_` with `ICSR.VECTACTIVE = 14` —
-/// no fault, no status, the "hang" this project chased for hours.
+/// The host asks for link-layer work by pending an interrupt, and this is its handler. Measured on this board: with
+/// no handler defined the request lands in `DefaultHandler_` and the firmware sits there with `ICSR.VECTACTIVE`
+/// naming the vector — no fault, no status, the "hang" this project chased for hours.
+///
+/// **Not `PendSV`.** That is what the vendor's bare-metal glue uses and what this project used until now; `PendSV`
+/// is the exception every kernel reserves for its own context switch, so hiding the link layer there makes an RTOS
+/// impossible. The vendor's kernel build does not use it either — its `linklayer_thread` calls the same
+/// `sl_bt_priority_handle` from a thread. The line and its priority are chosen in
+/// `efr32mg24_bluetooth_sys::stack_init` (see `LINK_LAYER_IRQ`), beside the code that pends it.
 ///
 /// It lives here rather than in each example because it is a property of using the stack, not of a program:
 /// an example that forgot it would hang in a way that looks like a radio failure.
 #[cfg(feature = "stack")]
-#[cortex_m_rt::exception]
-fn PendSV() {
+#[no_mangle]
+pub extern "C" fn BURTC_IRQHandler() {
     efr32mg24_bluetooth_sys::stack_init::service_link_layer();
 }

@@ -22,7 +22,7 @@ mod mailbox;
 
 use core::ffi::c_void;
 
-use cortex_m_rt::{entry, exception};
+use cortex_m_rt::entry;
 use efr32mg24_bluetooth_sys::sleeptimer;
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::pin::Port;
@@ -99,13 +99,17 @@ fn stage(tag: &[u8], a: u32, b: u32) {
     mailbox::write(mailbox::Status::Pass, &m[..n]);
 }
 
-/// **The handler the vendor's bare-metal design requires.**
+/// **The link-layer handler, because this probe deliberately builds without the `stack` feature.**
 ///
-/// Without it the host's first `PENDSVSET` lands in `DefaultHandler_` and the firmware stops there with `ICSR`
-/// reporting vector 14 — no fault, no status, indistinguishable from a deadlock. Measured on this board before this
-/// handler existed.
-#[exception]
-fn PendSV() {
+/// The host asks for link-layer work by pending NVIC line 17 and the firmware stops in `DefaultHandler_` with
+/// `ICSR.VECTACTIVE` naming it if nothing serves it — no fault, no status, indistinguishable from a deadlock.
+/// Measured on this board before this handler existed.
+///
+/// The library has the same handler in `efr32mg24_radio::ble`, behind `cfg(feature = "stack")`, and this example is
+/// the pre-stack bring-up. Defining it here and there is the reason the two must never be built together: two
+/// definitions of one vector symbol is a linker error, which is how the move off `PendSV` announced itself.
+#[no_mangle]
+pub extern "C" fn BURTC_IRQHandler() {
     efr32mg24_bluetooth_sys::stack_init::service_link_layer();
 }
 
