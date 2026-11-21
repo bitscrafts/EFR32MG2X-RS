@@ -188,6 +188,15 @@ impl Sysrtc {
         // handler). Whoever started it keeps it; an application only needs to read `CNT` and to program its own
         // compare channel on group 0, and both are legal while it runs.
         if this.is_enabled() && this.is_running() {
+            // O comentario acima esta' certo sobre o `CFG` e estava errado sobre o resto: "a aplicacao so' precisa
+            // de ler o CNT e de programar o seu canal de comparacao no grupo 0" -- e este retorno nao programava
+            // o grupo 0. Sem `CTRL_CMP0EN` o canal esta' desligado, `schedule_at` escreve um valor que nunca
+            // compara, e nao vem interrupcao nenhuma. Medido 2026-11-21: contador em 32 673 464 ticks (portanto
+            // este caminho), 40 M de voltas e nenhum acordar.
+            //
+            // Quem started o modulo continua a ser dono do `CFG`; o canal de comparacao e' da aplicacao e e'
+            // legal enquanto o contador corre. Sao dois donos de coisas diferentes, e o retorno tratava-os como um.
+            this.arm_group0();
             return this;
         }
 
@@ -220,8 +229,7 @@ impl Sysrtc {
         wr(this.regs as usize + off::GRP0_CTRL, bits::CTRL_CMP0EN);
 
         // 6. Every group interrupt off and cleared, so the first wake is a real deadline.
-        wr(this.regs as usize + off::GRP0_IEN, 0);
-        wr(this.regs as usize + off::GRP0_IF + 0x2000, bits::GRP0_ALL);
+        this.arm_group0();
 
         // 7. Enable the module through EN_SET (0x1004), then start. 0x1000 is IPVERSION_SET and writing
         //    there left EN at zero, which is how the first version of this module failed.
@@ -298,7 +306,18 @@ impl Sysrtc {
         self.regs_ref().status().read().bits() & bits::STATUS_RUNNING != 0
     }
 
-    /// True while the module is enabled.
+    /// Enable the application's compare channel on group 0 and clear its flags.
+    ///
+    /// Shared by both paths through `take`, because both need it: the cold path configures the module from zero,
+    /// and the warm path inherits a running module whose compare channel belongs to nobody. Doing it in only one
+    /// of them is how a compare value gets written into a disabled channel and nothing ever fires.
+    fn arm_group0(&self) {
+        wr(self.regs as usize + off::GRP0_CTRL, bits::CTRL_CMP0EN);
+        wr(self.regs as usize + off::GRP0_IEN, 0);
+        wr(self.regs as usize + off::GRP0_IF + 0x2000, bits::GRP0_ALL);
+    }
+
+    /// True while the module is enabled.    /// True while the module is enabled.
     #[inline]
     pub fn is_enabled(&self) -> bool {
         self.regs_ref().en().read().bits() & bits::EN_EN != 0
@@ -347,6 +366,29 @@ impl Sysrtc {
     pub fn unmask_interrupt(&self) {
         // SAFETY: the caller installs `SYSRTC_APP_IRQHandler` before calling this.
         unsafe { cortex_m::peripheral::NVIC::unmask(efr32mg2x_pac::Interrupt::SYSRTC_APP) };
+    }
+
+    /// Acknowledge the compare interrupt from a handler, where no `Sysrtc` instance is reachable.
+    ///
+    /// ## Why this is an associated function and not a method
+    ///
+    /// The interrupt fires while `main` is somewhere else, holding the `Sysrtc` it owns. A handler cannot borrow it,
+    /// and the alternative -- the example naming the PAC to find the registers -- is the layering defect the gate
+    /// refuses. The write itself is one write-1-to-clear to the group 0 flag, which is exactly what
+    /// [`Self::take_compare_event`] does with an instance.
+    ///
+    /// It does not read anything back: whether the flag was set is the caller's business, and a handler that cared
+    /// would be a handler doing work it could have deferred.
+    pub fn acknowledge_compare_interrupt() {
+        // SAFETY: `Sysrtc0Ns::steal` is the PAC's raw view; the peripheral exists (this crate was taken from the
+        // same silicon) and the write is the documented write-1-to-clear alias at +0x2000. A second view of a
+        // flag register whose only operation is "clear these bits" cannot corrupt anything a `Sysrtc` holds.
+        let rtc = unsafe { efr32mg2x_pac::Sysrtc0Ns::steal() };
+        let regs: &RegisterBlock = &rtc;
+        wr(
+            regs as *const RegisterBlock as usize + off::GRP0_IF + 0x2000,
+            bits::GRP0_CMP0,
+        );
     }
 
     /// Ticks per millisecond at LFRCO, rounded down: 32.768 kHz is not a multiple of 1000, so a thousand
