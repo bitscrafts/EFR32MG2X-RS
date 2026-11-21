@@ -79,56 +79,56 @@ impl Clocks {
         cmu: crate::pac::CmuS,
         config: ClockConfig,
     ) -> Result<(Self, crate::pac::CmuS), ClockError> {
-        // ## Porque e' que isto recusa em vez de aceitar
+        // ## O HFXO: ligar, esperar, e so' depois seleccionar
 
-        // Este construtor NAO liga o HFXO nem o LFXO, e nao muda o `CLKSEL`: o comentario mais abaixo
-        // dizia-o em letra pequena ("we just track the requested frequency") e o efeito era o HAL
-        // afirmar uma frequencia que nao estava em vigor. Quem pedisse 39 MHz recebia `hfclk() == 39
-        // MHz` com o nucleo a correr a 19 -- e desse numero dependem o divisor do I2C, o SysTick do
-        // delay e o pace da amostragem. Tudo compila, tudo corre, e os numeros saem errados por um
-        // factor de dois, sem um unico erro.
+        // Antes desta sequencia, o construtor registava a frequencia pedida e nao mexia no relogio: quem
+        // pedisse 39 MHz recebia `hfclk() == 39` com o nucleo a correr a 19. Desse numero dependem o
+        // divisor do I2C, o SysTick do delay e o pace da amostragem -- tudo errado por um factor de
+        // dois, sem um unico erro de compilacao.
 
-        // Ate a sequencia (enable, esperar RDY, so' depois CLKSEL) estar implementada e provada na
-        // placa, pedir um cristal e' recusado no arranque. Um erro alto no arranque e' melhor do que
-        // um divisor errado em producao.
-        assert!(
-            config.hfxo.is_none(),
-            "Clocks::new does not switch SYSCLK to HFXO yet: asking for {:?} would report a \
-             frequency the core is not running at, and every divisor computed from it would be wrong. \
-             Pass hfxo: None until the enable/wait/select sequence is implemented.",
-            config.hfxo.map(|h| h.frequency)
-        );
-        assert!(
-            config.lfxo.is_none(),
-            "Clocks::new does not configure LFXO yet: asking for {:?} would report a low-frequency \
-             clock that is not selected. Pass lfxo: None until the sequence is implemented.",
-            config.lfxo.map(|l| l.frequency)
-        );
+        // A ordem importa e nao e' negociavel: ligar (`FORCEEN`), esperar que o cristal estabilize
+        // (`STATUS.RDY`), e so' entao apontar o `CLKSEL` para ele. Seleccionar antes do `RDY` da' um
+        // nucleo a correr de um relogio que ainda nao existe.
 
-        // Determine the frequencies based on configuration
-        //
-        // WARNING: This function does NOT switch SYSCLK to HFXO. The previous
-        // implementation switched SYSCLK to HFXO BEFORE HFXO was running, which
-        // stopped the CPU clock and permanently locked the debug Access Port.
-        // See docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md for details.
-        //
-        // The proper HFXO sequence requires:
-        //   1. Enable HFXO via HFXO0_S.CTRL (set FORCEEN/ENABLE)
-        //   2. Poll HFXO0_S.CTRL.RDY until HFXO is stable
-        //   3. THEN switch CMU_S.SYSCLKCTRL.CLKSEL to HFXO
-        //
-        // This is not implemented yet. For now, we just track the requested
-        // frequency for delay calculations. The actual clock source remains
-        // whatever the bootloader or reset default set (FSRCO or HFRCO).
         let hfclk = if let Some(hfxo_config) = config.hfxo {
-            // Track HFXO frequency but do NOT switch SYSCLK.
-            // The caller is responsible for enabling HFXO and switching SYSCLK
-            // via a separate, properly-sequenced function (TODO: implement).
+            // SAFETY: o HFXO0 nao e' exposto por nenhuma outra API deste crate, e quem chega aqui esta'
+            // a construir a arvore de relogios -- ou seja, e' o dono dela por construcao. O `steal` e'
+            // o mesmo padrao que o `Board` usa para o EMU e o WDOG.
+            let hfxo = unsafe { crate::pac::Hfxo0Ns::steal() };
+
+            hfxo.ctrl().modify(|_r, w| w.forceen().set_bit());
+
+            // Espera limitada: um laco infinito num arranque e' uma placa que nunca mais responde a
+            // ninguem, e num produto isso e' indistinguivel de brick. O limite e' um tecto, nao uma
+            // espera -- sai no primeiro `RDY`.
+            let mut voltas = 0u32;
+            const TECTO: u32 = 2_000_000;
+            while !hfxo.status().read().rdy().bit_is_set() {
+                voltas += 1;
+                if voltas > TECTO {
+                    return Err(ClockError::HfxoTimeout);
+                }
+                core::hint::spin_loop();
+            }
+
+            cmu.sysclkctrl().modify(|_r, w| w.clksel().hfxo());
             hfxo_config.frequency
         } else {
-            // Use default HFRCO
             Hertz(Self::HFRCO_FREQ)
         };
+
+        // ## O LFXO: ainda recusado
+
+        // O selector do relogio lento por cristal nao esta' mapeado neste PAC (procurei os registos de
+        // seleccao em `cmu_s` e so' existe o `EM23GRPACLKCTRL`), portanto pedir LFXO continua a ser
+        // recusado em vez de aceite e ignorado. O HFXO acima mostra a forma que falta: ligar, esperar
+        // `RDY`, seleccionar.
+
+        assert!(
+            config.lfxo.is_none(),
+            "Clocks::new does not select LFXO yet: the slow-clock selector is not mapped in this PAC. \
+             Pass lfxo: None (LFRCO) until it is."
+        );
 
         let lfclk = if let Some(lfxo_config) = config.lfxo {
             // Track LFXO frequency but do NOT configure LFXO registers yet.
