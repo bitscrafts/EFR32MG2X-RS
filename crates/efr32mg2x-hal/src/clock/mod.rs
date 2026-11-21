@@ -68,6 +68,7 @@ mod frozen;
 mod types;
 
 // Re-export public types
+pub(crate) use clocks::start_hfxo;
 pub use clocks::{Clocks, DEFAULT_SYSCLK_HZ};
 pub use frozen::FrozenClocks;
 pub use types::{ClockConfig, ClockError, Hertz, HfxoConfig, LfxoConfig};

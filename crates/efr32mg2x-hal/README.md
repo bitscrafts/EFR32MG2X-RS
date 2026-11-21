@@ -182,7 +182,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-14 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+15 examples, **3 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -191,6 +191,7 @@ mean it works.
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | -- |
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | -- |
+| `hal_hfxo.rs` | HFXO: correr do cristal, e provar que o relógio do sistema o seguiu. | -- |
 | `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |
 | `hal_i2c_hardware_imu.rs` | The IMU on the hardware I2C bus: routed pins, a power gate, one byte back. | -- |
 | `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- |

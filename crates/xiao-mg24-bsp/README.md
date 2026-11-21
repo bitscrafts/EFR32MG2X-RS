@@ -25,7 +25,6 @@ Read from the source, so it cannot drift:
 |---|---|
 | `board` | `src/module.rs` |
 | `bus` | `src/module.rs` |
-| `clock` | `src/module.rs` |
 | `delay` | `src/module.rs` |
 | `microphone` | `src/module.rs` |
 | `mvp` | `src/module.rs` |
@@ -45,7 +44,6 @@ Read from the source, so it cannot drift:
 |---|---|
 | `board` | `src/module.rs` |
 | `bus` | `src/module.rs` |
-| `clock` | `src/module.rs` |
 | `delay` | `src/module.rs` |
 | `microphone` | `src/module.rs` |
 | `mvp` | `src/module.rs` |

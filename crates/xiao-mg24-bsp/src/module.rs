@@ -70,7 +70,10 @@ impl Module {
             // SAFETY: SysTick is used by nothing else in this workspace; see the note on the
             // same call in the Expansion Base facade.
             unsafe { cortex_m::Peripherals::steal().SYST },
-            efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ,
+            // The clock in force, not the reset one: a delay calibrated for 19 MHz on a board running from the
+            // 39 MHz crystal sleeps half of what was asked, and nothing says so. Measured on the parent board
+            // 2026-11-21: five `delay_ms(1000)` calls took 2,46 s until this line read the live clock.
+            self.board.clock_hz().0,
         )
     }
 

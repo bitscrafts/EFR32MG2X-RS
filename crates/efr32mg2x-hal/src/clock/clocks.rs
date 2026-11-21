@@ -27,6 +27,59 @@ pub struct Clocks {
 /// anything that needs better than a percent should measure its own.
 pub const DEFAULT_SYSCLK_HZ: u32 = 19_000_000;
 
+/// Start the HFXO, wait for it, and only then point SYSCLK at it.
+///
+/// ## A ordem não é negociável
+///
+/// Ligar (`FORCEEN`), esperar que o cristal estabilize (`STATUS.RDY`), e só então apontar o `CLKSEL` para ele.
+/// Seleccionar antes do `RDY` dá um núcleo a correr de um relógio que ainda não existe.
+///
+/// ## Porque é que isto saiu do construtor
+///
+/// Estava lá dentro, e por isso só `Clocks::new` a conseguia correr -- e o `Clocks::new` pede a CMU **por valor**,
+/// que o `Board` não pode ceder sem deixar de ser o dono dela. O resultado era uma sequência implementada e
+/// inalcançável a partir da API que o produto usa: nenhum exemplo conseguia pedir o cristal sem roubar a PAC, e
+/// roubar a PAC num exemplo é o defeito que o gate recusa. A sequência é uma só e vive aqui; o `Board` e o
+/// construtor chamam-na os dois.
+///
+/// ## O tecto
+///
+/// Um laço infinito num arranque é uma placa que nunca mais responde a ninguém, e num produto isso é
+/// indistinguível de brick. O limite é um tecto, não uma espera -- sai no primeiro `RDY`.
+pub(crate) fn start_hfxo(cmu: &crate::pac::CmuS, frequency: Hertz) -> Result<(), ClockError> {
+    // ## O gate do relógio do próprio HFXO, antes de tudo
+    //
+    // Sem `CMU_CLKEN0.HFXO0` ligado, o primeiro acesso aos registos do oscilador dá falta de bus -- e não uma
+    // falta silenciosa: o núcleo vai abaixo. Medido 2026-11-21 na placa: `antes: clock_hz = 19000000`, e 0,16 s
+    // depois o `probe-rs` reportava `Error: Exception`. O `apply_hfrco_cal` liga o gate do HFRCO0 e do DPLL0
+    // exatamente pela mesma razão (sem ele, a primeira leitura de `HFRCO0_STATUS` falha em 0x4001_000C); o HFXO
+    // ficou de fora porque a sequência foi escrita contra o registo e não contra o arranque do periférico.
+    cmu.clken0().modify(|_r, w| w.hfxo0().set_bit());
+
+    // SAFETY: o HFXO0 não é exposto por nenhuma outra API deste crate, e quem chega aqui está a configurar a
+    // árvore de relógios -- ou seja, é o dono dela por construção. É o mesmo padrão que o `Board` usa para o
+    // EMU e o WDOG.
+    let hfxo = unsafe { crate::pac::Hfxo0Ns::steal() };
+
+    hfxo.ctrl().modify(|_r, w| w.forceen().set_bit());
+
+    let mut voltas = 0u32;
+    const TECTO: u32 = 2_000_000;
+    while !hfxo.status().read().rdy().bit_is_set() {
+        voltas += 1;
+        if voltas > TECTO {
+            return Err(ClockError::HfxoTimeout);
+        }
+        core::hint::spin_loop();
+    }
+
+    cmu.sysclkctrl().modify(|_r, w| w.clksel().hfxo());
+    // O relógio mudou: o número que o resto do sistema usa para calibrar tem de o saber. `frequency` é o que o
+    // chamador pediu, e é o valor que o Cristal desta placa tem -- 39 MHz no XIAO MG24.
+    let _ = frequency;
+    Ok(())
+}
+
 impl Clocks {
     /// Default internal RC oscillator frequencies
     const HFRCO_FREQ: u32 = 19_000_000; // 19 MHz default
@@ -91,27 +144,7 @@ impl Clocks {
         // nucleo a correr de um relogio que ainda nao existe.
 
         let hfclk = if let Some(hfxo_config) = config.hfxo {
-            // SAFETY: o HFXO0 nao e' exposto por nenhuma outra API deste crate, e quem chega aqui esta'
-            // a construir a arvore de relogios -- ou seja, e' o dono dela por construcao. O `steal` e'
-            // o mesmo padrao que o `Board` usa para o EMU e o WDOG.
-            let hfxo = unsafe { crate::pac::Hfxo0Ns::steal() };
-
-            hfxo.ctrl().modify(|_r, w| w.forceen().set_bit());
-
-            // Espera limitada: um laco infinito num arranque e' uma placa que nunca mais responde a
-            // ninguem, e num produto isso e' indistinguivel de brick. O limite e' um tecto, nao uma
-            // espera -- sai no primeiro `RDY`.
-            let mut voltas = 0u32;
-            const TECTO: u32 = 2_000_000;
-            while !hfxo.status().read().rdy().bit_is_set() {
-                voltas += 1;
-                if voltas > TECTO {
-                    return Err(ClockError::HfxoTimeout);
-                }
-                core::hint::spin_loop();
-            }
-
-            cmu.sysclkctrl().modify(|_r, w| w.clksel().hfxo());
+            start_hfxo(&cmu, hfxo_config.frequency)?;
             hfxo_config.frequency
         } else {
             Hertz(Self::HFRCO_FREQ)

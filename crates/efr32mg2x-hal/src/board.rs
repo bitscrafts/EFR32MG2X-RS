@@ -398,6 +398,24 @@ impl Board {
         self.dp.timer0_s.cnt().read().bits()
     }
 
+    /// Run the core from the crystal and report the frequency in force.
+    ///
+    /// The sequence lives in `clock::start_hfxo` and is the same one `Clocks::new` uses; this is the door that was
+    /// missing. Without it a `Board` user could not select the crystal at all: `Clocks::new` asks for the CMU by
+    /// value, and the board does not give that up. The only documented way to reach the crystal was to steal the
+    /// PAC in an example -- which is the defect the gate refuses.
+    ///
+    /// On failure the board keeps whatever clock it had: `HfxoTimeout` means the crystal did not stabilise within
+    /// the ceiling, and a core running from a clock that never started would be worse than the slow one.
+    pub fn select_hfxo(
+        &self,
+        frequency: u32,
+    ) -> Result<crate::clock::Hertz, crate::clock::ClockError> {
+        crate::clock::start_hfxo(&self.dp.cmu_s, crate::clock::Hertz(frequency))?;
+        self.sysclk_hz.set(frequency);
+        Ok(crate::clock::Hertz(frequency))
+    }
+
     /// The frequency this board is running at.
     ///
     /// One place, because there were two: `pace_microphone` typed `19_000_000` into its period and
@@ -421,9 +439,13 @@ impl Board {
         // SAFETY: the core peripherals were taken by `take()` and are held in `_cp`, so this is
         // not a second owner -- it is the same SysTick, borrowed back. `Delay` only programs the
         // SysTick registers and nothing else in this crate touches them.
+        // The clock in force, not the one the part resets to. It was `DEFAULT_SYSCLK_HZ`, which made the delay
+        // wrong by exactly the ratio of any boost or crystal change -- and silent, because a delay that returns
+        // early looks the same as a delay that was right. Measured 2026-11-21 with the crystal running: five
+        // `delay_ms(1000)` calls took 2,46 s of wall clock, and this is the line that explains the missing half.
         crate::delay::Delay::with_sysclk(
             unsafe { cortex_m::Peripherals::steal() }.SYST,
-            crate::clock::DEFAULT_SYSCLK_HZ,
+            self.clock_hz().0,
         )
     }
 
