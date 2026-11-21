@@ -330,6 +330,25 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool
             BleEvent::AdvertisingTimeout { .. } => {
                 let _ = ble.start_connectable(200, 0);
             }
+            // ## Um bond orfao nao pode prender o aparelho
+            //
+            // Trocar a app no telemovel (ou reinstala-la) deixa um bond cujo par ja' nao corresponde ao que
+            // se apresenta. O stack tenta usa-lo, a troca de chaves falha, e o aparelho ficava preso: anuncia,
+            // o telefone nao consegue ligar, e nao ha' mensagem em lado nenhum. Medido 2026-11-21, na
+            // demonstracao: a placa estava a anunciar com o LED aceso e nem a app nem um scanner a alcancavam;
+            // so' um `module_nvm3_wipe` pelo portatil a recuperou.
+            //
+            // Curar aqui e' melhor do que explicar depois: quando o motivo da falha e' uma chave que o par nao
+            // tem (0x05 autenticacao, 0x06 chave em falta), o bond guardado e' lixo -- apaga-se e volta-se a
+            // anunciar. Noutros motivos (memoria cheia, tempo esgotado) apagar bonds bons so' pioraria.
+            BleEvent::Security { event, reason, .. } if event == 4 => {
+                let smp = (reason & 0xFF) as u8;
+                if smp == 0x05 || smp == 0x06 {
+                    let _ = ble.delete_bondings();
+                    let _ = ble.start_connectable(200, 0);
+                    link.adv += 1;
+                }
+            }
             BleEvent::ConfirmBonding { connection, .. } => {
                 // The stack only asks this when `BONDING_REQUEST_REQUIRED` (0x08) is among the pairing flags, so `cfb=0`
                 // with the flag set means the event is not raised at all -- the open question in the plan.
