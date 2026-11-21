@@ -21,9 +21,16 @@
 //!
 //! ## What this deliberately does not do
 //!
-//! No radio, no timing, no interrupts, no allocation. It decides **what bytes to send**, **whether an ACK
-//! belongs to a frame**, and **whether to try again** -- and it takes the backoff randomness as an input rather
-//! than reaching for a source, so a test can pin it to a value and a caller can feed it a real random number.
+//! No radio, no timing, no interrupts, no allocation. It decides four things and nothing else:
+//!
+//! - [`build_data_frame`] -- what bytes to put in the transmit FIFO, length byte first (the defect that cost a
+//!   night is the first test in this file);
+//! - [`csma`] -- whether the channel allows transmitting at all, and how long to wait if not;
+//! - [`is_ack_for`] -- whether an acknowledgement belongs to the frame just sent;
+//! - [`receive`] -- whether an arriving frame is addressed to this node, and what to acknowledge with.
+//!
+//! Backoff randomness is an input rather than a source the crate reaches for, so a test can pin it and a caller
+//! can feed it what the radio's generator produced.
 //!
 //! It also does not claim the frame is received. A transmitter reporting its own send is the strongest
 //! evidence a bench with one radio can produce, and that evidence says nothing about the other end.
@@ -33,6 +40,7 @@
 #![deny(unsafe_code)]
 
 pub mod csma;
+pub mod receive;
 
 /// `aUnitBackoffPeriod` at 2.4 GHz: 20 symbol periods, one symbol being 16 us, so one unit is 320 us.
 pub const SYMBOLS_PER_BACKOFF_UNIT: u16 = 20;
