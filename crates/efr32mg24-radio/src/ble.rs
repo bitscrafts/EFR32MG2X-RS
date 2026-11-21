@@ -52,3 +52,31 @@ pub const DEFAULT_ATT_MTU: u16 = 247;
 pub extern "C" fn BURTC_IRQHandler() {
     efr32mg24_bluetooth_sys::stack_init::service_link_layer();
 }
+
+/// How many `PendSV` deliveries were handed over to the link-layer line during the start.
+///
+/// Measured on this board: **one**. The vendor's host initialiser installs its default kick (`SCB->ICSR = PendSV`)
+/// and raises an event before the application's own callback can be in place, so exactly one delivery arrives by the
+/// old route. A count above one means the seam was reset later than expected and the redirect is carrying the stack,
+/// which is worth knowing before someone blames the radio.
+static PENDSV_REDIRECTS: core::sync::atomic::AtomicU32 = core::sync::atomic::AtomicU32::new(0);
+
+/// Read [`PENDSV_REDIRECTS`].
+pub fn pendsv_redirects() -> u32 {
+    PENDSV_REDIRECTS.load(core::sync::atomic::Ordering::Relaxed)
+}
+
+/// The vendor's one startup kick, handed over to the line that serves the link layer.
+///
+/// **This lives in the library, not in each example.** It was written in an example first, and the product firmware
+/// -- which links the same stack and never saw that example -- hung at boot with `ICSR` naming vector 14. A handler
+/// that every consumer needs is a property of using the stack, so it belongs beside the stack's other handler.
+///
+/// Enable the `kernel` feature to leave `PendSV` to a kernel; the redirect is then not compiled and the application
+/// provides its own.
+#[cfg(all(feature = "stack", not(feature = "kernel")))]
+#[no_mangle]
+pub extern "C" fn PendSV() {
+    PENDSV_REDIRECTS.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
+    efr32mg24_bluetooth_sys::stack_init::request_service();
+}

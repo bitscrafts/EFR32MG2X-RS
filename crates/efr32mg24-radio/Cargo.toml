@@ -30,6 +30,10 @@ external-bonding = ["efr32mg24-bluetooth-sys/external-bonding"]
 # Everything above the RAIL layer: the vendor Bluetooth stack needs nvm3, sleeptimer, the AES
 # radio helper and PSA crypto. Until those are vendored, the examples build only with this flag.
 stack = []
+# A kernel owns `PendSV`. With this on, the crate does not define it; the application must provide its own, and it
+# loses at most the vendor's one startup kick (measured: 1) -- `stack_init` repends the dedicated line after the
+# start, so the accumulated events are served either way.
+kernel = []
 default = ["ble"]
 # Bluetooth 5.3 through the Silicon Labs BGAPI stack.
 ble = []

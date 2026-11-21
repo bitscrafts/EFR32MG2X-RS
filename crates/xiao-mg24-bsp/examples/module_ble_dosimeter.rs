@@ -362,7 +362,9 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool
             // Curar aqui e' melhor do que explicar depois: quando o motivo da falha e' uma chave que o par nao
             // tem (0x05 autenticacao, 0x06 chave em falta), o bond guardado e' lixo -- apaga-se e volta-se a
             // anunciar. Noutros motivos (memoria cheia, tempo esgotado) apagar bonds bons so' pioraria.
-            BleEvent::Security { event, reason, .. } if event == 4 => {
+            BleEvent::Security {
+                event, reason: _, ..
+            } if event == 4 => {
                 // A held bond the peer cannot use is the failure of 2026-11-21: the device advertised, the phone
                 // could not connect, and only a laptop with `module_nvm3_wipe` recovered it. The rule about WHEN
                 // that bond is stale lives in `libraries/ble-bond-heal-core` and is tested on the host -- one
@@ -799,7 +801,10 @@ fn main() -> ! {
         }
         let mut window = [0u16; WINDOW];
         let mut bands_acc = [0u32; 8];
-        let mut rms_of_second = 0u16;
+        // Sem inicializador: o valor e' sempre atribuido no bloco do segundo antes de alguem o ler, e o
+        // `0u16` anterior era um valor que o compilador via nascer e morrer -- um aviso que diz "este caminho nao
+        // existe", nao "ha um caso em falta".
+        let rms_of_second: u16;
         // Energia acumulada no segundo (soma dos quadrados dos RMS de cada janela). O valor publicado passa a ser o
         // Leq de 1 s, e nao o RMS da ultima janela de 16 ms.
         let mut energia_do_segundo: u64 = 0;
@@ -881,7 +886,6 @@ fn main() -> ! {
             (windows_total % (WINDOWS_PER_SECOND as u32)) as u64
         };
         rms_of_second = isqrt_u64(energia_do_segundo / janelas_no_segundo.max(1)) as u16;
-        energia_do_segundo = 0;
         let rms_value = rms_of_second.to_le_bytes();
         let mut bands_value = [0u8; 32];
         for b in 0..8 {

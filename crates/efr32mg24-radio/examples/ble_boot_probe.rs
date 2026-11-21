@@ -113,6 +113,13 @@ pub extern "C" fn BURTC_IRQHandler() {
     efr32mg24_bluetooth_sys::stack_init::service_link_layer();
 }
 
+/// O kick de arranque do vendor, entregue à linha 17. Também ele está na biblioteca -- mas a biblioteca só o compila
+/// com a feature `stack`, e esta sonda constrói sem ela de propósito.
+#[no_mangle]
+pub extern "C" fn PendSV() {
+    efr32mg24_bluetooth_sys::stack_init::request_service();
+}
+
 #[entry]
 fn main() -> ! {
     let board = Board::take().expect("peripherals taken twice");
