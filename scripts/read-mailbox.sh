@@ -23,7 +23,12 @@ ADDR=0x2003F000
 WORDS=72          # 288 bytes: 16 of header + 272 of message. 64 truncated the record exactly where the
                   # fields that explain a failure live, which twice produced "no data" where data existed.
 CFG=/tmp/openocd-mg24-mini.cfg
-ATTEMPTS=5
+# A firmware that rewrites its record every second publishes a fresh one each time, so a reader that
+# requires the SAME record twice can never succeed on it. What the writer guarantees is the opposite:
+# it invalidates the magic first and publishes it last, so one read with the magic present is a whole
+# record. The attempts below only cover the window in which a write is in flight.
+ATTEMPTS=12
+TENTATIVA_PAUSA=0.2
 
 # ## Dois leitores, porque um deles deixa de funcionar sem avisar
 #
@@ -66,7 +71,7 @@ for attempt in $(seq 1 "${ATTEMPTS}"); do
   WORDS_TEXT="$(read_words)"
   if [ -z "${WORDS_TEXT}" ]; then
     echo "attempt ${attempt}: read failed" >&2
-    sleep 0.3
+    sleep "${TENTATIVA_PAUSA}"
     continue
   fi
 
@@ -85,6 +90,7 @@ print(f"seq={seq} status={names.get(status, status)} len={length}")
 print(data[16:16 + length].decode("utf-8", "replace"))
 ')"
   rc=$?
+  ULTIMO_MAGIC=$(printf '%s' "${WORDS_TEXT}" | awk '{print $1}')
   if [ "${rc}" -eq 0 ]; then
     printf '%s\n' "${parsed}"
     exit 0
@@ -96,5 +102,10 @@ print(data[16:16 + length].decode("utf-8", "replace"))
   sleep 0.2
 done
 
-echo "record still being written after ${ATTEMPTS} attempts (core halts mid-write)" >&2
+# Say what was actually seen. "Still being written" and "the debugger reads zeros because the core is
+# asleep" look identical from here, and they are different faults with different fixes.
+echo "no complete record after ${ATTEMPTS} attempts; last magic seen: ${ULTIMO_MAGIC:-none}" >&2
+if [ "${ULTIMO_MAGIC:-}" = "00000000" ]; then
+  echo "  magic 0 means a write was in flight on every attempt, or every read landed while the core was asleep" >&2
+fi
 exit 5
