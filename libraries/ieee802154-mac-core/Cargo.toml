@@ -1,0 +1,13 @@
+[package]
+name = "efr32mg2x-ieee802154-mac-core"
+version = "0.1.0"
+edition = "2021"
+description = "The 802.15.4 frame rules a transmitter must get right, in pure logic"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "efr32mg2x_ieee802154_mac_core"
+path = "src/lib.rs"
+
+[dependencies]

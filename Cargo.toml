@@ -21,6 +21,7 @@ members = [
     "libraries/spi-core",
     "libraries/sysrtc-core",
     "libraries/psa-shape-core",
+    "libraries/ieee802154-mac-core",
     "libraries/timer-core",
     "libraries/usart-core",
     "libraries/wdog-core",
