@@ -108,7 +108,9 @@ impl ExpansionBase {
     ///
     /// `None` when the timer never reports a running counter.
     pub fn buzzer(&self) -> Option<efr32mg2x_hal::buzzer::Buzzer<'_>> {
-        self.module.hal().buzzer_on(Port::C, 3)
+        self.module
+            .hal()
+            .buzzer_on(Port::C, 3, efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ)
     }
 
     /// The 128×64 OLED at 0x3C.

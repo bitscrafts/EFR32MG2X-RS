@@ -428,8 +428,13 @@ impl Board {
     /// TIMER0 on the pin the caller names, calibrated but undecided about what it means.
     ///
     /// `None` when the counter does not move — a clock that is not running.
-    pub fn timer0_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::pwm::Timer0<'_>> {
-        crate::pwm::Timer0::take(&self.dp, port, pin)
+    pub fn timer0_on(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+        sysclk_hz: u32,
+    ) -> Option<crate::pwm::Timer0<'_>> {
+        crate::pwm::Timer0::take(&self.dp, port, pin, sysclk_hz)
     }
 
     /// A PWM channel on the pin the caller names, at `freq_hz`, dark.
@@ -442,16 +447,25 @@ impl Board {
         port: crate::pin::Port,
         pin: u8,
         freq_hz: u32,
+        sysclk_hz: u32,
     ) -> Option<crate::pwm::Pwm<'_>> {
-        Some(crate::pwm::Pwm::new(self.timer0_on(port, pin)?, freq_hz))
+        Some(crate::pwm::Pwm::new(
+            self.timer0_on(port, pin, sysclk_hz)?,
+            freq_hz,
+        ))
     }
 
     /// A TIMER0 PWM buzzer on the pin the caller names.
     ///
     /// `None` if the timer never reports a running counter — a missing clock, not a missing
     /// buzzer.
-    pub fn buzzer_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::buzzer::Buzzer<'_>> {
-        crate::buzzer::Buzzer::new(&self.dp, port, pin)
+    pub fn buzzer_on(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+        sysclk_hz: u32,
+    ) -> Option<crate::buzzer::Buzzer<'_>> {
+        crate::buzzer::Buzzer::new(&self.dp, port, pin, sysclk_hz)
     }
 
     /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.

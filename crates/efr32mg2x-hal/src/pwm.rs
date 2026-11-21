@@ -45,7 +45,15 @@ impl<'a> Timer0<'a> {
     ///
     /// Returns `None` if the counter does not move — a clock that is not running, which is not
     /// the same thing as a pin that is not connected.
-    pub(crate) fn take(dp: &'a pac::Peripherals, port: Port, pin: u8) -> Option<Self> {
+    pub(crate) fn take(
+        dp: &'a pac::Peripherals,
+        port: Port,
+        pin: u8,
+        sysclk_hz: u32,
+    ) -> Option<Self> {
+        if sysclk_hz == 0 {
+            return None;
+        }
         // Gate first: a register access with the bus clock off is a precise bus fault.
         dp.cmu_s
             .clken0()
@@ -116,9 +124,13 @@ impl<'a> Timer0<'a> {
         }
         let ticks_per_1000_cycles = (u64::from(ticks) * 1000) / u64::from(elapsed_cycles);
 
-        // The board's SYSCLK, as measured against a stopwatch when the 1 Hz blink was calibrated.
-        // A caller that knows better can correct it with `set_sysclk_hz`.
-        let sysclk_hz = 19_000_000u32;
+        // `sysclk_hz` is what the caller configured, not what this driver would like it to be.
+        //
+        // It used to be typed in here as 19 MHz. A driver that assumes its own bus frequency turns a
+        // wrong clock into a wrong period with no error anywhere: the timer accepts the divider, the
+        // waveform comes out at the wrong pitch, and nothing in the chain complains. The board knows
+        // the clock it asked for, so it says it (`Board::pwm_on`, `Board::buzzer_on`), and a caller
+        // that changes the clock afterwards still has `set_sysclk_hz` for the correction.
         let tick_hz = (ticks_per_1000_cycles * u64::from(sysclk_hz) / 1000) as u32;
 
         Some(Self {

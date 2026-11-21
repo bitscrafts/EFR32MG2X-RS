@@ -60,8 +60,13 @@ impl<'a> Buzzer<'a> {
     /// [`crate::pwm::Timer0`], which is the same machinery a PWM channel uses — a piezo and an
     /// LED are the same waveform at different frequencies, and maintaining two copies of the
     /// bring-up is how one of them ends up wrong.
-    pub(crate) fn new(dp: &'a pac::Peripherals, port: Port, pin: u8) -> Option<Self> {
-        let mut timer = Timer0::take(dp, port, pin)?;
+    pub(crate) fn new(
+        dp: &'a pac::Peripherals,
+        port: Port,
+        pin: u8,
+        sysclk_hz: u32,
+    ) -> Option<Self> {
+        let mut timer = Timer0::take(dp, port, pin, sysclk_hz)?;
         timer.square_wave(DEFAULT_TONE_HZ);
         timer.silence();
         Some(Self { timer })

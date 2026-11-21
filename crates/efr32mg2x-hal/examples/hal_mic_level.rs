@@ -95,7 +95,12 @@ fn main() -> ! {
     // The LED as a PWM channel: PA7, through TIMER0 channel 0.
     // No PAC here on purpose: `Board::take` already owns it, and a HAL example that steals the
     // singleton would be admitting the HAL failed to hand out what it owns.
-    let mut led = match board.pwm_on(Port::A, 7, LED_PWM_HZ) {
+    let mut led = match board.pwm_on(
+        Port::A,
+        7,
+        LED_PWM_HZ,
+        efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ,
+    ) {
         Some(pwm) => pwm,
         None => {
             mailbox::write(
