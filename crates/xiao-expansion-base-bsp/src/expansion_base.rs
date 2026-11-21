@@ -84,11 +84,16 @@ impl ExpansionBase {
     /// calls `split`. Stealing the handle therefore creates a second view of registers that
     /// nothing else programs. Two delays alive at once would mean two owners of the same
     /// countdown, so the example takes one and keeps it.
+    /// A delay calibrated against the clock the module's board is actually running at.
+    ///
+    /// It used to pass `DEFAULT_SYSCLK_HZ` -- the BSP assuming 19 MHz on a board that can be running at 38, 56 or
+    /// 80 after `boost`. A delay built from a stale frequency is a delay that is wrong by exactly that ratio, and
+    /// nothing in the chain says so. The board knows its own clock; this asks it.
     pub fn delay(&mut self) -> efr32mg2x_hal::delay::Delay {
         // SAFETY: SysTick is exclusively the delay's; nothing else in this workspace
         // programs it, which is what makes the second view harmless.
         let syst = unsafe { cortex_m::Peripherals::steal().SYST };
-        efr32mg2x_hal::delay::Delay::with_sysclk(syst, efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ)
+        efr32mg2x_hal::delay::Delay::with_sysclk(syst, self.module.hal().sysclk_hz())
     }
 
     /// The user LED (PA7, active low).
@@ -108,9 +113,7 @@ impl ExpansionBase {
     ///
     /// `None` when the timer never reports a running counter.
     pub fn buzzer(&self) -> Option<efr32mg2x_hal::buzzer::Buzzer<'_>> {
-        self.module
-            .hal()
-            .buzzer_on(Port::C, 3, efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ)
+        self.module.hal().buzzer_on(Port::C, 3)
     }
 
     /// The 128×64 OLED at 0x3C.

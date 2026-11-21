@@ -31,7 +31,6 @@ Read from the source, so it cannot drift:
 | `board` | `src/expansion_base.rs` |
 | `bus` | `src/expansion_base.rs` |
 | `buzzer` | `src/expansion_base.rs` |
-| `clock` | `src/expansion_base.rs` |
 | `delay` | `src/expansion_base.rs` |
 | `display` | `src/expansion_base.rs` |
 | `microphone` | `src/expansion_base.rs` |

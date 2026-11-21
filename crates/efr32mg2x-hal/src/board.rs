@@ -24,6 +24,12 @@ pub struct Board {
     /// inside it; `delay()` borrows it back.
     _cp: cortex_m::Peripherals,
     dp: pac::Peripherals,
+    /// The SYSCLK in force, as far as this board has configured it.
+    ///
+    /// The board is the thing that changes the clock (`boost`), so it is the thing that knows it. Drivers take it
+    /// from here instead of being handed a number at every call site: a caller repeating `DEFAULT_SYSCLK_HZ` is a
+    /// caller that can repeat the wrong one, and a driver that assumed 19 MHz was already one defect too many.
+    sysclk_hz: core::cell::Cell<u32>,
 }
 
 impl Board {
@@ -39,7 +45,21 @@ impl Board {
         // GPIO is needed by the I2C bit-banger and the LED; without this gate
         // the first DOUT/MODEL access faults (CFSR=0x8200, BFAR = the address).
         dp.cmu_s.clken0().modify(|_r, w| w.gpio().set_bit());
-        Some(Self { dp, _cp: cp })
+        Some(Self {
+            dp,
+            _cp: cp,
+            // Reset brings the part up on HFRCO at 19 MHz; `boost` is the only thing here that moves it.
+            sysclk_hz: core::cell::Cell::new(crate::clock::DEFAULT_SYSCLK_HZ),
+        })
+    }
+
+    /// The SYSCLK this board is running at.
+    ///
+    /// Starts at the HFRCO the part resets to, and follows `boost`. A driver built from this board calibrates
+    /// against this number, not against one the caller typed.
+    #[must_use]
+    pub fn sysclk_hz(&self) -> u32 {
+        self.sysclk_hz.get()
     }
 
     /// The hardware I2C0, with its clock enabled and its two lines still unrouted.
@@ -304,6 +324,11 @@ impl Board {
             .sysclkctrl()
             .modify(|_r, w| w.rhclkpresc().variant(rhclk));
 
+        // The clock moved, so the board's own answer to "what am I running at" has to move with it. Every boost
+        // comes through here, which is why this is the one line that keeps `sysclk_hz` honest -- and a driver
+        // calibrated against a stale number is the same defect the timer used to carry, only quieter.
+        self.sysclk_hz.set(target_hz);
+
         Some(cal)
     }
 
@@ -436,13 +461,8 @@ impl Board {
     /// TIMER0 on the pin the caller names, calibrated but undecided about what it means.
     ///
     /// `None` when the counter does not move — a clock that is not running.
-    pub fn timer0_on(
-        &self,
-        port: crate::pin::Port,
-        pin: u8,
-        sysclk_hz: u32,
-    ) -> Option<crate::pwm::Timer0<'_>> {
-        crate::pwm::Timer0::take(&self.dp, port, pin, sysclk_hz)
+    pub fn timer0_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::pwm::Timer0<'_>> {
+        crate::pwm::Timer0::take(&self.dp, port, pin, self.sysclk_hz())
     }
 
     /// A PWM channel on the pin the caller names, at `freq_hz`, dark.
@@ -455,25 +475,16 @@ impl Board {
         port: crate::pin::Port,
         pin: u8,
         freq_hz: u32,
-        sysclk_hz: u32,
     ) -> Option<crate::pwm::Pwm<'_>> {
-        Some(crate::pwm::Pwm::new(
-            self.timer0_on(port, pin, sysclk_hz)?,
-            freq_hz,
-        ))
+        Some(crate::pwm::Pwm::new(self.timer0_on(port, pin)?, freq_hz))
     }
 
     /// A TIMER0 PWM buzzer on the pin the caller names.
     ///
     /// `None` if the timer never reports a running counter — a missing clock, not a missing
     /// buzzer.
-    pub fn buzzer_on(
-        &self,
-        port: crate::pin::Port,
-        pin: u8,
-        sysclk_hz: u32,
-    ) -> Option<crate::buzzer::Buzzer<'_>> {
-        crate::buzzer::Buzzer::new(&self.dp, port, pin, sysclk_hz)
+    pub fn buzzer_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::buzzer::Buzzer<'_>> {
+        crate::buzzer::Buzzer::new(&self.dp, port, pin, self.sysclk_hz())
     }
 
     /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.

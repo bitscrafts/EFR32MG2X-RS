@@ -170,11 +170,7 @@ fn main() -> ! {
     let mut display = Ssd1306::new(SharedBus::new(&base_bus));
 
     // An alarm you can hear: the panel shows the count, the buzzer says it happened.
-    let mut buzzer = board.buzzer_on(
-        Port::C,
-        3,
-        xiao_expansion_base_bsp::hal::clock::DEFAULT_SYSCLK_HZ,
-    );
+    let mut buzzer = board.buzzer_on(Port::C, 3);
     let mut alarm = app::Alarm::new();
 
     // ---- self tests, before the live loop --------------------------------

@@ -75,7 +75,7 @@ fn main() -> ! {
     let led = board.output_on(Port::A, 7, true);
 
     // The board owns the PAC peripherals, so it is what hands out a buzzer.
-    let mut buzzer = match board.buzzer_on(Port::C, 3, efr32mg2x_hal::clock::DEFAULT_SYSCLK_HZ) {
+    let mut buzzer = match board.buzzer_on(Port::C, 3) {
         Some(b) => b,
         None => {
             mailbox::fail(b"buzzer: timer never started");
