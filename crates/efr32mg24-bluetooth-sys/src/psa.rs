@@ -587,6 +587,33 @@ pub unsafe extern "C" fn psa_reset_key_attributes(attributes: *mut u8) {
     ptr::write_bytes(attributes, 0, PSA_KEY_ATTRIBUTES_BYTES);
 }
 
+/// Where the caller's declaration lives inside the attributes blob.
+///
+/// Measured, not read off a specification: `requested_id` reads the identifier at **offset 8** because that is
+/// where the stack's own `bondingdb_psa_add_ecb_key` writes it (`str r6, [r4, #8]`, disassembled 2026-11-17).
+/// With `psa_key_id_t` landing at 8, the two fields in front of it are the key type (16 bits at 0) and the size in
+/// bits (32 bits at 4) -- the layout mbedTLS uses for `psa_key_attributes_t` on a 32-bit target. The offsets are
+/// here, named, because the next person to read a word out of this blob should not have to re-derive them.
+const ATTR_TYPE_OFFSET: usize = 0;
+const ATTR_BITS_OFFSET: usize = 4;
+
+/// The declaration check lives in `efr32mg2x_psa_shape_core`, where the host can run it.
+///
+/// It was written here first, next to the C entry point, and could not be tested: this crate links ARM-only
+/// vendor blobs, so `cargo test` for the host dies at the linker. The rule is pure arithmetic, so it moved to
+/// `libraries/`, which the gate builds and tests on the host.
+pub(crate) use psa_shape_core::{shape_agrees, Declared};
+
+use psa_shape_core::ShapeError;
+
+/// Map the pure verdict onto the codes the PSA API expects.
+fn shape_code(erro: ShapeError) -> i32 {
+    match erro {
+        ShapeError::WrongType => PSA_ERROR_INVALID_ARGUMENT,
+        ShapeError::WrongSize => PSA_ERROR_NOT_SUPPORTED,
+    }
+}
+
 /// The identifier the caller asked for, if it asked for one.
 ///
 /// Measured 2026-11-17 by disassembling the stack's own bonding code: `bondingdb_psa_add_ecb_key` builds
@@ -602,6 +629,24 @@ unsafe fn requested_id(attributes: *const u8) -> u32 {
         return 0;
     }
     core::ptr::read_unaligned(attributes.add(8).cast::<u32>())
+}
+
+/// What the caller declared in its attributes blob.
+///
+/// # Safety
+/// `attributes` is either null or a readable attributes blob of at least 32 bytes, which is what the PSA API
+/// guarantees for `psa_key_attributes_t`.
+unsafe fn declared_shape(attributes: *const u8) -> Declared {
+    if attributes.is_null() {
+        return Declared {
+            key_type: 0,
+            bits: 0,
+        };
+    }
+    Declared {
+        key_type: core::ptr::read_unaligned(attributes.add(ATTR_TYPE_OFFSET).cast::<u16>()),
+        bits: core::ptr::read_unaligned(attributes.add(ATTR_BITS_OFFSET).cast::<u32>()),
+    }
 }
 
 /// The id a new key takes: the caller's if it named one, otherwise the next counter value.
@@ -790,6 +835,18 @@ unsafe fn psa_import_key_inner(
         }
         return 0;
     }
+    // What the caller says it is importing has to agree with what would be stored. Lenient about zero: a caller
+    // that declares nothing keeps the old behaviour, and only a contradicting declaration is refused.
+    let declared = declared_shape(attributes);
+    if let Err(erro) = shape_agrees(data_length, declared) {
+        let code = shape_code(erro);
+        unsafe {
+            *core::ptr::addr_of_mut!(SHAPE_REFUSED) =
+                ((u32::from(declared.key_type) & 0xFFFF) << 16) | (declared.bits & 0xFFFF);
+        }
+        return code;
+    }
+
     if !data_length.is_multiple_of(8) {
         return PSA_ERROR_INVALID_ARGUMENT;
     }
@@ -1488,6 +1545,18 @@ static mut PSA_CALLS: [u32; 17] = [0; 17];
 static mut LAST_CALL: u32 = 0;
 /// Why the last `psa_import_key` was refused: `(length << 8) | (code & 0xFF)`. A refusal that leaves no trace is how
 /// "imp=14/13" stayed unexplained: one import in fourteen failed and nothing said which one or why.
+/// The declaration `(type << 16) | bits` of the last import refused for describing itself as something else.
+///
+/// A refusal that leaves no trace is a refusal nobody can explain from the field. This one names the claim that was
+/// contradicted, so a pairing that starts failing after a stack change says which declaration was wrong.
+static mut SHAPE_REFUSED: u32 = 0;
+
+/// The declaration of the last refused import, or 0.
+#[must_use]
+pub fn shape_refused() -> u32 {
+    unsafe { core::ptr::read_volatile(core::ptr::addr_of!(SHAPE_REFUSED)) }
+}
+
 static mut IMPORT_REFUSED: u32 = 0;
 
 #[inline(always)]

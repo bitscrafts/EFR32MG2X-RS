@@ -20,6 +20,7 @@ members = [
     "libraries/dma-core",
     "libraries/spi-core",
     "libraries/sysrtc-core",
+    "libraries/psa-shape-core",
     "libraries/timer-core",
     "libraries/usart-core",
     "libraries/wdog-core",

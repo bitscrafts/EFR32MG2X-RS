@@ -1,0 +1,13 @@
+[package]
+name = "efr32mg2x-psa-shape-core"
+version = "0.1.0"
+edition = "2021"
+description = "Whether a PSA key declaration agrees with what the backend would store, in pure logic"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "efr32mg2x_psa_shape_core"
+path = "src/lib.rs"
+
+[dependencies]
