@@ -95,6 +95,15 @@ fn rd(addr: usize) -> u32 {
     unsafe { core::ptr::read_volatile(addr as *const u32) }
 }
 
+/// The widened 64-bit tick, shared by every caller.
+///
+/// One global rather than a field on `Sysrtc`: a time source is a singleton, and the point of the widened tick is
+/// that every caller sees the same number. See [`Sysrtc::now_wide`].
+static WIDE: critical_section::Mutex<core::cell::RefCell<crate::cores::sysrtc::WideTick>> =
+    critical_section::Mutex::new(core::cell::RefCell::new(
+        crate::cores::sysrtc::WideTick::new(),
+    ));
+
 /// The SYSRTC peripheral, once.
 pub struct Sysrtc {
     regs: *const RegisterBlock,
@@ -298,6 +307,34 @@ impl Sysrtc {
         let value = self.regs_ref().cnt().read().bits();
         self.wait_sync();
         value
+    }
+
+    /// The monotonic **64-bit** tick, widened from the 32-bit counter by counting its wraps.
+    ///
+    /// ## Why this exists, and why it is one global
+    ///
+    /// A 32-bit counter at 32.768 kHz wraps every 36.4 hours, so anything that has to compare two moments -- a
+    /// deadline, a dwell time, a time driver -- needs more than the counter gives. The widening rule is tested in
+    /// [`crate::cores::sysrtc::WideTick`]: a reading smaller than the previous one can only be a wrap.
+    ///
+    /// The state is a single global because a time source is a singleton. The Bluetooth stack's sleep timer widens
+    /// the same counter (`sleeptimer.rs` keeps its own copy of `WideTick`), and two independent widenings would
+    /// disagree about what time it is the moment one of them missed a call.
+    ///
+    /// ## What this costs, stated plainly
+    ///
+    /// It widens **when called**: it must run at least once every 36.4 hours or a wrap goes uncounted, and the tick
+    /// then jumps backwards by 36.4 hours. The peripheral raises an overflow interrupt (`GRP0_IF.OVF`, in this
+    /// SVD) which would remove that requirement; it is not wired here yet, and the honest description of today's
+    /// code is a polled widening, not a free-running clock.
+    pub fn now_wide(&self) -> u64 {
+        let counter = self.now();
+        critical_section::with(|cs| WIDE.borrow(cs).borrow_mut().update(counter))
+    }
+
+    /// How many wraps the widened tick has counted, for a record or a test.
+    pub fn wraps(&self) -> u32 {
+        critical_section::with(|cs| WIDE.borrow(cs).borrow().wraps())
     }
 
     /// True while the counter is running.
