@@ -46,13 +46,13 @@ pub enum Status {
     Fail = 2,
 }
 
-/// Write a record to the mailbox using the clear-fill-publish order.
-/// Timestamps for the RTT records. The DWT cycle counter if the example enabled it, and zero otherwise -- a zero says
-/// "nobody set a time base", which is honest, where a made-up number would not be.
+// Timestamps for the RTT records. The DWT cycle counter if the example enabled it, and zero otherwise -- a zero says
+// "nobody set a time base", which is honest, where a made-up number would not be.
 defmt::timestamp!("{=u64}", unsafe {
     (*cortex_m::peripheral::DWT::PTR).cyccnt.read() as u64
 });
 
+/// Write a record to the mailbox using the clear-fill-publish order.
 pub fn write(status: Status, msg: &[u8]) {
     let base = MAILBOX_ADDR as *mut u32;
     let len = core::cmp::min(msg.len(), 200);

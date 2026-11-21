@@ -25,7 +25,6 @@
 
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::entry;
-use efr32mg2x_hal::microphone::{Level, Microphone};
 use efr32mg2x_hal::pin::Port;
 use efr32mg2x_hal::prelude::*;
 
@@ -70,7 +69,7 @@ fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
 #[entry]
 fn main() -> ! {
     mailbox::invalidate();
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
 
     // The microphone: PC8 enable (active high), then the converter.
