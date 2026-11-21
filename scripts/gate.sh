@@ -25,6 +25,21 @@ cd "$(dirname "$0")/.."
 
 TARGET=thumbv8m.main-none-eabihf
 HOST=x86_64-unknown-linux-gnu
+
+# ## cargo on the PATH, whoever called this
+#
+# The pre-commit hook runs this script from whatever environment git had, and git does not inherit an
+# interactive shell's PATH. Measured 2026-11-21: a commit attempt through the hook reported six unrelated
+# failures -- `scripts/gate.sh: line 225: cargo: command not found` among them -- on a tree that had passed the
+# same gate minutes earlier from a shell that had exported PATH. A gate whose verdict depends on who called it
+# is not a gate; it is a coin. The earlier steps that already prefixed `PATH=... python3` fixed this one call at
+# a time instead of at the top.
+export PATH="/usr/local/cargo/bin:${PATH}"
+if ! command -v cargo >/dev/null 2>&1; then
+  echo "VERDICT: FAIL"
+  echo "  FAIL  cargo is not on the PATH, so nothing here can be checked"
+  exit 1
+fi
 FAILED=0
 pass() { printf '  PASS  %s\n' "$1"; }
 fail() { printf '  FAIL  %s\n' "$1"; FAILED=1; }
