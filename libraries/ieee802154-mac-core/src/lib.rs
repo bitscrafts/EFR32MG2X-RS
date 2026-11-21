@@ -73,7 +73,10 @@ impl Sequence {
     }
 
     /// Advance for the next frame, wrapping at 255 the way the standard requires.
-    pub fn next(&mut self) -> u8 {
+    ///
+    /// Named `advance` and not `next`: a method called `next` on a counter reads like `Iterator::next`, and
+    /// clippy is right that a reader can be misled by it.
+    pub fn advance(&mut self) -> u8 {
         self.0 = self.0.wrapping_add(1);
         self.0
     }
@@ -370,8 +373,8 @@ mod tests {
     fn a_sequence_wraps_at_255() {
         let mut seq = Sequence::new(254);
         assert_eq!(seq.current(), 254);
-        assert_eq!(seq.next(), 255);
-        assert_eq!(seq.next(), 0);
+        assert_eq!(seq.advance(), 255);
+        assert_eq!(seq.advance(), 0);
         assert_eq!(seq.current(), 0);
     }
 
