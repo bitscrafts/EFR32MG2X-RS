@@ -32,6 +32,11 @@
 #![deny(missing_docs)]
 #![deny(unsafe_code)]
 
+pub mod csma;
+
+/// `aUnitBackoffPeriod` at 2.4 GHz: 20 symbol periods, one symbol being 16 us, so one unit is 320 us.
+pub const SYMBOLS_PER_BACKOFF_UNIT: u16 = 20;
+
 /// The largest payload an 802.15.4 PHY header can describe, per the standard's one-byte length field.
 pub const MAX_PHY_PAYLOAD: usize = 127;
 

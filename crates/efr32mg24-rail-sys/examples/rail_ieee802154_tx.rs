@@ -49,6 +49,7 @@ mod mailbox;
 
 use efr32mg24_rail_sys as rail;
 use efr32mg2x_hal::prelude::*;
+use efr32mg2x_ieee802154_mac_core as mac;
 use mailbox::Status;
 use panic_halt as _;
 
@@ -235,31 +236,38 @@ pub extern "C" fn main() -> ! {
         )
     };
 
-    // Um frame de dados 802.15.4: broadcast do PAN, curto em ambas as pontas.
-    let mut frame = [0u8; 32];
-    frame[0] = 0x41; // FCF baixo: dados, PAN ID comprimido
-    frame[1] = 0x88; // FCF alto: destino curto (2), origem curta (2)
-    frame[2] = 0x07; // número de sequência
-    frame[3..5].copy_from_slice(&[0xFF, 0xFF]); // PAN de destino: broadcast
-    frame[5..7].copy_from_slice(&[0xFF, 0xFF]); // endereço de destino: broadcast
-    frame[7..9].copy_from_slice(&[0x34, 0x12]); // endereço de origem
-    let n = 9 + push(&mut frame[9..], 0, b"dosim");
+    // ## O frame vem da crate que os testes seguram ao standard
+    //
+    // Este bloco construía os bytes à mão, e foi exactamente aí que nasceu o defeito de hoje: escrever a MAC
+    // frame sem o byte de comprimento, e o rádio ler o frame control como tamanho. A regra está agora em
+    // `libraries/ieee802154-mac-core`, onde corre no host e onde um teste prova que o primeiro byte conta os que
+    // se seguem. O exemplo passou a chamá-la, porque uma reimplementação ao lado do teste é uma segunda opinião
+    // e não uma prova: o que voa tem de ser o que foi testado.
+    //
+    // O construtor devolve o total ja' com o byte de comprimento à frente -- 15 bytes para este frame.
+    let mut frame = [0u8; 64];
+    let n = match mac::build_data_frame(
+        0x07,
+        mac::Address::Short {
+            pan: 0x1234,
+            address: 0x1234,
+        },
+        mac::Address::Broadcast,
+        b"dosim",
+        &mut frame,
+    ) {
+        Ok(n) => n,
+        Err(_) => {
+            mailbox::write(Status::Fail, b"154: frame builder refused");
+            loop {
+                delay.delay_ms(500);
+            }
+        }
+    };
 
     mailbox::write(Status::Info, b"154: frame built");
 
-    // ## O primeiro byte da FIFO e' o COMPRIMENTO
-    //
-    // O 802.15.4 tem um PHY header de um byte com o tamanho do payload, e em transmissao e' o proprio
-    // transmissor que o escreve a partir do primeiro byte da FIFO. Medido: escrevendo so' a MAC frame (14 bytes,
-    // com `frame[0] = 0x41`), a FIFO ficou com 128 de tamanho, 14 bytes dentro, `espaco=114`, e o radio
-    // levantou `RAIL_EVENT_TX_UNDERFLOW` -- pediu mais bytes do que os 14 que la' estavam. 0x41 = 65: leu o
-    // frame control como comprimento. Com o comprimento a' frente, o pacote e' 15 bytes e o radio sabe onde
-    // acaba.
-    let mut tx = [0u8; 64];
-    tx[0] = n as u8;
-    tx[1..1 + n].copy_from_slice(&frame[..n]);
-
-    let escrito = unsafe { rail::RAIL_WriteTxFifo(handle, tx.as_ptr(), (n + 1) as u16, true) };
+    let escrito = unsafe { rail::RAIL_WriteTxFifo(handle, frame.as_ptr(), n as u16, true) };
 
     // E o espaco que o RAIL diz ter livre DEPOIS da escrita: se 14 bytes entraram numa FIFO de 128, tem de
     // sobrar 114. Qualquer outro numero diz que a escrita nao foi para a FIFO que o radio usa.
