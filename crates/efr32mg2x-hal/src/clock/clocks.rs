@@ -117,17 +117,31 @@ impl Clocks {
             Hertz(Self::HFRCO_FREQ)
         };
 
-        // ## O LFXO: ainda recusado
+        // ## O LFXO: recusado por falta do registo que o liga, nao por falta do selector
 
-        // O selector do relogio lento por cristal nao esta' mapeado neste PAC (procurei os registos de
-        // seleccao em `cmu_s` e so' existe o `EM23GRPACLKCTRL`), portanto pedir LFXO continua a ser
-        // recusado em vez de aceite e ignorado. O HFXO acima mostra a forma que falta: ligar, esperar
+        // A razao escrita aqui antes -- "o selector do relogio lento nao esta' mapeado neste PAC" -- estava
+        // errada, e mandava quem lesse procurar no sitio errado. Medido 2026-11-21 neste SVD e neste PAC:
+        //
+        //   em23grpaclkctrl    TEM a variante `Lfxo`  -> o selector existe e e' utilizavel
+        //   CMU_OSCENCMD       0 ocorrencias no SVD    -> falta o registo que LIGA o oscilador
+        //   LFXOEN             0 ocorrencias no SVD    -> falta o bit que o liga
+        //   STATUS.LFXORDY     0 ocorrencias no PAC    -> falta a flag de "esta' pronto"
+        //
+        // Ou seja: nao ha como pedir ao silicio que arranque o cristal, nem como saber quando arrancou. O
+        // selector sozinho nao serve de nada -- escolher LFXO num selector com o oscilador desligado da' um
+        // relogio parado, e um relogio parado num contador e' pior do que o LFRCO que temos.
+        //
+        // O desbloqueio e' a montante, e nao e' codigo desta crate: obter um SVD com o `CMU_OSCENCMD`
+        // (Silabs publica um por familia) e regenerar o PAC. O PAC esta' publicado em 0.1.1, portanto isso e'
+        // uma versao nova, com o que isso implica. O HFXO acima mostra a forma que falta: ligar, esperar
         // `RDY`, seleccionar.
 
         assert!(
             config.lfxo.is_none(),
-            "Clocks::new does not select LFXO yet: the slow-clock selector is not mapped in this PAC. \
-             Pass lfxo: None (LFRCO) until it is."
+            "Clocks::new does not select LFXO yet: this SVD has no CMU_OSCENCMD and no LFXOEN bit, so the \
+             crystal cannot be started and its readiness cannot be read. The selector (EM23GRPACLKCTRL) does \
+             exist; the oscillator control is what is missing. Pass lfxo: None (LFRCO) until an SVD carrying \
+             that register is used to regenerate the PAC."
         );
 
         let lfclk = if let Some(lfxo_config) = config.lfxo {
