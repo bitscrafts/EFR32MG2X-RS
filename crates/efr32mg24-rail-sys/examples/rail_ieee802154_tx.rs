@@ -19,6 +19,14 @@
 //! um silêncio dão o mesmo zero. O registo final traz o `ev=` recebido justamente para que o próximo a olhar não
 //! tenha de adivinhar qual dos dois foi.
 //!
+//! ## Depois de transmitir, o rádio fica à escuta
+//!
+//! A segunda metade do exemplo põe o rádio em RX e fica 200 ms a ouvir o canal 15. O que fica provado é que a
+//! configuração de RX é aceite (`rxfifo=0`, `rx=0`); o que **não** fica provado é a recepção, porque não há um
+//! segundo nó nesta bancada e um transceptor não se ouve a si mesmo. `heard=0` é medido assim mesmo: distingue
+//! "ninguém falou" de "não pedi para ouvir", e só o segundo seria defeito. A cópia do pacote para o buffer fica
+//! para quando houver com quem falar -- código que nunca correu não é código provado.
+//!
 //! ## A tabela de canais não é escrita aqui
 //!
 //! `RAIL_IEEE802154_Config2p4GHzRadio` substitui `RAIL_ConfigChannels` e, nas palavras do próprio header,
@@ -61,6 +69,13 @@ static mut TX_PACKET_SENT: u32 = 0;
 /// entre "não enviei" e "tentei e fui bloqueado ou abortado" -- os dois davam o mesmo zero.
 static mut ULTIMOS_EVENTOS: u32 = 0;
 
+/// Quantos pacotes o rádio disse ter recebido. Sem um segundo nó este número deve ficar em zero -- e um zero
+/// medido vale mais do que a ausência de um campo, porque distingue "ninguém falou" de "não pedi para ouvir".
+static mut RX_PACOTES: u32 = 0;
+
+/// O buffer da FIFO de RX. `static` pelo mesmo motivo da de TX: o rádio guarda o ponteiro.
+static mut RX_FIFO: [u8; 256] = [0u8; 256];
+
 /// O buffer da FIFO de TX. `static` e alinhado a 4: o RAIL guarda este ponteiro e lê dele durante a transmissão,
 /// portanto não pode ser memória de pilha que o compilador é livre de reutilizar.
 #[repr(align(4))]
@@ -73,6 +88,11 @@ const CHANNEL: u16 = 15;
 /// RAIL events. Corre em contexto de interrupção.
 unsafe extern "C" fn on_rail_event(_handle: rail::RAIL_Handle_t, events: rail::RAIL_Events_t) {
     ULTIMOS_EVENTOS = events as u32;
+
+    // bit 3 de RAIL_Events_t é RAIL_EVENT_RX_PACKET_RECEIVED
+    if (events & (1u64 << 3)) != 0 {
+        RX_PACOTES = RX_PACOTES.wrapping_add(1);
+    }
 
     // bit 24 de RAIL_Events_t é RAIL_EVENT_TX_PACKET_SENT
     if (events & (1u64 << 24)) != 0 {
@@ -312,6 +332,35 @@ pub extern "C" fn main() -> ! {
 
     let hw = unsafe { TX_PACKET_SENT };
 
+    // ## Pôr o rádio à escuta, e dizer o que se ouviu
+    //
+    // O que se pode provar nesta bancada é que a configuração de RX é aceite e que o rádio entra em escuta. O
+    // que NÃO se pode provar é a recepção: não há um segundo nó, e um transceptor não se ouve a si mesmo. A
+    // cópia do pacote para o buffer fica para quando houver com quem falar -- código que nunca correu não é
+    // código provado, e escrevê-lo agora só aumentaria o que este exemplo afirma sem poder mostrar.
+    //
+    // O `heard` é medido mesmo assim: um zero aqui distingue "ninguém falou no canal 15" de "não pedi para
+    // ouvir", e só o segundo seria um defeito.
+    let mut rx_tamanho: u16 = 256;
+    let rxfifo_st = unsafe {
+        rail::RAIL_SetRxFifo(
+            handle,
+            core::ptr::addr_of_mut!(RX_FIFO) as *mut u8,
+            &mut rx_tamanho,
+        )
+    };
+    let eventos_rx: u64 = eventos_tx | (1u64 << 3);
+    unsafe { rail::RAIL_ConfigEvents(handle, eventos_rx, eventos_rx) };
+    let rx_st = unsafe { rail::RAIL_StartRx(handle, CHANNEL, ptr::null()) };
+
+    // Duzentos milissegundos à escuta: tempo de sobra para um frame de 802.15.4 a 250 kbps aparecer, se
+    // alguém estivesse a falar neste canal.
+    let t_rx = efr32mg2x_hal::dwt::cycles();
+    while efr32mg2x_hal::dwt::since(t_rx) < 39_000 * 200 {
+        core::hint::spin_loop();
+    }
+    let ouvidos = unsafe { RX_PACOTES };
+
     let mut m = [0u8; 120];
     let mut at = 0;
     at = push(&mut m, at, b"154: init=");
@@ -334,10 +383,17 @@ pub extern "C" fn main() -> ! {
     at = push_num(&mut m, at, hw);
     at = push(&mut m, at, b" ev=");
     at = push_num(&mut m, at, unsafe { ULTIMOS_EVENTOS });
+    at = push(&mut m, at, b" rxfifo=");
+    at = push_num(&mut m, at, u32::from(rxfifo_st));
+    at = push(&mut m, at, b" rx=");
+    at = push_num(&mut m, at, u32::from(rx_st));
+    at = push(&mut m, at, b" heard=");
+    at = push_num(&mut m, at, ouvidos);
 
-    // Passa só se a configuração foi aceite (0 = RAIL_STATUS_NO_ERROR), o `StartTx` foi aceite e o rádio
-    // reportou pelo menos um envio. O que isto NÃO diz é que um frame saiu no ar -- ver o topo do ficheiro.
-    let ok = phy_st == 0 && tx_st == 0 && hw > 0;
+    // Passa só se a configuração foi aceite (0 = RAIL_STATUS_NO_ERROR), o `StartTx` foi aceite, o rádio
+    // reportou pelo menos um envio, e a escuta arrancou. O que isto NÃO diz é que um frame saiu no ar ou que
+    // alguém o ouviu -- ver o topo do ficheiro.
+    let ok = phy_st == 0 && tx_st == 0 && hw > 0 && rxfifo_st == 0 && rx_st == 0;
     mailbox::write(if ok { Status::Pass } else { Status::Fail }, &m[..at]);
 
     loop {
