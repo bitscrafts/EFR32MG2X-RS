@@ -717,6 +717,8 @@ fn main() -> ! {
     // Cycles that are work rather than waiting, and the rate they imply, for the record.
     let mut work_hz = 0u32;
     let mut cpu_permille = 0u32;
+    /// Se o `CYCCNT` andou na ultima iteracao completa. Falso significa "nao medido", nao "zero".
+    let mut contador_andou = true;
 
     // The loop runs until the board is reset: a product does not stop measuring after a minute. `SECONDS` is the
     // reporting period, not a lifetime -- and a device that stops advertising after a minute is unusable from the
@@ -735,14 +737,20 @@ fn main() -> ! {
             t.u(notifications);
             t.s(b" cycles=");
             t.u64(total_cycles);
-            t.s(b" hz=");
-            t.u(core_hz);
-            t.s(b" ps=");
-            t.u(per_sample);
-            t.s(b" work=");
-            t.u(work_hz);
-            t.s(b" cpu=");
-            t.u(cpu_permille);
+            if contador_andou {
+                t.s(b" hz=");
+                t.u(core_hz);
+                t.s(b" ps=");
+                t.u(per_sample);
+                t.s(b" work=");
+                t.u(work_hz);
+                t.s(b" cpu=");
+                t.u(cpu_permille);
+            } else {
+                // O contador de ciclos nao andou nesta janela (medido: `DEMCR.TRCENA` a zero congela o `CYCCNT`).
+                // Escrever zero aqui seria afirmar que o nucleo nao trabalhou.
+                t.s(b" hz=na ps=na work=na cpu=na");
+            }
             t.s(b" polls=");
             t.u(polls);
             t.s(b" pollcyc=");
@@ -933,6 +941,11 @@ fn main() -> ! {
         // looks like from outside.
         let iteration_cycles = dwt::since(iteration_start);
         total_cycles += iteration_cycles as u64;
+        // Se o contador nao andou, os tres numeros derivados sao lixo: `core_hz` sai de uma divisao por um delta
+        // nulo e os outros dois herdam-no. Medido neste produto: com `DEMCR.TRCENA` a zero o `CYCCNT` congela e
+        // `hz`/`work`/`cpu` saem **zero** -- um zero que se le como "o nucleo nao fez nada" quando o que aconteceu
+        // foi o instrumento parar. Um numero que nao pode ser medido nao se imprime como zero.
+        contador_andou = iteration_cycles != 0;
         let iteration_sample_cycles = sample_cycles - sample_cycles_at_start;
         if samples_this_iteration > 0 {
             core_hz = (iteration_cycles as u64 * 16_000 / samples_this_iteration as u64) as u32;
