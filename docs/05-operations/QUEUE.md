@@ -26,12 +26,12 @@ flasha; três vermelhos seguidos param a fila com `BLOCKED`.
 `- [ ]` no dia em que tiver spec e caminho. Esta secção existe para uma coisa só: nenhuma decisão
 tomada em conversa se perder. Método completo em `docs/05-operations/QUEUE-METHOD.md`.
 
-- [~] B1 | (sem spec) | H17 — `DOUT` escrito por ler-modificar-escrever em vez de `DOUT_SET`/`DOUT_CLR`; prova na placa com o bit-bang do IMU a receber ACK
-- [~] B2 | (sem spec) | H21/H22 — um relógio de runtime em vez de `19_000_000` espalhado; fecha antes da primeira publicação porque muda a API
-- [~] B3 | (sem spec) | H28 — entrada e saída de EM2, só provável na placa
-- [~] B4 | (sem spec) | B12-resto — validar tipo e bits em `psa_import_key` (o audit já deu `0x2400` e `128` nos três chamadores)
+- [x] B1 | (sem spec) | H17 — **fechado sem código novo (2026-11-21)**: o SVD deste chip tem **zero** `DOUTSET`/`DOUTCLR`, portanto um bit tem de ser escrito por ler-modificar-escrever, e `Pin::set`/`toggle` já mantêm o par dentro de `critical_section::with`. O item pedia um registo que a peça não tem.
+- [x] B2 | (sem spec) | H21/H22 — **feito (`af01bfc`)**: `Timer0::take(..., sysclk_hz)`, `Board::pwm_on`, `Board::buzzer_on`; `sysclk_hz == 0` devolve `None`. Medido antes: das 21 ocorrências de `19_000_000`, 15+ eram argumentos de teste e só **uma** era o driver a supor o relógio.
+- [~] B3 | (sem spec) | H28 — **escrito (`8e74e88`), NÃO MEDIDO**: `hal::sleep` com `keep_debugger` e `SLEEPDEEP` limpo na saída, exemplo `hal_em2_sleep`. Falta a placa: `flash.sh` recusou com zero sondas. Critério = tempo de parede entre as dez linhas, não a ausência de erro.
+- [x] B4 | (sem spec) | B12-resto — **feito (`cc272f5`)**: regra pura em `libraries/psa-shape-core` (5 testes no host), chamada pelo `-sys`. Recusa só contradição; zero = não especificado. **Risco declarado**: os offsets 0 e 4 do blob foram deduzidos do offset 8 medido, não medidos.
 - [~] B5 | (sem spec) | B16 — mover a link layer fora do PendSV; o maior risco da revisão, sem tempo de reverter
-- [~] B6 | (sem spec) | `cargo publish --dry-run` do HAL tem de chegar ao upload sem reclamar de dependências sem versão — é o sinal de que os seis C fecharam
+- [x] B6 | (sem spec) | **passa (2026-11-21)**: o dry-run chega a `Uploading efr32mg2x-hal v0.1.0` e aborta por ser dry run. De passagem, a dependência do PAC já está em `version = "0.1.1"`, pelo que o item 11 do `pre-publish.sh` deixou de ter o que apanhar.
 - [~] B7 | (sem spec) | publicar o HAL, depois o rádio, os dois BSPs e o `efr32mg2x-examples` volta a incluir `hal-examples`; **só com ordem expressa**
 
 ## Depois destes seis
