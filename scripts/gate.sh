@@ -180,6 +180,16 @@ else
   fail "embassy: $(grep -m1 '^error' /tmp/gate-embassy.log | sed 's/^error[^:]*: *//')"
 fi
 
+# The other half of the same seam: the executor and `Timer` on the same driver. Two examples because the two can
+# fail differently -- a driver without a consumer calls a waker nobody waits on, a consumer without a driver sits
+# with its tasks unrun.
+if PATH="/usr/local/cargo/bin:$PATH" cargo build --release -p efr32mg2x-xiao-bsp --target "$TARGET" \
+    --features "sense" --example embassy_task_systrc >/tmp/gate-embassy-task.log 2>&1; then
+  pass "embassy: the executor's example builds (a Timer waking a task)"
+else
+  fail "embassy task: $(grep -m1 '^error' /tmp/gate-embassy-task.log | sed 's/^error[^:]*: *//')"
+fi
+
 # The night queue must refuse to mark an item "done" when no work came out of the worker. The rule lives in
 # `queue-run-once.sh`; this exercises the script itself, in a throwaway repository, with a worker that is not pi
 # -- including the case where the only thing that changed was the queue file the worker edited.
