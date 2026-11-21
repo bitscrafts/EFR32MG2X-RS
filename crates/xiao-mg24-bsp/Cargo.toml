@@ -41,6 +41,9 @@ efr32mg24-bluetooth-sys = { package = "efr32mg2x-bluetooth-sys", path = "../efr3
 efr32mg24-radio = { package = "efr32mg2x-radio", path = "../efr32mg24-radio" }
 # The classifier is hardware-free policy: the BLE fall example is an application of it.
 motion-detection = { package = "efr32mg2x-motion-detection", path = "../../libraries/motion-detection" }
+# Deciding when a stored bond is stale is policy too: the dosimeter's self-healing is an application of it, and
+# the rule is tested on the host where the phone cannot pretend to fail.
+efr32mg2x-ble-bond-heal-core = { path = "../../libraries/ble-bond-heal-core" }
 panic-halt = "0.2"
 
 [features]

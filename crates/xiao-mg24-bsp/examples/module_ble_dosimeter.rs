@@ -30,6 +30,7 @@ use efr32mg24_radio::gatt_db::{
     self, Characteristic, PROP_NOTIFY, PROP_READ, SEC_BONDED_NOTIFY, SEC_BONDED_READ,
 };
 use efr32mg24_radio::Bluetooth;
+use efr32mg2x_ble_bond_heal_core as bond_heal;
 use panic_halt as _;
 use xiao_mg24_bsp::hal::dwt;
 use xiao_mg24_bsp::prelude::*;
@@ -233,6 +234,16 @@ struct Link {
     smfail: u32,
     /// The last SMP error code the device refused a pairing with.
     smrsn: u16,
+    /// Consecutive bonding failures whose code means "I hold a record I cannot use with this peer".
+    ///
+    /// The rule that reads it lives in `libraries/ble-bond-heal-core`, where it is tested on the host: one failure is
+    /// not proof, two consecutive ones of a qualifying code are, and a bond is only dropped when one is held.
+    smstreak: u8,
+    /// Bonds the device dropped by itself, because the peer could not use them.
+    ///
+    /// Non-zero is the self-healing working. It is separate from the button gesture on purpose: an operator standing
+    /// in a classroom with a dosimeter in their hand does not know the gesture, and the device must not need them to.
+    cure: u32,
     /// Bonding decisions: accepted, refused, and the rule behind the last answer (`cfwhy`: 1 = no bond held, 2 = inside
     /// the power-on window, 3 = outside it with a bond held). `cfb` counts how many times the stack asked.
     cfok: u32,
@@ -253,6 +264,8 @@ impl Link {
             subscribed: [false; 3],
             smfail: 0,
             smrsn: 0,
+            smstreak: 0,
+            cure: 0,
             cfok: 0,
             cfno: 0,
             cfwhy: 0,
@@ -282,6 +295,14 @@ impl Link {
             BleEvent::Security { event, reason, .. } if *event == 4 => {
                 self.smfail += 1;
                 self.smrsn = *reason;
+                // A run of qualifying failures is what makes a stored bond stale. An unrelated failure breaks the
+                // run: three failures with another one between them are not two consecutive ones, and counting
+                // them as such would drop a good bond on a coincidence.
+                self.smstreak = if bond_heal::continues_streak(*reason) {
+                    self.smstreak.saturating_add(1)
+                } else {
+                    0
+                };
             }
             // A new connection starts unencrypted at the default MTU; keeping the previous link's values would make a
             // stale `sec=1` look like proof for a link that never encrypted.
@@ -342,11 +363,32 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool
             // tem (0x05 autenticacao, 0x06 chave em falta), o bond guardado e' lixo -- apaga-se e volta-se a
             // anunciar. Noutros motivos (memoria cheia, tempo esgotado) apagar bonds bons so' pioraria.
             BleEvent::Security { event, reason, .. } if event == 4 => {
-                let smp = (reason & 0xFF) as u8;
-                if smp == 0x05 || smp == 0x06 {
-                    let _ = ble.delete_bondings();
-                    let _ = ble.start_connectable(200, 0);
-                    link.adv += 1;
+                // A held bond the peer cannot use is the failure of 2026-11-21: the device advertised, the phone
+                // could not connect, and only a laptop with `module_nvm3_wipe` recovered it. The rule about WHEN
+                // that bond is stale lives in `libraries/ble-bond-heal-core` and is tested on the host -- one
+                // failure is not proof, two consecutive ones of a qualifying code are, and only with a bond held.
+                let holds_a_bond = efr32mg24_radio::any_bond();
+                if bond_heal::after_failure(link.smstreak, holds_a_bond)
+                    == bond_heal::Decision::DropBond
+                {
+                    // **A base de bonds é externa, e é por isso que a cura anterior não funcionava.**
+                    // `sl_bt_sm_delete_bondings` responde `SL_STATUS_NOT_AVAILABLE` com uma base externa e não
+                    // apaga nada (`bonding_ext.rs`, medido 2026-11-17: uma fase de teste pediu ao stack para
+                    // limpar e o aparelho continuou a responder com a chave anterior). O comando certo é o que
+                    // apaga na NOSSA base -- o mesmo que o gesto do botão usa.
+                    #[cfg(feature = "external-bonding")]
+                    let removed = efr32mg24_radio::bonding_clear_all();
+                    #[cfg(not(feature = "external-bonding"))]
+                    let removed = {
+                        let _ = ble.delete_bondings();
+                        1u32
+                    };
+                    if removed > 0 {
+                        link.cure += 1;
+                        link.smstreak = 0;
+                        let _ = ble.start_connectable(200, 0);
+                        link.adv += 1;
+                    }
                 }
             }
             BleEvent::ConfirmBonding { connection, .. } => {
@@ -729,6 +771,8 @@ fn main() -> ! {
             t.u(link.smfail);
             t.s(b" smrsn=");
             t.u(link.smrsn as u32);
+            t.s(b" cure=");
+            t.u(link.cure);
             t.s(b" cfok=");
             t.u(link.cfok);
             t.s(b" cfno=");

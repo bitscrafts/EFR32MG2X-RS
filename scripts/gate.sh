@@ -161,6 +161,16 @@ else
   fail "flash: $(grep -m1 '^  ' /tmp/gate-flash-addr.log | sed 's/^  //')"
 fi
 
+# The product itself. Its example declares `required-features`, and cargo **skips** such a target silently when they
+# are not enabled -- so the loop above compiles no dosimeter at all, and a change to the firmware would be gated by
+# nothing. Built here once, with the feature set it really ships with.
+if PATH="/usr/local/cargo/bin:$PATH" cargo build --release -p efr32mg2x-xiao-bsp --target "$TARGET" \
+    --features "stack sense external-bonding" --example module_ble_dosimeter >/tmp/gate-dosimeter.log 2>&1; then
+  pass "product: the dosimeter firmware builds with the features it ships with"
+else
+  fail "product: $(grep -m1 '^error' /tmp/gate-dosimeter.log | sed 's/^error[^:]*: *//')"
+fi
+
 # The night queue must refuse to mark an item "done" when no work came out of the worker. The rule lives in
 # `queue-run-once.sh`; this exercises the script itself, in a throwaway repository, with a worker that is not pi
 # -- including the case where the only thing that changed was the queue file the worker edited.

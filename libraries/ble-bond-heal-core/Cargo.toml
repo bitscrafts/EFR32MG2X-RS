@@ -1,0 +1,13 @@
+[package]
+name = "efr32mg2x-ble-bond-heal-core"
+version = "0.1.0"
+edition = "2021"
+description = "When a bonding failure means the stored bond must be dropped, in pure logic"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[lib]
+name = "efr32mg2x_ble_bond_heal_core"
+path = "src/lib.rs"
+
+[dependencies]
