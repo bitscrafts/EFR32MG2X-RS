@@ -53,15 +53,6 @@ impl Board {
         })
     }
 
-    /// The SYSCLK this board is running at.
-    ///
-    /// Starts at the HFRCO the part resets to, and follows `boost`. A driver built from this board calibrates
-    /// against this number, not against one the caller typed.
-    #[must_use]
-    pub fn sysclk_hz(&self) -> u32 {
-        self.sysclk_hz.get()
-    }
-
     /// The hardware I2C0, with its clock enabled and its two lines still unrouted.
     ///
     /// `hfclk` is passed in rather than read here: the `Board` holds the CMU inside `Peripherals`
@@ -415,7 +406,10 @@ impl Board {
     /// a bus rate -- read it here instead of carrying their own copy.
     #[must_use]
     pub fn clock_hz(&self) -> crate::clock::Hertz {
-        crate::clock::Hertz::from(crate::clock::DEFAULT_SYSCLK_HZ)
+        // It used to answer `DEFAULT_SYSCLK_HZ` regardless of what the board had done to the clock, which made
+        // it a second, quieter source of the truth `apply_hfrco_cal` was already keeping. One accessor, and it
+        // follows the boost.
+        crate::clock::Hertz(self.sysclk_hz.get())
     }
 
     /// A millisecond delay on SysTick.
@@ -462,7 +456,7 @@ impl Board {
     ///
     /// `None` when the counter does not move — a clock that is not running.
     pub fn timer0_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::pwm::Timer0<'_>> {
-        crate::pwm::Timer0::take(&self.dp, port, pin, self.sysclk_hz())
+        crate::pwm::Timer0::take(&self.dp, port, pin, self.sysclk_hz.get())
     }
 
     /// A PWM channel on the pin the caller names, at `freq_hz`, dark.
@@ -484,7 +478,7 @@ impl Board {
     /// `None` if the timer never reports a running counter — a missing clock, not a missing
     /// buzzer.
     pub fn buzzer_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::buzzer::Buzzer<'_>> {
-        crate::buzzer::Buzzer::new(&self.dp, port, pin, self.sysclk_hz())
+        crate::buzzer::Buzzer::new(&self.dp, port, pin, self.sysclk_hz.get())
     }
 
     /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.

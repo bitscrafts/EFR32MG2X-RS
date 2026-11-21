@@ -93,7 +93,7 @@ impl ExpansionBase {
         // SAFETY: SysTick is exclusively the delay's; nothing else in this workspace
         // programs it, which is what makes the second view harmless.
         let syst = unsafe { cortex_m::Peripherals::steal().SYST };
-        efr32mg2x_hal::delay::Delay::with_sysclk(syst, self.module.hal().sysclk_hz())
+        efr32mg2x_hal::delay::Delay::with_sysclk(syst, self.module.hal().clock_hz().0)
     }
 
     /// The user LED (PA7, active low).
