@@ -8,7 +8,11 @@
 #   tudo o que é preciso é fixado aqui dentro.
 #
 # Saídas:  0 item feito e commitado | 1 gate vermelho (item fica na fila) | 2 erro de ambiente
-#          3 fila vazia | 5 três vermelhos seguidos, fila parada (BLOCKED)
+#          3 fila vazia | 4 o worker não produziu trabalho (item fica na fila)
+#          5 três vermelhos seguidos, fila parada (BLOCKED)
+#
+# O 4 existe para não confundir "não houve trabalho" com "acabaram os itens": um chamador que
+# trata o 3 como fim de fila pararia a linha inteira por causa de um worker que não fez nada.
 set -uo pipefail
 
 cd "$(dirname "$0")/.." || exit 2
@@ -23,6 +27,10 @@ WORKER_LOG="$REPO/_tmp/queue/worker.log"
 # a quota antes de o worker sequer arrancar. Quem chama decide, e diz aqui.
 MODELO="${QUEUE_MODEL:-}"
 TECTO_TURNS="${QUEUE_MAX_TURNS:-60}"
+# O binario do worker e' configuravel pela mesma razao que o modelo: um script que so' se pode
+# correr com o worker real nao se pode testar. Com um stub aqui, os defeitos da fila (marcar antes
+# de commitar, aceitar "nada mudou" como trabalho) ficam exercíveis num repositorio descartavel.
+WORKER_BIN="${QUEUE_PI:-pi}"
 MAX_VERMELHOS=3
 
 mkdir -p "$REPO/_tmp/queue"
@@ -112,7 +120,7 @@ pi_args=(-p --yolo --session "$SESSAO")
 [ -n "${QUEUE_PROVIDER:-}" ] && pi_args+=(--provider "$QUEUE_PROVIDER")
 
 inicio=$(date +%s)
-timeout 3000 pi "${pi_args[@]}" "$(cat "$brief")" > "$WORKER_LOG" 2>&1
+timeout 3000 "$WORKER_BIN" "${pi_args[@]}" "$(cat "$brief")" > "$WORKER_LOG" 2>&1
 rc_worker=$?
 ultima_linha=$(tail -3 "$WORKER_LOG" | tr "\n" " " | cut -c1-160)
 segundos=$(( $(date +%s) - inicio ))
@@ -144,7 +152,38 @@ PY
     exit 1
 fi
 
-# --- verde: marca, commita, conta -------------------------------------------------------
+# --- verde: só conta como feito se houver trabalho, e só depois do commit ------------------
+#
+# Duas coisas mudaram aqui, cada uma a fechar um defeito medido em 2026-11-18:
+#
+#   a) um gate verde sobre uma árvore INALTERADA era aceite como trabalho feito -- dois itens
+#      ficaram "feitos" sem trabalho nenhum e sem commit. O gate a dizer "nada mudou" é o
+#      contrário de uma prova de trabalho: é a ausência da coisa que se queria provar.
+#   b) o item era marcado ANTES do commit. Se o commit falhasse, a fila já dizia "feito".
+#
+# Agora: primeiro pergunta-se se houve trabalho; depois marca-se, commita-se, e se o commit
+# falhar a marcação é reposta de uma cópia. A fila nunca conta um item que não está no histórico.
+#
+# Ficheiros por rastrear contam como trabalho: um worker que só cria ficheiros novos não mexe em
+# `git diff`, e tratá-lo como "não fez nada" perderia o trabalho dele. Mas o que o PRÓPRIO lane
+# escreve não é trabalho de ninguém: o brief, o log do worker, o log do gate, o estado -- e o
+# `QUEUE-RUN-LOG.md`, que é escrito por `nota` ANTES de chegar aqui. Medido no harness: sem estas
+# exclusões, um stub que só faz `exit 0` marcava o item e commitava, porque o log do lane tinha
+# mudado e isso era lido como trabalho do worker.
+LOG_REL="docs/05-operations/QUEUE-RUN-LOG.md"
+sem_mudanca=0
+git diff --quiet -- . ":(exclude)$LOG_REL" || sem_mudanca=1
+git diff --cached --quiet -- . ":(exclude)$LOG_REL" || sem_mudanca=1
+outros=$(git ls-files --others --exclude-standard | grep -v -e '^_tmp/' -e "^$LOG_REL$" || true)
+if [ -n "$outros" ]; then sem_mudanca=1; fi
+
+if [ "$sem_mudanca" -eq 0 ]; then
+    nota "- gate: ${veredicto:-PASS} — **a árvore não mudou** (nem ficheiros por rastrear): o worker não produziu trabalho; item NÃO marcado, continua na fila"
+    relatorio "$ID" "${veredicto:-PASS}" "" sem-trabalho
+    exit 4
+fi
+
+cp "$QUEUE" "$REPO/_tmp/queue/QUEUE.md.backup"
 python3 - "$QUEUE" "$numero_linha" <<'PY'
 import sys, pathlib
 f, n = pathlib.Path(sys.argv[1]), int(sys.argv[2])
@@ -153,21 +192,41 @@ linhas[n-1] = linhas[n-1].replace("- [ ] ", "- [x] ", 1)
 f.write_text("\n".join(linhas) + "\n")
 PY
 
-# O hook de commit recusa uma arvore que o marcador nao certificou. O gate correu agora,
-# mas o marcador e do commit anterior: refaz-se aqui, sobre o que vai ser commitado.
+# O hook de commit recusa uma árvore que o marcador não certificou. O gate correu agora,
+# mas o marcador é do commit anterior: refaz-se aqui, sobre o que vai ser commitado.
 HOOK="$HOME/.config/git/hooks/gate-pass.sh"
 if [ -x "$HOOK" ]; then
-    bash "$HOOK" >/dev/null 2>&1 || { echo "ERRO: gate-pass recusou a arvore"; exit 2; }
+    bash "$HOOK" >/dev/null 2>&1 || {
+        cp "$REPO/_tmp/queue/QUEUE.md.backup" "$QUEUE"
+        echo "ERRO: gate-pass recusou a árvore; marcação reposta"
+        exit 2
+    }
 fi
 
 git add -A
-if git diff --cached --quiet; then
-    nota "- gate: ${veredicto:-PASS} — mas nada mudou na arvore; item marcado sem commit"
-else
-    git -c user.name="Marcelo Correa" -c user.email="mvcorrea@gmail.com" \
-        commit -q -m "$ID: $OBJECTIVO" || { echo "ERRO: commit falhou"; exit 2; }
+if git -c user.name="Marcelo Correa" -c user.email="mvcorrea@gmail.com" \
+    commit -q -m "$ID: $OBJECTIVO"; then
+    # A guarda acima pergunta se houve trabalho ANTES do commit, e um ficheiro perdido na árvore
+    # (um log, um rascunho, o log deste harness) responde que sim. A invariante que interessa é
+    # outra e verifica-se depois: o commit tem de conter algo além da fila e do log do lane.
+    # Sem isto, um item pode ser marcado e commitado com zero trabalho, que é exactamente o
+    # defeito que este bloco existe para fechar.
+    trabalho=$(git show --name-only --format='' HEAD \
+        | grep -vE "^(docs/05-operations/QUEUE\.md|${LOG_REL}|_tmp/)" | grep -v '^$' || true)
+    if [ -z "$trabalho" ]; then
+        git reset -q --soft HEAD~1
+        cp "$REPO/_tmp/queue/QUEUE.md.backup" "$QUEUE"
+        nota "- o commit não trazia trabalho nenhum (só a fila e o log do lane): commit desfeito, item continua na fila"
+        relatorio "$ID" "${veredicto:-PASS}" "" sem-trabalho
+        exit 4
+    fi
     sha=$(git rev-parse --short HEAD)
     nota "- gate: ${veredicto:-PASS} — commit \`$sha\`"
+else
+    cp "$REPO/_tmp/queue/QUEUE.md.backup" "$QUEUE"
+    nota "- commit **falhou** — marcação reposta, o item continua na fila; o trabalho fica na árvore"
+    relatorio "$ID" "${veredicto:-PASS}" "" commit-falhou
+    exit 2
 fi
 
 python3 - "$ESTADO" <<'PY'

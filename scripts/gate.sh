@@ -161,6 +161,15 @@ else
   fail "flash: $(grep -m1 '^  ' /tmp/gate-flash-addr.log | sed 's/^  //')"
 fi
 
+# The night queue must refuse to mark an item "done" when no work came out of the worker. The rule lives in
+# `queue-run-once.sh`; this exercises the script itself, in a throwaway repository, with a worker that is not pi
+# -- including the case where the only thing that changed was the queue file the worker edited.
+if bash scripts/test-queue-run-once.sh >/tmp/gate-queue.log 2>&1; then
+  pass "queue lane: four ways of not doing the work, all refused ($(grep -c '^  PASS' /tmp/gate-queue.log) cases)"
+else
+  fail "queue lane: $(grep -m1 '^  FAIL' /tmp/gate-queue.log | sed 's/^  FAIL *//')"
+fi
+
 if python3 scripts/check-copy-len.py crates/ >/tmp/gate-copy-len.log 2>&1; then
   pass "copy_from_slice lengths ($(tail -1 /tmp/gate-copy-len.log))"
 else
