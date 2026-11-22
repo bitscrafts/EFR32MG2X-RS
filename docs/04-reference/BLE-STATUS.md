@@ -531,3 +531,33 @@ produced two false readings before the slots were cleared at boot.
 - **Blocked on the event queue:** `ble_scanner` (see round 2), `ble_gatt`,
   `module_ble_beacon`, `module_ble_motion`, `module_ble_fall`, `base_ble_env`. They build, flash, and stop for the
   same reason: the host runs but no `system_boot` reaches the application.
+
+## Cross-check: the app's contract against what the firmware sends (2026-11-22)
+
+The app lives in another project (`/projects/dosimeter-mg24/android`) and the firmware in this one, so the two
+halves of the protocol had never been read side by side. Done statically, field by field, before the demo needs a
+phone. The two sources of truth stay where they are -- `android/app/src/main/java/br/ufc/dosimeter/Contrato.kt`
+and `crates/xiao-mg24-bsp/examples/module_ble_dosimeter.rs` -- and this note records only that they agree.
+
+| what | app | firmware | agree |
+|---|---|---|---|
+| service | `e1d0e000-…-00805f9b34fb` | `UUID_SERVICE`, 16 bytes little-endian | yes |
+| characteristics | `…e001` rms, `…e002` bands, `…e003` status | `UUID_RMS`, `UUID_BANDS`, `UUID_STATUS` | yes |
+| byte order | the firmware array read big-endian gives exactly the app's UUID strings | reversed at the stack boundary | yes |
+| GAP name | `NOME_DOSIMETRO = "xiao-mg24-dosimeter"` | `set_scan_response_name("xiao-mg24-dosimeter")` | yes, and it is in the **scan response** |
+| rms | `uint16` little-endian, full scale `FS_CONTAGENS = 4096` | `rms_of_second.to_le_bytes()` from a 12-bit IADC reading | yes |
+| bands | 8 x `uint32` little-endian, requires 32 bytes | `[0u8; 32]`, band `b` at `b*4` | yes |
+| status | needs >= 3, reads `fonte` at 3 and `incerteza` at 4 when present | **sends 5**: flags, uint16 windows, source, uncertainty | yes |
+| window | `AMOSTRAS_POR_JANELA = 256`, 63 windows per second | `WINDOW = 256`, `WINDOWS_PER_SECOND = 63` | yes |
+| security | assumes open read and subscribe ("`SECURITY_REQUIRED = false`") | `sec = 0` when `SECURITY_REQUIRED` is false | yes |
+
+Two things this check found worth writing down, neither of them a defect:
+
+- **The security flags are conditional, not unconditional.** `SEC_BONDED_READ | SEC_BONDED_NOTIFY` sits inside
+  `if SECURITY_REQUIRED`, and the constant is `false`, so the demo characters are open. Grepping the flags without
+  their context suggests the opposite, which is how a wrong "the demo will refuse to read" conclusion gets made.
+- **The name is in the scan response, not the advertising packet.** Android merges the two in scan results, so it
+  works, but a filter that looks only at the advertising packet would find nothing.
+
+What this does not prove: that a phone connects, pairs, reads and notifies. That is the one test left, and it needs
+the phone.
