@@ -157,3 +157,25 @@ F  orphan eviction  one bond per identity, evict when full.                     
 
 The plan these letters refer to is `_tmp/ble-plan/PLAN.md` (12 ordered steps, written by the analysis model), and
 `_tmp/ble-plan/IMPLEMENTED.md` records which steps the implementation model completed and what it could not verify.
+
+## Endurance, one power-up (measured 2026-11-21)
+
+The product ran **4680 seconds (78 minutes) on a single boot**, publishing one record per second throughout:
+
+```
+ble: seconds=4680 windows=294840 published=4680 notifies=0 cycles=2597629022 hz=na ps=na work=na cpu=na
+     polls=4717440 pollcyc=63766168 perpoll=13 timer=1 ovf=0 rms=19 b0=77431691 sreq=255 sec=0 mtu=23 cfb=0
+     smfail=0 smrsn=0 cure=0 cfok=0 cfno=0 cfwhy=0 disc=0
+```
+
+`seconds` and `published` agree (`4680` each), so no record was skipped and the loop never restarted -- a reset
+would have put `seconds` back to 0. `disc=0` over the same window: no disconnect, and therefore no advertising
+restart to get wrong. `windows=294840` is `4680 x 63`, the sampling side keeping its rate for the whole run.
+
+`hz=na` in that record is the instrument, not the product: reading the mailbox over SWD clears `DEMCR.TRCENA`,
+which stops the cycle counter (see `QUEUE.md` B17 and `/projects/docs/01-overview/DO-NOT-REPEAT.md` §11). The fields
+that come from counting -- `seconds`, `windows`, `published`, `polls`, `disc` -- are unaffected by the read.
+
+What this record supports: the product samples, publishes and advertises without a restart for at least 78 minutes.
+What it does not support: anything about a connection, because no phone was attached for the window (`notifies=0`,
+`sec=0`, `mtu=23`).
