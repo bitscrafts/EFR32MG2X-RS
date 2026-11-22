@@ -93,6 +93,10 @@ Research, analysis, and reference materials.
 **Overview:**
 - [Reference README](04-reference/README.md) - Reference documentation overview
 - [HAL, radio and BLE review](04-reference/HAL-RADIO-BLE-REVIEW-2026-11-17.md) - independent review at `101114f`: 31 HAL defects, 18 BLE defects, with the status of each after the 2026-11-18 pass
+- [HAL completeness and robustness review, 2026-11-22](04-reference/HAL-OPUS-ANALYSIS-2026-11-22.md) - independent read-only review: 12 robustness findings, the gate's dead guard, and the status of every 2026-11-18 finding
+- [I2C recovery state](04-reference/I2C-RECOVERY-STATE.md) - a NACK is now reported as one; the bus still does not survive it, with the decode of `IF = 0x109f9` and the next step
+- [SYSRTC compare channel ownership](04-reference/SYSRTC-OWNERSHIP.md) - channel 0 belongs to the Bluetooth sleep timer; the application takes 1 or 2, and the token that would enforce it
+- [The IMU FIFO, measured](04-reference/IMU-FIFO-MEASURED.md) - why the FIFO is not justified for throughput, and the one thing (contiguity) that would change the answer
 
 **Bootloader Research:**
 - [Gecko Bootloader Research](04-reference/GECKO_BOOTLOADER_RESEARCH.md) - Silicon Labs bootloader analysis

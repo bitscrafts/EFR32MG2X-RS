@@ -5,6 +5,82 @@ was found faulty on 2026-11-15 and is away for replacement (about a month); that
 anything already measured with it — those dates stand — and the examples that need the carrier say so
 until another one is on the bench. The board left running `hal_led_blink`, its LED confirmed blinking.
 
+## Session 2026-11-22 — the async I2C works, three guards were lying, and two fixes are not proven
+
+Intervention paused here. Everything below is committed and pushed; `master` is at `edd5acd`, gate green, tree clean.
+
+### Closed, each with the measurement that closed it
+
+1. **The async I2C reads the IMU alone.** `i2c-async: who=0x6a pending=145 irq=0 wfi=0`, no blocking call before it.
+   The bug was a missing **NACK on the last byte**: every byte was read with ACK, so the slave was never told to
+   stop driving data, the master never closed the reception, and what the markers showed was a held bus with no
+   error. The correct sequence was already in the crate -- `cores::i2c::write_read` calls `read(i != last)` -- and
+   the first version of the async file was written from memory instead of from it. Six flashes.
+2. **The gate's own guard was dead.** `cargo tree -p "$name" --edges normal,build -e no-dev`: the directory name
+   instead of the package name, two flags cargo refuses together (exit 101), stderr to `/dev/null`, and the `else`
+   branch printing "no hardware dependency" for all 18 libraries, always. Fixed, with controls in both directions
+   against real `cargo tree` output. It never ran before today.
+3. **`dma::Channel::stop()` disabled nothing.** It wrote zeros to `CHEN`, a write-1-to-set register; the disable
+   register is `CHDIS`. A `Transfer` could end the borrow of a buffer the DMA was still writing into, from safe
+   code. The timeout path had the same defect. Both fixed; `is_busy`/`channel_busy`/`trigger` added so a caller can
+   tell a working `stop()` from the one that did nothing.
+4. **DMA could never be armed at all.** `CMU_CLKEN0` gates LDMA and LDMAXBAR on **separate** bits and only LDMA was
+   set, so the first write of the peripheral-to-memory path (`LDMAXBAR->CH0_REQSEL`) was a bus fault. Found by
+   elimination with one marker per register write. With the clock on, the arm returns: `armed=1`.
+5. **SYSRTC channel 0 ownership decided** (`SYSRTC-OWNERSHIP.md`): it stays with the Bluetooth sleep timer; the
+   application takes 1 or 2. Enforcement (a token the compiler checks) is named and not written.
+6. **The IMU FIFO measured and rejected** (`IMU-FIFO-MEASURED.md`): the driver already bursts 12 bytes per sample,
+   so the FIFO saves 1.8 points of bus occupancy for a 384-byte buffer and a new API. It would buy contiguity, which
+   is a product question, and that is written as the condition that would change the answer.
+7. **The GPIO wake item was withdrawn**: INT1/INT2 of the LSM6DS3TR-C are no-connects on this board (schematic sheet
+   06), so there is nothing to interrupt. The review's item 5 is half impossible here, and the postscript in
+   `HAL-OPUS-ANALYSIS-2026-11-22.md` says so.
+
+### Open, with the exact next step
+
+**The I2C bus does not survive a NACK.** Measured, in this order:
+
+```
+antes=0x6a  erro=1 (Nack)  depois=0x00          hal_i2c_recovery, the instrument
+IF = 0x109f9 before the last START:  bit 7 NACK set, bit 11 BUSHOLD set
+START_INICIOS = 4, START_EXPIRADOS = 0         so the START is not the culprit
+```
+
+Transaction 3 is refused by a **ghost**: the NACK flag from transaction 2 is still asserted, and `write` reads it
+inside its `txbl` wait, so the first byte returns `Nack` without touching the bus. `abort()` clears `NACK` and
+`BUSHOLD` and both are set again at the next read -- clearing the flag does not clear the condition, because
+`BUSHOLD` is a level: the bus is genuinely held.
+
+Next step, and it is a **design decision before it is code**: nine clocks on SCL, then a STOP, then hand the pins
+back to the I2C peripheral. That needs the pins taken away from the peripheral and returned, which is who owns the
+pins during recovery. The cheap alternative -- re-initialising the peripheral after an abort -- hides the condition
+instead of clearing it and should be recorded as such if it is ever taken.
+
+`dma::Channel::stop()`'s effect is still unproven on hardware: a software trigger drains 64 bytes between two
+statements, so `CHBUSY` reads idle again before it can be sampled. The instrument that would prove it is an
+IADC-driven transfer or a DMA interrupt reading `CHBUSY` from inside the handler.
+
+### Environment facts for the next session
+
+- The container root filesystem is **full** (a few hundred MB). `TMPDIR` must point at the big volume:
+  `export TMPDIR=/projects/_tmp/tmp`, or `cargo` fails with no explanation. `/projects` has ~77 GB free.
+- `/tmp` holds ~70 GB across ~181 000 entries, much of it `/tmp/orki-test-*` from another session's test runs. It
+  is not this project's, and it has not been touched.
+- The board is on `10.10.10.217` running `hal_i2c_recovery`, not the product. **The operator asked that the product
+  not be restored until he says so.**
+
+### Process lessons this session paid for
+
+- A count of steps is not an attribution of the failing one: "13 passos, last = abort" was read as "fails on the
+  repeated START", and the next instrument disproved it. Two commits were spent writing the wrong answer down and
+  then correcting it -- cheaper than building a fix on the wrong register, which is what almost happened.
+- `.gitignore` swallowed two real files in one day (`*recovery*.rs` an example, `*RECOVERY*.md` a document), both
+  times with a hint nobody read and a commit that exited 0. Both rules now exclude `docs/` and `examples/`.
+- A `str.replace` that does not match applies nothing and says nothing: one measurement was concluded from a
+  firmware that never contained the code under test.
+
+---
+
 ## Session 2026-11-17 (evening) — BLE measured encrypted end to end, and five HAL defects closed
 
 1. **The link is encrypted, and it is the device that says so.** Pairing once, then after a reset of the MCU with no

@@ -230,8 +230,10 @@ EFR32MG24/
 - **Examples**: 4 BLE FFI examples + 6 BSP BLE/sensor examples + microphone streaming
 
 ### Build Statistics
-- Total HAL code: ~4,772 lines (12 modules, all with READMEs)
-- HAL examples: 14 (00_recovery through 12_wdog), all build to flashable binaries
+- Total HAL code: 12,003 lines (16 modules plus 11 top-level modules). The README is one per **crate**, generated
+  by `scripts/gen-crate-readme.py` and checked by the gate -- not one per module.
+- HAL examples: 20, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
+  numbered `00_recovery`..`12_wdog` set is gone; the files were renamed when each one started proving something.
 - BLE examples: 4 (bluetooth-sys) + 6 (BSP integration)
 - BSP examples: 9 (blink variants + BLE + microphone streaming)
 - Zero compilation warnings or errors
@@ -481,8 +483,13 @@ cargo doc --no-deps --features rt --open
 3. **I2C**: Only master mode (slave mode not implemented)
 4. **SPI**: Only master mode, blocking operations only
 5. **DMA**: Stages 1-2 complete; linked descriptors (Stage 3) and interrupt-driven async (Stage 4) deferred
-6. **General**: No async/await support (Embassy planned)
-7. **Testing**: No hardware testing yet (requires XIAO MG24 Sense board)
+6. **Async**: `embedded_hal_async::i2c::I2c` is implemented and measured on the board (`WHO_AM_I = 0x6a` with no
+   help from the blocking path); an Embassy time driver and executor on the SYSRTC are proven (B9). The wait does
+   not use the peripheral interrupt: it returns `Pending` and self-wakes, so the core does not sleep during a
+   transfer. Arming `IEN` for those flags re-entered the handler 44 647 591 times -- measured.
+7. **Testing**: The board is on the bench and most claims here carry a recorded mailbox line. What has no hardware
+   proof is named as such in `docs/04-reference/` -- see `I2C-RECOVERY-STATE.md`, `IMU-FIFO-MEASURED.md`,
+   `SYSRTC-OWNERSHIP.md`.
 8. **Radio**: RAIL/Bluetooth bindings require Silicon Labs binary blobs (MSLA licensing)
 
 ### Future Work
@@ -491,7 +498,7 @@ cargo doc --no-deps --features rt --open
 3. **Phase E**: Security features (AES, SHA, Secure Vault)
 4. **C2-DMA.3/4**: Linked descriptors and interrupt-driven async DMA
 5. **C6-Test**: Hardware validation on XIAO MG24 Sense
-6. Embassy async runtime integration
+6. ~~Embassy async runtime integration~~ -- done, B9
 
 ## Resources
 
@@ -542,7 +549,7 @@ cargo doc --no-deps --features rt --open
 - [ ] Phase D3: Zigbee 3.0 integration
 - [ ] Phase D4: Thread/Matter support
 - [ ] Phase E: Security features (AES, SHA, Secure Vault)
-- [ ] Embassy async support
+- [x] Embassy async support (B9: driver, executor and the 32-bit wrap, all measured)
 - [ ] Community contributors
 
 ## Before publishing anything
