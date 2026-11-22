@@ -16,6 +16,7 @@ embedded-hal = { workspace = true }
 critical-section = { workspace = true }
 nb = "1.1"
 embedded-hal-nb = "1.0"
+embedded-hal-async = "1"
 
 [dependencies.cortex-m-rt]
 workspace = true

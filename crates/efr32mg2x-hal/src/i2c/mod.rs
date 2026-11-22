@@ -57,6 +57,9 @@
 //! i2c.read(0x6B, &mut buffer).unwrap();
 //! ```
 
+mod async_impl;
+
+pub use async_impl::{last_state, waits};
 mod traits;
 mod types;
 
