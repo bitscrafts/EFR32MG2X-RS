@@ -21,7 +21,7 @@
 #![no_main]
 
 use defmt_rtt as _;
-use efr32mg2x_hal::dma::{channel_busy, Dma, PeripheralRequest};
+use efr32mg2x_hal::dma::{channel_busy, trigger, Dma, PeripheralRequest};
 use efr32mg2x_hal::entry;
 use panic_probe as _;
 
@@ -85,6 +85,16 @@ fn main() -> ! {
     let guard = ch0.start_peripheral_to_memory(0x2000_0000, &mut buffer, PeripheralRequest::None);
     let armed = guard.is_ok();
     etapa(3, armed as u32 + 2);
+
+    // Um canal espera por um pedido, e o descritor e' circular: um pedido por software poe-no a correr ate' alguem
+    // o parar -- que e' exactamente o estado que `stop()` existe para terminar.
+    if armed {
+        trigger(0);
+        // Dar tempo ao controlador para pegar no canal; sem isto le-se o estado de antes do pedido.
+        for _ in 0..1000 {
+            cortex_m::asm::nop();
+        }
+    }
     let busy_while_armed = busy_bit();
     etapa(7, busy_while_armed as u32 + 20);
 

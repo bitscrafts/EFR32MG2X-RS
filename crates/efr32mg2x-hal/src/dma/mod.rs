@@ -162,12 +162,16 @@ impl Dma {
     /// let dma = Dma::new(dp.ldma_s);
     /// ```
     pub fn new(ldma: pac::LdmaS) -> Self {
-        // Enable LDMA clock
-        // SAFETY: We have exclusive access to CMU via critical section.
-        // Setting LDMA bit enables the DMA controller clock.
+        // Enable LDMA clock, and the crossbar's.
+        //
+        // `CMU_CLKEN0` gates LDMA and LDMAXBAR on **separate** bits, and only LDMA was set. The first thing the
+        // peripheral-to-memory path does is program `LDMAXBAR->CH0_REQSEL` to route the request, and with the
+        // crossbar unclocked that write is a bus fault -- so `start_peripheral_to_memory` never returned, which is
+        // why the whole module had no board proof: nothing could arm a channel.
         critical_section::with(|_cs| {
             let cmu = unsafe { &(*pac::CmuS::ptr()) };
-            cmu.clken0().modify(|_, w| w.ldma().set_bit());
+            cmu.clken0()
+                .modify(|_, w| w.ldma().set_bit().ldmaxbar().set_bit());
         });
 
         // Enable LDMA peripheral
@@ -194,6 +198,17 @@ impl Dma {
             _marker: core::marker::PhantomData,
         }
     }
+}
+
+/// Ask the controller to service `channel` once, without a peripheral request.
+///
+/// A channel programmed with `PeripheralRequest::None` waits for software, and this is the software: without it the
+/// channel is enabled and never does anything. With a circular descriptor it then runs until it is stopped, which is
+/// the state `stop()` exists to end.
+pub fn trigger(channel: u8) {
+    // SAFETY: SWREQ is write-1-to-request and the bit set is the caller's own channel.
+    let ldma = unsafe { &(*pac::LdmaS::ptr()) };
+    unsafe { ldma.swreq().write(|w| w.bits(1 << channel)) };
 }
 
 /// True while the controller still has `channel` enabled, without needing the handle.
