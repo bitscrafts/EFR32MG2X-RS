@@ -25,6 +25,17 @@ use embedded_hal_async::i2c::{I2c as AsyncI2c, Operation};
 
 use super::{Error, I2c0, WAIT_POLLS};
 
+// ## O que fazia isto falhar, e porque é que a resposta estava no core testado no host
+//
+// A primeira versão lia todos os bytes **com ACK**, incluindo o último. O escravo nunca recebia ordem para parar,
+// continuava a conduzir dados e o mestre nunca fechava a recepção: medido, barramento retido (`BUSHOLD`), sem
+// `RXDATAV` e sem NACK -- um travamento sem erro nenhum. A sequência certa está em `cores::i2c::write_read`, que
+// chama `read(i != last)`: **NACK no último byte**. O `HwBus` que a serve manda `CMD.ACK` ou `CMD.NACK` antes de
+// cada leitura, e é isso que aqui se espelha.
+//
+// A lição não é sobre o I2C: a resposta estava num core com testes no host, e a primeira versão deste ficheiro foi
+// escrita a partir do que parecia certo em vez de ser lida a partir dele. Custou seis flashes.
+//
 // ## Porque é que isto não usa a interrupção do I2C
 //
 // A primeira versão deste ficheiro armava `IEN` para `txc`/`rxdatav`/`nack`/`mstop` e acordava a tarefa na
@@ -193,20 +204,23 @@ impl AsyncI2c for I2c0 {
                         return Err(Error::InvalidData);
                     }
                     self.put_byte((address << 1) | 1).await?;
-                    for slot in buffer.iter_mut() {
-                        // O flag de **evento**, não o bit de estado: medido neste periférico, no instante em que a
-                        // tarefa ficou presa o `IF` tinha `RXDATAV` posto e o `STATUS` não, com `BUSHOLD` em cima
-                        // (`IF=0x879`, `STATUS=0xc2`). Quem responde à pergunta "chegou um byte" é o flag.
-                        self.espera(|r| r.if_().read().rxdatav().bit_is_set())
+                    // **Um byte de cada vez, com ACK -- e NACK no último.** É a sequência do core testado no
+                    // host (`cores::i2c::write_read` chama `read(i != last)`) e a do `HwBus` que o serve: sem o
+                    // NACK final o escravo continua a conduzir dados, o mestre nunca fecha a recepção, e o que se
+                    // observa é exactamente o que se media -- barramento retido (`BUSHOLD`), sem byte.
+                    //
+                    // O `STATUS.RXDATAV` é a condição que `HwBus::read` espera; foi para o `IF` por engano antes
+                    // desta comparação.
+                    let total = buffer.len();
+                    for (i, slot) in buffer.iter_mut().enumerate() {
+                        self.espera(|r| r.status().read().rxdatav().bit_is_set())
                             .await?;
+                        if i + 1 == total {
+                            self.i2c.cmd().write(|w| w.nack().set_bit());
+                        } else {
+                            self.i2c.cmd().write(|w| w.ack().set_bit());
+                        }
                         *slot = self.i2c.rxdata().read().bits() as u8;
-                        // O flag é latched: sem o limpar, a espera seguinte vê o mesmo byte outra vez. Escrever 1
-                        // limpa, como em todos os `IF` desta família.
-                        // SAFETY: a mesma janela segura e a mesma escrita de 1-para-limpar usadas no caminho
-                        // bloqueante; a limpeza de um flag não tem outro efeito.
-                        let seguro =
-                            unsafe { crate::alias::clear_window(efr32mg2x_pac::I2c0S::ptr()) };
-                        seguro.if_().write(|w| w.rxdatav().set_bit());
                     }
                 }
             }

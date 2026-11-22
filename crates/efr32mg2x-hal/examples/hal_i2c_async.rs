@@ -84,7 +84,7 @@ fn block_on<F: Future>(fut: F) -> F::Output {
     }
 }
 
-fn report(ok: bool, blk: u8, who: u8, pendings: u32, irqs: u32, wfis: u32) {
+fn report(ok: bool, who: u8, pendings: u32, irqs: u32, wfis: u32) {
     let mut m = [0u8; 112];
     let mut n = 0usize;
     fn texto(m: &mut [u8], n: &mut usize, s: &[u8]) {
@@ -117,15 +117,7 @@ fn report(ok: bool, blk: u8, who: u8, pendings: u32, irqs: u32, wfis: u32) {
     }
     // Hex, para `who=0x6a` ser exactamente o valor que o IMU responde e não `0x106`, que é o que sairia se o
     // decimal fosse colado a um prefixo `0x`.
-    texto(&mut m, &mut n, b"i2c-async: blk=0x");
-    let (a1, b1) = ((blk >> 4) & 0x0F, blk & 0x0F);
-    for d in [a1, b1] {
-        if n < m.len() {
-            m[n] = if d < 10 { b'0' + d } else { b'a' + (d - 10) };
-            n += 1;
-        }
-    }
-    texto(&mut m, &mut n, b" who=0x");
+    texto(&mut m, &mut n, b"i2c-async: who=0x");
     let alto = (who >> 4) & 0x0F;
     let baixo = who & 0x0F;
     for d in [alto, baixo] {
@@ -165,23 +157,6 @@ fn main() -> ! {
     // (`hal_i2c_hardware_imu` devolve 0x6a): se ele responder aqui e o assíncrono não, a diferença está no
     // `transaction` e o barramento sai da equação. Sem isto, cada tentativa assíncrona falhada deixa a dúvida
     // entre "o meu código" e "o hardware".
-    // Com `false`, só o caminho assíncrono corre -- é o que separa "o controlo provou que o bus estava bom" de
-    // "o assíncrono precisa que alguém prepare o bus primeiro". Um arranque, uma resposta.
-    // **Medido: o assíncrono só funciona depois de uma leitura bloqueante nos mesmos pinos.** Com isto a `true` o
-    // exemplo passa (`blk=0x6a who=0x6a`); com `false` o registo não é escrito e a leitura assíncrona fica presa.
-    // Isto é uma dependência, não um desenho: o caminho bloqueante deixa o barramento num estado que o assíncrono
-    // precisa, e o trabalho seguinte é encontrar o que ele faz (suspeito: o `BUSHOLD` que fica posto sem ele).
-    const COM_CONTROLO: bool = true;
-    let mut who_bloqueante = [0u8; 1];
-    let blk = if COM_CONTROLO {
-        match i2c.write_read(0x6a, 0x0f, &mut who_bloqueante) {
-            Ok(()) => who_bloqueante[0],
-            Err(_) => 0,
-        }
-    } else {
-        0
-    };
-
     let mut who = [0u8; 1];
     let res = block_on(i2c.transaction(
         0x6a,
@@ -196,7 +171,7 @@ fn main() -> ! {
     // `Pending` teria `wfi=0`, que é o que a versão bloqueante faria.
     let ok = res.is_ok() && who[0] == 0x6a && pendings > 0;
 
-    report(ok, blk, who[0], pendings, irqs, wfis);
+    report(ok, who[0], pendings, irqs, wfis);
     led.on();
     loop {
         cortex_m::asm::wfi();
