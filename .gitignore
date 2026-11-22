@@ -13,9 +13,12 @@ Cargo.lock
 .DS_Store
 Thumbs.db
 
-# Debugging and recovery files
+# Debugging and recovery files -- but never an example: a test is named after what it exercises, and
+# `*recovery*.rs` silently swallowed `examples/hal_i2c_recovery.rs`. A commit whose message described that
+# example landed without it, and nothing failed: `git add` printed a hint nobody read.
 *RECOVERY*.md
 *recovery*.rs
+!**/examples/*recovery*.rs
 memory_analysis.md
 efr32-unlock/
 xiao_mg24_flash_erase*/
