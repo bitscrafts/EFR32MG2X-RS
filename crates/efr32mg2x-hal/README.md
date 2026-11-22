@@ -183,13 +183,14 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-18 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+19 examples, **3 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
 | example | what it shows | watched on hardware |
 |---|---|---|
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | -- |
+| `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | -- |
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | -- |
 | `hal_hfxo.rs` | HFXO: correr do cristal, e provar que o relógio do sistema o seguiu. | -- |

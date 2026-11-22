@@ -142,6 +142,25 @@ impl Dma {
     /// let dp = pac::Peripherals::take().unwrap();
     /// let dma = Dma::new(dp.ldma_s);
     /// ```
+    /// Take the controller, for a program whose DMA is the only peripheral it owns.
+    ///
+    /// A product should take the peripherals once and pass `ldma_s` to [`Dma::new`]; this exists so an example does
+    /// not have to name the PAC to demonstrate the HAL, which the layer rule forbids for a good reason: a HAL example
+    /// that mentions the PAC is a HAL that failed to hand out what it owns.
+    pub fn take() -> Option<Self> {
+        pac::Peripherals::take().map(|dp| Self::new(dp.ldma_s))
+    }
+
+    /// Create the DMA controller around the LDMA peripheral.
+    ///
+    /// * `ldma` - The LDMA peripheral from PAC
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// let dp = pac::Peripherals::take().unwrap();
+    /// let dma = Dma::new(dp.ldma_s);
+    /// ```
     pub fn new(ldma: pac::LdmaS) -> Self {
         // Enable LDMA clock
         // SAFETY: We have exclusive access to CMU via critical section.
@@ -175,6 +194,16 @@ impl Dma {
             _marker: core::marker::PhantomData,
         }
     }
+}
+
+/// True while the controller still has `channel` enabled, without needing the handle.
+///
+/// While a `Transfer` guard is alive it borrows the `Channel`, so `Channel::is_busy` cannot be asked at the one
+/// moment the answer matters -- during the transfer. This reads the same `CHBUSY` bit without the borrow.
+pub fn channel_busy(channel: u8) -> bool {
+    // SAFETY: CHBUSY is a read-only status register; the bit asked for is the caller's own channel.
+    let ldma = unsafe { &(*pac::LdmaS::ptr()) };
+    ldma.chbusy().read().bits() & (1 << channel) != 0
 }
 
 /// DMA Channel (Type-Safe)
@@ -419,6 +448,17 @@ impl<const N: u8> Channel<N> {
         }
     }
 
+    /// True while the controller still has this channel enabled.
+    ///
+    /// The instrument for the `stop()` defect: `CHBUSY` is the readable state of a channel, and a transfer that
+    /// was "stopped" by writing zeros to `CHEN` leaves it armed forever. A caller that cannot ask this question
+    /// cannot tell a working `stop()` from the one that did nothing.
+    pub fn is_busy(&self) -> bool {
+        // SAFETY: CHBUSY is a read-only status register; the bit for this channel is its own.
+        let ldma = unsafe { &(*pac::LdmaS::ptr()) };
+        ldma.chbusy().read().bits() & (1 << N) != 0
+    }
+
     /// Stop continuous DMA transfer
     ///
     /// Disables the DMA channel, stopping any ongoing transfers.
@@ -431,9 +471,15 @@ impl<const N: u8> Channel<N> {
     pub fn stop(&mut self) {
         let ldma = unsafe { &(*pac::LdmaS::ptr()) };
 
-        // Disable channel
+        // Disable the channel through CHDIS, not by writing zeros to CHEN.
+        //
+        // CHEN is a write-1-to-set register and the reference manual says writing zeros to it has no effect
+        // (§25.7.10); the disable register is CHDIS, one bit per channel. This function wrote `chen().bits(0)`,
+        // which disabled nothing -- so every path that relied on it ended the borrow of a buffer the DMA was still
+        // writing into, reachable from safe code. The host tests passed because the mock only counts calls.
+        // SAFETY: CHDIS is write-1-to-disable; setting one bit touches only this channel.
         unsafe {
-            ldma.chen().write(|w| w.bits(0));
+            ldma.chdis().write(|w| w.bits(1 << N));
         }
 
         // Clear pending interrupts
@@ -580,6 +626,11 @@ impl<const N: u8> Channel<N> {
 
             cycles += 1;
             if cycles > timeout_cycles {
+                // The channel is still enabled and still writing into the caller's buffer. Returning an error
+                // without disabling it leaves the DMA running over memory the caller now believes it owns again
+                // -- the same defect as `stop()` being a no-op, on the path where it matters most.
+                self.stop();
+                self.transfer_running = false;
                 return Err(DmaError::Timeout);
             }
         }
