@@ -91,7 +91,7 @@ Evidence grades:
 
 | Missing | Cost for this product |
 |---|---|
-| GPIO interrupts (`EXTI`) | Button and IMU interrupt lines must be polled; no wake from EM2 on motion. |
+| GPIO interrupts (`EXTI`) | Button and IMU interrupt lines must be polled; no wake from EM2 on motion. **Confirmed from the vendor schematic (2026-11-21)**: `XIAO_MGM240S_KICAD_Prj.pdf` sheet 06 marks the IMU's INT1 (pin 4) and INT2 (pin 9) as no-connects, so there is no line to poll *from* and no wake to wire -- the button lives on the expansion carrier. Wake sources this board has: the SYSRTC comparator and the radio. |
 | PRS routing | No hardware trigger path between timers, the IADC and the radio; needed for 802.15.4 timing. |
 | LDMA from the IADC FIFO | The capture loop busy-waits about 99 % of each sample period (`board.rs:116`). |
 | EM2/EM3 entry with oscillator restore, EM4 | Types exist (`emu/types.rs`), entry does not. Battery life. |
@@ -148,7 +148,7 @@ Evidence grades:
 | B13 | `bt/psa.rs` key ids | The stack uses fixed persistent ids (`0x40037` for the IRK). The shim never honours them, so a new IRK is made each boot and one slot of 16 leaks per reset. | `smp_get_irk_id+0xec` (D) | pairing dies after about 16 resets | Honour the id in the attributes for persistent keys. |
 | B14 | `bt/blocking/gatt_db.rs:106-157` | A failed step returns without `sl_bt_gattdb_abort`, leaving the session open. `handles.push` beyond 8 is discarded (`:146`). | (C) | next `new_session` fails; lost handle | Abort on error; return an error at capacity. |
 | B15 | `bt/blocking/stack.rs:906-914` | Every external-bonding request is answered with zero length. | (C) | a bond can never be restored | See section 8. |
-| B16 | `bt/stack_init.rs:113, 140` | The link layer is served from PendSV. | (C) | blocks any RTOS (section 7) | Move it to a dedicated software interrupt. |
+| ~~B16~~ | `bt/stack_init.rs:113, 140` | The link layer is served from PendSV. | (C) | blocks any RTOS (section 7) | **DONE 2026-11-21**: served from NVIC 17 (`BURTC`) instead. The vendor default is `ll_task_default_callback` (`SCB->ICSR = PENDSVSET`, disassembled from the host archive) and `ll_task_init(cb)` is the seam that replaces it. Measured on the board: `adv=0 gatt=0 ll=22`, `PendSV` delivered **once** (the start resets the seam internally; `efr32mg24_radio::ble` redirects that one kick, `ble::pendsv_redirects()` counts it). The `kernel` feature leaves `PendSV` to a kernel. |
 | B17 | `bt/heap.rs:3, 49, 103` | Header says 4 KiB; the arena is 64 KiB. Diagnostics read the heap outside the critical section. | (C) | misleading | Fix the header; mask the readers. |
 | B18 | `crates/efr32mg24-rail-sys/src/ble_config.rs:3, 102` | The generator is outside the repository; the once-guard hands a second caller the table before it is filled. | (C) | not reproducible | Commit the generator. |
 
@@ -156,7 +156,7 @@ Evidence grades:
 
 **Imports with no definition, if their members are linked** (checked only against `ble_boot_probe`): `sli_process_ble_rpa` (privacy), `sli_pending_btctrl_events` (HCI reset), `sl_power_manager_unsubscribe_em_transition_event`.
 
-**Event pump:** forgetting `poll_event` stops host events and GATT; the link layer keeps running from PendSV and timers from the SYSRTC interrupt. Notifications have no flow control: `notify` (`stack.rs:595-620`) returns the stack's refusal and nothing retries or waits for `notification_tx_completed`.
+**Event pump:** forgetting `poll_event` stops host events and GATT; the link layer keeps running from its own interrupt (line 17, `BURTC` -- it was `PendSV` until 2026-11-21) and timers from the SYSRTC interrupt. Notifications have no flow control: `notify` (`stack.rs:595-620`) returns the stack's refusal and nothing retries or waits for `notification_tx_completed`.
 
 ## 6. The 206 % figure
 
