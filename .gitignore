@@ -19,6 +19,10 @@ Thumbs.db
 *RECOVERY*.md
 *recovery*.rs
 !**/examples/*recovery*.rs
+# A document in docs/ that happens to have RECOVERY in its name is documentation, not a scratch file. This rule
+# has now swallowed two real files in one day (`examples/hal_i2c_recovery.rs`, `docs/04-reference/
+# I2C-RECOVERY-STATE.md`), both times saying so in a hint nobody read.
+!**/docs/**/*RECOVERY*.md
 memory_analysis.md
 efr32-unlock/
 xiao_mg24_flash_erase*/
