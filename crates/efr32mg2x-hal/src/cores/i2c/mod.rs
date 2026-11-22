@@ -38,6 +38,13 @@ pub trait Bus {
     fn read(&mut self, ack: bool) -> Result<u8, Error>;
     /// Emit a STOP condition and wait for the bus to become idle.
     fn stop(&mut self) -> Result<(), Error>;
+    /// Release the bus after a failed transaction.
+    ///
+    /// Every `?` above returns with the master still holding the bus: a NACK on the address leaves START
+    /// asserted and no STOP follows. On this peripheral that is not a tidy failure -- it is a bus that no longer
+    /// answers, measured on the board (`hal_i2c_recovery`: one refusal and the next read of a device that *is*
+    /// there fails). A default no-op keeps the trait usable by a bus that has nothing to abort.
+    fn abort(&mut self) {}
 }
 
 /// Write `register`, then read `out` from it, as **one** transaction: a repeated START, never a STOP in between.
@@ -50,18 +57,24 @@ pub fn write_read<B: Bus + ?Sized>(
     if out.is_empty() {
         return Err(Error::InvalidData);
     }
-    bus.start()?;
-    bus.write((addr << 1) & 0xFE)?; // address, write
-    bus.write(register)?;
-    // Repeated START: the bus is not released here, which is the whole point of this function.
-    bus.start()?;
-    bus.write(((addr << 1) & 0xFE) | 1)?; // same address, read
-    let last = out.len() - 1;
-    for (i, slot) in out.iter_mut().enumerate() {
-        *slot = bus.read(i != last)?;
+    let resultado = (|| {
+        bus.start()?;
+        bus.write((addr << 1) & 0xFE)?; // address, write
+        bus.write(register)?;
+        // Repeated START: the bus is not released here, which is the whole point of this function.
+        bus.start()?;
+        bus.write(((addr << 1) & 0xFE) | 1)?; // same address, read
+        let last = out.len() - 1;
+        for (i, slot) in out.iter_mut().enumerate() {
+            *slot = bus.read(i != last)?;
+        }
+        bus.stop()
+    })();
+    if resultado.is_err() {
+        // A refusal is not the end of the transaction, it is the end of the bus -- unless somebody releases it.
+        bus.abort();
     }
-    bus.stop()?;
-    Ok(())
+    resultado
 }
 
 /// Write `bytes` to `addr` as one transaction.
@@ -69,13 +82,18 @@ pub fn write<B: Bus + ?Sized>(bus: &mut B, addr: u8, bytes: &[u8]) -> Result<(),
     if bytes.is_empty() {
         return Err(Error::InvalidData);
     }
-    bus.start()?;
-    bus.write((addr << 1) & 0xFE)?;
-    for byte in bytes {
-        bus.write(*byte)?;
+    let resultado = (|| {
+        bus.start()?;
+        bus.write((addr << 1) & 0xFE)?;
+        for byte in bytes {
+            bus.write(*byte)?;
+        }
+        bus.stop()
+    })();
+    if resultado.is_err() {
+        bus.abort();
     }
-    bus.stop()?;
-    Ok(())
+    resultado
 }
 
 /// Read `out` from `addr` as one transaction.
@@ -83,14 +101,19 @@ pub fn read<B: Bus + ?Sized>(bus: &mut B, addr: u8, out: &mut [u8]) -> Result<()
     if out.is_empty() {
         return Err(Error::InvalidData);
     }
-    bus.start()?;
-    bus.write(((addr << 1) & 0xFE) | 1)?;
-    let last = out.len() - 1;
-    for (i, slot) in out.iter_mut().enumerate() {
-        *slot = bus.read(i != last)?;
+    let resultado = (|| {
+        bus.start()?;
+        bus.write(((addr << 1) & 0xFE) | 1)?;
+        let last = out.len() - 1;
+        for (i, slot) in out.iter_mut().enumerate() {
+            *slot = bus.read(i != last)?;
+        }
+        bus.stop()
+    })();
+    if resultado.is_err() {
+        bus.abort();
     }
-    bus.stop()?;
-    Ok(())
+    resultado
 }
 
 #[cfg(test)]

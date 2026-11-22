@@ -87,7 +87,7 @@ struct HwBus<'a, P> {
 
 /// The primitives, written once for both I2C instances.
 macro_rules! impl_hw_bus {
-    ($ty:ty) => {
+    ($ty:ty, $seguro:ty) => {
         impl crate::cores::i2c::Bus for HwBus<'_, $ty> {
             fn start(&mut self) -> Result<(), crate::cores::i2c::Error> {
                 use crate::cores::i2c::Error as Proto;
@@ -114,15 +114,25 @@ macro_rules! impl_hw_bus {
                 self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
                 let mut polls = 0u32;
                 while self.i2c.status().read().txc().bit_is_clear() {
+                    // Uma recusa chega ANTES de `txc`: o mestre para e o byte nao "sai". Esperar so' por `txc`
+                    // transforma um NACK em Timeout -- medido, com o dispositivo ausente -- e perde a unica coisa
+                    // que distingue "nao ha ninguem ai" de "esta' lento".
+                    let janela = unsafe { &*<$seguro>::ptr() };
+                    if janela.if_().read().nack().bit_is_set() {
+                        janela.if_().write(|w| w.nack().set_bit());
+                        return Err(Proto::Nack);
+                    }
                     polls += 1;
                     if polls > WAIT_POLLS {
                         return Err(Proto::Timeout);
                     }
                 }
-                if self.i2c.if_().read().nack().bit_is_set() {
-                    unsafe { crate::alias::clear_window(core::ptr::from_ref(self.i2c).cast_mut()) }
-                        .if_()
-                        .write(|w| w.nack().set_bit());
+                // Read the flag through the same window it is cleared on. Read through the non-secure view it is
+                // always zero -- this crate's own async work measured that -- so a refusal was reported as a
+                // timeout later on, and the one thing that tells "no such device" from "device too slow" was lost.
+                let janela = unsafe { &*<$seguro>::ptr() };
+                if janela.if_().read().nack().bit_is_set() {
+                    janela.if_().write(|w| w.nack().set_bit());
                     return Err(Proto::Nack);
                 }
                 Ok(())
@@ -157,11 +167,44 @@ macro_rules! impl_hw_bus {
                 }
                 Ok(())
             }
+
+            /// Release the bus after a failed transaction.
+            ///
+            /// `CMD.ABORT` ends the transfer and lets go of SDA and SCL; the flags cleared afterwards are the ones
+            /// that would otherwise make the next transaction behave as if the bus were still held. Measured
+            /// without this, on the board: one NACK and the next read of a device that is there fails
+            /// (`hal_i2c_recovery`).
+            fn abort(&mut self) {
+                self.i2c.cmd().write(|w| w.abort().set_bit());
+                let mut polls = 0u32;
+                while self.i2c.state().read().busy().bit_is_set() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        break;
+                    }
+                }
+                // ABORT ends the transfer but does not let go of the pins: a NACK at the address leaves START
+                // asserted, and the next transaction inherits it. STOP is what actually releases SDA and SCL.
+                self.i2c.cmd().write(|w| w.stop().set_bit());
+                let mut polls = 0u32;
+                while self.i2c.status().read().pstop().bit_is_set() {
+                    polls += 1;
+                    if polls > WAIT_POLLS {
+                        break;
+                    }
+                }
+                // SAFETY: the secure view is this instance's own pair, passed to the macro; clearing a flag has no
+                // other effect.
+                let janela = unsafe { &*<$seguro>::ptr() };
+                janela
+                    .if_()
+                    .write(|w| w.nack().set_bit().bushold().set_bit());
+            }
         }
     };
 }
-impl_hw_bus!(pac::I2c0Ns);
-impl_hw_bus!(pac::I2c1S);
+impl_hw_bus!(pac::I2c0Ns, pac::I2c0S);
+impl_hw_bus!(pac::I2c1S, pac::I2c1S);
 
 /// I2C0 peripheral instance
 pub struct I2c0 {
@@ -617,7 +660,8 @@ impl I2c1 {
         }
 
         if self.i2c.if_().read().nack().bit_is_set() {
-            unsafe { crate::alias::clear_window(pac::I2c0S::ptr()) }
+            // I2C1's own secure window: this read the I2C0 one and so never cleared its own flag.
+            unsafe { crate::alias::clear_window(pac::I2c1S::ptr()) }
                 .if_()
                 .write(|w| w.nack().set_bit());
             return Err(Error::Nack);
