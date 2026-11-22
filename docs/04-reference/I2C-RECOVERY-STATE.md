@@ -67,8 +67,33 @@ thirteen without checking which primitive it was; the count was right and the at
   `write` that follows -- the `txbl` wait, or the byte being refused -- with `IF = 0x109f9` sitting there from the
   aborted transfer, which is the number to decode next.
 
-The next measurement is decoding `IF = 0x109f9` against the PAC bit by bit, and a counter on the `txbl` wait inside
-`write` -- whether it expires or the byte is NACKed. Two candidates worth having ready: clearing the transmit FIFO
+## The decode, and the mechanism it exposes
+
+`IF = 0x109f9`, read immediately before the last `CMD.START`, against the PAC's bit map:
+
+```
+bit  0  start      a START condition happened
+bit  3  txc        transfer completed
+bit  4  txbl       transmit buffer level
+bit  5  rxdatav    receive data valid
+bit  6  ack
+bit  7  nack       <-- the refusal from transaction 2, still set
+bit  8  mstop      leader STOP
+bit 11  bushold    <-- the bus is still held
+bit 16  sstop      follower STOP
+```
+
+**The NACK from the previous transaction is still asserted when the next one begins**, and so is `BUSHOLD`. And the
+`write` primitive now checks the NACK flag *inside* the `txbl` wait -- which is how a refusal became distinguishable
+from a timeout in the first place -- so the first write of transaction 3 reads the old flag and returns `Nack` without
+touching the bus at all. Transaction 3 is refused by a ghost of transaction 2.
+
+`abort()` clears `NACK` and `BUSHOLD` through the instance's own window, and they are set again at the next read,
+which says the clear does not clear the condition: `BUSHOLD` is a level -- the bus is still held -- and a
+write-one-to-clear on a flag whose condition persists is a no-op dressed as a fix.
+
+The next measurement is a counter on the `txbl` wait inside
+`write` -- whether it expires or the byte is NACKed -- Two candidates worth having ready: clearing the transmit FIFO
 (`CMD.CLEARTX` / `CMD.CLEARPC`), which is what a leftover `0x109f9` suggests, and a full re-init of the peripheral
 after an abort, which costs nothing at the frequency this bus is used and is honest about what "recover" means.
 
