@@ -241,3 +241,21 @@ From the SVD's secure peripherals, the count of HAL references to each (grep, ra
 - I wouldn't wire the five unwired cores for their own sake. Wire `timer-core` only when F11 is fixed, and `gpio-core` only for `route()` after DOUT_SET/CLR lands.
 - I wouldn't move more code into `cores/`.
 - I wouldn't publish anything.
+
+---
+
+# Postscript by the dispatcher, after the fact
+
+Two corrections to the review above, recorded here so the next person does not pay for them again.
+
+**Item 5 of the ordered set is half impossible on this board.** It asks for "the GPIO interrupt and the IMU FIFO for
+the cadence". The FIFO half is right and useful. The interrupt half has no wire: the vendor schematic
+(`XIAO_MGM240S_KICAD_Prj.pdf`, sheet 06 "Peripheral", U7 LSM6DS3TR-C) marks **INT1 (pin 4) and INT2 (pin 9) as
+no-connects** -- no net, nothing to the MCU -- and the only wake sources this board has are the SYSRTC comparator and
+the radio. That was measured and written down on 2026-11-21 in `HAL-GAP-ANALYSIS-2026-11-18.md`, one day after the
+review was dispatched, and the review's own conclusion agrees with it in principle: it says not to add unused
+peripherals. What survives is the part that needs no interrupt -- sample the IMU at its own rate and drain its FIFO in
+batches, so the cadence comes from the sensor rather than from an MCU timer.
+
+**Item 4 is decided, not yet enforced.** See `SYSRTC-OWNERSHIP.md`: channel 0 stays with the Bluetooth sleep timer,
+the application takes 1 or 2, and the enforcement is a token the compiler can check rather than a comment.
