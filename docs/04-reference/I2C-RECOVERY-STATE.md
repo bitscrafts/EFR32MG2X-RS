@@ -42,23 +42,35 @@ Instrumented primitives are `start`(1), `write`(2), `stop`(3), `abort`(4). Count
 3  WHO_AM_I 0x6A    start write write start               4 passos   PARA AQUI
 ```
 
-Nine plus four is thirteen, and the last primitive entered was the **repeated START**. So the third transaction
-addresses the device, sends the register, and fails on the *second* `start()` -- the very same repeated START that
-worked in the first transaction, before anything had been refused.
+Nine plus four is thirteen, and the last primitive entered was `abort`. **The first reading of that was wrong**: it
+looked like the repeated START, and a second instrument disproved it before it became a fix.
+
+Four counters were placed in `start()` -- calls, expiries, and `STATE` and `IF` read immediately before the command:
+
+```
+START_INICIOS = 4    t1 uses two, t2 one, t3 one
+START_EXPIRADOS = 0  no START timed out, at any point
+START_ESTADO = 0     the bus was idle at the last one
+START_FLAGS = 0x109f9  flags left over from the aborted transfer
+```
+
+So the third transaction issues **one** START and dies after it, which puts the failure in a `write` -- the `txbl`
+wait or the byte itself -- and not in the START at all. The earlier paragraph drew a conclusion from a count of
+thirteen without checking which primitive it was; the count was right and the attribution was wrong.
 
 ## What that rules in and out
 
 - It is not the bus being held by the absent device: the address and register writes of the third transaction went
   through.
 - It is not the fault of the NACK reporting: the error class is right.
-- It is the repeated START after an aborted transfer. `CMD.ABORT` + `STOP` releases the pins but leaves the state
-  machine in a shape where the next `CMD.START` completes and the one after it does not.
+- It is **not** the repeated START: no START expired, and the third transaction only issues one. What is left is the
+  `write` that follows -- the `txbl` wait, or the byte being refused -- with `IF = 0x109f9` sitting there from the
+  aborted transfer, which is the number to decode next.
 
-The next measurement is a marker inside `HwBus::start` between the command and the `pstart` wait -- whether the flag
-never sets, or sets and is left over from before -- and a read of `STATE` and `IF` (including `BUSHOLD`) immediately
-before that second `CMD.START`. Two candidates worth having in hand: clearing the transmit FIFO (`CMD.CLEARTX` /
-`CMD.CLEARPC`), and a full re-init of the peripheral after an abort, which costs nothing at the frequency this bus is
-used and is honest about what "recover" means.
+The next measurement is decoding `IF = 0x109f9` against the PAC bit by bit, and a counter on the `txbl` wait inside
+`write` -- whether it expires or the byte is NACKed. Two candidates worth having ready: clearing the transmit FIFO
+(`CMD.CLEARTX` / `CMD.CLEARPC`), which is what a leftover `0x109f9` suggests, and a full re-init of the peripheral
+after an abort, which costs nothing at the frequency this bus is used and is honest about what "recover" means.
 
 The example fails its own criterion today, and it is committed that way on purpose: it is the target, and a target
 that passes while the defect is live would be the defect.
