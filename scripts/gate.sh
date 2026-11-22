@@ -411,9 +411,23 @@ for dir in libraries/*/; do
     fail "$name: host tests"
   fi
 
-  # The hardware stack, as a dependency, in any kind: normal, build or dev.
-  if cargo tree -p "$name" --edges normal,build -e no-dev --prefix none 2>/dev/null \
-      | grep -qE '^(efr32mg24|motion-detection|cortex-m)'; then
+  # The hardware stack, as a dependency, in any kind: normal or build.
+  #
+  # Until 2026-11-22 this check could not run and printed "pass" anyway -- three faults, each hiding the next:
+  # `-p "$name"` asked cargo for the *directory* name (`adc-core`) instead of the package name
+  # (`efr32mg2x-adc-core`); `-e no-dev` cannot be combined with `--edges normal,build`, so cargo exited 101 and
+  # printed no tree at all; and stderr went to /dev/null, so grep found nothing and the `else` branch took the pass.
+  # It is the guard of the premise that these crates test on the host, and it has never guarded anything.
+  #
+  # A check that cannot run is a FAIL, never a pass: the pass is what certifies the defect it exists to catch.
+  #
+  # Near-misses that must still take the normal path, and were shown to against real `cargo tree` output: a library
+  # depending on another library of the same family (`efr32mg2x-adc-core` -> `efr32mg2x-sysrtc-core`), and the root
+  # line itself, whose name starts `efr32mg2x-` -- which is why line 1 is skipped.
+  if ! arvore="$(cargo tree -p "$pkg" -e normal,build --prefix none 2>&1)"; then
+    fail "$name: cargo tree failed, so this check could not run"
+  elif printf '%s\n' "$arvore" | tail -n +2 \
+      | grep -qE '^(efr32mg2x-(pac|hal)|efr32mg24-|motion-detection|cortex-m|xiao-)'; then
     fail "$name: depends on the hardware stack"
   else
     pass "$name: no hardware dependency"
