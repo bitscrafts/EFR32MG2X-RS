@@ -24,7 +24,7 @@ Attributed with a control, not with a pass: with only the clear put back on the 
 record returns to `depois=0x00`, FAIL; restored, PASS. `abort()` is now `ABORT|STOP` in one command, wait for `BUSY`,
 `CLEARPC`, `CLEARTX`, then all sticky flags through `IF_CLR`, in the order RM 22.5.4 gives. `I2c0::write` and
 `read` were rerouted through `cores::i2c` so every blocking entry point aborts on error; `I2c1`'s `write_read` became
-one transaction with a repeated START; 372 lines of duplicated state machine went with them.
+one transaction with a repeated START; 372 lines left `src/i2c/mod.rs` and 146 arrived in their place.
 
 **The instrument was extended, because the reuse needed its own proof**: `wr=1` is a plain `write` read back
 (`CTRL1_XL` = 0x40, then restored), and `rd6=1 nz=1` is a **six-byte** burst of accelerometer data that is not zero —

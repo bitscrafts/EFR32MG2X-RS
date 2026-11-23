@@ -68,8 +68,8 @@ the control proves is that they are not **sufficient** without the clear.
 `I2c0::write` and `I2c0::read` were also rerouted through `cores::i2c`, as `write_read` already was, so every blocking
 entry point runs the same host-tested sequence and aborts on every error path instead of returning with START still
 asserted. `I2c1`'s `write_read`, still two transactions with a STOP in the middle, is one transaction now. The
-duplicated state machines that did this inline are gone (372 lines removed, 160 added, including the comments that
-say why).
+duplicated state machines that did this inline are gone: 372 lines out of `src/i2c/mod.rs`, 146 in, plus one
+`From<cores::i2c::Error>` in `types.rs` so the mapping is written once instead of at every entry point.
 
 ## What is still open
 
