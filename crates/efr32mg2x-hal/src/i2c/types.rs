@@ -48,6 +48,20 @@ pub enum Error {
     Timeout,
 }
 
+/// The transaction layer reports the same four failures; this keeps the mapping in one place instead of a match
+/// repeated at every entry point (it was written out three times before, and a fourth entry point would have made it
+/// four).
+impl From<crate::cores::i2c::Error> for Error {
+    fn from(e: crate::cores::i2c::Error) -> Self {
+        match e {
+            crate::cores::i2c::Error::Nack => Error::Nack,
+            crate::cores::i2c::Error::Bus => Error::Bus,
+            crate::cores::i2c::Error::InvalidData => Error::InvalidData,
+            crate::cores::i2c::Error::Timeout => Error::Timeout,
+        }
+    }
+}
+
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {

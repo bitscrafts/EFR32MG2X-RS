@@ -1,60 +1,52 @@
 //! I2C Master Mode Driver
-//! **This driver does not work on this die.** The on-chip I2C0 master accepts a read and
-//! never delivers a byte; fourteen measurements are recorded in
-//! `docs/04-reference/I2C0-READ-DEFECT.md`. The transport used everywhere in this workspace is
-//! `crate::bus::BitBangI2c`. Kept for whoever picks the investigation up.
 //!
+//! # What works on this die, and what used to be written here
 //!
-//! This module provides a hardware abstraction layer for the EFR32MG24 I2C peripherals
-//! in master mode with support for 7-bit addressing.
+//! This header used to say "this driver does not work on this die", from the fourteen measurements in
+//! `docs/04-reference/I2C0-READ-DEFECT.md`. Two of those measurements were a driver defect, not a silicon one: the
+//! last byte of a reception was read with ACK instead of NACK, so the follower never stopped driving and the master
+//! never closed the reception; and the error flags were read through the non-secure view, which reads zero. With both
+//! fixed, `hal_i2c_hardware_imu` reads `WHO_AM_I = 0x6a` from the IMU over I2C0 with no help from the bit-banged bus,
+//! and `hal_i2c_recovery` completes a read-after-write transaction on the same path. Until 2026-11-17 nothing here
+//! could reach a pin at all (`I2c0::new` configured no routing) and no measurement of this driver was possible.
+//!
+//! What is still open is named where it lives: a bus that a *follower* holds low needs clocks on SCL to be released,
+//! and no instrument in this repository produces that condition yet (`docs/04-reference/I2C-RECOVERY-STATE.md`).
 //!
 //! # Hardware Registers
 //!
 //! - **EN**: Enable register
 //! - **CTRL**: Control register (master/slave mode, clock settings)
-//! - **CMD**: Command register (START, STOP, ACK, NACK, etc.)
-//! - **STATUS**: Status register (TXBL, RXDATAV, TXC, etc.)
+//! - **CMD**: Command register (START, STOP, ACK, NACK, ABORT, CLEARTX, CLEARPC)
+//! - **STATE**: state machine, `BUSY`/`BUSHOLD`, used to wait for the bus to be ours
+//! - **STATUS**: handshake status (PSTART, PSTOP, TXBL, TXC, RXDATAV)
+//! - **IF**: sticky interrupt flags -- read through the **secure** window, cleared through **`IF_CLR`**
 //! - **CLKDIV**: Clock divider for SCL frequency
-//! - **TXDATA**: Transmit data register
-//! - **RXDATA**: Receive data register
+//! - **TXDATA** / **RXDATA**: the byte registers
 //!
 //! # Features
 //!
 //! - I2C master mode with 7-bit addressing
 //! - Configurable SCL frequency (standard 100 kHz, fast 400 kHz)
-//! - Blocking write and read operations
-//! - embedded-hal v1.0 I2C traits
+//! - `write`, `read` and `write_read`, the last one as **one** transaction with a repeated START
+//! - embedded-hal v1.0 I2C traits; `embedded-hal-async` for I2C0
 //!
 //! # Example
 //!
 //! ```no_run
 //! use efr32mg2x_hal::{
-//!     clock::{Clocks, ClockConfig, HfxoConfig},
+//!     clock::{Clocks, ClockConfig},
 //!     i2c::{I2c0, Config, Speed},
 //!     pac,
 //! };
 //!
 //! let dp = pac::Peripherals::take().unwrap();
+//! let clocks = Clocks::new(dp.cmu_s, ClockConfig { hfxo: None, lfxo: None }).freeze();
+//! let mut i2c = I2c0::new(dp.i2c0_ns, Config::new(Speed::Standard100kHz), clocks.hfclk());
 //!
-//! // Configure clocks
-//! let clocks = Clocks::new(dp.cmu_s, ClockConfig {
-//!     hfxo: None,
-//!     lfxo: None,
-//! }).freeze();
-//!
-//! // Create I2C instance
-//! let mut i2c = I2c0::new(
-//!     dp.i2c0_s,
-//!     Config::new(Speed::Standard100kHz),
-//!     &clocks
-//! );
-//!
-//! // Write to device at address 0x6B
-//! i2c.write(0x6B, &[0x75]).unwrap();
-//!
-//! // Read from device
+//! i2c.write(0x6A, &[0x75]).unwrap();
 //! let mut buffer = [0u8; 1];
-//! i2c.read(0x6B, &mut buffer).unwrap();
+//! i2c.read(0x6A, &mut buffer).unwrap();
 //! ```
 
 mod async_impl;
@@ -86,8 +78,88 @@ struct HwBus<'a, P> {
 }
 
 /// The primitives, written once for both I2C instances.
+///
+/// `$seguro` is the instance's **secure** window. Two things depend on it and both were measured: `IF` read through
+/// the non-secure view always reads zero, and the clear-alias window (`+0x2000`) has to be computed from the secure
+/// base.
 macro_rules! impl_hw_bus {
     ($ty:ty, $seguro:ty) => {
+        impl HwBus<'_, $ty> {
+            /// Whether this instance has a NACK pending, read through its own secure window.
+            fn nack_pendente(&self) -> bool {
+                // SAFETY: a read of the block the caller already owns, through its secure window.
+                let janela = unsafe { &*<$seguro>::ptr() };
+                janela.if_().read().nack().bit_is_set()
+            }
+
+            /// Clear `NACK` through the **clear-alias** window.
+            ///
+            /// `IF` is RW on this part and its flags are sticky: the manual says each one "needs to be manually
+            /// cleared by software" (RM 22.3.8.2), and the vendor clears them by writing `IF_CLR`
+            /// (`I2C_IntClear`, `em_i2c.h:295-300`). Writing 1 to the plain register does not clear a flag here, so
+            /// the NACK of one transaction was still set when the next one began -- and `write` checks the flag
+            /// *before* it loads the byte, to tell a refusal from a timeout, so the next transaction was refused by
+            /// the previous refusal without touching the bus. Measured: `hal_i2c_recovery`,
+            /// `antes=0x6a erro=1 depois=0x00`.
+            fn limpar_nack(&self) {
+                // SAFETY: the clear window of this instance's block; writing a flag bit has no other effect.
+                unsafe { crate::alias::clear_window(<$seguro>::ptr()) }
+                    .if_()
+                    .write(|w| w.nack().set_bit());
+            }
+
+            /// Clear every sticky flag of this instance through the clear window.
+            fn limpar_flags(&self) {
+                // SAFETY: as above -- one write to the clear-alias window of a block the caller already owns.
+                unsafe { crate::alias::clear_window(<$seguro>::ptr()) }
+                    .if_()
+                    .write(|w| {
+                        w.start()
+                            .set_bit()
+                            .rstart()
+                            .set_bit()
+                            .addr()
+                            .set_bit()
+                            .txc()
+                            .set_bit()
+                            .txbl()
+                            .set_bit()
+                            .rxdatav()
+                            .set_bit()
+                            .ack()
+                            .set_bit()
+                            .nack()
+                            .set_bit()
+                            .mstop()
+                            .set_bit()
+                            .arblost()
+                            .set_bit()
+                            .buserr()
+                            .set_bit()
+                            .bushold()
+                            .set_bit()
+                            .txof()
+                            .set_bit()
+                            .rxuf()
+                            .set_bit()
+                            .bito()
+                            .set_bit()
+                            .clto()
+                            .set_bit()
+                            .sstop()
+                            .set_bit()
+                            .rxfull()
+                            .set_bit()
+                            .clerr()
+                            .set_bit()
+                            .sclerr()
+                            .set_bit()
+                            .sdaerr()
+                            .set_bit()
+                    });
+            }
+        }
+
         impl crate::cores::i2c::Bus for HwBus<'_, $ty> {
             fn start(&mut self) -> Result<(), crate::cores::i2c::Error> {
                 use crate::cores::i2c::Error as Proto;
@@ -117,9 +189,8 @@ macro_rules! impl_hw_bus {
                     // Uma recusa chega ANTES de `txc`: o mestre para e o byte nao "sai". Esperar so' por `txc`
                     // transforma um NACK em Timeout -- medido, com o dispositivo ausente -- e perde a unica coisa
                     // que distingue "nao ha ninguem ai" de "esta' lento".
-                    let janela = unsafe { &*<$seguro>::ptr() };
-                    if janela.if_().read().nack().bit_is_set() {
-                        janela.if_().write(|w| w.nack().set_bit());
+                    if self.nack_pendente() {
+                        self.limpar_nack();
                         return Err(Proto::Nack);
                     }
                     polls += 1;
@@ -127,12 +198,10 @@ macro_rules! impl_hw_bus {
                         return Err(Proto::Timeout);
                     }
                 }
-                // Read the flag through the same window it is cleared on. Read through the non-secure view it is
-                // always zero -- this crate's own async work measured that -- so a refusal was reported as a
-                // timeout later on, and the one thing that tells "no such device" from "device too slow" was lost.
-                let janela = unsafe { &*<$seguro>::ptr() };
-                if janela.if_().read().nack().bit_is_set() {
-                    janela.if_().write(|w| w.nack().set_bit());
+                // Read the flag through the secure window -- through the non-secure view it is always zero, which
+                // is how a refusal was reported as a timeout later on. The clear goes through `IF_CLR`.
+                if self.nack_pendente() {
+                    self.limpar_nack();
                     return Err(Proto::Nack);
                 }
                 Ok(())
@@ -170,12 +239,23 @@ macro_rules! impl_hw_bus {
 
             /// Release the bus after a failed transaction.
             ///
-            /// `CMD.ABORT` ends the transfer and lets go of SDA and SCL; the flags cleared afterwards are the ones
-            /// that would otherwise make the next transaction behave as if the bus were still held. Measured
-            /// without this, on the board: one NACK and the next read of a device that is there fails
-            /// (`hal_i2c_recovery`).
+            /// The manual gives the order, and each step below has a reason that was read or measured:
+            ///
+            /// 1. **`ABORT` with `STOP` in one command.** "Abort the current transmission making the bus go idle.
+            ///    When used in combination with STOP, a STOP condition is sent as soon as possible before aborting"
+            ///    (RM 22.5.4). The previous version wrote `ABORT`, waited, and only then wrote `STOP` -- a different
+            ///    sequence, in which the STOP arrives when there is no transfer left to stop.
+            /// 2. **Wait for `STATE.BUSY` to clear**, which is what says the module is off the bus.
+            /// 3. **`CLEARPC`**: a command left pending by the refused transaction (an ACK, a STOP, a START) is
+            ///    otherwise consumed by the next one.
+            /// 4. **`CLEARTX`**: "clear transmit buffer and shift register". Without it the address byte the
+            ///    follower refused is still queued when the next transaction starts.
+            /// 5. **Clear the sticky flags** through `IF_CLR`. Leaving `NACK` set is what made the third transaction
+            ///    of `hal_i2c_recovery` fail without touching the bus.
             fn abort(&mut self) {
-                self.i2c.cmd().write(|w| w.abort().set_bit());
+                self.i2c
+                    .cmd()
+                    .write(|w| w.abort().set_bit().stop().set_bit());
                 let mut polls = 0u32;
                 while self.i2c.state().read().busy().bit_is_set() {
                     polls += 1;
@@ -183,22 +263,9 @@ macro_rules! impl_hw_bus {
                         break;
                     }
                 }
-                // ABORT ends the transfer but does not let go of the pins: a NACK at the address leaves START
-                // asserted, and the next transaction inherits it. STOP is what actually releases SDA and SCL.
-                self.i2c.cmd().write(|w| w.stop().set_bit());
-                let mut polls = 0u32;
-                while self.i2c.status().read().pstop().bit_is_set() {
-                    polls += 1;
-                    if polls > WAIT_POLLS {
-                        break;
-                    }
-                }
-                // SAFETY: the secure view is this instance's own pair, passed to the macro; clearing a flag has no
-                // other effect.
-                let janela = unsafe { &*<$seguro>::ptr() };
-                janela
-                    .if_()
-                    .write(|w| w.nack().set_bit().bushold().set_bit());
+                self.i2c.cmd().write(|w| w.clearpc().set_bit());
+                self.i2c.cmd().write(|w| w.cleartx().set_bit());
+                self.limpar_flags();
             }
         }
     };
@@ -223,12 +290,12 @@ impl I2c0 {
     ///
     /// * `i2c` - I2C0_S peripheral instance
     /// * `config` - I2C configuration
-    /// * `clocks` - Frozen clock configuration
+    /// * `hfclk` - the HFCLK frequency the divider is computed from
     ///
     /// # Example
     ///
     /// ```no_run
-    /// let i2c = I2c0::new(dp.i2c0_s, Config::new(Speed::Standard100kHz), clocks.hfclk());
+    /// let i2c = I2c0::new(dp.i2c0_ns, Config::new(Speed::Standard100kHz), clocks.hfclk());
     /// ```
     pub fn new(i2c: pac::I2c0Ns, config: Config, hfclk: crate::clock::Hertz) -> Self {
         // The clock itself was enabled by whoever owns the CMU: this driver only needs the number,
@@ -281,48 +348,10 @@ impl I2c0 {
     ///
     /// `Ok(())` on success, `Err(Error)` on failure
     pub fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Error> {
-        if bytes.is_empty() {
-            return Err(Error::InvalidData);
-        }
-
-        // Send START condition
-        self.i2c.cmd().write(|w| w.start().set_bit());
-
-        // Wait for START to complete
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstart().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        // Send address with write bit (R/W = 0)
-        let addr_byte = (addr << 1) & 0xFE;
-        self.write_byte(addr_byte)?;
-
-        // Write data bytes
-        for &byte in bytes {
-            self.write_byte(byte)?;
-        }
-
-        // Send STOP condition
-        self.i2c.cmd().write(|w| w.stop().set_bit());
-
-        // Wait for STOP to complete
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstop().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        Ok(())
+        // One transaction, from the layer that has host tests over the sequence -- and that releases the bus
+        // through `abort()` on every error path. The inline machine this replaced returned with START still
+        // asserted, which is how one refusal left the bus unusable (`hal_i2c_recovery`).
+        crate::cores::i2c::write(&mut HwBus { i2c: &self.i2c }, addr, bytes).map_err(Error::from)
     }
 
     /// Read data from I2C device
@@ -336,68 +365,7 @@ impl I2c0 {
     ///
     /// `Ok(())` on success, `Err(Error)` on failure
     pub fn read(&mut self, addr: u8, buffer: &mut [u8]) -> Result<(), Error> {
-        if buffer.is_empty() {
-            return Err(Error::InvalidData);
-        }
-
-        // Send START condition
-        self.i2c.cmd().write(|w| w.start().set_bit());
-
-        // Wait for START to complete
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstart().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        // Send address with read bit (R/W = 1)
-        let addr_byte = (addr << 1) | 0x01;
-        self.write_byte(addr_byte)?;
-
-        // Read data bytes
-        let last_idx = buffer.len() - 1;
-        for (i, byte) in buffer.iter_mut().enumerate() {
-            // Wait for RX data valid
-            {
-                let mut polls = 0u32;
-                while self.i2c.status().read().rxdatav().bit_is_clear() {
-                    polls += 1;
-                    if polls > WAIT_POLLS {
-                        return Err(Error::Timeout);
-                    }
-                }
-            }
-
-            // Read byte
-            *byte = self.i2c.rxdata().read().bits() as u8;
-
-            // Send ACK for all bytes except last, NACK for last byte
-            if i == last_idx {
-                self.i2c.cmd().write(|w| w.nack().set_bit());
-            } else {
-                self.i2c.cmd().write(|w| w.ack().set_bit());
-            }
-        }
-
-        // Send STOP condition
-        self.i2c.cmd().write(|w| w.stop().set_bit());
-
-        // Wait for STOP to complete
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstop().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        Ok(())
+        crate::cores::i2c::read(&mut HwBus { i2c: &self.i2c }, addr, buffer).map_err(Error::from)
     }
 
     /// Write register then read from I2C device
@@ -412,62 +380,11 @@ impl I2c0 {
     ///
     /// `Ok(())` on success, `Err(Error)` on failure
     pub fn write_read(&mut self, addr: u8, register: u8, buffer: &mut [u8]) -> Result<(), Error> {
-        if buffer.is_empty() {
-            return Err(Error::InvalidData);
-        }
-
-        // Write register address
-        // One transaction, with a repeated START, from the crate whose host tests measure exactly that:
-        // `efr32mg2x-i2c-core`. The old body here called `write` and then `read`, which released the bus in the middle
-        // and let a device drop the register pointer it had just been given.
-        let bus = HwBus { i2c: &self.i2c };
-        crate::cores::i2c::write_read(&mut HwBus { i2c: bus.i2c }, addr, register, buffer).map_err(
-            |e| match e {
-                crate::cores::i2c::Error::Nack => Error::Nack,
-                crate::cores::i2c::Error::Bus => Error::Bus,
-                crate::cores::i2c::Error::InvalidData => Error::InvalidData,
-                crate::cores::i2c::Error::Timeout => Error::Timeout,
-            },
-        )
-    }
-
-    /// Write a single byte to TX buffer and wait for ACK/NACK
-    fn write_byte(&mut self, byte: u8) -> Result<(), Error> {
-        // Wait for TX buffer ready
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().txbl().bit_is_clear() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        // Write byte to TX buffer
-        self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
-
-        // Wait for transmission complete
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().txc().bit_is_clear() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        // Check for NACK (address or data not acknowledged)
-        if self.i2c.if_().read().nack().bit_is_set() {
-            // Clear NACK flag
-            unsafe { crate::alias::clear_window(pac::I2c0S::ptr()) }
-                .if_()
-                .write(|w| w.nack().set_bit());
-            return Err(Error::Nack);
-        }
-
-        Ok(())
+        // One transaction with a repeated START, from the crate whose host tests measure exactly that. The old body
+        // here called `write` and then `read`, which released the bus in the middle and let a device drop the
+        // register pointer it had just been given.
+        crate::cores::i2c::write_read(&mut HwBus { i2c: &self.i2c }, addr, register, buffer)
+            .map_err(Error::from)
     }
 }
 
@@ -509,164 +426,21 @@ impl I2c1 {
     }
 
     /// Write data to I2C device
-    ///
-    /// # Arguments
-    ///
-    /// * `addr` - 7-bit device address
-    /// * `bytes` - Data to write
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` on success, `Err(Error)` on failure
     pub fn write(&mut self, addr: u8, bytes: &[u8]) -> Result<(), Error> {
-        if bytes.is_empty() {
-            return Err(Error::InvalidData);
-        }
-
-        self.i2c.cmd().write(|w| w.start().set_bit());
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstart().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        let addr_byte = (addr << 1) & 0xFE;
-        self.write_byte(addr_byte)?;
-
-        for &byte in bytes {
-            self.write_byte(byte)?;
-        }
-
-        self.i2c.cmd().write(|w| w.stop().set_bit());
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstop().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        Ok(())
+        crate::cores::i2c::write(&mut HwBus { i2c: &self.i2c }, addr, bytes).map_err(Error::from)
     }
 
     /// Read data from I2C device
-    ///
-    /// # Arguments
-    ///
-    /// * `addr` - 7-bit device address
-    /// * `buffer` - Buffer to store read data
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` on success, `Err(Error)` on failure
     pub fn read(&mut self, addr: u8, buffer: &mut [u8]) -> Result<(), Error> {
-        if buffer.is_empty() {
-            return Err(Error::InvalidData);
-        }
-
-        self.i2c.cmd().write(|w| w.start().set_bit());
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstart().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        let addr_byte = (addr << 1) | 0x01;
-        self.write_byte(addr_byte)?;
-
-        let last_idx = buffer.len() - 1;
-        for (i, byte) in buffer.iter_mut().enumerate() {
-            {
-                let mut polls = 0u32;
-                while self.i2c.status().read().rxdatav().bit_is_clear() {
-                    polls += 1;
-                    if polls > WAIT_POLLS {
-                        return Err(Error::Timeout);
-                    }
-                }
-            }
-            *byte = self.i2c.rxdata().read().bits() as u8;
-
-            if i == last_idx {
-                self.i2c.cmd().write(|w| w.nack().set_bit());
-            } else {
-                self.i2c.cmd().write(|w| w.ack().set_bit());
-            }
-        }
-
-        self.i2c.cmd().write(|w| w.stop().set_bit());
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().pstop().bit_is_set() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        Ok(())
+        crate::cores::i2c::read(&mut HwBus { i2c: &self.i2c }, addr, buffer).map_err(Error::from)
     }
 
     /// Write register then read from I2C device
     ///
-    /// # Arguments
-    ///
-    /// * `addr` - 7-bit device address
-    /// * `register` - Register address to read from
-    /// * `buffer` - Buffer to store read data
-    ///
-    /// # Returns
-    ///
-    /// `Ok(())` on success, `Err(Error)` on failure
+    /// This was two transactions (write, STOP, read) until the core took it over: the bus was released in the
+    /// middle, and a device that latches its register pointer on the write is entitled to lose it.
     pub fn write_read(&mut self, addr: u8, register: u8, buffer: &mut [u8]) -> Result<(), Error> {
-        if buffer.is_empty() {
-            return Err(Error::InvalidData);
-        }
-        self.write(addr, &[register])?;
-        self.read(addr, buffer)?;
-        Ok(())
-    }
-
-    fn write_byte(&mut self, byte: u8) -> Result<(), Error> {
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().txbl().bit_is_clear() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-        self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
-        {
-            let mut polls = 0u32;
-            while self.i2c.status().read().txc().bit_is_clear() {
-                polls += 1;
-                if polls > WAIT_POLLS {
-                    return Err(Error::Timeout);
-                }
-            }
-        }
-
-        if self.i2c.if_().read().nack().bit_is_set() {
-            // I2C1's own secure window: this read the I2C0 one and so never cleared its own flag.
-            unsafe { crate::alias::clear_window(pac::I2c1S::ptr()) }
-                .if_()
-                .write(|w| w.nack().set_bit());
-            return Err(Error::Nack);
-        }
-
-        Ok(())
+        crate::cores::i2c::write_read(&mut HwBus { i2c: &self.i2c }, addr, register, buffer)
+            .map_err(Error::from)
     }
 }

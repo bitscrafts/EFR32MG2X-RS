@@ -3,7 +3,43 @@
 **State: green.** Branch `master`, pushed to `origin` (`bitscrafts/EFR32MG2X-RS`). The Expansion Base
 was found faulty on 2026-11-15 and is away for replacement (about a month); that does not remove
 anything already measured with it — those dates stand — and the examples that need the carrier say so
-until another one is on the bench. The board left running `hal_led_blink`, its LED confirmed blinking.
+until another one is on the bench. The board left running `hal_i2c_recovery`, its record `PASS`.
+
+## Session 2026-11-23 — one I2C refusal no longer costs the bus, and yesterday's diagnosis was wrong
+
+**Closed: the I2C bus survives a NACK.** The record, read back off the part:
+
+```
+i2c-rec: antes=0x6a erro=1 depois=0x6a wr=1 rd6=1 nz=1 volta=0x40      status=PASS
+```
+
+The cause was **not** a held bus. `IF` is RW on this part and its flags are sticky, cleared only through the
+`IF_CLR` alias at `+0x2000` (RM 22.3.8.2; `I2C_IntClear` in `em_i2c.h`); the `HwBus` written the day before wrote 1 to
+the **plain** register, so the NACK of transaction 2 was still asserted when transaction 3 began, and `write` — which
+checks the flag before loading a byte, to tell a refusal from a timeout — refused transaction 3 on the strength of
+transaction 2. The previous session's conclusion, "`BUSHOLD` is a level, the bus is genuinely held", was wrong:
+`STATE.BUSHOLD` means "the bus is currently held by **this** I2C module", the module pausing for software.
+
+Attributed with a control, not with a pass: with only the clear put back on the plain `IF` (everything else kept) the
+record returns to `depois=0x00`, FAIL; restored, PASS. `abort()` is now `ABORT|STOP` in one command, wait for `BUSY`,
+`CLEARPC`, `CLEARTX`, then all sticky flags through `IF_CLR`, in the order RM 22.5.4 gives. `I2c0::write` and
+`read` were rerouted through `cores::i2c` so every blocking entry point aborts on error; `I2c1`'s `write_read` became
+one transaction with a repeated START; 372 lines of duplicated state machine went with them.
+
+**The instrument was extended, because the reuse needed its own proof**: `wr=1` is a plain `write` read back
+(`CTRL1_XL` = 0x40, then restored), and `rd6=1 nz=1` is a **six-byte** burst of accelerometer data that is not zero —
+which is also what closes `I2C0-READ-DEFECT.md`, whose fourteen measurements all shared the same blind spot (the
+"clear all 22 IF bits" attempt wrote to the plain register and cleared nothing).
+
+**Docs corrected where they asserted the old defect**: `I2C0-READ-DEFECT.md` (status closed, rows 8/9 annotated),
+`I2C-RECOVERY-STATE.md` (rewritten), the HAL and PAC crate docs and the HAL README template — the generator checks the
+README against the tree but cannot see a hand-written number, and "twenty-one modules, ten examples" was stale on both
+counts (26 `pub mod`, 20 examples).
+
+**Still open, named rather than implied**: a *follower* that genuinely holds SDA low needs nine clocks on SCL and a
+STOP, with the pins taken from the peripheral; nothing in this repository produces that condition, and the criterion
+that would recognise it is written in `I2C-RECOVERY-STATE.md`. The blocking `embedded-hal` `transaction` still emits
+one STOP per operation (the async path does not).
 
 ## Session 2026-11-22 — the async I2C works, three guards were lying, and two fixes are not proven
 
@@ -214,8 +250,10 @@ this one (and how rp-hal, nrf-hal, stm32f4xx-hal and esp-hal each do it differen
    it. `IADC.SINGLE` can only be written while the converter is **enabled**; writing
    it disabled faults and wedges the engine until a power cycle
    (`docs/04-reference/IADC-MIC-NOTES.md`).
-3. **The on-chip I2C0 master cannot complete a read after a write.** Both buses are
-   bit-banged (`docs/04-reference/I2C0-READ-DEFECT.md`).
+3. **The on-chip I2C0 master reads and writes** (since 2026-11-23; the fourteen "read defect" measurements were two
+   driver defects: NACK on the last byte, and flags cleared through the plain `IF` instead of `IF_CLR`). It reaches one
+   pin pair, PB2/PB3 for the IMU; the Expansion Base's PC4/PC5 bus is the bit-banged one
+   (`docs/04-reference/I2C0-READ-DEFECT.md`, `docs/04-reference/I2C-RECOVERY-STATE.md`).
 4. **`format_fixed` takes value×100.** Passing milligrams raw prints the reading
    divided by 100 — it looks exactly like a dead sensor.
 5. **The MVP is compiler-programmed**, not hand-programmable in practice: the

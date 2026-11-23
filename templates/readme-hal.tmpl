@@ -45,8 +45,8 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-one modules and 194 public functions. Ten examples. Three of them carry a date, and a date means a record was read
-back off the part — not that the code compiled.
+Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. Four of them carry a date, and a date means a
+record was read back off the part — not that the code compiled.
 
 **Watched on the board (2026-11-15)**
 
@@ -55,6 +55,12 @@ back off the part — not that the code compiled.
 | `hal_led_blink` | `PASS hal: pin primitive drives PA7, 1 Hz`, and the LED was watched blinking |
 | `hal_i2c_bitbang` | `PASS scan n=3 3c 51 76` — the panel, the RTC and the BME680 answered (measured with the Expansion Base fitted) |
 | `hal_rtt_hello` | heartbeats 0..8 read off RTT with `probe-rs` while the core ran |
+
+**Watched on the board (2026-11-23)**
+
+| example | what came back |
+|---|---|
+| `hal_i2c_recovery` | `PASS i2c-rec: antes=0x6a erro=1 depois=0x6a wr=1 rd6=1 nz=1 volta=0x40` — a refusal on an address where nothing is wired, the bus still answering after it, a plain `write`, and a six-byte IMU burst carrying real data |
 
 **Ran, and the record says it did not work**
 
@@ -72,9 +78,11 @@ through `Board::buzzer_on` / `Board::pwm_on` rather than named directly.)
 
 Two of those deserve naming rather than a row in a table:
 
-- `i2c` drives the hardware I2C0 peripheral, and that path has a **documented defect**: after `CMD.START` the state reads
-  `0xd7` (BUSY|MASTER|TRANSMITTER|NACKED) and `PSTART` never clears. Every working I2C path in this repository is
-  `bus::BitBangI2c`, which is a different module. See `docs/04-reference/I2C0-READ-DEFECT.md`.
+- `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
+  `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
+  last byte of a reception has to be read with NACK, and the flags are only cleared through the `IF_CLR` alias — and
+  both are in `docs/04-reference/I2C0-READ-DEFECT.md` and `docs/04-reference/I2C-RECOVERY-STATE.md`. `bus::BitBangI2c`
+  is a different bus, for the Expansion Base's PC4/PC5 pair; I2C0 reaches one pin pair at a time.
 - `clock` carries a bricking warning in its own source (`clock/clocks.rs`): an earlier implementation switched SYSCLK to
   HFXO before the HFXO was running, which stopped the CPU clock and locked the debug access port. No example touches it yet,
   on purpose. See `docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md`.

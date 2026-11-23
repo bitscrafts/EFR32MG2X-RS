@@ -39,8 +39,10 @@ because a register access crate that hides them sends the reader to a wrong data
   against other EFR32 families and does nothing here.
 - **`MODEH` exists only for PORTA and PORTC.** Port B and D have no high-mode register; touching one writes into the
   neighbouring register.
-- **I2C0 cannot read in the configuration the SVD suggests** — `STATE` reports `0xd7` and the transaction stalls. Use
-  I2C1, or start the controller in the order `docs/04-reference/I2C0-READ-DEFECT.md` describes.
+- **`I2C.IF` is only cleared through the `IF_CLR` alias** (the window at `+0x2000`), and `I2C0`'s non-secure view reads
+  zero for it. Writing 1 to the plain register clears nothing, and a flag left set -- a NACK, say -- changes what the
+  next transaction does before it touches the bus. Measured, with the recovery sequence, in
+  `docs/04-reference/I2C-RECOVERY-STATE.md`.
 - **The delay is 2.3x short** if you count cycles from `CMU`'s default clock. The clock is what is wrong, not the
   counter (`docs/04-reference/DELAY-CLOCK-DEFECT.md`).
 

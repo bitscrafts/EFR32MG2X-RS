@@ -243,7 +243,7 @@ See [LICENSE](../LICENSE) file for details.
 
 - [Expansion Base example status](03-development/EXPANSION-BOARD-STATUS-2026-11-11.md) — what is verified, what is not, and the ten hardware lessons
 - [Fall detection calibration](04-reference/FALL-DETECTION-CALIBRATION.md) - nine real drops, and why the impact threshold cannot separate a fall from a knock
-- [I2C0 read defect](04-reference/I2C0-READ-DEFECT.md) — fourteen measurements and the open thread
+- [I2C0 read defect](04-reference/I2C0-READ-DEFECT.md) — fourteen measurements, closed: the last byte needed a NACK and the flags needed `IF_CLR`
 
 ### Session records and catalogues
 
@@ -254,7 +254,7 @@ See [LICENSE](../LICENSE) file for details.
 - [IADC and microphone notes](04-reference/IADC-MIC-NOTES.md) - `SINGLE` is only writable while the converter is enabled
 - [MVP notes](04-reference/MVP-NOTES.md) - the accelerator, and why hand-programming it is not the supported path
 - [Fall detection calibration](04-reference/FALL-DETECTION-CALIBRATION.md) - nine real drops, and why the impact threshold cannot separate a fall from a knock
-- [I2C0 read defect](04-reference/I2C0-READ-DEFECT.md) - fourteen attempts, still open, workaround documented
+- [I2C after a NACK](04-reference/I2C-RECOVERY-STATE.md) - closed with a control in both directions, and the sequence `ABORT` + `STOP`, then `CLEARPC`, `CLEARTX`
 - [PAC clock and timer notes](04-reference/PAC-CLOCK-AND-TIMER-NOTES.md) - the register orders this die demands
 
 - [Session 2026-11-12](03-development/SESSION-2026-11-12.md) -- radio stacks compile and link, layer audit, nine book chapters

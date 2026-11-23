@@ -11,9 +11,13 @@
 //!   2. The same read at `0x55`, where nothing is wired. This must be reported as **Nack**, not as a timeout --
 //!      a device that is not there is a refusal, and a driver that calls it a timeout has lost the distinction.
 //!   3. `WHO_AM_I` again from `0x6A`. The question the review asks: after the refusal, is the bus still usable?
+//!   4. A real `write` -- `CTRL1_XL` (0x10) with 0x40 -- read back with `write_read` to prove it landed, then the
+//!      register restored to the value it had. `write` is the other blocking entry point and it was rerouted through
+//!      the transaction layer in the same change; without this step it would ship unmeasured.
 //!
-//! The record is `antes=<hex> erro=<n> depois=<hex>`, and it only passes when all three are right: the control
-//! answered, the refusal came back as Nack, and the bus came back.
+//! The record is `antes=<hex> erro=<n> depois=<hex> wr=<0|1> volta=<hex>`, and it only passes when all of them are
+//! right: the control answered, the refusal came back as Nack, the bus came back, and the round trip wrote and read
+//! back the same byte.
 
 #![no_std]
 #![no_main]
@@ -74,7 +78,39 @@ fn main() -> ! {
         Err(_) => 0,
     };
 
-    let mut line = [0u8; 64];
+    // 4. O outro ponto de entrada bloqueante -- `write` -- e uma leitura de varios bytes.
+    //
+    //    CTRL1_XL (0x10) e' de leitura/escrita no LSM6DS3TR-C: escrever 0x40 poe o acelerometro a 104 Hz. Com ele a
+    //    correr, OUTX_L_A (0x28) devolve 6 bytes de aceleracao, e em repouso o eixo Z marca cerca de 1 g -- portanto
+    //    "os seis bytes a zero" e' a assinatura de uma transferencia que nao aconteceu (o ponteiro volta a 0 num
+    //    STOP, e uma leitura sem ponteiro devolve o registo 0), e e' isso que este passo recusa.
+    //
+    //    Ler **seis** bytes e' tambem o que fecha `I2C0-READ-DEFECT.md` para mais do que um byte: o defeito era o
+    //    ultimo byte ser lido com ACK, o escravo continuar a conduzir e o mestre nunca fechar a recepcao.
+    //
+    //    O `read` simples (sem registo) continua sem oraculo neste dispositivo, e fica de fora por honestidade: a
+    //    sequencia que ele usa e' a segunda metade da transaccao 1, essa medida.
+    const CTRL1_XL: u8 = 0x10;
+    const OUTX_L_A: u8 = 0x28;
+    let mut ctrl = [0u8; 1];
+    let original = match i2c.write_read(IMU, CTRL1_XL, &mut ctrl) {
+        Ok(()) => ctrl[0],
+        Err(_) => 0,
+    };
+    let escrito = i2c.write(IMU, &[CTRL1_XL, 0x40]).is_ok();
+    // Uma amostra a 104 Hz leva 9.6 ms a aparecer; 20 ms chegam e sobram.
+    board.delay().delay_ms(20);
+    let mut acc = [0u8; 6];
+    let lidos = i2c.write_read(IMU, OUTX_L_A, &mut acc).is_ok();
+    let nao_zero = acc.iter().any(|b| *b != 0);
+    let mut lido = [0u8; 1];
+    let volta = match i2c.write_read(IMU, CTRL1_XL, &mut lido) {
+        Ok(()) => lido[0],
+        Err(_) => 0,
+    };
+    let _ = i2c.write(IMU, &[CTRL1_XL, original]);
+
+    let mut line = [0u8; 80];
     let mut n = 0usize;
     let mut h = [0u8; 4];
     let mut push = |bytes: &[u8], n: &mut usize| {
@@ -93,9 +129,16 @@ fn main() -> ! {
     push(b" depois=", &mut n);
     hex(&mut h, depois);
     push(&h, &mut n);
+    push(if escrito { b" wr=1" } else { b" wr=0" }, &mut n);
+    push(if lidos { b" rd6=1" } else { b" rd6=0" }, &mut n);
+    push(if nao_zero { b" nz=1" } else { b" nz=0" }, &mut n);
+    push(b" volta=", &mut n);
+    hex(&mut h, volta);
+    push(&h, &mut n);
     push(b"\n", &mut n);
 
-    if antes == 0x6A && erro == 1 && depois == 0x6A {
+    if antes == 0x6A && erro == 1 && depois == 0x6A && escrito && lidos && nao_zero && volta == 0x40
+    {
         mailbox::pass(&line[..n]);
     } else {
         mailbox::fail(&line[..n]);
