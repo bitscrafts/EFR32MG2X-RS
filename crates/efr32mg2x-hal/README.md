@@ -78,7 +78,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. Four of them carry a date, and a date means a
+Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. Five of them carry a date, and a date means a
 record was read back off the part — not that the code compiled.
 
 **Watched on the board (2026-11-15)**
@@ -94,6 +94,7 @@ record was read back off the part — not that the code compiled.
 | example | what came back |
 |---|---|
 | `hal_i2c_recovery` | `PASS i2c-rec: antes=0x6a erro=1 depois=0x6a wr=1 rd6=1 nz=1 volta=0x40` — a refusal on an address where nothing is wired, the bus still answering after it, a plain `write`, and a six-byte IMU burst carrying real data |
+| `hal_dma_stop` | `PASS dma-stop: st0=0 armed=1 stA=1 busyA=0 stS=0 ctl=1 stRe=0 stS2=0` — the channel is enabled while armed, disabled by `stop()`, and a blocking `transfer()` no longer leaves it armed |
 
 **Ran, and the record says it did not work**
 

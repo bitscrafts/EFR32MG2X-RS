@@ -3,9 +3,9 @@
 **State: green.** Branch `master`, pushed to `origin` (`bitscrafts/EFR32MG2X-RS`). The Expansion Base
 was found faulty on 2026-11-15 and is away for replacement (about a month); that does not remove
 anything already measured with it — those dates stand — and the examples that need the carrier say so
-until another one is on the bench. The board left running `hal_i2c_recovery`, its record `PASS`.
+until another one is on the bench. The board left running `hal_dma_stop`, its record `PASS`.
 
-## Session 2026-11-23 — one I2C refusal no longer costs the bus, and yesterday's diagnosis was wrong
+## Session 2026-11-23 — the I2C bus survives a refusal, the DMA stop is proven, and yesterday's diagnosis was wrong
 
 **Closed: the I2C bus survives a NACK.** The record, read back off the part:
 
@@ -40,6 +40,26 @@ counts (26 `pub mod`, 20 examples).
 STOP, with the pins taken from the peripheral; nothing in this repository produces that condition, and the criterion
 that would recognise it is written in `I2C-RECOVERY-STATE.md`. The blocking `embedded-hal` `transaction` still emits
 one STOP per operation (the async path does not).
+
+### The same session, second item: `dma::Channel::stop()` is proven, and the instrument had been reading the wrong bit
+
+**Closed: `stop()` disables the channel.** Record from the part:
+
+```
+dma-stop: st0=0 armed=1 stA=1 busyA=0 stS=0 ctl=1 stRe=0 stS2=0      status=PASS
+```
+
+The old instrument read `CHBUSY`, got `busy_armed=0` and could not answer — not a race but the wrong register:
+`CHBUSY` (RM 25.7.13) means "this channel is transferring", and an armed channel can sit waiting. `CHSTATUS`
+(RM 25.7.12, 0x02C) is the per-channel **enabled** state, and it is readable at any time. With it: enabled while the
+guard holds the buffer (`stA=1`), disabled after dropping the guard (`stS=0`), and a second `stop()` idempotent
+(`stS2=0`). Control in the other direction — `stop()` put back to `chen().bits(0)`, which the manual says has no
+effect — flips exactly those three: `stS=1 stRe=1 stS2=1`, FAIL.
+
+**A second defect the measurement found**: the blocking `transfer()` returned with the channel **still enabled**
+(`stRe=1` before the fix) — transfer complete, borrow over, descriptor still owned by the hardware and reachable by a
+later request. `transfer()` now calls `stop()` before `Ok`, and the record shows `stRe=0`. Full record, including why
+`CHBUSY` could not answer: `docs/04-reference/DMA-CHANNEL-STOP.md`.
 
 ## Session 2026-11-22 — the async I2C works, three guards were lying, and two fixes are not proven
 

@@ -221,6 +221,19 @@ pub fn channel_busy(channel: u8) -> bool {
     ldma.chbusy().read().bits() & (1 << channel) != 0
 }
 
+/// True while the controller still has `channel` enabled, without needing the handle.
+///
+/// This is the state `stop()` must clear, and it is **not** `CHBUSY`. `CHBUSY` (RM 25.7.13) reads 1 only while the
+/// channel is doing a transfer, so a fast memory-to-memory block finishes between two statements and the bit reads
+/// idle whether or not the channel was disabled -- which is exactly why the first version of this instrument could
+/// not tell a working `stop()` from the one that did nothing. `CHSTATUS` (RM 25.7.12) is the per-channel "enabled"
+/// state: 1 from the moment `CHEN` is set until `CHDIS` takes effect, and readable without the handle.
+pub fn channel_enabled(channel: u8) -> bool {
+    // SAFETY: CHSTATUS is a read-only status register; the bit asked for is the caller's own channel.
+    let ldma = unsafe { &(*pac::LdmaS::ptr()) };
+    ldma.chstatus().read().chstatus().bits() & (1 << channel) != 0
+}
+
 /// DMA Channel (Type-Safe)
 ///
 /// Represents a single DMA channel with compile-time channel number validation.
@@ -474,6 +487,17 @@ impl<const N: u8> Channel<N> {
         ldma.chbusy().read().bits() & (1 << N) != 0
     }
 
+    /// True while the controller still has this channel enabled.
+    ///
+    /// The question a caller of [`stop`](Self::stop) actually wants answered, and the one `CHBUSY` cannot answer: a
+    /// transfer that is not running right now is still armed, still owns its descriptor, and will resume the moment
+    /// anything requests it. `CHSTATUS` is the enabled state (RM 25.7.12), one bit per channel.
+    pub fn is_enabled(&self) -> bool {
+        // SAFETY: CHSTATUS is a read-only status register; the bit for this channel is its own.
+        let ldma = unsafe { &(*pac::LdmaS::ptr()) };
+        ldma.chstatus().read().chstatus().bits() & (1 << N) != 0
+    }
+
     /// Stop continuous DMA transfer
     ///
     /// Disables the DMA channel, stopping any ongoing transfers.
@@ -649,6 +673,12 @@ impl<const N: u8> Channel<N> {
                 return Err(DmaError::Timeout);
             }
         }
+
+        // Done, and the channel is still enabled with a spent descriptor. Disable it: an armed channel still owns
+        // the descriptor, and a later request -- a stray `trigger`, a peripheral event routed to this channel --
+        // can run it again over a buffer the caller believes it owns. Measured with `hal_dma_stop`: a blocking
+        // transfer returned with this channel's `CHSTATUS` bit still set, i.e. armed after the borrow ended.
+        self.stop();
 
         Ok(())
     }
