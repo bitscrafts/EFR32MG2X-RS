@@ -127,6 +127,21 @@ const UUID_BANDS: [u8; 16] = [
 const UUID_STATUS: [u8; 16] = [
     0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x40, 0x00, 0x00, 0x03, 0xe0, 0xd0, 0xe1,
 ];
+/// `e1d0e004-…` — o resultado do modelo, calculado AQUI e nao no telemovel.
+///
+/// 21 bytes: nivel em dB SPL, previsao do nivel seguinte, os dois limites do intervalo de 90 %, a
+/// log-verossimilhanca (tudo `f32` IEEE-754 little-endian) e o estado acustico (`u8`).
+///
+/// Porque a caracteristica nova e nao uma alteracao das tres antigas: as tres sao o que o CSV grava
+/// (`python/captura_notify.py`) e o que uma app antiga le; retira-las quebrava a captura. A app nova
+/// prefere esta e diz que o modelo corre no aparelho; as tres continuam a sair para quem gravar.
+const UUID_MODELO: [u8; 16] = [
+    0xfb, 0x34, 0x9b, 0x5f, 0x80, 0x00, 0x00, 0x80, 0x00, 0x40, 0x00, 0x00, 0x04, 0xe0, 0xd0, 0xe1,
+];
+/// Bytes da caracteristica do modelo: 5 x f32 + 1 x u8.
+const MODELO_LEN: usize = 21;
+/// O mesmo comprimento no tipo que a tabela GATT pede (`u16`).
+const MODELO_LEN_U16: u16 = MODELO_LEN as u16;
 
 /// Eight Goertzel filters advanced one sample at a time — the arithmetic that fits inside the wait.
 struct Bands {
@@ -421,14 +436,14 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool
 }
 
 struct Text {
-    buf: [u8; 256],
+    buf: [u8; 272],
     len: usize,
 }
 
 impl Text {
     fn new() -> Self {
         Self {
-            buf: [0; 256],
+            buf: [0; 272],
             len: 0,
         }
     }
@@ -556,6 +571,14 @@ fn main() -> ! {
             max_len: 5,
             security: sec,
         },
+        // O resultado do modelo. Mesma exigencia de seguranca que as outras: carrega o nivel de
+        // exposicao de uma pessoa, e um cliente nao emparelhado nao o pode ler.
+        Characteristic {
+            uuid: UUID_MODELO,
+            properties: PROP_READ | PROP_NOTIFY,
+            max_len: MODELO_LEN_U16,
+            security: sec,
+        },
     ];
     let service = match gatt_db::add_service(UUID_SERVICE, &characteristics) {
         Ok(s) => s,
@@ -567,12 +590,13 @@ fn main() -> ! {
         }
     };
     // `characteristic()` returns an Option: a service can be added with fewer characteristics than asked for.
-    let (rms_handle, bands_handle, status_handle) = match (
+    let (rms_handle, bands_handle, status_handle, modelo_handle) = match (
         service.characteristic(0),
         service.characteristic(1),
         service.characteristic(2),
+        service.characteristic(3),
     ) {
-        (Some(r), Some(b), Some(s)) => (r, b, s),
+        (Some(r), Some(b), Some(s), Some(m)) => (r, b, s, m),
         _ => {
             mailbox::fail(b"ble: the service came back short");
             loop {
@@ -686,6 +710,11 @@ fn main() -> ! {
     let mut notifications = 0u32;
     let mut published = 0u32;
     let mut last_rms = 0u16;
+    let mut last_nivel_db: f32 = 0.0;
+    // Quantos ciclos custa o modelo por segundo. Um "corre no aparelho" sem numero e' uma
+    // afirmacao; com ciclos e' uma medida -- e e' o numero que diz se cabe no orcamento.
+    let mut modelo_ciclos: u32 = 0;
+    let mut modelo_ciclos_max: u32 = 0;
     let mut last_band0 = 0u32;
     let mut link = Link::new();
     link.handles = [
@@ -733,6 +762,22 @@ fn main() -> ! {
             t.u(windows_total);
             t.s(b" published=");
             t.u(published);
+            // O nivel em decimos de dB, calculado pelo modelo NO APARELHO (840 = 84,0 dB SPL).
+            //
+            // Este e' o resumo que corre: o do fim de `main` nunca e' alcancado, porque o laco nao
+            // termina (um produto nao deixa de medir ao fim de um minuto). Medido 2026-11-24: o campo
+            // foi escrito primeiro no resumo final e o registo nao o tinha -- o numero que prova que o
+            // modelo correu ficou de fora sem que nada falhasse. Zero aqui significa que nao correu.
+            t.s(b" mcyc=");
+            t.u(modelo_ciclos);
+            t.s(b" mcycmax=");
+            t.u(modelo_ciclos_max);
+            t.s(b" nivel_dm=");
+            t.u(if last_nivel_db > 0.0 {
+                (last_nivel_db * 10.0) as u32
+            } else {
+                0
+            });
             t.s(b" notifies=");
             t.u(notifications);
             t.s(b" cycles=");
@@ -931,6 +976,40 @@ fn main() -> ! {
         let _ = ble.write_attribute(status_handle, &status_value);
         let _ = ble.notify(status_handle, &status_value);
 
+        // O modelo, aqui e nao no telemovel.
+        //
+        // Entra o que a placa mediu -- as 8 potencias acumuladas no segundo e o rms do segundo -- e
+        // sai o nivel em dB SPL, a previsao do nivel seguinte com o intervalo de 90 %, o estado da
+        // mistura e a log-verossimilhanca. Os coeficientes vem de `const` em
+        // `dosimeter-mg24/src/modelo.rs`, escritos pelo treino em Python: o dispositivo nao treina,
+        // so aplica.
+        //
+        // As potencias vao como FLOAT das somas, sem dividir pelo numero de janelas, porque foi
+        // assim que o GMM as viu no treino (`dados/bandas.csv` guarda a soma do segundo). Dividir
+        // aqui mudava a escala em log(63) = 18 dB e o modelo deixava de reconhecer o que aprendeu.
+        let mut potencias = [0.0f32; 8];
+        for b in 0..8 {
+            potencias[b] = bands_acc[b] as f32;
+        }
+        let modelo_inicio = dwt::cycles();
+        let avaliacao = dosimeter_mg24::executa::avalia(&potencias, rms_of_second);
+        modelo_ciclos = dwt::since(modelo_inicio);
+        if modelo_ciclos > modelo_ciclos_max {
+            modelo_ciclos_max = modelo_ciclos;
+        }
+        let mut modelo_value = [0u8; MODELO_LEN];
+        modelo_value[0..4].copy_from_slice(&avaliacao.nivel_db.to_le_bytes());
+        modelo_value[4..8].copy_from_slice(&avaliacao.previsao_db.to_le_bytes());
+        modelo_value[8..12].copy_from_slice(&avaliacao.intervalo.0.to_le_bytes());
+        modelo_value[12..16].copy_from_slice(&avaliacao.intervalo.1.to_le_bytes());
+        modelo_value[16..20].copy_from_slice(&avaliacao.loglik.to_le_bytes());
+        modelo_value[20] = avaliacao.estado;
+        let _ = ble.write_attribute(modelo_handle, &modelo_value);
+        if ble.notify(modelo_handle, &modelo_value).is_ok() {
+            notifications += 1;
+        }
+        last_nivel_db = avaliacao.nivel_db;
+
         last_rms = rms_of_second;
         last_band0 = bands_acc[0];
 
@@ -984,6 +1063,16 @@ fn main() -> ! {
     t.u(windows_total);
     t.s(b" published=");
     t.u(published);
+    // O nivel em decimos de dB, calculado pelo modelo NO APARELHO (840 = 84,0 dB SPL): o numero que
+    // prova na bancada que o modelo correu, sem telemovel. Vai no inicio do registo de proposito --
+    // o registo tem 256 bytes e, no fim, este campo era o primeiro a ser cortado (medido 2026-11-24:
+    // a corrida passou com o campo fora do registo, o que e' um numero provado a metade).
+    t.s(b" nivel_dm=");
+    t.u(if last_nivel_db > 0.0 {
+        (last_nivel_db * 10.0) as u32
+    } else {
+        0
+    });
     t.s(b" notifies=");
     t.u(notifications);
     t.s(b" cycles=");
@@ -999,10 +1088,14 @@ fn main() -> ! {
     // What can be proven without a phone: the capture ran for the full time, the service was populated, and
     // the microphone carried real values. Whether a subscriber received them is the phone's test, and the
     // record reports that count separately rather than pretending zero means failure.
+    // O modelo tem de ter produzido um nivel: `last_nivel_db > 0` e o que separa "a placa publicou
+    // contagens" de "a placa calculou o modelo". Sem esta condicao a corrida passava com o modelo a
+    // devolver zero, que e precisamente a regressao que se quer apanhar.
     let ok = windows_total >= (WINDOWS_PER_SECOND as u32 * SECONDS).saturating_sub(SECONDS)
         && published > 0
         && timer_running
-        && last_rms > 0;
+        && last_rms > 0
+        && last_nivel_db > 0.0;
     if ok {
         mailbox::pass(t.bytes());
     } else {
