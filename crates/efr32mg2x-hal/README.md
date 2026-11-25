@@ -80,7 +80,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-27 public modules (`pub mod` in `src/lib.rs`) and 24 examples. A date next to an example means a record was
+27 public modules (`pub mod` in `src/lib.rs`) and 25 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -122,9 +122,10 @@ read back off the part — not that the code compiled; the table below is counte
 | `hal_hfxo` | `PASS hfxo: sel=1 before=19M after=39M tick=32974 err=206` — the crystal selected, the core moved from 19 to 39 MHz, and a 1000 ms delay lasted 1006 ms by the SYSRTC | a delay still calibrated for 19 MHz would have taken ~2050 ms, i.e. ~67 000 ticks instead of 32 768: the window is narrow enough to tell the two apart |
 | `hal_adc_read` | `PASS adc: gnd=0 ch0=0 ref=VBGR` — the converter returns zero codes for its own ground channel | the signal path is `hal_mic_level` (`rms=7 pk=18 n=128`), not this example: a converter that only ever returns zero cannot prove itself |
 | `hal_spi_loopback` | `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` — eight bytes out on MOSI, the same eight back on MISO, with a jumper between D10 and D9 | **measured, not argued**: routing MISO to an unjumped pin gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` — a floating line reads `0xff`, which matches one byte of the pattern, so the "all eight" rule is what refuses it |
-| `hal_usart_link` | `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` — `EFR32!` out and the same six bytes back, with a jumper between D6 and D7. The receiver's refusal path has its own pair of records: `usart: echo n=0 rxerr=524 why=ferr` with nothing on the pad, and `PASS usart: selftest n=6 ok=6 bad=0 rxerr=0 pre=02 cleared=02 post=03` with the peripheral's internal loopback | two defects measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is one byte at a time; and a floating RX line reports `0x00` often enough that a byte-counting echo test passes on a board with nothing attached — `echo n=271` was that test |
+| `hal_usart_link` | `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` — `EFR32!` out and the same six bytes back, with a jumper between D6 and D7; and with the peripheral's own loopback, `usart: selftest n=6 ok=6 bad=0 rxerr=0` | two defects measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is one byte at a time; and a floating RX line reports `0x00` often enough that a byte-counting echo test passes on a board with nothing attached — `echo n=271` was that test, and the refusal that replaced it is in `docs/04-reference/USART-RX-REFUSAL-2026-11-25.md` |
 | `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
 | `hal_gpcrc` | `PASS gpcrc: poly=crc32 raw=340bc6d9 zlib=cbf43926 want=cbf43926 diff=1 seed=1` — the accelerator's result complemented is the published `zlib` check value for `123456789` | a matching number alone would also come from a driver returning a constant, so the record carries `diff=1` (a different message gives a different CRC) and `seed=1` (a different seed does too, which is what proves `CMD.INIT` loads it). The reference-manual description of this engine as MSB-first is wrong on this part, and the measurement is what says so |
+| `hal_usart_rx_recovery` | `PASS usartrec: overran=1 err_pre=0 drained=3 err_drain=0 ok=6 bad=0` — an overrun latched, three bytes left in the FIFO, and the six bytes sent afterwards all accepted and identical | the part's `IF` flags latch and **nothing clears them**: six mechanisms measured, all leaving `RXOF` set. So the per-byte verdict had to come from `RXDATAX`, and this record is the one that shows the receiver surviving its first glitch instead of refusing for ever |
 | `hal_mvp_bench` | `PASS mvp: n=64 reps=256 tick_mvp=123 tick_cpu=288 mvp_us_x100=1466 cpu_us_x100=3433 ratio_x100=234`, **no probe attached**, repeated within one tick over four boots | the clock is the SYSRTC, not the DWT: a counter that only runs under a debugger cannot support a claim about a product. The batch (256 additions) is what makes a 30.5 µs tick enough resolution |
 
 **What each module is for**
@@ -260,7 +261,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-24 examples, **16 of them watched on the part**. A `--` in the last column means nobody
+25 examples, **16 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -289,6 +290,7 @@ mean it works.
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |
 | `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | 2026-11-24 |
 | `hal_usart_link.rs` | USART on the header pads: a jumper D6–D7 for the on-board proof, or an adapter for an outside witness. | 2026-11-25 |
+| `hal_usart_rx_recovery.rs` | Does the receiver recover after an overrun? It is the property a product depends on. | -- |
 | `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | 2026-11-24 |
 
 

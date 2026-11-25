@@ -200,19 +200,11 @@ fn echo(usart: &mut Usart0) -> ! {
     let mut eco: u32 = 0;
     let mut reported = 0u32;
 
-    // The positive control of the refusal path. One byte at a time, and only after the transmitter says it has finished,
-    // so the receiver FIFO cannot overrun: what comes back is a valid frame by construction, and `ok` is the count of
-    // bytes the receiver accepted and agreed with. Measured 2026-11-25: the unpaced version of this (write the banner,
-    // then read) overran the FIFO and reported `n=0 rxerr=3 why=rxof` -- which is the *other* half of the evidence, and
-    // the reason this test paces itself.
+    // The positive control of the refusal path: one byte at a time, each read back before the next, so the receiver FIFO
+    // cannot overrun. What comes back is a valid frame by construction. The recovery-after-overrun measurement lives in
+    // `hal_usart_rx_recovery`, where the overrun is made deliberately; this one only has to show that a clean pair of bytes
+    // is accepted on a part that has read nothing else.
     if INTERNAL_LOOPBACK {
-        // What the receiver had latched before this test: the banner was written with the loopback already on, so its 34
-        // bytes went into a two-deep FIFO and overran it. Clearing here is the point of the exercise -- the record prints
-        // the flags before and after the clear, because whether the write-1 clear works on this part is a fact that has
-        // to be measured, not assumed.
-        let pre = usart.clear_rx_flags();
-        let pre_after_clear = usart.rx_flags();
-        // Drain whatever is sitting in the FIFO, refusing nothing: these bytes are the banner talking to itself.
         let mut drained = 0u32;
         while usart.read_byte().is_some() && drained < 64 {
             drained += 1;
@@ -228,7 +220,6 @@ fn echo(usart: &mut Usart0) -> ! {
                 _ => bad += 1,
             }
         }
-        let post = usart.rx_flags();
         let mut l = Record::<104>::new();
         l.s(b"usart: selftest n=");
         l.u(PATTERN.len() as u32);
@@ -238,12 +229,6 @@ fn echo(usart: &mut Usart0) -> ! {
         l.u(bad);
         l.s(b" rxerr=");
         l.u(usart.rx_errors());
-        l.s(b" pre=");
-        l.h((pre & 0xFF) as u8);
-        l.s(b" cleared=");
-        l.h((pre_after_clear & 0xFF) as u8);
-        l.s(b" post=");
-        l.h((post & 0xFF) as u8);
         if ok == PATTERN.len() as u32 && bad == 0 {
             mailbox::pass(l.bytes());
         } else {

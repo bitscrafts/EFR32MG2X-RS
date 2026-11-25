@@ -49,7 +49,7 @@ pub use crate::cores::usart::RxProblem;
 pub use types::{Config, DataBits, Error, Parity, StopBits};
 
 use crate::clock::FrozenClocks;
-use crate::cores::usart::{rx_problem, IF_FERR, IF_PERR, IF_RXOF};
+use crate::cores::usart::rx_problem;
 use efr32mg2x_pac as pac;
 
 /// USART0 peripheral
@@ -226,13 +226,22 @@ impl Usart0 {
             return None;
         }
 
-        // Read first: this is what advances the receiver.
-        let byte = self.usart.rxdata().read().rxdata().bits();
+        // `RXDATAX` rather than `RXDATA`: it pops the byte *and* carries that byte's own parity and framing error bits
+        // (bit 14 and bit 15). Reading `RXDATA` throws those away, and reading the `IF` flags instead was this driver's
+        // first mistake -- they are interrupt-level latches, they do not clear on this part by any of the six mechanisms
+        // measured on 2026-11-25, and using them made every byte after one glitch look broken.
+        let word = self.usart.rxdatax().read();
+        let byte = word.rxdata().bits() as u8;
 
-        // This MCU has no per-byte error bit in `STATUS`; the only evidence that the frame was broken is in `IF`. That is
-        // the whole reason this check exists: with nothing driving the RX pad, `hal_usart_link` once reported
-        // `echo n=271` -- 271 bytes nobody sent -- because a floating line produces start bits out of noise.
-        match rx_problem(self.rx_flags()) {
+        let problem = if word.ferr().bit_is_set() {
+            Some(RxProblem::Framing)
+        } else if word.perr().bit_is_set() {
+            Some(RxProblem::Parity)
+        } else {
+            None
+        };
+
+        match problem {
             Some(problem) => {
                 self.rx_errors = self.rx_errors.saturating_add(1);
                 self.last_rx_problem = Some(problem);
@@ -245,10 +254,21 @@ impl Usart0 {
     /// Connect the receiver to this peripheral's own transmitter, inside the part.
     ///
     /// The cheat that makes a link provable with one board: the receiver sees the transmitter past the pads, so a byte
-    /// written comes back as a valid frame. A **self-test**, not a substitute for a second machine -- it proves the
+    /// written comes back with a valid frame. A **self-test**, not a substitute for a second machine -- it proves the
     /// shifter, the frame format and the read path, and proves nothing about the pad or the level on it.
     pub fn set_internal_loopback(&mut self, on: bool) {
         self.usart.ctrl().modify(|_, w| w.loopbk().bit(on));
+    }
+
+    /// Whether the receiver has **ever** overrun since it was configured.
+    ///
+    /// `IF.RXOF` is a latch, not a per-byte condition: measured 2026-11-25, it survives draining the FIFO, a write-1 clear
+    /// through both the secure and non-secure windows, a write-zero, an `EN` cycle and `CMD.CLEARRX`. So it is reported as
+    /// what it is -- "an overrun happened" -- and never as a verdict about the byte in hand; the per-byte verdict lives in
+    /// `RXDATAX`, which is where [`read_byte`](Self::read_byte) reads it.
+    #[must_use]
+    pub fn overran(&self) -> bool {
+        rx_problem(self.rx_flags()) == Some(RxProblem::Overrun)
     }
 
     /// The receiver's error flags, straight out of `IF`.
@@ -260,29 +280,14 @@ impl Usart0 {
         self.usart.if_().read().bits()
     }
 
-    /// Clear whichever receiver error flags are set, and return what they were.
+    /// Flush the receiver with `CMD.CLEARRX`, which the manual gives as the way to clear its state.
     ///
-    /// The write is a one to each set bit, which is what the reference manual gives as the way to clear `IF`. Measured on
-    /// the part 2026-11-25 through the secure instance this board hands out: **it does not clear them** (`pre=1f
-    /// cleared=1f post=1f`, from `hal_usart_link`'s selftest record). The method stays because it is the documented
-    /// sequence and the next thing to try is the non-secure alias, not because it works today.
-    pub fn clear_rx_flags(&mut self) -> u32 {
-        let flags = self.rx_flags();
-        if flags & (IF_RXOF | IF_PERR | IF_FERR) != 0 {
-            self.usart.if_().write(|w| {
-                if flags & IF_RXOF != 0 {
-                    w.rxof().set_bit();
-                }
-                if flags & IF_PERR != 0 {
-                    w.perr().set_bit();
-                }
-                if flags & IF_FERR != 0 {
-                    w.ferr().set_bit();
-                }
-                w
-            });
-        }
-        flags
+    /// This is the sequence to reach for when the error flags latch: `IF`'s write-1 clear does not clear them on this part,
+    /// and neither does an `EN` cycle (both measured 2026-11-25 by `hal_usart_rx_flags`). `CMD.CLEARRX` is a different
+    /// mechanism -- it resets the receiver's state machine rather than a flag -- and any byte still queued is lost, which a
+    /// caller has to accept.
+    pub fn flush_receiver(&mut self) {
+        self.usart.cmd().write(|w| w.clearrx().set_bit());
     }
 
     /// How many received bytes were refused because their frame was broken.
