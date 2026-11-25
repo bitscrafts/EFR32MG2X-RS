@@ -80,7 +80,7 @@ This is the list that matters most for honesty, because a reader sees "SPI suppo
 | `eusart0` | **I2S** (`I2SCTRL`) | absent. The audio mode of the same peripheral |
 | `iadc0` | differential input | deliberately absent, and refused rather than misread: `cores::adc::parse` returns an error for a differential word instead of reading it as single-ended |
 | `iadc0` | scan / multiple channels per trigger | absent; one conversion at a time |
-| `timer0`–`timer4` | input capture | absent; compare and PWM are there |
+| `timer0`–`timer4` | input capture | absent as a driver; the decision layer is host-tested (`cores::timer::CaptureSlot` and the wrapping interval arithmetic). Compare and PWM are driven and proven |
 | `eusart0` | SPI with a device on the pads | the loopback proof has a jumper on D9–D10; a real device has never spoken on that bus |
 
 ## 4. Not this crate

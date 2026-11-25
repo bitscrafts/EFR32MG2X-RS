@@ -117,6 +117,9 @@ pub fn may_configure(enabled: bool) -> Result<(), TimerError> {
     }
 }
 
+#[path = "../../../crates/efr32mg2x-hal/src/cores/timer.rs"]
+pub mod capture;
+
 #[cfg(test)]
 mod tests {
     extern crate std;

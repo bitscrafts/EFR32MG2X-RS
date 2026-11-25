@@ -19,4 +19,5 @@ pub mod gpcrc;
 pub mod i2c;
 pub mod slots;
 pub mod sysrtc;
+pub mod timer;
 pub mod usart;
