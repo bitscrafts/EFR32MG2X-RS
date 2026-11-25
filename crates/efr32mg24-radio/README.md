@@ -33,6 +33,36 @@ loop {
 | Clock and delay the stack asks for at boot | `efr32mg2x-hal`, passed in by the caller |
 | Which pin the antenna switch is on, whether the radio is powered | a BSP — **not here** |
 
+## Coverage: what works, what is staged, what is not here
+
+The same list the HAL publishes for its peripherals, for the radio. A feature flag that exists is not a feature that
+works, so each row says which of the three it is.
+
+| Area | State |
+|---|---|
+| BLE advertising — a name, or a framed manufacturer payload inside the 31-byte budget | **works**: a phone sees it (`nRF Connect`), and the mailbox reports what was sent |
+| BLE scanning — address, RSSI, payload length of whoever is nearby | **works**: the strongest advertiser is reported; a blink per packet |
+| BLE connection, subscription and notifications in order | **staged**: `--features gatt` fails at link with a list of missing `psa_*` symbols. Silicon Labs' PSA crypto blobs are not vendored |
+| Bonding / re-pairing (`external-bonding`) | **works at the bookkeeping level**: bonds stored, cleared, stale ones dropped, with counters. The cryptographic half of pairing is the same PSA path that is staged above |
+| BLE 5.3 features beyond advertising and scanning (extended advertising, periodic advertising, LE coded PHY, 2M PHY, ISO) | **not implemented**: the stack exposes them, this crate does not |
+| RAIL — proprietary frames, and 802.15.4 with it | **not implemented, and refuses to build**: `--features rail` is a `compile_error!` that names the missing emlib and radio configuration. A silent half-layer here would be worse than the refusal |
+| Thread / Zigbee / Matter | **out of scope**: each is a stack above RAIL, not a radio driver |
+| Antenna switch, RF front-end power | **not here by design**: a BSP owns the pins and the power gate |
+| DFU / OTA firmware update | **another crate**: `efr32mg24-bootloader` |
+
+### The vendor pieces that are missing, named
+
+The Bluetooth stack above RAIL needs four Silicon Labs components that are not vendored, and each one is the reason a
+feature above is staged rather than written:
+
+- **nvm3** — the stack's key-value store; bonding lives in it;
+- **sleeptimer** — the stack's timer service, which is what lets it sleep between events;
+- **the AES radio helper** — the link layer's encryption entry point;
+- **PSA crypto** — the elliptic-curve and AES blobs behind pairing; the `gatt` example links against it and nothing
+  provides it yet.
+
+`docs/04-reference/RADIO-NOTES.md` is where the state of each is recorded, with what was measured.
+
 ## Examples
 
 | Example | What it proves | How to check it |

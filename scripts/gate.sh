@@ -406,6 +406,31 @@ else
   fail "a BSP example names the layer below: $(echo "$offenders" | tr '\n' ' ')"
 fi
 
+# 7. A crate that declares the PAC must use it.
+#
+# Measured 2026-11-25: both BSP crates listed `efr32mg2x-pac` as a dependency and neither contained a single `pac::`. They
+# were going through the HAL correctly -- and the unused dependency was a door left open, because the next person who
+# cannot find a HAL method has the PAC one `use` away and no signal that they crossed a layer. A dependency nobody uses
+# is not neutral: it is the shortest path to the wrong one.
+#
+# Crates that legitimately sit below the HAL are exempt by name, not by pattern.
+pac_unused=""
+for dir in crates/*/; do
+  [ -f "${dir}Cargo.toml" ] || continue
+  name=$(basename "$dir")
+  grep -q 'efr32mg2x-pac' "${dir}Cargo.toml" || continue
+  case "$name" in
+    efr32mg2x-pac|efr32mg24-bootloader|bootloader-test-app|embassy-efr32|cmsis-stubs) continue ;;
+  esac
+  uses=$(grep -rc 'pac::' "$dir/src" 2>/dev/null | awk -F: '{s+=$2} END {print s+0}')
+  [ "${uses:-0}" -eq 0 ] && pac_unused="$pac_unused $name"
+done
+if [ -z "$pac_unused" ]; then
+  pass "every crate that declares the PAC uses it"
+else
+  fail "declares the PAC and never uses it:$pac_unused"
+fi
+
 echo "=== host tests: domain crates ==="
 # Every crate under libraries/ must build and test on the host, and must not drag in
 # anything from the hardware stack. That second half is the rule that keeps them testable:

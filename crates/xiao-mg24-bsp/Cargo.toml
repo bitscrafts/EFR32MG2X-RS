@@ -16,7 +16,6 @@ name = "xiao_mg24_bsp"
 [dependencies]
 # HAL dependencies
 efr32mg2x-hal = { package = "efr32mg2x-hal", path = "../efr32mg2x-hal", features = ["rt"] }
-efr32mg2x-pac = { path = "../efr32mg2x-pac" }
 
 # Cortex-M dependencies
 cortex-m = { workspace = true }

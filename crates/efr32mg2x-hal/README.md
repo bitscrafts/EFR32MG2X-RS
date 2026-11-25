@@ -137,6 +137,57 @@ Three of those deserve naming rather than a row in a table:
   HFXO before the HFXO was running, which stopped the CPU clock and locked the debug access port. No example touches it yet,
   on purpose. See [`docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md).
 
+## Coverage: what this crate drives, and what it does not
+
+A reader sees "SPI supported" and assumes the mode they need. This section says which mode, which peripheral and which
+part of the device is here, and — as importantly — what is not. The full inventory, generated from the PAC's own list of
+peripheral families and re-checked family by family, is
+[`docs/04-reference/COVERAGE-BOUNDARY-2026-11-25.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/COVERAGE-BOUNDARY-2026-11-25.md).
+
+### Driven, and proven on the part
+
+| Peripheral | What is here | Proven by |
+|---|---|---|
+| `GPIO` | output, input, interrupt, peripheral routing | `hal_led_blink` |
+| `CMU`, `EMU`, `HFXO`, `LFXO`, `LFRCO` | clock tree, energy modes, oscillator start | `hal_hfxo`, `hal_emu_voltage`, `hal_em2_sleep` |
+| `SYSRTC0` | 32.768 kHz counter, compare, 64-bit extension | `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_timer_ticks` |
+| `TIMER0` | count, compare, PWM | `hal_timer_compare`, `hal_timer0_pwm` |
+| `USART0` | asynchronous serial, echo, a receiver that refuses a broken frame | `hal_usart_link` |
+| `EUSART0` | SPI **master**, 8-bit, blocking | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it) |
+| `I2C0`, `I2C1` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
+| `IADC0` | single-ended conversion, microphone path | `hal_adc_read`, `hal_mic_level` |
+| `LDMA` | channel ownership, transfers, `stop()` | `hal_dma_stop` |
+| `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
+| `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
+
+### Compiled, not measured
+
+`TIMER1`–`TIMER4` and `EUSART1` are driven by the same code as `TIMER0` and `USART0` — one instance each, no example
+routes them. They build; nobody has watched them.
+
+### Absent: peripheral families this crate does not touch
+
+`LETIMER0` (low-energy timer) · `PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
+· `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `GPCRC`
+(CRC accelerator) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
+`BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
+the flash wait states).
+
+Clock sources (`HFRCO0`, `HFRCOEM23`, `FSRCO`, `ULFRCO`, `DPLL0`) are owned by `clock` through `CMU` and correctly have
+no driver of their own. The radio is a different crate: [`efr32mg24-radio`](https://crates.io/crates/efr32mg24-radio).
+
+### Absent: modes of the peripherals that are here
+
+| Peripheral | Missing mode |
+|---|---|
+| `EUSART0`, `USART0` | **SPI slave** — the driver is master only: it owns the clock and the chip select |
+| `I2C0`, `I2C1` | **I2C slave** (address match, clock stretching as a target) |
+| `USART0`, `EUSART1` | 9-bit / multiprocessor address mode; IrDA; ISO7816 |
+| `EUSART0` | **I2S** — the audio mode of the same peripheral |
+| `IADC0` | differential input — refused with an error rather than read as single-ended; and scan (several channels per trigger) |
+| `TIMER0`–`TIMER4` | input **capture** (compare and PWM are here) |
+| `EUSART0` | a real device on the pads — the loopback proof uses a jumper, never a second chip |
+
 ## Quick Start
 
 Add to your `Cargo.toml`:

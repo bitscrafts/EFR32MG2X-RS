@@ -19,7 +19,6 @@ name = "xiao_expansion_base_bsp"
 
 [dependencies]
 efr32mg2x-hal = { package = "efr32mg2x-hal", path = "../efr32mg2x-hal", features = ["rt"] }
-efr32mg2x-pac = { path = "../efr32mg2x-pac" }
 xiao-mg24-bsp = { package = "efr32mg2x-xiao-bsp", path = "../xiao-mg24-bsp" }
 
 cortex-m = { workspace = true }
