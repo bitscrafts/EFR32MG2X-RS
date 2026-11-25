@@ -56,6 +56,13 @@ use defmt_rtt as _;
 /// tell them apart at run time ends up talking to itself.
 const ROLE: Role = Role::Loopback;
 
+/// Whether the receiver is connected to this peripheral's own transmitter inside the part.
+///
+/// Used for the positive control of the refusal path: with this off and nothing on the RX pad, every byte is a framing
+/// error (); with it on, the same instrument accepts every byte (). Both were measured
+/// on 2026-11-25, and the two records are the reason the refusal can be trusted.
+const INTERNAL_LOOPBACK: bool = false;
+
 /// The pads USART0 is routed to: the board's header serial, D6 (TX) and D7 (RX).
 ///
 /// Tried and rejected, 2026-11-25: routing the same USART0 to `PA8`/`PA9` — the pads Seeed's board support uses for its
@@ -126,14 +133,20 @@ fn main() -> ! {
         let t0 = rtc.now();
         let mut chegou = false;
         while rtc.now().wrapping_sub(t0) < WINDOW_TICKS {
-            if let Some(byte) = usart.read_byte() {
-                volta[recebidos] = byte;
-                if byte == *esperado {
-                    iguais += 1;
+            match usart.read_byte() {
+                Some(Ok(byte)) => {
+                    volta[recebidos] = byte;
+                    if byte == *esperado {
+                        iguais += 1;
+                    }
+                    recebidos += 1;
+                    chegou = true;
+                    break;
                 }
-                recebidos += 1;
-                chegou = true;
-                break;
+                // A broken frame is bytes on the wire that are not data: it is consumed (the receiver has to advance) and
+                // not counted as something that came back.
+                Some(Err(_)) => break,
+                None => {}
             }
         }
         // A byte that never came back ends the test: waiting out the remaining windows for a sequence that is already
@@ -169,23 +182,113 @@ fn main() -> ! {
 }
 
 /// Answer whatever arrives, so a second machine can prove both directions.
+///
+/// The record carries the refusals as well as the bytes, because the two together are the evidence: `n=271` with nothing
+/// wired was this instrument reporting bytes that were never sent, and `n=0 rxerr=271 why=ferr` is the same wire saying
+/// the truth. A count of accepted bytes alone cannot tell a quiet link from a link reading noise.
 fn echo(usart: &mut Usart0) -> ! {
-    usart.write(BANNER);
-    usart.flush();
-    mailbox::pass(b"usart: echo ready");
+    usart.set_internal_loopback(INTERNAL_LOOPBACK);
+    // With the internal loopback on, the banner would arrive in a two-deep FIFO faster than this loop can drain it and
+    // latch an overrun before the paced test starts -- measured: `n=6 ok=0 bad=6 rxerr=7 pre=1f`. So the selftest says
+    // nothing before it measures.
+    if !INTERNAL_LOOPBACK {
+        usart.write(BANNER);
+        usart.flush();
+        mailbox::pass(b"usart: echo ready");
+    }
 
     let mut eco: u32 = 0;
+    let mut reported = 0u32;
+
+    // The positive control of the refusal path. One byte at a time, and only after the transmitter says it has finished,
+    // so the receiver FIFO cannot overrun: what comes back is a valid frame by construction, and `ok` is the count of
+    // bytes the receiver accepted and agreed with. Measured 2026-11-25: the unpaced version of this (write the banner,
+    // then read) overran the FIFO and reported `n=0 rxerr=3 why=rxof` -- which is the *other* half of the evidence, and
+    // the reason this test paces itself.
+    if INTERNAL_LOOPBACK {
+        // What the receiver had latched before this test: the banner was written with the loopback already on, so its 34
+        // bytes went into a two-deep FIFO and overran it. Clearing here is the point of the exercise -- the record prints
+        // the flags before and after the clear, because whether the write-1 clear works on this part is a fact that has
+        // to be measured, not assumed.
+        let pre = usart.clear_rx_flags();
+        let pre_after_clear = usart.rx_flags();
+        // Drain whatever is sitting in the FIFO, refusing nothing: these bytes are the banner talking to itself.
+        let mut drained = 0u32;
+        while usart.read_byte().is_some() && drained < 64 {
+            drained += 1;
+        }
+
+        let mut ok = 0u32;
+        let mut bad = 0u32;
+        for &byte in PATTERN {
+            usart.write_byte(byte);
+            usart.flush();
+            match usart.read_byte() {
+                Some(Ok(back)) if back == byte => ok += 1,
+                _ => bad += 1,
+            }
+        }
+        let post = usart.rx_flags();
+        let mut l = Record::<104>::new();
+        l.s(b"usart: selftest n=");
+        l.u(PATTERN.len() as u32);
+        l.s(b" ok=");
+        l.u(ok);
+        l.s(b" bad=");
+        l.u(bad);
+        l.s(b" rxerr=");
+        l.u(usart.rx_errors());
+        l.s(b" pre=");
+        l.h((pre & 0xFF) as u8);
+        l.s(b" cleared=");
+        l.h((pre_after_clear & 0xFF) as u8);
+        l.s(b" post=");
+        l.h((post & 0xFF) as u8);
+        if ok == PATTERN.len() as u32 && bad == 0 {
+            mailbox::pass(l.bytes());
+        } else {
+            mailbox::fail(l.bytes());
+        }
+        halt();
+    }
+
     loop {
-        if let Some(byte) = usart.read_byte() {
+        if let Some(result) = usart.read_byte() {
+            let byte = match result {
+                Ok(byte) => byte,
+                // Consumed and dropped: a broken frame is not echoed back into the wire.
+                Err(_) => continue,
+            };
             usart.write_byte(byte);
             usart.flush();
             eco += 1;
 
-            let mut l = Record::<80>::new();
+            let mut l = Record::<104>::new();
             l.s(b"usart: echo n=");
             l.u(eco);
+            l.s(b" rxerr=");
+            l.u(usart.rx_errors());
             l.s(b" last=");
             l.h(byte);
+            mailbox::pass(l.bytes());
+        } else if usart.rx_errors() > reported {
+            // A refused byte writes its own record, but only when the count moves: without this the loop reports the same
+            // refusal thousands of times a second and the mailbox sequence number becomes the only thing that changes.
+            reported = usart.rx_errors();
+            let mut l = Record::<104>::new();
+            l.s(b"usart: echo n=");
+            l.u(eco);
+            l.s(b" rxerr=");
+            l.u(usart.rx_errors());
+            l.s(b" why=");
+            match usart.last_rx_problem() {
+                Some(problem) => {
+                    l.s(problem.as_str().as_bytes());
+                }
+                None => {
+                    l.s(b"?");
+                }
+            }
             mailbox::pass(l.bytes());
         }
     }

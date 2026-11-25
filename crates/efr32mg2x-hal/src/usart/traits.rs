@@ -2,7 +2,7 @@
 //!
 //! This module implements the embedded-hal v1.0 and embedded-hal-nb traits for USART peripherals.
 
-use super::{Error, Usart0};
+use super::{Error, RxProblem, Usart0};
 
 /// Error type for USART operations
 impl core::fmt::Display for Error {
@@ -54,6 +54,16 @@ impl embedded_hal_nb::serial::Write<u8> for Usart0 {
 /// Provides non-blocking read operations compatible with embedded-hal-nb.
 impl embedded_hal_nb::serial::Read<u8> for Usart0 {
     fn read(&mut self) -> nb::Result<u8, Self::Error> {
-        self.read_byte().ok_or(nb::Error::WouldBlock)
+        match self.read_byte() {
+            Some(Ok(byte)) => Ok(byte),
+            // A frame the hardware says is broken is not data: the trait has no way to say "consumed but untrustworthy",
+            // so it is reported as an error. The byte is gone either way -- refusing to read it would stall the receiver.
+            Some(Err(problem)) => Err(nb::Error::Other(match problem {
+                RxProblem::Framing => Error::Framing,
+                RxProblem::Parity => Error::Parity,
+                RxProblem::Overrun => Error::Overrun,
+            })),
+            None => Err(nb::Error::WouldBlock),
+        }
     }
 }

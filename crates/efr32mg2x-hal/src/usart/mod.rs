@@ -209,27 +209,66 @@ impl Usart0 {
     ///     // Process received byte
     /// }
     /// ```
-    pub fn read_byte(&mut self) -> Option<u8> {
+    /// Read a byte, and say whether the frame it arrived in can be believed.
+    ///
+    /// The byte is **always consumed**: the receiver only advances when `RXDATA` is read, so refusing to read a broken
+    /// frame stalls every byte behind it. What the caller gets is the byte *and* the verdict, which is why this returns
+    /// `Result` inside the `Option`: `None` means nothing had arrived, `Some(Err(..))` means something arrived and the
+    /// hardware said the frame was broken. Dropping it is the caller's decision, and the right one for most callers -- but
+    /// it has to be a decision, not a side effect of the driver keeping the byte to itself.
+    ///
+    /// Measured on the part, 2026-11-25: the error flags in `IF` do **not** clear by writing one to them through the
+    /// secure instance this board hands out (`pre=1f cleared=1f post=1f`), so a driver that refused and expected the next
+    /// byte to be clean would refuse for the rest of the program's life. Reporting instead of swallowing is what keeps the
+    /// receiver alive.
+    pub fn read_byte(&mut self) -> Option<Result<u8, RxProblem>> {
         if !self.usart.status().read().rxdatav().bit_is_set() {
             return None;
         }
 
-        // Read the byte before anything else: `RXDATA` is what advances the receiver, and a byte refused below still has
-        // to leave the FIFO -- otherwise the next one arrives one position late and as an overrun.
+        // Read first: this is what advances the receiver.
         let byte = self.usart.rxdata().read().rxdata().bits();
 
         // This MCU has no per-byte error bit in `STATUS`; the only evidence that the frame was broken is in `IF`. That is
         // the whole reason this check exists: with nothing driving the RX pad, `hal_usart_link` once reported
-        // `echo n=271` -- 271 bytes nobody sent -- because a floating line produces start bits out of noise and every one
-        // of them sets `RXDATAV`.
-        let flags = self.usart.if_().read().bits();
-        if let Some(problem) = rx_problem(flags) {
-            self.rx_errors = self.rx_errors.saturating_add(1);
-            self.last_rx_problem = Some(problem);
-            // Write 1 to the flags that were just reported: they are sticky, and a flag left set would refuse every later
-            // byte on a link that has recovered. NOT MEASURED ON THE PART as of 2026-11-25 -- the classification is
-            // host-tested, the clear is from the manual, and the first board session with a deliberately quiet RX line
-            // has to confirm the receiver recovers rather than staying refused.
+        // `echo n=271` -- 271 bytes nobody sent -- because a floating line produces start bits out of noise.
+        match rx_problem(self.rx_flags()) {
+            Some(problem) => {
+                self.rx_errors = self.rx_errors.saturating_add(1);
+                self.last_rx_problem = Some(problem);
+                Some(Err(problem))
+            }
+            None => Some(Ok(byte)),
+        }
+    }
+
+    /// Connect the receiver to this peripheral's own transmitter, inside the part.
+    ///
+    /// The cheat that makes a link provable with one board: the receiver sees the transmitter past the pads, so a byte
+    /// written comes back as a valid frame. A **self-test**, not a substitute for a second machine -- it proves the
+    /// shifter, the frame format and the read path, and proves nothing about the pad or the level on it.
+    pub fn set_internal_loopback(&mut self, on: bool) {
+        self.usart.ctrl().modify(|_, w| w.loopbk().bit(on));
+    }
+
+    /// The receiver's error flags, straight out of `IF`.
+    ///
+    /// `RXOF` at bit 4, `PERR` at 8, `FERR` at 9. Exposed because whether they clear, and how, is a fact about this part
+    /// that has to be measured rather than assumed.
+    #[must_use]
+    pub fn rx_flags(&self) -> u32 {
+        self.usart.if_().read().bits()
+    }
+
+    /// Clear whichever receiver error flags are set, and return what they were.
+    ///
+    /// The write is a one to each set bit, which is what the reference manual gives as the way to clear `IF`. Measured on
+    /// the part 2026-11-25 through the secure instance this board hands out: **it does not clear them** (`pre=1f
+    /// cleared=1f post=1f`, from `hal_usart_link`'s selftest record). The method stays because it is the documented
+    /// sequence and the next thing to try is the non-secure alias, not because it works today.
+    pub fn clear_rx_flags(&mut self) -> u32 {
+        let flags = self.rx_flags();
+        if flags & (IF_RXOF | IF_PERR | IF_FERR) != 0 {
             self.usart.if_().write(|w| {
                 if flags & IF_RXOF != 0 {
                     w.rxof().set_bit();
@@ -242,10 +281,8 @@ impl Usart0 {
                 }
                 w
             });
-            return None;
         }
-
-        Some(byte)
+        flags
     }
 
     /// How many received bytes were refused because their frame was broken.
