@@ -121,6 +121,7 @@ read back off the part — not that the code compiled; the table below is counte
 | `hal_adc_read` | `PASS adc: gnd=0 ch0=0 ref=VBGR` — the converter returns zero codes for its own ground channel | the signal path is `hal_mic_level` (`rms=7 pk=18 n=128`), not this example: a converter that only ever returns zero cannot prove itself |
 | `hal_spi_loopback` | `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` — eight bytes out on MOSI, the same eight back on MISO, with a jumper between D10 and D9 | **measured, not argued**: routing MISO to an unjumped pin gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` — a floating line reads `0xff`, which matches one byte of the pattern, so the "all eight" rule is what refuses it |
 
+| `hal_usart_link` | `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` — `EFR32!` out and the same six bytes back, with a jumper between D6 and D7 | two defects measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is one byte at a time; and a floating RX line reports `0x00` often enough that a byte-counting echo test passes on a board with nothing attached |
 Three of those deserve naming rather than a row in a table:
 
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
@@ -203,7 +204,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-22 examples, **14 of them watched on the part**. A `--` in the last column means nobody
+22 examples, **15 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -229,7 +230,7 @@ mean it works.
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |
 | `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | 2026-11-24 |
-| `hal_usart_link.rs` | USART on the header pads: a jumper D6–D7 for the on-board proof, or an adapter for an outside witness. | -- |
+| `hal_usart_link.rs` | USART on the header pads: a jumper D6–D7 for the on-board proof, or an adapter for an outside witness. | 2026-11-25 |
 | `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | 2026-11-24 |
 
 

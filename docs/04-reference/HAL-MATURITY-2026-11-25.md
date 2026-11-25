@@ -57,20 +57,21 @@ A driver's maturity in this project is not its line count; it is whether a recor
 | `clock` (HFXO) | `hal_hfxo` `PASS hfxo: sel=1 before=19M after=39M tick=32974 err=206` (2026-11-25): a 1000 ms delay lasted 1006 ms by the SYSRTC | **proven** |
 | `adc` (single-shot, `hal_adc_read`) | `PASS adc: gnd=0 ch0=0 ref=VBGR` (2026-11-25). The oracle is the internal ground channel; `ch0` is a pin left floating on purpose, so the *signal* proof is `hal_mic_level`, not this one | **proven for the path it claims** |
 | `spi` | `hal_spi_loopback` `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` (2026-11-25) with a jumper D10–D9, and **the control measured**: MISO on a pin no jumper reaches gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` | **proven, with a control** |
-| `usart` | `hal_usart_link` written and building: routing (`Board::route_usart0`), a `new_at` constructor and a D6–D7 loopback verdict. Measured while writing it: with D7 floating the receiver reports a byte of `0x00` often enough that a byte-counting echo test passes on an empty board (`usart: echo n=271 last=00`) | **driver and instrument ready; the verdict waits for the jumper** |
+| `usart` | `hal_usart_link` `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` (2026-11-25) with a jumper D6–D7: `EFR32!` out and the same six bytes back. Two defects were measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is request-response per byte; and with D7 floating the receiver reports `0x00` often enough that a byte-counting echo test passes on an empty board (`echo n=271 last=00`) | **proven** |
 | `mvp` | `hal_mvp_bench` undated, and its numbers are `dwt`-based | **unproven, and suspect** |
 | `dwt` | documented, and `start()` now **proves the counter moves** and returns `DwtError::NotRunning` when it does not -- a frozen counter can no longer be read as zero | **instrument, and says so** |
 
-Two of thirteen peripheral families have **no hardware evidence whatsoever** — `spi` and `usart` — and the README's own
-standard is that a date means a record was read back. That is the single largest maturity gap, and it is cheap: both
-drivers exist and compile; nobody has watched them move a byte.
+**Every peripheral family with a driver now has a record read back off the board.** `spi` and `usart` were the last
+two, both closed on 2026-11-25 with a verdict and, for SPI, a control that fails when the jumper is moved off the path.
+The remaining unproven row is `mvp`, which is a benchmark whose numbers are `dwt`-based and therefore only valid under
+a debug session.
 
 ## 4. Grades, with the reason
 
 | dimension | grade | why |
 |---|---|---|
-| functional coverage | **B** | 26 modules, 446 public items, 15 peripheral families with drivers; SPI/USART unexercised |
-| hardware evidence | **B−** | 11 of 20 examples dated, one of them (`hal_timer_ticks`) rebuilt twice before it measured anything real |
+| functional coverage | **B** | 26 modules, 446 public items, 15 peripheral families with drivers, all of them exercised by an example; GPIO interrupts, slave modes and DMA linked descriptors are not implemented and the crate says so |
+| hardware evidence | **B** | 15 of 22 examples dated, and every peripheral family with a driver carries a record; two of the undated ones are deliberate (`hal_usart_link` in echo role needs an external adapter). Still short of A: `hal_mvp_bench`'s numbers are `dwt`-based and only valid under a debug session, and three instruments needed rebuilding before they measured anything real |
 | documentation | **B** | `deny(missing_docs)` now holds on all 26 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). The 11 prose references to `docs/0X-…` were turned into repository URLs, so nothing ships pointing at a path a reader cannot open. The crate's status block no longer claims phases; it says what is proven, what is compiled and unmeasured, and what is not implemented |
 | API hygiene | **C+** | the test double is out of the public API (`cores::i2c::sim` is `#[cfg(test)]`; the host harness re-adds it for its own example). Still live: `pub mod cores` exposes the pure logic layer, and `Board` hands out unlimited aliases of its singletons (F10) |
 | safety | **C** | 194 `unsafe` against 88 `SAFETY` notes: ~106 sites unannotated. Most are register writes, which is the cheap kind — but a published crate's auditability is the notes, not the kind |
@@ -111,11 +112,10 @@ Each item is a document or API change; none needs the board.
 - **The target is a minimal working version as 0.1.0**: every peripheral family with a driver exercised by an example,
   and every example that makes a claim carrying a record read back off the board. Not a stable API, not a 1.0.
 - **The bar for considering a publish is B on every dimension below.** After the documentation pass of 2026-11-25,
-  documentation and publication hygiene are at B; API hygiene is C+ and safety is C; **evidence is B−** because two
-  peripheral families still have no measured example.
-- **What stands between B− and B on evidence**: one measured example each for `spi` and `usart`. Both drivers exist and
-  build. SPI needs a loopback jumper between the MOSI and MISO pins (D10 and D9 on the XIAO); USART needs a partner on
-  TX/RX (D6/D7), which may be the SAMD11 bridge that already presents a CDC port to the host.
+  documentation, publication hygiene and evidence are at B; API hygiene is C+ and safety is C.
+- **Evidence is at B, not A**: what would lift it is `hal_mvp_bench` re-measured against a time base that works
+  without a probe, and a second, independent witness for the two loopback proofs — an adapter on D6/D7 for USART, a
+  device on the SPI pads instead of a jumper.
 - **What stands between C and B on safety**: ~106 `unsafe` sites without a `SAFETY` note. Mechanical, one pass.
 - **What stands between C+ and B on API hygiene**: `Board`'s unlimited aliases (review finding F10), and `pub mod cores`
   exposing the pure layer as public API.
