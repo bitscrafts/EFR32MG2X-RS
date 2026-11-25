@@ -91,7 +91,8 @@ fn main() -> ! {
     // The cycle counter gives the uptime the frame carries. Started before the stack boots so the
     // number means "since power on", not "since advertising started".
     // SAFETY: nothing else in this example uses DWT.
-    let boot = unsafe { dwt::start() };
+    let boot = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
 
     let mut ble = match Bluetooth::new(&mut delay) {
         Ok(ble) => ble,

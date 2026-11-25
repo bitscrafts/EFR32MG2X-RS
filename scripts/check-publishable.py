@@ -43,7 +43,13 @@ CRATES = {
 }
 
 LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
-INCLUDE = re.compile(r'include_str!\("([^"]+)"\)')
+# Every way source can reach another file at compile time. `include_str!` alone was the original rule and it
+# missed the two that matter: `include!` embeds Rust source and `#[path = "..."]` compiles a file from wherever
+# it lives — both can name something outside the package, which is what this check exists to refuse.
+INCLUDE = re.compile(
+    r'(?:include_str!|include_bytes!|include!)\(\s*"([^"]+)"\s*\)'
+    r'|#\[path\s*=\s*"([^"]+)"\]'
+)
 
 
 def packaged_files(crate_dir: Path):
@@ -140,7 +146,9 @@ def main():
                 failures.append(f"{name}: README links to {link}, which is not in the package")
 
         for src in d.rglob("*.rs"):
-            for inc in INCLUDE.findall(src.read_text(errors="ignore")):
+            # `INCLUDE` yields one match per include, with two alternatives: the include macros and `#[path = "..."]`.
+            for match in INCLUDE.finditer(src.read_text(errors="ignore")):
+                inc = match.group(1) or match.group(2)
                 target = (src.parent / inc).resolve()
                 try:
                     rel = target.relative_to(d.resolve())

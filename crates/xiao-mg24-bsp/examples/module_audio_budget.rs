@@ -109,7 +109,8 @@ fn main() -> ! {
 
     let mut window = [0i32; WINDOW];
     // SAFETY: nothing else in this program touches DWT.
-    let t0 = unsafe { dwt::start() };
+    let t0 = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
 
     // Acquire and decimate: box-average DECIM raw samples per output sample.
     let mut raw_count: u32 = 0;

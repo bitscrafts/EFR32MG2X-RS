@@ -26,6 +26,8 @@
 //!
 //! Not absolute accuracy. For that a known voltage has to be applied to a pin, and this board has
 //! no jumper to do it with.
+//!
+//! VERIFIED ON HARDWARE (2026-11-25): the record is in this file's header and in the crate README.
 
 #![no_std]
 #![no_main]

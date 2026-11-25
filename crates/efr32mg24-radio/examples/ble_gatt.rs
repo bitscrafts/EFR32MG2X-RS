@@ -155,6 +155,10 @@ fn main() -> ! {
                 // notification larger than the attribute's maximum length is truncated by the stack -- which is one
                 // of the ways an echo test can look like a write that never arrived.
                 max_len: 8,
+                // A counter and an echo: no personal data, so no security requirement. This is the decision the field
+                // asks for, not an omission -- the dosimeter's three characteristics carry someone's noise exposure and
+                // are the case where leaving it zero was a defect.
+                security: 0,
             },
             // Four bytes a client owns: writing them here is what proves the write path, and reading them back is
             // what proves the write reached an attribute rather than a callback.
@@ -162,6 +166,7 @@ fn main() -> ! {
                 uuid: CONTROL_UUID_128,
                 properties: PROP_READ | PROP_WRITE,
                 max_len: 4,
+                security: 0,
             },
         ],
     ) {

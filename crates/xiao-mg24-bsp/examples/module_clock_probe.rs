@@ -96,7 +96,8 @@ fn main() -> ! {
     let sysrtc: Sysrtc = module.hal().sysrtc();
 
     // SAFETY: nothing else in this program touches DWT; it is taken here for good.
-    let start = unsafe { dwt::start() };
+    let start = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
     let ticks_before = sysrtc.now();
     while dwt::since(start) < CYCLES_TARGET {
         core::hint::spin_loop();

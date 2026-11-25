@@ -113,7 +113,8 @@ fn main() -> ! {
 
     let mut window = [0i16; WINDOW];
     // SAFETY: nothing else in this program touches DWT.
-    let t0 = unsafe { dwt::start() };
+    let t0 = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
     let mut n = 0usize;
     let mut misses = 0u32;
     while n < WINDOW {

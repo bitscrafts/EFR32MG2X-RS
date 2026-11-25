@@ -12,7 +12,10 @@
 //! not a metaphor: the test below fails on any sequence that releases the bus between the write and the read, which is
 //! exactly the defect, and it runs in microseconds with no hardware.
 
-pub mod sim;
+// The mock bus and the simulated follower are for the tests below, not for callers: a test double in a published API
+// is a promise nobody wants to keep, and it was the last thing keeping `deny(missing_docs)` off this module.
+#[cfg(test)]
+mod sim;
 
 /// The errors a bus can report. Mirrors the HAL's `i2c::Error`; the HAL maps one to the other so this crate stays
 /// independent of any register access.

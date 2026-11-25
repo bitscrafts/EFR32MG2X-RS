@@ -10,3 +10,8 @@
 #[path = "../../../crates/efr32mg2x-hal/src/cores/i2c/mod.rs"]
 mod i2c;
 pub use i2c::*;
+
+// The mock follower and the mock bus are test-only inside the HAL now -- a test double has no business in a published
+// API -- but this crate is a host harness whose whole point is running them, including from `examples/simulate.rs`.
+#[path = "../../../crates/efr32mg2x-hal/src/cores/i2c/sim.rs"]
+pub mod sim;

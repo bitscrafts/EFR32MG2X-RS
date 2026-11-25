@@ -129,7 +129,7 @@ fn main() -> ! {
     // it `dwt::cycles()` returns 0, and the first version of this example reported before=0 after=0 while the
     // capture itself was perfectly fine.
     // SAFETY: nothing else in this program touches DWT.
-    unsafe { dwt::start() };
+    unsafe { dwt::start() }.expect("dwt: the cycle counter does not run without a debug session");
     let before = window_cycles(&mut mic);
     mailbox::info(b"boost: baseline measured, about to raise the band");
 

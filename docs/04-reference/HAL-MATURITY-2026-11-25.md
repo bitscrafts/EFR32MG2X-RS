@@ -54,12 +54,12 @@ A driver's maturity in this project is not its line count; it is whether a recor
 | `adc`/`microphone` | `hal_mic_level` `PASS n=128 rms=7 pk=18` (2026-11-24) | **proven** |
 | `sensors` (IMU) | `hal_imu_read` `PASS |a|=1028` (2026-11-24) | **proven** |
 | `sensors` (BME680) | published to a phone as `0x181A` by `base_ble_env_gatt` (2026-11-14) | **proven, in the BSP** |
-| `clock` (HFXO) | `hal_hfxo` undated; HFCLK rate cross-checked at 18.961 MHz by `hal_timer_ticks` | **partial** |
-| `adc` (single-shot, `hal_adc_read`) | undated | **unproven** |
+| `clock` (HFXO) | `hal_hfxo` `PASS hfxo: sel=1 before=19M after=39M tick=32974 err=206` (2026-11-25): a 1000 ms delay lasted 1006 ms by the SYSRTC | **proven** |
+| `adc` (single-shot, `hal_adc_read`) | `PASS adc: gnd=0 ch0=0 ref=VBGR` (2026-11-25). The oracle is the internal ground channel; `ch0` is a pin left floating on purpose, so the *signal* proof is `hal_mic_level`, not this one | **proven for the path it claims** |
 | `spi` | **no example at all** | **unproven** |
 | `usart` | **no example at all** | **unproven** |
 | `mvp` | `hal_mvp_bench` undated, and its numbers are `dwt`-based | **unproven, and suspect** |
-| `dwt` | now known to count only while a debug session is attached (`DWT-NEEDS-A-DEBUG-SESSION.md`) | **a footgun as published API** |
+| `dwt` | documented, and `start()` now **proves the counter moves** and returns `DwtError::NotRunning` when it does not -- a frozen counter can no longer be read as zero | **instrument, and says so** |
 
 Two of thirteen peripheral families have **no hardware evidence whatsoever** — `spi` and `usart` — and the README's own
 standard is that a date means a record was read back. That is the single largest maturity gap, and it is cheap: both
@@ -71,14 +71,14 @@ drivers exist and compile; nobody has watched them move a byte.
 |---|---|---|
 | functional coverage | **B** | 26 modules, 446 public items, 15 peripheral families with drivers; SPI/USART unexercised |
 | hardware evidence | **B−** | 11 of 20 examples dated, one of them (`hal_timer_ticks`) rebuilt twice before it measured anything real |
-| documentation | **C+** | `deny(missing_docs)` is enforced — and bypassed on five modules with `#[allow(missing_docs)]`, so docs.rs would show 5 of 26 modules undocumented. 9 prose references point at `docs/0X-…` paths that do not ship in the package |
-| API hygiene | **C** | `pub mod cores` and `cores::i2c::sim` put internals and a test double in the public API (review finding F5, still live); `Board` hands out unlimited aliases of its singletons (F10) |
+| documentation | **B** | `deny(missing_docs)` now holds on all 26 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). The 11 prose references to `docs/0X-…` were turned into repository URLs, so nothing ships pointing at a path a reader cannot open. The crate's status block no longer claims phases; it says what is proven, what is compiled and unmeasured, and what is not implemented |
+| API hygiene | **C+** | the test double is out of the public API (`cores::i2c::sim` is `#[cfg(test)]`; the host harness re-adds it for its own example). Still live: `pub mod cores` exposes the pure logic layer, and `Board` hands out unlimited aliases of its singletons (F10) |
 | safety | **C** | 194 `unsafe` against 88 `SAFETY` notes: ~106 sites unannotated. Most are register writes, which is the cheap kind — but a published crate's auditability is the notes, not the kind |
 | testing | **B** | 157 host tests across 18 core crates, run by the gate; the HAL's own `#[test]` blocks execute only through their twin crates |
 | layering / packaging | **A−** | one registry-resolvable dependency, package builds from its tarball, no paths escaping the package, docs.rs metadata present |
 | error handling | **B** | typed errors; bounded waits everywhere since 2026-11-17; but `wdog` still returns `Error::Locked` for a *timeout*, which is a semantic lie |
 | observability | **A−** | the mailbox record pattern is better than most commercial HALs, and this week proved why: three of six "red" examples were the instrument, not the driver |
-| publication hygiene | **D** | `check-publishable.py` only matches `include_str!` (not `include!`/`#[path]`); `pre-publish.sh` still runs `cargo publish --dry-run`, the command that certified a lying README once; and the CHANGELOG claims a publication that no longer exists |
+| publication hygiene | **B** | `check-publishable.py` now matches `include!`, `include_bytes!` and `#[path = "..."]`, with a control (a planted escaping `#[path]` was caught, removing it passed). `pre-publish.sh` packages instead of running `cargo publish --dry-run`. The CHANGELOG and CLAUDE.md claims about a published HAL are corrected |
 
 **Overall: a prototype-grade HAL with an unusually strong evidence culture and an unusually weak publication surface.**
 It is ahead of most hobby HALs on hardware proof and behind the bar on the things a stranger downloading a crate sees
@@ -98,8 +98,9 @@ Each item is a document or API change; none needs the board.
 4. **Nine prose references to `docs/0X-…`** in the shipped README/crate-doc. They resolve in the repository and not in
    the package — exactly the shape of the 0.1.0 failure, one notch quieter. Turn them into repository URLs.
 5. **The registry lies in the repository**: `CHANGELOG.md` and `CLAUDE.md` both say the HAL is published at 0.1.1.
-   Correct them, and decide the version — 0.1.x names a tree that no longer exists, so a fresh start at **0.2.0** is
-   the honest number, with the CHANGELOG saying why.
+   Correct them. **The operator's decision (2026-11-25): the first publication is 0.1.0**, because nothing is
+   published and the first number a crate carries should be its first number; what it promises is a *minimal working
+   version*, not a stable API.
 6. **`dwt` must carry its condition in its own rustdoc.** A published `dwt::cycles()` that silently returns a frozen
    value once the probe detaches is a footgun; say so where the function is documented.
 7. **`spi` and `usart` need one measured example each** before the README's evidence table can be read as complete.
@@ -107,12 +108,19 @@ Each item is a document or API change; none needs the board.
 
 ## 6. Verdict
 
-- **Publishable as a prototype crate (0.2.0) after items 1–6.** Those are documentation and API-surface changes; a day
-  of work, no new hardware.
-- **Not publishable as "stable" or 1.0.** The API will move (`Board` ownership, `transaction` semantics), two
-  peripheral families have no hardware evidence, and the module documentation is incomplete by the crate's own lint.
-- **The name may need a cooldown.** A deleted crate name is held by the registry for a period; the PAC waited until
-  2026-11-16. Attempt one publish and read the refusal rather than assuming.
+- **The target is a minimal working version as 0.1.0**: every peripheral family with a driver exercised by an example,
+  and every example that makes a claim carrying a record read back off the board. Not a stable API, not a 1.0.
+- **The bar for considering a publish is B on every dimension below.** After the documentation pass of 2026-11-25,
+  documentation and publication hygiene are at B; API hygiene is C+ and safety is C; **evidence is B−** because two
+  peripheral families still have no measured example.
+- **What stands between B− and B on evidence**: one measured example each for `spi` and `usart`. Both drivers exist and
+  build. SPI needs a loopback jumper between the MOSI and MISO pins (D10 and D9 on the XIAO); USART needs a partner on
+  TX/RX (D6/D7), which may be the SAMD11 bridge that already presents a CDC port to the host.
+- **What stands between C and B on safety**: ~106 `unsafe` sites without a `SAFETY` note. Mechanical, one pass.
+- **What stands between C+ and B on API hygiene**: `Board`'s unlimited aliases (review finding F10), and `pub mod cores`
+  exposing the pure layer as public API.
+- The name may still need a cooldown: a deleted crate name is held by the registry for a period (the PAC waited until
+  2026-11-16). One publish attempt, and the refusal is read rather than assumed.
 
 ## 7. The publish checklist, when there is an express order
 

@@ -158,7 +158,8 @@ fn main() -> ! {
     let mut band_sum = 0u32;
 
     // SAFETY: nothing else in this program touches DWT.
-    let t0 = unsafe { dwt::start() };
+    let t0 = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
 
     for _ in 0..WINDOWS {
         let mut bands = Bands::new();

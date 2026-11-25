@@ -17,28 +17,21 @@
 //!
 //! # Status
 //!
-//! **Phase C Stage 1 Complete**: All essential, communication, and advanced peripherals (Stage 1) production-ready
+//! A **minimal working version**: every peripheral family that has a driver is exercised by an example, and the
+//! examples that make a claim carry a record read back off the board. What is proven and what is not is written where
+//! the evidence lives — the crate `README.md` next to this one — and the assessment that would precede a publication
+//! is `docs/04-reference/HAL-MATURITY-2026-11-25.md` in the repository.
 //!
-//! ## Phase A - Essential Peripherals (Complete)
+//! - **Proven on the part**: GPIO and routing, delays, the bit-banged bus, I2C master (blocking and async), LDMA,
+//!   TIMER and the SYSRTC compare channel, WDOG, EMU voltage scaling, the IADC with the analogue microphone, the IMU
+//!   over I2C, and the HFXO (39 MHz, with a 1000 ms delay measured at 1006 ms by an independent clock).
+//! - **Compiled, and waiting for a measured example**: SPI and USART. Both drivers exist and build; neither has been
+//!   watched moving a byte on the board yet, and this crate does not claim otherwise.
+//! - **Not implemented**: GPIO interrupts, I2C slave mode, SPI slave mode, DMA linked descriptors.
 //!
-//! - **Clock Management (CMU)** - HFXO/HFRCO configuration with hardware register access
-//! - **GPIO** - Type-safe pin modes with hardware register manipulation
-//! - **Delay** - SysTick-based delays integrated with CMU
-//!
-//! ## Phase B - Communication Peripherals (Complete)
-//!
-//! - **USART** - Serial communication (USART0) with embedded-hal-nb traits ✅
-//! - **I2C** - I2C master mode (I2C0, I2C1) with embedded-hal traits ✅
-//! - **SPI** - SPI master mode (USART in SPI mode) with embedded-hal traits ✅
-//! - **Timer** - Timer and PWM (TIMER0-4) with 3 channels each ✅
-//!
-//! ## Phase C - Advanced Peripherals (Stage 1 Complete)
-//!
-//! - **ADC (IADC)** - Analog-to-digital converter ✅
-//! - **DMA (LDMA)** - Direct Memory Access controller (Stage 1) ✅
-//! - **EMU** - Energy Management Unit (EM0-EM2 transitions) ✅
-//! - **RTC** - Real-Time Clock (SYSRTC0) ✅
-//! - **WDOG** - Watchdog Timer (WDOG0) ✅
+//! Two notes that belong with the status rather than in a bug tracker: the `dwt` module is an **instrument**, not a
+//! time source — its counter only runs while a debug session is attached, and [`dwt::start`] returns an error when it
+//! does not; and `embassy` support lives in its own crate, not here.
 //!
 //! # Quick Start
 //!

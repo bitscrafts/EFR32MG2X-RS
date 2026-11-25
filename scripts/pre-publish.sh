@@ -30,9 +30,11 @@ echo "== $NOME $VER =="
 # 1. The gate: build, clippy, fmt, host tests, every example. Nothing else means anything if this is red.
 if bash scripts/gate.sh >/tmp/pp-gate.log 2>&1; then ok "gate (build, clippy, fmt, host tests, examples)"; else bad "gate" "ver /tmp/pp-gate.log"; fi
 
-# 2. The package must actually upload. A dry run compiles the package and never reads it, which is why the rest
-#    of this script exists -- but a failure here is still fatal.
-if cargo publish -p "$NOME" --dry-run --allow-dirty >/tmp/pp-dry.log 2>&1; then ok "cargo publish --dry-run reaches the upload step"; else bad "cargo publish --dry-run" "$(tail -3 /tmp/pp-dry.log)"; fi
+# 2. The package must build as it will be shipped. `cargo package` does that and never contacts the registry; the
+#    `cargo publish --dry-run` that used to be here was removed because it *is* a publish attempt (it needs a token and
+#    uploads when it has one) and because compiling the package is all it ever proved -- it certified a README that
+#    lied. The reading the package needs is step 3, not this one.
+if cargo package -p "$NOME" --allow-dirty >/tmp/pp-package.log 2>&1; then ok "cargo package builds the crate as it will ship"; else bad "cargo package" "$(tail -3 /tmp/pp-package.log)"; fi
 
 # 3. The package must say what the tree does: identity, links, every include_str! target.
 if python3 scripts/check-publishable.py >/tmp/pp-pub.log 2>&1; then ok "check-publishable (identity, links, include_str targets)"; else bad "check-publishable" "$(grep -E 'FAIL|missing|not found' /tmp/pp-pub.log | head -3)"; fi

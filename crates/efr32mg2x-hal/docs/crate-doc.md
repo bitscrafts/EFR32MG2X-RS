@@ -45,9 +45,9 @@ project hits.
 - **I2C0 reads and writes; what it needed was two driver rules.** The last byte of a reception must be read with NACK,
   or the follower keeps driving and the master never closes the reception; and the `IF` flags are only cleared through
   the `IF_CLR` alias at `+0x2000`, so writing 1 to the plain register leaves a NACK that refuses the next transaction.
-  Both measured: `docs/04-reference/I2C-RECOVERY-STATE.md` and `docs/04-reference/I2C0-READ-DEFECT.md`.
+  Both measured: [`docs/04-reference/I2C-RECOVERY-STATE.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/I2C-RECOVERY-STATE.md) and [`docs/04-reference/I2C0-READ-DEFECT.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/I2C0-READ-DEFECT.md).
 - **The default clock makes every delay 2.3x short.** The counter is right; the clock is wrong. Fixed by bringing the
-  HFXO up before counting, and documented in `docs/04-reference/DELAY-CLOCK-DEFECT.md` so that the next person reads a
+  HFXO up before counting, and documented in [`docs/04-reference/DELAY-CLOCK-DEFECT.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DELAY-CLOCK-DEFECT.md) so that the next person reads a
   cause instead of a symptom.
 
 ## Testing

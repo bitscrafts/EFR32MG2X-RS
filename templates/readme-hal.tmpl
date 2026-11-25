@@ -75,7 +75,7 @@ read back off the part — not that the code compiled; the table below is counte
 |---|---|---|
 | `hal_timer_compare` | `PASS cmp: start=1850579377 deadline=1850582577 reached=1850582578 late=1 fired=1 en=1 run=1` | nothing: the compare fired one tick after its deadline, three thousand ticks after the flag was drained |
 | `hal_imu_read` | `PASS imu 6a x-351 226 940 \|a\|=1028` | a `copy_from_slice` of 7 bytes into `buf[..8]` panicked before the record was written; a silent panic in an instrument reads as missing data |
-| `hal_timer_ticks` | `PASS rtc: ticks=3277 cyc=1896280 fast=18961kHz late=1 fired=1 run=1` | the instrument waited on the clock it was testing. The reference is now SysTick; see `docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md` |
+| `hal_timer_ticks` | `PASS rtc: ticks=3277 cyc=1896280 fast=18961kHz late=1 fired=1 run=1` | the instrument waited on the clock it was testing. The reference is now SysTick; see [`docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md) |
 | `hal_emu_voltage` | `PASS emu: VS2->VS1 5/5 , VS1->VS2 5/5`, three boots | the example overwrote its own verdict with an `info` line every second, so a reader never saw a verdict at all |
 | `hal_mic_level` | `PASS mic 8 rms=7 pk=18 n=128` | nothing: the LED PWM that fought the microphone for TIMER0 was removed on 2026-11-21 and the README kept the old failure |
 | `hal_wdog_feed` | `PASS wdog: fed 95 st80000000 sb0 lock1` | `feed()` wrote `CMD` without waiting for the previous clear to cross into the WDOG clock domain; the second of two back-to-back feeds was refused with a bus fault |
@@ -88,11 +88,11 @@ Two of those deserve naming rather than a row in a table:
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
   last byte of a reception has to be read with NACK, and the flags are only cleared through the `IF_CLR` alias — and
-  both are in `docs/04-reference/I2C0-READ-DEFECT.md` and `docs/04-reference/I2C-RECOVERY-STATE.md`. `bus::BitBangI2c`
+  both are in [`docs/04-reference/I2C0-READ-DEFECT.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/I2C0-READ-DEFECT.md) and [`docs/04-reference/I2C-RECOVERY-STATE.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/I2C-RECOVERY-STATE.md). `bus::BitBangI2c`
   is a different bus, for the Expansion Base's PC4/PC5 pair; I2C0 reaches one pin pair at a time.
 - `clock` carries a bricking warning in its own source (`clock/clocks.rs`): an earlier implementation switched SYSCLK to
   HFXO before the HFXO was running, which stopped the CPU clock and locked the debug access port. No example touches it yet,
-  on purpose. See `docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md`.
+  on purpose. See [`docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/01-getting-started/BRICKING_INCIDENT_2026-06-29.md).
 
 ## Quick Start
 
@@ -146,7 +146,7 @@ fn main() -> ! {
 ### Getting Started
 
 - **[docs/](docs/)** - Complete HAL documentation index
-- **Build system and toolchain** — in the repository: `docs/02-guides/HAL-BUILD-SYSTEM.md`
+- **Build system and toolchain** — in the repository: [`docs/02-guides/HAL-BUILD-SYSTEM.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/02-guides/HAL-BUILD-SYSTEM.md)
 - **[docs/LINKER_SETUP.md](docs/LINKER_SETUP.md)** - Linker script configuration
 
 ### Module Documentation
@@ -207,7 +207,7 @@ cargo test --features rt
 ## Where the state lives
 
 The status groups at the top of this file are the status; there is no second one to drift away from it. The
-workspace-wide authority is `docs/03-development/STATUS.md` in the project repository.
+workspace-wide authority is [`docs/03-development/STATUS.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/03-development/STATUS.md) in the project repository.
 
 ## Staying out of the bootloader
 

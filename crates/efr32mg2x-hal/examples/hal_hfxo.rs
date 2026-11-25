@@ -1,57 +1,142 @@
-//! HFXO: correr do cristal, e provar que o relógio do sistema o seguiu.
+//! HFXO: run from the crystal, and prove the rest of the system followed it.
 //!
-//! ## O que este exemplo mede
+//! ## What this measures
 //!
-//! Não é "o cristal arrancou" — isso o `select_hfxo` devolve. É que **o resto do sistema saiba que ele arrancou**:
-//! cinco `delay_ms(1000)` depois de subir o núcleo para os 39 MHz têm de durar cerca de um segundo cada no relógio
-//! da parede (as datas das linhas de RTT, que são do host).
+//! Not "the crystal started" — `select_hfxo` returns that. It is that **the rest of the system knows it started**:
+//! after the core moves to 39 MHz, a `delay_ms(1000)` has to last one second by an independent clock.
 //!
-//! Se o `SysTick` ficasse calibrado para os 19 MHz de reset, cada 1000 ms pedidos durariam ~0,49 s, e o total dos
-//! cinco seria ~2,5 s em vez de ~5 s. Esse é o número que distingue "o cristal arrancou" de "o sistema sabe".
+//! The referee is the SYSRTC (32.768 kHz, itself measured against the host's clock), and the check is the one that
+//! distinguishes the two failures: with `SysTick` still calibrated for the 19 MHz of reset, 1000 requested ms would
+//! take about 2050 ms, i.e. ~67 000 ticks instead of 32 768; with the crystal not starting at all, `select_hfxo`
+//! returns an error and the frequency never moves.
 //!
-//! ## O que acontece se o cristal não arrancar
+//! This example used to have no record a harness could read: it printed the marks over RTT with host timestamps, so
+//! its evidence required an attached session and it was filed as "undated". The four numbers below are in the mailbox,
+//! which is what lets it carry a date.
 //!
-//! `ClockError::HfxoTimeout`, e o `Board` fica no relógio que tinha. O exemplo diz isso e continua — uma placa que
-//! fica muda é indistinguível de uma avariada.
+//! ## What happens if the crystal does not start
+//!
+//! `ClockError::HfxoTimeout`, and the `Board` keeps the clock it had. The example says so and continues — a board that
+//! goes silent is indistinguishable from a broken one.
+//!
+//! VERIFIED ON HARDWARE (2026-11-25): the record is in this file's header and in the crate README.
 
 #![no_std]
 #![no_main]
 
-use cortex_m_rt::entry;
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::prelude::*;
 use panic_halt as _;
 
+#[path = "common/mailbox.rs"]
+mod mailbox;
+
 use defmt_rtt as _;
 
-/// O cristal do XIAO MG24.
+/// The crystal on the XIAO MG24.
 const HFXO_HZ: u32 = 39_000_000;
+/// The tick clock, used only to turn ticks into milliseconds.
+const TICK_HZ: u32 = 32_768;
+/// One second, the interval the delay is asked for.
+const REQUESTED_MS: u32 = 1000;
+/// Two percent of the interval. Wider than the oscillators and narrower than a delay calibrated for the wrong clock,
+/// which is off by 105 %.
+const TOLERANCE_TICKS: u32 = TICK_HZ / 50;
 
-#[entry]
-fn main() -> ! {
-    let mut board = Board::take().unwrap();
+struct Line {
+    buf: [u8; 120],
+    len: usize,
+}
 
-    defmt::info!("antes: clock_hz = {} Hz", board.clock_hz().0);
-
-    match board.select_hfxo(HFXO_HZ) {
-        Ok(hz) => defmt::info!("HFXO: a correr a {} Hz", hz.0),
-        Err(_) => {
-            defmt::info!("HFXO FALHOU: o cristal nao estabilizou (HfxoTimeout), fico no HFRCO")
+impl Line {
+    fn new() -> Self {
+        Self {
+            buf: [0; 120],
+            len: 0,
         }
     }
+    fn s(&mut self, text: &[u8]) {
+        for b in text {
+            if self.len < self.buf.len() {
+                self.buf[self.len] = *b;
+                self.len += 1;
+            }
+        }
+    }
+    fn u(&mut self, mut v: u32) {
+        if v == 0 {
+            self.s(b"0");
+            return;
+        }
+        let mut digits = [0u8; 10];
+        let mut n = 0;
+        while v > 0 {
+            digits[n] = b'0' + (v % 10) as u8;
+            v /= 10;
+            n += 1;
+        }
+        while n > 0 {
+            n -= 1;
+            let d = digits[n];
+            self.s(&[d]);
+        }
+    }
+    /// Signed difference, so a delay that ran short is not reported as a huge unsigned number.
+    fn i(&mut self, v: i32) {
+        if v < 0 {
+            self.s(b"-");
+            self.u((-v) as u32);
+        } else {
+            self.u(v as u32);
+        }
+    }
+}
 
-    // Construido DEPOIS da mudanca de relogio, de proposito: e' o que prova que o delay se calibra pelo relogio em
-    // vigor e nao pelo de reset.
+#[cortex_m_rt::entry]
+fn main() -> ! {
+    mailbox::invalidate();
+    let board = Board::take().expect("peripherals taken twice");
+    let before = board.clock_hz().0;
+
+    // The referee is set up before the clock changes, so a failure to reach the crystal cannot also cost the
+    // instrument.
+    let rtc = board.sysrtc();
+
+    let selected = board.select_hfxo(HFXO_HZ).is_ok();
+    let after = board.clock_hz().0;
+
+    // Built AFTER the clock change on purpose: that is what proves the delay calibrates from the clock in force and
+    // not from the reset one.
     let mut delay = board.delay();
 
-    for i in 0..5u32 {
-        delay.delay_ms(1000);
-        defmt::info!("marca {} (1000 ms pedidos)", i);
+    let t0 = rtc.now();
+    delay.delay_ms(REQUESTED_MS);
+    let t1 = rtc.now();
+
+    let elapsed = t1.wrapping_sub(t0);
+    let expected = REQUESTED_MS * TICK_HZ / 1000;
+    let error = elapsed as i32 - expected as i32;
+
+    let mut l = Line::new();
+    l.s(b"hfxo: sel=");
+    l.u(selected as u32);
+    l.s(b" before=");
+    l.u(before / 1_000_000);
+    l.s(b"M after=");
+    l.u(after / 1_000_000);
+    l.s(b"M tick=");
+    l.u(elapsed);
+    l.s(b" err=");
+    l.i(error);
+
+    let ok = selected && after == HFXO_HZ && error.unsigned_abs() <= TOLERANCE_TICKS;
+    if ok {
+        mailbox::pass(&l.buf[..l.len]);
+    } else {
+        mailbox::fail(&l.buf[..l.len]);
     }
 
-    defmt::info!("fim: cinco segundos pedidos");
-
     loop {
-        cortex_m::asm::nop();
+        core::hint::spin_loop();
     }
 }

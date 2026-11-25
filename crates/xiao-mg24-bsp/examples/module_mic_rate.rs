@@ -98,7 +98,8 @@ fn main() -> ! {
     };
 
     // SAFETY: nothing else touches DWT; started once, only read afterwards.
-    let start = unsafe { dwt::start() };
+    let start = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
 
     // Phase 1: raw conversions.
     let mut samples: u32 = 0;

@@ -38,15 +38,18 @@ project keeps relearning: a check that compiles is not a check that reads.
 
 ### Changed
 
-#### The HAL is not published, and the next version is 0.2.0 (2026-11-25)
+#### The first publication is 0.1.0, and it is a minimal working version (2026-11-25)
 
-`efr32mg2x-hal` was withdrawn from the registry: the sparse index answers `NoSuchKey` for the name. The 0.1.1 entry
-below describes a publication that no longer exists, and is kept only as the record of what was fixed on that day.
-`efr32mg2x-pac 0.1.1` is still published and not yanked.
+`efr32mg2x-hal` is not on the registry: the name has no versions, and the 0.1.0/0.1.1 that once existed were withdrawn.
+The entry below for 0.1.1 describes that withdrawn publication and is kept only as the record of what was fixed then.
 
-The next HAL version is **0.2.0**, not 0.1.2: the tree a reader would get today is not the 0.1.x tree, and a version
-number that implies a patch would misdescribe it. The conditions for publishing are written, with the numbers that
-justify them, in `docs/04-reference/HAL-MATURITY-2026-11-25.md`; nothing is published without an express order.
+The version that will be published first is **0.1.0**, and what it promises is a **minimal working version**: every
+peripheral family with a driver is exercised by an example, and every example that makes a claim carries a record read
+back off the board. It does not promise a stable API — `Board`, the I2C transaction shape and the DMA stages will move
+— and it does not cover GPIO interrupts, slave modes or DMA linked descriptors, none of which are implemented.
+
+The conditions and the measured state behind them are in `docs/04-reference/HAL-MATURITY-2026-11-25.md`. Nothing is
+published without an express order.
 
 ### Added
 

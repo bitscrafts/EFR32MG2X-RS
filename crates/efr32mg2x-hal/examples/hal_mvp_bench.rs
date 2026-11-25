@@ -110,7 +110,8 @@ fn main() -> ! {
     let mut out_cpu = [0u16; N];
 
     // SAFETY: nothing else in this program touches DWT; it is started once, here, and only read after.
-    let t0 = unsafe { dwt::start() };
+    let t0 = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
     let mvp_result = mvp.add_fp16(&a, &b, &mut out_mvp);
     let mvp_cycles = dwt::since(t0);
 

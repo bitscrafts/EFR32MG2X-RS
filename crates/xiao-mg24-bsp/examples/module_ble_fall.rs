@@ -95,7 +95,8 @@ fn main() -> ! {
 
     // The cycle counter is the only time base here that cannot lie about the clock.
     // SAFETY: nothing else in this example uses DWT.
-    let boot = unsafe { dwt::start() };
+    let boot = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
 
     module.imu_power().on();
     delay.delay_ms(4);

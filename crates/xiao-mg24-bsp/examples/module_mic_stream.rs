@@ -116,7 +116,8 @@ fn main() -> ! {
     let mut last = 0u16;
 
     // SAFETY: nothing else in this program touches DWT.
-    let total_start = unsafe { dwt::start() };
+    let total_start = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
 
     for w in 0..WINDOWS {
         let t0 = dwt::cycles();

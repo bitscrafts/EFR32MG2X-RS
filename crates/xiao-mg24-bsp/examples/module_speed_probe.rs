@@ -41,7 +41,8 @@ fn main() -> ! {
     };
 
     // SAFETY: nothing else in this program touches DWT; the counter is started once, here.
-    let start = unsafe { dwt::start() };
+    let start = unsafe { dwt::start() }
+        .expect("dwt: the cycle counter does not run without a debug session");
     mailbox::info(b"speed: DWT running, spinning for the host to time");
 
     // Deliberately a spin, not a WFI: a sleeping core may stop counting, and this is about the clock.

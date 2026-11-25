@@ -724,7 +724,7 @@ fn main() -> ! {
     ];
 
     // SAFETY: nothing else in this program touches DWT.
-    unsafe { dwt::start() };
+    unsafe { dwt::start() }.expect("dwt: the cycle counter does not run without a debug session");
     let started = dwt::cycles();
 
     // Filled by each iteration: the core's clock as measured against the sample timer, and the cycles one sample costs.
