@@ -74,7 +74,7 @@ This is the list that matters most for honesty, because a reader sees "SPI suppo
 | peripheral | mode | status |
 |---|---|---|
 | `eusart0` / `usart0` | **SPI slave** | absent as a driver. `spi::Spi0`/`Spi1` are master only. The decision layer exists and is host-tested (`cores::spi::Mode`, `cores::spi::SlaveRx` with its overrun rule), but the register path is not written: it cannot be proven without a master on the other side, and this crate does not ship unproven drivers |
-| `i2c0`, `i2c1` | **I2C slave** (address match) | absent. Master only. Address matching and clock stretching as a slave are a different state machine |
+| `i2c0`, `i2c1` | **I2C slave** (address match) | absent as a driver. The state machine is host-tested (`cores::i2c::slave`: seven-bit address match, NACK on a full receive buffer, stretch on an empty transmit one), but 10-bit addressing, general call and the stretch's timing are hardware this crate has not measured |
 | `usart0`, `eusart1` | 9-bit / multiprocessor address mode | absent |
 | `usart0`, `eusart1` | IrDA, ISO7816 | absent |
 | `eusart0` | **I2S** (`I2SCTRL`) | absent. The audio mode of the same peripheral |

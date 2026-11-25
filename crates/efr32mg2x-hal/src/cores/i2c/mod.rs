@@ -17,6 +17,8 @@
 #[cfg(test)]
 mod sim;
 
+pub mod slave;
+
 /// The errors a bus can report. Mirrors the HAL's `i2c::Error`; the HAL maps one to the other so this crate stays
 /// independent of any register access.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
