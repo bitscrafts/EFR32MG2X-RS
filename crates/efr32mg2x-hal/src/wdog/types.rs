@@ -13,6 +13,37 @@ pub enum Error {
     AlreadyEnabled,
 }
 
+/// A snapshot of the watchdog's registers.
+///
+/// It exists because the gate refuses a PAC type named outside the PAC crate, and an example that has to say *what the
+/// block was doing* when it refused a write has no other door. The layout is the RM's: `IPVERSION`, `EN`, `CFG`,
+/// `STATUS` (bit 31 is `LOCK`), `SYNCBUSY` (bit 0 is `CMD`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct State {
+    /// `WDOG_IPVERSION`, 1 on this part.
+    pub ipversion: u32,
+    /// `WDOG_EN`: bit 0 enables, bit 1 reports a disable in progress.
+    pub en: u32,
+    /// `WDOG_CFG`: `PERSEL` in bits 19:16, `DEBUGRUN` in bit 5.
+    pub cfg: u32,
+    /// `WDOG_STATUS`: bit 31 is the configuration lock.
+    pub status: u32,
+    /// `WDOG_SYNCBUSY`: bit 0 is the `CMD` synchroniser.
+    pub syncbusy: u32,
+}
+
+impl State {
+    /// Whether the configuration is locked, which is the state a configured watchdog must be in.
+    pub fn is_locked(&self) -> bool {
+        self.status & (1 << 31) != 0
+    }
+
+    /// Whether a `CMD` write is still crossing into the watchdog's clock domain.
+    pub fn cmd_sync_busy(&self) -> bool {
+        self.syncbusy & 1 != 0
+    }
+}
+
 /// Watchdog Timeout Period
 ///
 /// Defines the timeout period in watchdog clock cycles (typically 1 kHz from LFRCO/LFXO).

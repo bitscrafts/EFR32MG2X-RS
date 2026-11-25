@@ -164,7 +164,14 @@ impl Wdog {
             (*wdog_ptr).en().write(|w| w.en().set_bit());
         }
 
-        // Wait for enable to synchronize
+        // Wait for the enable to reach the watchdog's clock domain.
+        //
+        // `SYNCBUSY` has **one** bit on this part -- `CMD` (RM 26.5.9) -- so the call above waits for nothing after an
+        // `EN` write. The enable crosses into the watchdog's own clock domain (LFRCO by default: 30.6 us a cycle), and
+        // a `CMD` write that arrives while it is still crossing is refused with a precise bus fault. Measured: the
+        // first feed straight after `new()` faulted at 0x5b00400c with `Wdog::feed` in the backtrace, while the same
+        // driver with a few register reads inserted between construction and the feed did not. The readback is the
+        // instrument: a read of `EN` crosses the same domain, so it only reads 1 once the write has landed.
         Self::wait_syncbusy()?;
 
         // Lock the configuration again. The vendor's own `WDOG_Init` ends by writing `~WDOG_LOCK_UNLOCK`, and
@@ -175,6 +182,24 @@ impl Wdog {
 
         // Watchdog is now running
         Ok(Self { _wdog: wdog })
+    }
+
+    /// Every register of the block in one read, for instruments and for fault diagnosis.
+    ///
+    /// The watchdog is the one peripheral here whose failures are silent: a refused write is a bus fault, which halts
+    /// the core before anything can be reported, so the only way an example can say what happened is to have read the
+    /// registers *before* the risky write. Reading them is also the reason this method is in the crate and not in an
+    /// example: naming a PAC type outside the PAC crate is refused by the gate, and rightly so.
+    pub fn state(&self) -> State {
+        // SAFETY: reads of the WDOG's own registers, of a peripheral this handle owns.
+        let w = unsafe { &(*pac::Wdog0Ns::ptr()) };
+        State {
+            ipversion: w.ipversion().read().bits(),
+            en: w.en().read().bits(),
+            cfg: w.cfg().read().bits(),
+            status: w.status().read().bits(),
+            syncbusy: w.syncbusy().read().bits(),
+        }
     }
 
     /// Feeds (clears) the watchdog timer
@@ -193,7 +218,13 @@ impl Wdog {
     pub fn feed(&mut self) {
         // SAFETY: CMD register write is safe. CLEAR bit is write-only command.
         let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
+        // A previous clear may still be crossing into the watchdog's domain. `SYNCBUSY.CMD` is the one bit that
+        // reports it, so wait for it before issuing another -- and again afterwards, so the caller's next write cannot
+        // land in the middle of this one. Both waits are bounded: a watchdog that will not clear is a fact to report,
+        // not a place to spin forever.
+        Self::wait_cmd_idle();
         wdog.cmd().write(|w| w.clear().cleared());
+        Self::wait_cmd_idle();
     }
 
     /// Locks the watchdog configuration
@@ -315,6 +346,25 @@ impl Wdog {
             .if_()
             .write(|w| w.tout().set_bit());
     }
+
+    /// Wait (bounded) until the `CMD` synchroniser is idle.
+    ///
+    /// The WDOG's registers cross into its own clock domain (LFRCO by default: 30.6 us a cycle), and a `CMD` write that
+    /// lands while the previous one is still crossing is refused with a precise bus fault. `SYNCBUSY` reports exactly
+    /// this one synchroniser and nothing else, which is why this wait exists on its own instead of relying on
+    /// `wait_syncbusy` after the `EN` write.
+    fn wait_cmd_idle() {
+        // SAFETY: a read of the WDOG's own register.
+        let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
+        for _ in 0..Self::SYNC_TIMEOUT {
+            if !wdog.syncbusy().read().cmd().bit_is_set() {
+                return;
+            }
+        }
+    }
+
+    /// Poll budget for a synchronised write, in loop iterations.
+    const SYNC_TIMEOUT: u32 = 200_000;
 
     /// Waits for SYNCBUSY to clear
     ///

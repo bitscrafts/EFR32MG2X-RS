@@ -45,8 +45,8 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. Five of them carry a date, and a date means a
-record was read back off the part — not that the code compiled.
+Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. Eleven of them carry a date, and a date means
+a record was read back off the part — not that the code compiled.
 
 **Watched on the board (2026-11-15)**
 
@@ -67,12 +67,18 @@ record was read back off the part — not that the code compiled.
 
 | example | record |
 |---|---|
-| `hal_mic_level` | `FAIL pwm: TIMER0 is not counting (clock?)` — the level is computed, the hardware PWM path is not |
-| `hal_wdog_feed` | the `CFG` write faults at `0x4b00400c` and `0x5b00400c`; reads work in both windows. See `src/wdog/mod.rs` |
-| `hal_emu_voltage` | `ok , ok` on one boot and `ERR , ERR` on another, same binary — not deterministic, so no date |
-| `hal_timer_compare` | passed with a stale compare flag (`late = 2^32-3200`); the flag is now drained first, and it has not been re-measured since |
-| `hal_imu_read` | no record: the example writes nothing the harness can read |
-| `hal_timer_ticks` | step records only (`step2: sysrtc configured`), never a verdict |
+| — | none: every example that carried a red record on 2026-11-23 was closed on 2026-11-24, below |
+
+**Watched on the board (2026-11-24) — the six that were red**
+
+| example | what came back | what was actually wrong |
+|---|---|---|
+| `hal_timer_compare` | `PASS cmp: start=1850579377 deadline=1850582577 reached=1850582578 late=1 fired=1 en=1 run=1` | nothing: the compare fired one tick after its deadline, three thousand ticks after the flag was drained |
+| `hal_imu_read` | `PASS imu 6a x-351 226 940 \|a\|=1028` | a `copy_from_slice` of 7 bytes into `buf[..8]` panicked before the record was written; a silent panic in an instrument reads as missing data |
+| `hal_timer_ticks` | `PASS rtc: ticks=3277 cyc=1896280 fast=18961kHz late=1 fired=1 run=1` | the instrument waited on the clock it was testing. The reference is now SysTick; see `docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md` |
+| `hal_emu_voltage` | `PASS emu: VS2->VS1 5/5 , VS1->VS2 5/5`, three boots | the example overwrote its own verdict with an `info` line every second, so a reader never saw a verdict at all |
+| `hal_mic_level` | `PASS mic 8 rms=7 pk=18 n=128` | nothing: the LED PWM that fought the microphone for TIMER0 was removed on 2026-11-21 and the README kept the old failure |
+| `hal_wdog_feed` | `PASS wdog: fed 95 st80000000 sb0 lock1` | `feed()` wrote `CMD` without waiting for the previous clear to cross into the WDOG clock domain; the second of two back-to-back feeds was refused with a bus fault |
 
 **No example names these:** `adc`, `clock`, `display`, `dma`, `i2c`, `rtc`, `spi`, `usart`. (`timer` and `pwm` are reached
 through `Board::buzzer_on` / `Board::pwm_on` rather than named directly.)

@@ -3,7 +3,51 @@
 **State: green.** Branch `master`, pushed to `origin` (`bitscrafts/EFR32MG2X-RS`). The Expansion Base
 was found faulty on 2026-11-15 and is away for replacement (about a month); that does not remove
 anything already measured with it — those dates stand — and the examples that need the carrier say so
-until another one is on the bench. The board left running `hal_dma_stop`, its record `PASS`.
+until another one is on the bench. The board left running `hal_wdog_feed`, its record `PASS`.
+
+## Session 2026-11-24 — the six red examples, all closed, and three of them were the instrument lying
+
+Every example the HAL README listed as "ran, and the record says it did not work" now has a dated PASS. Half of them
+were not driver defects at all: the record itself was broken.
+
+1. **`hal_timer_compare`** — nothing was wrong. `late=1 fired=1`, one tick after the deadline, with the stale flag
+   drained first. It had simply never been re-measured after that fix.
+2. **`hal_imu_read`** — a `copy_from_slice` of 7 bytes into `buf[..8]` panicked before the record was written, so the
+   example was filed as "writes nothing the harness can read". A silent panic in an instrument reads as missing data.
+   `PASS imu 6a x-351 226 940 |a|=1028`.
+3. **`hal_timer_ticks`** — two failed instruments before a working one. See below: it is the DWT finding.
+4. **`hal_emu_voltage`** — the example rewrote its own verdict as `info` every second, so a reader over SWD never saw a
+   verdict; the two historical readings (`ok , ok` and `ERR , ERR`) cannot be compared because neither had a status.
+   Five round trips per boot now, three boots: `5/5 , 5/5` every time.
+5. **`hal_mic_level`** — already fixed on 2026-11-21 (the LED PWM was fighting the microphone for TIMER0) and the
+   README kept the old failure. `PASS mic 8 rms=7 pk=18 n=128`.
+6. **`hal_wdog_feed`** — a real driver defect, and the note on file blamed the wrong register.
+
+### The DWT cycle counter only runs while a debug session is attached
+
+Two probes, both anchored outside the firmware: **detached**, two readings 10.8 s apart on the host clock gave the same
+`c=29605` while the SYSRTC advanced 346 091 ticks (32 060 Hz, correct); **attached** under `probe-rs run`, DWT/SYSRTC
+came out at 578.4 against the 579.8 that 19 MHz / 32.768 kHz predicts. So the counter is right while attached and
+frozen while detached -- it lives in the debug power domain, and `DEMCR`/`CYCCNTENA` read back set while it stands
+still. The tick example now uses **TIMER0** (HFRCOEM23, nominal 19 MHz) as the fast-clock reference and reads `cyc=1896280 fast=18961kHz`.
+Record: `docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md`. **Any `dwt` number in this repository is only valid if the
+probe was attached when it was taken**; `hal_mvp_bench`, `hal_sysrtc_wide`, `module_clock_probe`, `module_mic_rate`
+and the dosimeter's cycle budget are all in that class.
+
+### The watchdog: `feed()` wrote `CMD` without waiting for the previous clear
+
+`probe-rs run` named the frame: `BusFault (Precise data access error) at 0x5b00400c`, `Wdog::feed`, the `CMD` write --
+not `CFG`, which the older note blamed (`0x0c` is `CMD`). Ruled out one boot each: the window alias (same fault at both),
+the configuration lock (same with `lock_config()` removed), the LF clock source (same with `HCLKDIV1024`), the pending
+PRS flags (same after clearing them). While faulted the block reads `IPVERSION=1 EN=1 CFG=0x000a0020 SYNCBUSY=0` and
+`CMU_CLKEN0` bit 13 is set: alive, configured, and only `CMD` refusing.
+
+**`SYNCBUSY` has one bit on this part -- `CMD` -- so the driver's `wait_syncbusy()` after the `EN` write waited for
+nothing.** Two feeds back to back were therefore the failing case: the second `CMD` landed while the first was still
+crossing into the WDOG's clock domain (LFRCO, 30.6 us a cycle). `feed()` now waits for `SYNCBUSY.CMD` before and after
+the write, bounded; the control (both waits removed) puts the fault back, and the fix reads `fed 95 st80000000 sb0
+lock1`. Also measured: with `CMU_CLKEN0.WDOG0` clear -- its reset state -- **any** access to the block faults, reads
+included (`IPVERSION` at `0x5b004000`), which is why the example reads its registers only after `board.wdog()`.
 
 ## Session 2026-11-23 — the I2C bus survives a refusal, the DMA stop is proven, and yesterday's diagnosis was wrong
 

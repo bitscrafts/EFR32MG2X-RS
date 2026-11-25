@@ -74,15 +74,18 @@ fn push_dec(out: &mut [u8], mut at: usize, mut value: i32) -> usize {
 #[entry]
 fn main() -> ! {
     mailbox::invalidate();
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
+    mailbox::info(b"imu: board taken");
     let mut delay = board.delay();
 
     // Power first, talk after: the gate is not optional.
     let power = board.output_on(Port::D, 5, false);
     power.on();
     delay.delay_ms(4);
+    mailbox::info(b"imu: power on");
 
     let bus = board.i2c_on(Bus::new(Port::B, 1 << 2, 1 << 3));
+    mailbox::info(b"imu: bus built");
     let mut imu = match Lsm6ds3trc::with_config(
         bus,
         Config {
@@ -110,6 +113,8 @@ fn main() -> ! {
         }
     };
 
+    mailbox::info(b"imu: id ok");
+
     // Settle, then average a few reads: a single sample of a MEMS accelerometer is noisy.
     delay.delay_ms(50);
     let mut sum = [0i32; 3];
@@ -129,6 +134,7 @@ fn main() -> ! {
             delay.delay_ms(1000);
         }
     }
+    mailbox::info(b"imu: reads done");
     let avg = [sum[0] / n, sum[1] / n, sum[2] / n];
 
     // |a| without floats: the integer square root of the squared magnitude.
@@ -138,12 +144,15 @@ fn main() -> ! {
         mag += 1;
     }
 
+    // O prefixo tem 7 bytes ("imu 6a "), nao 8: a versao anterior copiava-o para `buf[..8]`, o
+    // `copy_from_slice` recusava por comprimento e o exemplo entrava em panico ANTES de escrever o registo -- que
+    // e' porque este exemplo aparecia como "nao escreve nada que o harness leia". Um panico silencioso num
+    // instrumento le-se como ausencia de dados.
     let mut buf = [0u8; 96];
-    let mut at = 0;
-    buf[..8].copy_from_slice(b"imu 6a ");
-    at = 8;
-    buf[at] = b'x';
-    at = push_dec(&mut buf, at + 1, avg[0]);
+    let mut at = b"imu 6a x".len();
+    buf[..7].copy_from_slice(b"imu 6a ");
+    buf[7] = b'x';
+    at = push_dec(&mut buf, at, avg[0]);
     buf[at] = b' ';
     at = push_dec(&mut buf, at + 1, avg[1]);
     buf[at] = b' ';
