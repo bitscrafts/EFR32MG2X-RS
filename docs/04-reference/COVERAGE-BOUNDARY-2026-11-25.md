@@ -73,7 +73,7 @@ This is the list that matters most for honesty, because a reader sees "SPI suppo
 
 | peripheral | mode | status |
 |---|---|---|
-| `eusart0` / `usart0` | **SPI slave** | absent. `spi::Spi0`/`Spi1` are master only (`MASTER` bit set, clock generated). Slave needs the clock to be an input, `CS` handling, and a different error story: a slave cannot refuse a transfer |
+| `eusart0` / `usart0` | **SPI slave** | absent as a driver. `spi::Spi0`/`Spi1` are master only. The decision layer exists and is host-tested (`cores::spi::Mode`, `cores::spi::SlaveRx` with its overrun rule), but the register path is not written: it cannot be proven without a master on the other side, and this crate does not ship unproven drivers |
 | `i2c0`, `i2c1` | **I2C slave** (address match) | absent. Master only. Address matching and clock stretching as a slave are a different state machine |
 | `usart0`, `eusart1` | 9-bit / multiprocessor address mode | absent |
 | `usart0`, `eusart1` | IrDA, ISO7816 | absent |

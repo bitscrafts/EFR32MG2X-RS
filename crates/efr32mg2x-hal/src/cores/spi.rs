@@ -247,3 +247,179 @@ mod tests {
         let _ = Stuck;
     }
 }
+
+// ---------------------------------------------------------------------------------------------------------------
+// Slave mode: the half that is a decision rather than a register write.
+//
+// The driver is master-only today (`spi::Spi0`/`Spi1` own the clock and the chip select). A slave cannot refuse a
+// transfer -- the master clocks when it likes -- so its one real decision is what to do when a word arrives before the
+// previous one was read. That decision is arithmetic, it is the difference between losing a word silently and reporting
+// it, and it belongs here where a host test can hold it.
+// ---------------------------------------------------------------------------------------------------------------
+
+/// The four SPI modes, as the two bits that define them.
+///
+/// `CPOL` is the clock's idle level and `CPHA` which edge samples the data. Writing them as a table here means a driver
+/// cannot get the pairing wrong in one place and right in another.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    /// Idle low, sample on the leading (rising) edge.
+    Mode0,
+    /// Idle low, sample on the trailing (falling) edge.
+    Mode1,
+    /// Idle high, sample on the leading (falling) edge.
+    Mode2,
+    /// Idle high, sample on the trailing (rising) edge.
+    Mode3,
+}
+
+impl Mode {
+    /// Clock idle level.
+    #[must_use]
+    pub fn cpol(self) -> bool {
+        matches!(self, Mode::Mode2 | Mode::Mode3)
+    }
+
+    /// Which edge samples the data: `false` for the leading edge, `true` for the trailing one.
+    #[must_use]
+    pub fn cpha(self) -> bool {
+        matches!(self, Mode::Mode1 | Mode::Mode3)
+    }
+
+    /// Whether the data is sampled on a **rising** edge.
+    ///
+    /// The composition of the two bits above, in one place: mode 0 and 3 sample on the rising edge, 1 and 2 on the falling
+    /// one. Stated as a function because a driver that computes this inline in two places eventually computes it two ways.
+    #[must_use]
+    pub fn samples_on_rising(self) -> bool {
+        self.cpol() == self.cpha()
+    }
+
+    /// The name a record prints.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Mode::Mode0 => "mode0",
+            Mode::Mode1 => "mode1",
+            Mode::Mode2 => "mode2",
+            Mode::Mode3 => "mode3",
+        }
+    }
+}
+
+/// Why a slave's receive slot could not take a word.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SlaveError {
+    /// A word arrived while the previous one had not been read.
+    ///
+    /// The master has no way of knowing: it clocked a byte out and got no complaint. The slave either overwrites (and
+    /// silently loses what the master said earlier) or reports, and reporting is the only one that can be fixed in the
+    /// application.
+    Overrun,
+}
+
+/// A one-deep receive slot: what a slave has between the shift register and the code that reads it.
+///
+/// One deep on purpose. Deeper is a design decision about interrupt latency, and this type is small enough that the
+/// decision stays visible at the call site instead of being buried in a queue's depth.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SlaveRx {
+    value: u8,
+    full: bool,
+}
+
+impl SlaveRx {
+    /// An empty slot.
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            value: 0,
+            full: false,
+        }
+    }
+
+    /// Store a word the master just clocked in.
+    ///
+    /// On overrun the **unread word is preserved**: the byte that arrives second is the one thrown away, because the byte
+    /// that arrived first is the one the master has already moved past and expects to have been understood.
+    pub fn store(&mut self, byte: u8) -> Result<(), SlaveError> {
+        if self.full {
+            return Err(SlaveError::Overrun);
+        }
+        self.value = byte;
+        self.full = true;
+        Ok(())
+    }
+
+    /// Take the stored word, if there is one.
+    pub fn take(&mut self) -> Option<u8> {
+        if !self.full {
+            return None;
+        }
+        self.full = false;
+        Some(self.value)
+    }
+
+    /// Whether a word is waiting.
+    #[must_use]
+    pub fn is_full(&self) -> bool {
+        self.full
+    }
+}
+
+#[cfg(test)]
+mod slave_tests {
+    use super::{Mode, SlaveError, SlaveRx};
+
+    /// The mode table, against its definition rather than against the driver's arithmetic: `CPOL` is the idle level,
+    /// `CPHA` says which edge samples, and modes 0 and 3 therefore sample on the rising edge.
+    #[test]
+    fn the_mode_table_is_the_definition() {
+        assert!(!Mode::Mode0.cpol() && !Mode::Mode0.cpha() && Mode::Mode0.samples_on_rising());
+        assert!(!Mode::Mode1.cpol() && Mode::Mode1.cpha() && !Mode::Mode1.samples_on_rising());
+        assert!(Mode::Mode2.cpol() && !Mode::Mode2.cpha() && !Mode::Mode2.samples_on_rising());
+        assert!(Mode::Mode3.cpol() && Mode::Mode3.cpha() && Mode::Mode3.samples_on_rising());
+    }
+
+    /// The normal path: a word is stored, then read, then the slot is free again.
+    #[test]
+    fn a_word_is_stored_and_taken() {
+        let mut rx = SlaveRx::new();
+        assert!(rx.take().is_none(), "an empty slot must not invent a byte");
+        assert!(rx.store(0x5A).is_ok());
+        assert!(rx.is_full());
+        assert_eq!(rx.take(), Some(0x5A));
+        assert!(!rx.is_full());
+        assert!(
+            rx.store(0xA5).is_ok(),
+            "a slot that was read must accept the next word"
+        );
+        assert_eq!(rx.take(), Some(0xA5));
+    }
+
+    /// The defect this type exists for: a second word arriving before the first was read is reported, **and the first
+    /// word survives**. A slot that overwrote would lose what the master already sent and never say so.
+    #[test]
+    fn an_overrun_is_reported_and_the_first_word_survives() {
+        let mut rx = SlaveRx::new();
+        assert!(rx.store(0x11).is_ok());
+        assert_eq!(rx.store(0x22), Err(SlaveError::Overrun));
+        assert_eq!(
+            rx.take(),
+            Some(0x11),
+            "the word that was there first is the one kept"
+        );
+        assert!(rx.take().is_none(), "and it is only handed out once");
+    }
+
+    /// The control for the test above: with the slot read in between, the same two words both go through. A slot that
+    /// reported an overrun on every second store would also pass the overrun test.
+    #[test]
+    fn two_words_in_order_are_not_an_overrun() {
+        let mut rx = SlaveRx::new();
+        assert!(rx.store(0x11).is_ok());
+        assert_eq!(rx.take(), Some(0x11));
+        assert!(rx.store(0x22).is_ok());
+        assert_eq!(rx.take(), Some(0x22));
+    }
+}
