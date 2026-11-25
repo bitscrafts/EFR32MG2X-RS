@@ -135,6 +135,14 @@ else
   fail "radio: $(grep -m1 '^FAIL' /tmp/gate-ble-config.log | sed 's/^FAIL //')"
 fi
 
+# Every `unsafe` block in the HAL has to say what it is relying on. The check exists because the sweep below happened
+# twice already (2026-11-17 and 2026-11-25) and the notes decay as soon as a new register write arrives unexamined.
+if python3 scripts/check-safety-notes.py >/tmp/gate-safety.log 2>&1; then
+  pass "unsafe: $(tail -1 /tmp/gate-safety.log | sed 's/VERDICT: PASS //')"
+else
+  fail "unsafe: $(grep -m1 '  ' /tmp/gate-safety.log)"
+fi
+
 # What would be published, read the way a stranger reads it. cargo publish --dry-run compiles the package and never
 # looks at it: that is how ef32mg2x-hal 0.1.0 reached crates.io announcing "I2C/SPI/Timers next" with all three in the
 # tree, and linking a docs/PHASE2_PLAN.md that does not exist.

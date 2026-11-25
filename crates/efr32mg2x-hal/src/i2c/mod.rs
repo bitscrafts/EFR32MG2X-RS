@@ -183,6 +183,7 @@ macro_rules! impl_hw_bus {
                         return Err(Proto::Timeout);
                     }
                 }
+                // SAFETY: `TXDATA` takes the byte being shifted onto the bus; `byte` is a `u8`, so the widening adds no bits.
                 self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
                 let mut polls = 0u32;
                 while self.i2c.status().read().txc().bit_is_clear() {
@@ -318,6 +319,8 @@ impl I2c0 {
 
         // Calculate and set clock divider
         let clkdiv = Self::calculate_clkdiv(hfclk.into(), config.speed);
+        // SAFETY: `CLKDIV` is the whole divider word, produced by `cores::i2c::clkdiv`, which is host-tested against the
+        // manual's formula and refuses a rate below the bus minimum.
         i2c.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         Self { i2c }
@@ -411,6 +414,7 @@ impl I2c1 {
 
         // Calculate and set clock divider
         let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.speed);
+        // SAFETY: as above -- the same host-tested divider, for the other bus instance.
         i2c.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         Self { i2c }

@@ -63,6 +63,8 @@ impl Board {
     /// Route the pins before using it: [`Board::route_i2c0`].
     pub fn i2c0(&self, config: crate::i2c::Config, hfclk: crate::clock::Hertz) -> crate::i2c::I2c0 {
         self.dp.cmu_s.clken0().modify(|_, w| w.i2c0().set_bit());
+        // SAFETY: `Board` took `Peripherals` once and holds every singleton for the life of the program. Handing I2C0
+        // out here is the only path a caller has to it, and no second `steal()` can happen while the board owns the tree.
         crate::i2c::I2c0::new(unsafe { pac::I2c0Ns::steal() }, config, hfclk)
     }
 
@@ -106,6 +108,8 @@ impl Board {
         // The pin mode first: open-drain, with the number the manual gives.
         for pino in [scl.1, sda.1] {
             let desloc = 4 * u32::from(pino);
+            // SAFETY: `bits()` touches one 4-bit `MODE` field. The mask keeps the other seven pins of the register and
+            // the value is one of the numbers the manual gives (`route::PinMode`), never something computed.
             self.dp.gpio_ns.portb_model().modify(|r, w| unsafe {
                 let limpo = r.bits() & !(0xF << desloc);
                 w.bits(limpo | (u32::from(mode.value()) << desloc))
@@ -115,10 +119,13 @@ impl Board {
         // Then the route, then the enable.
         self.dp
             .gpio_ns
+            // SAFETY: the value comes from `route::route_value`, which bounds-checks port and pin and places them in
+            // the fields the manual defines (`PORT` [1:0], `PIN` [19:16]); no other bit of the register is set.
             .i2c0_sclroute()
             .write(|w| unsafe { w.bits(scl_valor) });
         self.dp
             .gpio_ns
+            // SAFETY: as above -- the same bounds-checked `route_value`, for the SDA field.
             .i2c0_sdaroute()
             .write(|w| unsafe { w.bits(sda_valor) });
         self.dp
@@ -140,6 +147,7 @@ impl Board {
         config: crate::usart::Config,
     ) -> Result<crate::usart::Usart0, crate::usart::Error> {
         self.dp.cmu_s.clken0().modify(|_, w| w.usart0().set_bit());
+        // SAFETY: as with I2C0 -- the board owns the PAC tree, and this is the single hand-out of USART0.
         crate::usart::Usart0::new_at(
             unsafe { pac::Usart0S::steal() },
             config,
@@ -160,6 +168,7 @@ impl Board {
     ) -> Result<crate::spi::Spi1, crate::route::RouteError> {
         self.dp.cmu_s.clken1().modify(|_, w| w.eusart0().set_bit());
         self.route_eusart0_spi(mosi, miso, sclk)?;
+        // SAFETY: as with I2C0 -- the board owns the PAC tree, and this is the single hand-out of EUSART0.
         Ok(crate::spi::Spi1::new_at(
             unsafe { pac::Eusart0S::steal() },
             config,
@@ -193,10 +202,13 @@ impl Board {
 
         self.dp
             .gpio_ns
+            // SAFETY: `route_value` bounds-checks the pair, so port and pin land in their fields and nothing else is
+            // written. The pin mode was set above, which is the half a route register cannot do.
             .usart0_txroute()
             .write(|w| unsafe { w.bits(tx_valor) });
         self.dp
             .gpio_ns
+            // SAFETY: as above, for RX.
             .usart0_rxroute()
             .write(|w| unsafe { w.bits(rx_valor) });
         self.dp
@@ -231,14 +243,18 @@ impl Board {
 
         self.dp
             .gpio_ns
+            // SAFETY: `route_value` bounds-checks the pair before it gets here, so the fields hold exactly the pads the
+            // caller named and no reserved bit is touched.
             .eusart0_txroute()
             .write(|w| unsafe { w.bits(mosi_valor) });
         self.dp
             .gpio_ns
+            // SAFETY: as above, for MISO.
             .eusart0_rxroute()
             .write(|w| unsafe { w.bits(miso_valor) });
         self.dp
             .gpio_ns
+            // SAFETY: as above, for the clock line.
             .eusart0_sclkroute()
             .write(|w| unsafe { w.bits(sclk_valor) });
         self.dp
@@ -295,6 +311,8 @@ impl Board {
     /// The non-secure window is used deliberately. In the secure alias the configuration registers read back
     /// as zero from a non-secure image — measured on this board, in `pac_mvp_add`.
     pub fn mvp(&self) -> Result<crate::mvp::Mvp, crate::mvp::Error> {
+        // SAFETY: the board owns `Peripherals`, so MVP cannot be taken twice; `Mvp::take` still checks that the block
+        // answers before it returns, which is what catches a die where this peripheral is absent.
         crate::mvp::Mvp::take(&self.dp.cmu_ns, unsafe { pac::MvpNs::steal() })
     }
 
@@ -372,6 +390,8 @@ impl Board {
         self.dp
             .msc_s
             .lock()
+            // SAFETY: `LOCKKEY` is a 16-bit field and the value is the unlock sequence from the reference manual; a
+            // wrong sequence is refused by the hardware, it does not unlock something else.
             .write(|w| unsafe { w.lockkey().bits(MSC_LOCKKEY_UNLOCK) });
         self.dp.msc_s.readctrl().modify(|_r, w| w.mode().ws3());
 
@@ -396,6 +416,8 @@ impl Board {
             }
         }
 
+        // SAFETY: `CAL` is a 7-bit field and `cal` is one of the constants the table above selects by target
+        // frequency -- never a computed value, so it cannot exceed the field.
         self.dp.hfrco0_s.cal().write(|w| unsafe { w.bits(cal) });
 
         // Wait for the new band to settle.
@@ -491,6 +513,8 @@ impl Board {
         self.dp
             .timer0_s
             .lock()
+            // SAFETY: the timer's `LOCKKEY` is a 16-bit field and `0xCE80` is the unlock sequence the reference manual
+            // gives for TIMER; the same constant `pwm::Timer0::take` uses.
             .write(|w| unsafe { w.lockkey().bits(0xCE80) });
         self.dp.timer0_s.en().write(|w| w.en().clear_bit());
         self.dp
@@ -501,7 +525,15 @@ impl Board {
         // with EN=0 it raised a precise bus error at 0x4004_801C (TIMER0 + TOP): measured 2026-11-17 from
         // CFSR=0x00008200 (PRECISERR|BFARVALID), HFSR=0x40000000, BFAR=0x4004801C.
         let period = u32::from(self.clock_hz()) / hz;
+        // A period above 16 bits is a rate this counter cannot produce, and `bits()` would truncate it silently -- the
+        // same class of defect as the baud divider that wrapped at 19 MHz. Refused, not programmed. A period of 0 is the
+        // clock itself, which this counter cannot divide down to either.
+        if period == 0 || period > 0x1_0000 {
+            return None;
+        }
         self.dp.timer0_s.en().write(|w| w.en().set_bit());
+        // SAFETY: `TOP` is a 16-bit field and the bound above has just refused anything that does not fit it; the
+        // `saturating_sub` keeps a period of 1 from underflowing.
         self.dp
             .timer0_s
             .top()
@@ -564,6 +596,8 @@ impl Board {
         // early looks the same as a delay that was right. Measured 2026-11-21 with the crystal running: five
         // `delay_ms(1000)` calls took 2,46 s of wall clock, and this is the line that explains the missing half.
         crate::delay::Delay::with_sysclk(
+            // SAFETY: `Board` took `cortex_m::Peripherals` once at construction and keeps it; this borrows SysTick back
+            // for the delay, and nothing else in this crate touches it.
             unsafe { cortex_m::Peripherals::steal() }.SYST,
             self.clock_hz().0,
         )
@@ -639,6 +673,8 @@ impl Board {
         self.dp
             .gpio_s
             .cdbusalloc()
+            // SAFETY: `CDODD0` is a one-bit allocate field; 1 is the only value written, and giving the odd CD bus to
+            // IADC0 is what PC9 needs (measured 2026-11-17: without it the converter reads a flat zero).
             .modify(|_r, w| unsafe { w.cdodd0().bits(1) });
 
         self.dp
@@ -660,8 +696,8 @@ impl Board {
             .cmu_s
             .iadcclkctrl()
             .modify(|_r, w| w.clksel().hfrcoem23());
-        // The converter lives at a fixed address for the life of the program, so a
-        // `'static` view is literally true — the same argument `gpio_static` makes.
+        // SAFETY: the converter lives at a fixed address for the life of the program, so a `'static` view is literally
+        // true -- the same argument `gpio_static` makes. The address is the one the PAC gives for IADC0.
         const IADC0_BASE: usize = 0x4900_4000;
         let reg = unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) };
         crate::microphone::Converter::new(reg)
@@ -677,6 +713,7 @@ impl Board {
     /// `CTRL` write, at `0x49004008`.
     pub fn adc(&self, config: crate::adc::Config) -> crate::adc::Adc {
         self.run_hfrcoem23();
+        // SAFETY: the board owns `Peripherals`; the ADC is handed out through it, so no caller can reach it another way.
         crate::adc::Adc::new(unsafe { pac::Iadc0S::steal() }, config, &self.dp.cmu_s)
     }
 
@@ -728,6 +765,9 @@ pub fn i2c_static(bus: crate::bus::Bus) -> crate::bus::BitBangI2c<'static> {
 /// by the bus being owned by one place.
 #[must_use]
 pub(crate) fn gpio_static() -> &'static pac::gpio_s::RegisterBlock {
+    // SAFETY: the GPIO block lives at a fixed address for the whole run, and the pointer comes from the PAC rather
+    // than from a literal.
+    //
     // The type is the **secure** GPIO block (`gpio_s`), and `0x5003_C000` is `GPIO_NS_BASE`
     // (`efr32mg24b220f1536im48.h:588` against `:537` for `GPIO_S_BASE`). With TrustZone off the two alias the
     // same registers, which is why this never showed up as a fault -- but a pointer whose address and type

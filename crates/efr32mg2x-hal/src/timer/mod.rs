@@ -229,11 +229,14 @@ macro_rules! impl_timer {
                         PwmChannel::Channel1 => {
                             self.timer
                                 .cc1_oc()
+                                // SAFETY: as for channel 0 above -- `compare_value` is `top * percent / 100` with `percent <= 100` and
+                                // `top <= 0xFFFF`, so it fits the 16-bit `OC` field.
                                 .write(|w| unsafe { w.bits(compare_value) });
                         }
                         PwmChannel::Channel2 => {
                             self.timer
                                 .cc2_oc()
+                                // SAFETY: same value and same argument as the two channels above.
                                 .write(|w| unsafe { w.bits(compare_value) });
                         }
                     }
@@ -372,11 +375,14 @@ macro_rules! impl_timer {
                         PwmChannel::Channel1 => {
                             self.timer
                                 .cc1_oc()
+                                // SAFETY: `compare_value` was refused above when it exceeds `top_value`, and `top_value <= 0xFFFF` for this
+                                // counter, so the 16-bit `OC` field cannot be truncated.
                                 .write(|w| unsafe { w.bits(compare_value) });
                         }
                         PwmChannel::Channel2 => {
                             self.timer
                                 .cc2_oc()
+                                // SAFETY: same validated value as the two channels above.
                                 .write(|w| unsafe { w.bits(compare_value) });
                         }
                     }
@@ -410,6 +416,8 @@ macro_rules! impl_timer {
             /// Clear overflow interrupt flag
             pub fn clear_overflow(&mut self) {
                 critical_section::with(|_cs| {
+                    // SAFETY: `alias::clear_window` gives the same block through its `_CLR` window, where writing 1 to `IF.OF`
+                    // clears the flag; a plain write to `IF` would set it instead, which is the defect the alias exists to avoid.
                     unsafe { crate::alias::clear_window(pac::Timer0S::ptr()) }
                         .if_()
                         .write(|w| w.of().set_bit());

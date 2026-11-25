@@ -153,6 +153,7 @@ impl I2c0 {
         ESPERAS_TXBL.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
         self.espera(|r| r.status().read().txbl().bit_is_set())
             .await?;
+        // SAFETY: `TXDATA` takes the byte being shifted out; `byte` is a `u8`, so the widening to `u32` adds nothing.
         self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
         ULTIMA_ESPERA.store(2, core::sync::atomic::Ordering::Relaxed);
         ESPERAS_TXC.fetch_add(1, core::sync::atomic::Ordering::Relaxed);

@@ -109,6 +109,8 @@ impl Usart0 {
                 DataBits::Eight => 5, // FRAME.DATABITS = 5 means 8 bits
                 DataBits::Nine => 6,  // FRAME.DATABITS = 6 means 9 bits
             };
+            // SAFETY: `DATABITS` is written with its encoded value (`5` for eight bits, `6` for nine, as the manual defines)
+            // and the value comes from the `DataBits` enum, never from a caller's number.
             unsafe { w.databits().bits(databits) };
 
             // Set parity
@@ -137,6 +139,8 @@ impl Usart0 {
                 return Err(crate::usart::Error::InvalidBaudrate);
             }
         };
+        // SAFETY: `DIV` is 16 bits and `clkdiv` comes from `cores::usart::clkdiv`, which multiplies in `u64` and refuses a
+        // rate it cannot represent. The wrap that wrote 52 where 2382 belongs is exactly what this replaced.
         usart.clkdiv().write(|w| unsafe { w.div().bits(clkdiv) });
 
         // Enable TX and RX
@@ -171,6 +175,7 @@ impl Usart0 {
         // Write byte to TXDATA
         self.usart
             .txdata()
+            // SAFETY: `TXDATA` holds the frame; `byte` is a `u8` and the frame is 8 or 9 bits wide, so the value fits.
             .write(|w| unsafe { w.txdata().bits(byte) });
     }
 

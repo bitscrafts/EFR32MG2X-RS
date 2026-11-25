@@ -53,7 +53,9 @@ pub(crate) fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, v
     // only wants the side effect, so it is dropped explicitly.
     macro_rules! write {
         ($reg:expr) => {{
-            let _ = $reg.modify(|r, w| unsafe { w.bits((r.bits() & clear) | set) });
+            // SAFETY: one 4-bit `MODE` field is replaced. `clear` and `set` are derived from `pin % 8` and a value from
+        // `mode::*`, and the mask keeps every other pin that shares the register.
+        let _ = $reg.modify(|r, w| unsafe { w.bits((r.bits() & clear) | set) });
         }};
     }
     match (port, pin < 8) {
@@ -82,6 +84,8 @@ pub(crate) fn read_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port) -> u32 {
 
 /// Write a whole port's output latch.
 pub(crate) fn write_dout(gpio: &pac::gpio_s::RegisterBlock, port: Port, bits: u32) {
+    // SAFETY: `DOUT` is a whole-port output word and `bits` is the mask the caller asked for; writing the word is
+    // the only way to set several pins at once, and the arm chosen is the port the caller named.
     match port {
         Port::A => gpio.porta_dout().write(|w| unsafe { w.bits(bits) }),
         Port::B => gpio.portb_dout().write(|w| unsafe { w.bits(bits) }),

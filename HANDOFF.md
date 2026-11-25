@@ -5,6 +5,35 @@ was found faulty on 2026-11-15 and is away for replacement (about a month); that
 anything already measured with it — those dates stand — and the examples that need the carrier say so
 until another one is on the bench. The board left running `hal_wdog_feed`, its record `PASS`.
 
+## Session 2026-11-25 — SPI and USART measured, the CI that built a quarter of the tree, and a safety sweep that found the buzzer dead
+
+**State: green.** Branch `master`, pushed. Board left running `hal_usart_link` (jumper D6–D7 fitted, record `PASS`).
+
+This session closed the four items that stood between the tree and a publishable 0.1.0, and each one turned out to be
+more than a documentation fix.
+
+- **SPI**: `hal_spi_loopback` drives the board's own pads (D10 = PA5 MOSI, D9 = PA4 MISO, D8 = PA3 SCLK) with a jumper
+  between MOSI and MISO, and carries a **measured control**: moving MISO to a pin no jumper reaches gives
+  `in=ff..ff` and one accidental match out of eight. Routing for USART0 and EUSART0 had to be written first — the HAL
+  had `route_i2c0` and nothing else, which is why `spi` and `usart` were drivers that reached no pad.
+- **USART**: `hal_usart_link`, jumper D6–D7, `PASS out=6 in=6 ok=6 45 46 52 33 32 21`. Two defects fell out of
+  writing it: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), and a floating RX line reports
+  `0x00` often enough that a byte-counting echo test passes on a board with nothing attached.
+- **The `dwt` trap**: `dwt::start()` now proves the counter moves and returns `DwtError::NotRunning`, so a frozen
+  counter cannot be read as zero.
+- **CI**: `check-examples-build.sh` carried a hand-written list of 26 examples while the workspace had 107. The HAL
+  alone shipped 22 and the script compiled 4 — every instrument added since mid-November was outside CI, and the green
+  verdict was about a quarter of the tree. It now builds every example of every crate and refuses a tree where an
+  example cannot be reached. **107 examples, 9 crates.**
+- **Safety sweep**: 197 `unsafe` sites annotated, `scripts/check-safety-notes.py` added to the gate. Writing the notes
+  found three stacked defects on the buzzer path (`CC0_CFG` written with the counter enabled → bus fault at
+  `TIMER0 + 0x60`; `EN` crossing the clock domain; the calibration reading `CYCCNT` that was never enabled). Result:
+  `PASS buzzer tick=19000000Hz top=3518 tone=2700Hz`.
+
+Documentation grades moved: evidence B− → **B**, safety C → **B**, publication hygiene D → **B**. What is still below B
+is API hygiene (C+: `Board` hands out unlimited aliases, `pub mod cores` is public) and error handling (`wdog` returns
+`Error::Locked` for a timeout).
+
 ## Session 2026-11-24 — the six red examples, all closed, and three of them were the instrument lying
 
 Every example the HAL README listed as "ran, and the record says it did not work" now has a dated PASS. Half of them

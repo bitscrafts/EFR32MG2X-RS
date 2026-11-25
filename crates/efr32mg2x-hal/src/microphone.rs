@@ -86,6 +86,9 @@ pub enum MicError {
     ConversionsWontStop,
     /// A configuration write did not publish (`*WRITEPENDING` never cleared).
     WriteNotPublished,
+    /// The pacing period does not fit the 16-bit `TIMER` field: the rate asked for is outside what this converter
+    /// can be paced to, and `bits()` would otherwise truncate it into a different rate silently.
+    PeriodOutOfRange,
 }
 
 /// A configured single-channel microphone capture.
@@ -136,7 +139,11 @@ impl<'a> Microphone<'a> {
         // Reset the two handshake registers and drain the FIFO while enabled,
         // exactly as the vendor's IADC_reset() does. Without this the first
         // samples come from whatever an earlier run left in the FIFO.
+        // SAFETY: `MASKREQ` is a whole-register mask of requested conversions, and zero is 'nothing masked' -- the state a
+        // reset to a known configuration needs, with every field accounted for.
         adc.maskreq().write(|w| unsafe { w.bits(0) });
+        // SAFETY: `SINGLE` is an all-zero word when no single conversion is queued; this is the reset state itself, not a
+        // value with fields left over.
         adc.single().write(|w| unsafe { w.bits(0) });
         if !wait_bits_clear(|| {
             adc.status().read().maskreqwritepending().bit_is_set()
@@ -167,6 +174,8 @@ impl<'a> Microphone<'a> {
             w.warmupmode().normal();
             w.adcclksuspend0().prswudis();
             w.adcclksuspend1().prswudis();
+            // SAFETY: `TIMEBASE` is an 8-bit field and `19` is `ceil(fsrc / 1 MHz) - 1` for this converter's clock: a larger
+            // value only lengthens the internal windows, so the number is in range and conservative.
             unsafe {
                 // ceil(fsrc / 1 MHz) - 1; a larger value only lengthens the
                 // internal timing windows, so 19 is safe for any MHz-scale clock.
@@ -185,6 +194,8 @@ impl<'a> Microphone<'a> {
                 .refsel()
                 .vbgr()
         });
+        // SAFETY: `PRESCALE` is a 4-bit field and `1` is the divider that keeps the scheduler at or below the converter
+        // clock -- the smallest legal value here, not a computed one.
         adc.sched0().write(|w| unsafe { w.prescale().bits(1) });
         adc.singlefifocfg().write(|w| {
             w.alignment().right12();
@@ -204,6 +215,8 @@ impl<'a> Microphone<'a> {
 
         adc.single().write(|w| {
             w.portpos().portc();
+            // SAFETY: `PINPOS` and `PINNEG` are 4-bit pin selectors, and `9`/`0` are PC9 (the microphone's output) and the
+            // ground side -- the pair this converter is wired to on this board.
             unsafe {
                 w.pinpos().bits(9); // PC9, the microphone output
                 w.pinneg().bits(0);
@@ -258,11 +271,19 @@ impl<'a> Microphone<'a> {
             }
         }
         let cycles = adc_clk_hz / hz;
+        // A period above 16 bits would be truncated by `bits()` into a different rate, silently -- the same defect the
+        // USART divider had when it wrapped. Zero means the requested rate is at or above the converter clock.
+        if cycles == 0 || cycles > u32::from(u16::MAX) {
+            self.adc.en().write(|w| w.en().set_bit());
+            return Err(MicError::PeriodOutOfRange);
+        }
         self.adc
             .trigger()
             .modify(|_r, w| w.singletrigsel().timer().singletrigaction().once());
         self.adc
             .timer()
+            // SAFETY: `TIMER` is 16 bits and `cycles as u16` is only reached after the range check above refused anything that
+            // does not fit, so the cast cannot truncate.
             .write(|w| unsafe { w.timer().bits(cycles as u16) });
         self.adc.en().write(|w| w.en().set_bit());
         Ok(cycles)
@@ -280,6 +301,9 @@ impl<'a> Microphone<'a> {
     ///
     /// [`MicError::StuckDisabling`] when the converter will not leave its enabled state to be reconfigured.
     pub fn retune_period(&mut self, cycles: u32) -> Result<u32, MicError> {
+        if cycles == 0 || cycles > u32::from(u16::MAX) {
+            return Err(MicError::PeriodOutOfRange);
+        }
         self.adc.en().write(|w| w.en().clear_bit());
         let mut spin = 0u32;
         while self.adc.en().read().disabling().bit_is_set() {
@@ -290,6 +314,8 @@ impl<'a> Microphone<'a> {
         }
         self.adc
             .timer()
+            // SAFETY: `TIMER` is 16 bits and `retune_period` refuses any `cycles` that does not fit before this write, so the
+            // cast is exact.
             .write(|w| unsafe { w.timer().bits(cycles as u16) });
         self.adc.en().write(|w| w.en().set_bit());
         self.adc.cmd().write(|w| w.timerdis().set_bit());

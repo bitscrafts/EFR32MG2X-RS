@@ -110,12 +110,17 @@ impl Spi0 {
         });
 
         // Configure frame format
+        // SAFETY: `DATABITS` takes its encoded value, and `0x5` is the encoding the manual gives for eight data bits.
+        // The field API has no named variant for it, so the number is written with its meaning beside it, as the USART
+        // driver does.
         usart.frame().write(|w| unsafe {
             w.databits().bits(0x5) // 8 data bits (value 0x5 = 8 bits)
         });
 
         // Calculate and set clock divider for SPI frequency
         let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.frequency);
+        // SAFETY: `CLKDIV` is the whole divider word; `clkdiv` comes from `efr32mg2x-usart-core`, which is measured on the
+        // host and refuses a rate this clock cannot produce, so the value is in range by construction.
         usart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 
         // Enable the peripheral, enable TX and RX, then start the master. Without `MASTEREN` (bit 4 of `CMD`,
@@ -205,6 +210,8 @@ impl Spi0 {
         // Write byte to TX buffer
         self.usart
             .txdata()
+            // SAFETY: `TXDATA` holds the frame being shifted out; `byte` is a `u8`, so the widening to `u32` cannot carry a
+            // bit the field would have to drop.
             .write(|w| unsafe { w.bits(byte as u32) });
 
         // Wait for RX data to be valid
@@ -263,6 +270,9 @@ impl Spi1 {
             Ok(value) => value as u8,
             Err(_) => 0xFF, // the slowest expressible rate: reported by `actual_frequency`, never silent
         };
+        // SAFETY: every field but `SDIV` is a named boolean from the configuration. `SDIV` is the 8-bit divider
+        // `cores::spi::sdiv` produced, and `0xFF` -- the slowest expressible rate -- is used when the requested one cannot
+        // be produced, rather than a wrapped number that would look like a rate.
         eusart.cfg2().write(|w| unsafe {
             w.clkpol()
                 .bit(config.mode.polarity() == Polarity::IdleHigh)
@@ -346,6 +356,7 @@ impl Spi1 {
         // Write byte to TX buffer
         self.eusart
             .txdata()
+            // SAFETY: as in `Spi1`: `TXDATA` holds the frame and `byte` is a `u8`, so nothing is truncated.
             .write(|w| unsafe { w.bits(byte as u32) });
 
         // Wait for RX data to be valid (RXFL > 0 means data available)
@@ -390,6 +401,8 @@ impl Spi2 {
             Ok(value) => value as u8,
             Err(_) => 0xFF,
         };
+        // SAFETY: same construction as `Spi1::new` -- named booleans for the mode fields, and an `SDIV` that came from
+        // `cores::spi::sdiv` with the same refusal of an impossible rate.
         eusart.cfg2().write(|w| unsafe {
             w.clkpol()
                 .bit(config.mode.polarity() == Polarity::IdleHigh)
@@ -465,6 +478,8 @@ impl Spi2 {
         while self.eusart.status().read().txfl().bit_is_clear() {}
         self.eusart
             .txdata()
+            // SAFETY: `TXDATA` holds the frame; `byte` is a `u8`, so the widening to `u32` adds no bits, and `TXFL` was just
+            // seen clear, which is what makes the write land in the FIFO rather than overwrite it.
             .write(|w| unsafe { w.bits(byte as u32) });
         while self.eusart.status().read().rxfl().bit_is_clear() {}
         let received = self.eusart.rxdata().read().bits() as u8;

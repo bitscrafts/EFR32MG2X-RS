@@ -76,6 +76,8 @@ impl<'a> BitBangI2c<'a> {
         // spelled in each arm; a macro keeps that from being four copies of the expression.
         macro_rules! set_mode {
             ($reg:expr) => {
+                // SAFETY: one 4-bit `MODE` field is replaced. The mask keeps the other pins of the register and the value is one
+                // of the numbers `pin::mode` names, so no unrelated pin is reconfigured.
                 $reg.modify(|r, w| unsafe { w.bits((r.bits() & clear) | set) })
             };
         }

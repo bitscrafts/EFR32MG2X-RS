@@ -169,6 +169,8 @@ impl Dma {
         // crossbar unclocked that write is a bus fault -- so `start_peripheral_to_memory` never returned, which is
         // why the whole module had no board proof: nothing could arm a channel.
         critical_section::with(|_cs| {
+            // SAFETY: the CMU lives at a fixed address for the life of the program and the pointer comes from the PAC; this is
+            // inside a critical section, and the two gates written are the ones this path needs (LDMA and its crossbar).
             let cmu = unsafe { &(*pac::CmuS::ptr()) };
             cmu.clken0()
                 .modify(|_, w| w.ldma().set_bit().ldmaxbar().set_bit());
@@ -323,7 +325,11 @@ impl<const N: u8> Channel<N> {
 
         // Configure channel in critical section
         critical_section::with(|_cs| {
+            // SAFETY: LDMA's register block is at a fixed address for the life of the program, the pointer comes from the PAC,
+            // and the whole block is touched inside one critical section -- which is what makes `&*` sound here rather than a
+            // second mutable view.
             let ldma = unsafe { &(*pac::LdmaS::ptr()) };
+            // SAFETY: as above, for the request crossbar's block; both are read-only views of registers the DMA owns.
             let ldmaxbar = unsafe { &(*pac::LdmaxbarS::ptr()) };
 
             // Ensure channel is idle
@@ -450,6 +456,8 @@ impl<const N: u8> Channel<N> {
     /// }
     /// ```
     pub fn get_position(&self) -> Option<usize> {
+        // SAFETY: fixed peripheral address, pointer from the PAC, and the channel index `N` is a compile-time constant of
+        // this instance -- no two instances name the same channel.
         let ldma = unsafe { &(*pac::LdmaS::ptr()) };
 
         // Check if channel is active
@@ -508,6 +516,8 @@ impl<const N: u8> Channel<N> {
     /// ch0.stop();
     /// ```
     pub fn stop(&mut self) {
+        // SAFETY: as above: the block's address is fixed, and this view is used for one register write inside the same
+        // critical section that owns the channel.
         let ldma = unsafe { &(*pac::LdmaS::ptr()) };
 
         // Disable the channel through CHDIS, not by writing zeros to CHEN.
@@ -522,6 +532,8 @@ impl<const N: u8> Channel<N> {
         }
 
         // Clear pending interrupts
+        // SAFETY: `IF` reached through the clear window is write-1-to-clear, and `1 << N` is only this channel's flag -- `N`
+        // is the instance's own compile-time channel number, so no other channel's pending flag is touched.
         unsafe {
             crate::alias::clear_window(pac::LdmaS::ptr())
                 .if_()
@@ -686,6 +698,9 @@ impl<const N: u8> Channel<N> {
 
 /// The transfer layer's view of a HAL channel, held by reference so the guard does not own the peripheral.
 impl<const N: u8> crate::cores::dma::Channel for &mut Channel<N> {
+    // SAFETY: the trait's contract is that `dst` stays valid until `stop`; this implementation never touches the
+    // pointer -- the descriptor was programmed by `start_peripheral_to_memory`, and `begin_transfer` only records who
+    // owns the buffer.
     unsafe fn start(&mut self, _dst: *mut u8, _bytes: usize) {
         // The descriptor is already programmed by `start_peripheral_to_memory`; this only records that the buffer is
         // now owned by the transfer.

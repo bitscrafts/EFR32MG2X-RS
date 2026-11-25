@@ -28,6 +28,8 @@ impl embedded_hal_nb::serial::Write<u8> for Usart0 {
     fn write(&mut self, word: u8) -> nb::Result<(), Self::Error> {
         // Check if TX buffer is ready
         if self.usart.status().read().txbl().bit_is_set() {
+            // SAFETY: `TXDATA` is as wide as the frame the driver configured; `word` is the `u8` this trait carries, so
+            // it always fits an 8-bit frame, and `TXBL` was just seen set, which is what makes the write legal.
             self.usart
                 .txdata()
                 .write(|w| unsafe { w.txdata().bits(word) });

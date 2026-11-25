@@ -48,6 +48,8 @@ impl<'a> Sleep<'a> {
     pub fn enter(&self) {
         // `cortex_m::Peripherals::steal` já é o que o `pwm` faz para o DWT: o `SCB` não vem no PAC do
         // chip, e passar um `&mut SCB` por toda a cadeia só para pôr um bit não melhora a segurança.
+        // SAFETY: `Board` took `cortex_m::Peripherals` once and keeps it; the `SCB` is not part of this chip's PAC, so
+        // it is borrowed here and only `SCR.SLEEPDEEP` is touched -- the one bit this crate writes on that block.
         let mut scb = unsafe { cortex_m::Peripherals::steal() }.SCB;
         scb.set_sleepdeep();
         cortex_m::asm::wfi();

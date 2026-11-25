@@ -123,6 +123,8 @@ impl Adc {
             w.warmupmode().normal();
             w.adcclksuspend0().prswudis();
             w.adcclksuspend1().prswudis();
+            // SAFETY: `TIMEBASE` is an 8-bit field and `19` is `ceil(fsrc / 1 MHz) - 1`, the same value the microphone path
+            // uses: larger only lengthens the internal windows, so it is in range.
             unsafe {
                 // ceil(fsrc / 1 MHz) - 1; a larger value only lengthens the internal timing
                 // windows, so 19 is safe for any MHz-scale clock.
@@ -153,6 +155,8 @@ impl Adc {
                 .vddx(),
         });
 
+        // SAFETY: `PRESCALE` is a 4-bit field and `1` is the smallest legal divider, chosen so the scheduler never outruns
+        // the converter clock.
         adc.sched0().write(|w| unsafe { w.prescale().bits(1) });
         adc.singlefifocfg().write(|w| {
             w.alignment().right12();

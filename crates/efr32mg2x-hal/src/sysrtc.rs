@@ -159,12 +159,21 @@ impl Sysrtc {
         let cmu_base = cmu as *const CmuBlock as usize;
         let clken0 = (cmu_base + off::CMU_CLKEN0) as *mut u32;
         let gates =
+            // SAFETY: `clken0` is the address of `CMU_CLKEN0` inside the CMU block the caller borrowed, and reading it
+            // volatile is what the hardware requires: the gates are owned by the peripheral, not by a Rust value. The
+            // read-modify-write keeps every other gate as it was.
             unsafe { core::ptr::read_volatile(clken0) } | bits::CLKEN0_LFRCO | bits::CLKEN0_SYSRTC0;
+        // SAFETY: same register and same argument as the read above: only the LFRCO and SYSRTC0 bits are added, so no
+        // other peripheral loses its clock.
         unsafe { core::ptr::write_volatile(clken0, gates) };
 
         // Clock select, at the offset measured from the blob (the header's is wrong for this silicon).
         let clkctrl = (cmu_base + off::CMU_SYSRTC0CLKCTRL) as *mut u32;
+        // SAFETY: `SYSRTC0CLKCTRL` is a hardware register at a fixed offset from the same block; it is read volatile
+        // because the divider field is not something this crate tracks.
         let current = unsafe { core::ptr::read_volatile(clkctrl) };
+        // SAFETY: the write replaces only `CLKSEL` (`CLKSEL_MASK` is cleared first) and leaves the divider as it was
+        // read; volatile because the value lives in hardware.
         unsafe {
             core::ptr::write_volatile(clkctrl, (current & !bits::CLKSEL_MASK) | bits::CLKSEL_LFRCO)
         };
@@ -219,7 +228,12 @@ impl Sysrtc {
         //    same, and without it a clock source can be selected that is not actually running.
         let clken0 = (this.cmu + off::CMU_CLKEN0) as *mut u32;
         let gates =
+            // SAFETY: `clken0` is the address of `CMU_CLKEN0` inside the CMU block the caller borrowed, and reading it
+            // volatile is what the hardware requires: the gates are owned by the peripheral, not by a Rust value. The
+            // read-modify-write keeps every other gate as it was.
             unsafe { core::ptr::read_volatile(clken0) } | bits::CLKEN0_LFRCO | bits::CLKEN0_SYSRTC0;
+        // SAFETY: same register and same argument as the read above: only the LFRCO and SYSRTC0 bits are added, so no
+        // other peripheral loses its clock.
         unsafe { core::ptr::write_volatile(clken0, gates) };
 
         // **A running module is not reconfigured, and this early return is load-bearing.**
@@ -246,7 +260,11 @@ impl Sysrtc {
         // 2. Clock select, at the offset the header gives. 0 would mean disabled, which is what the wrong
         //    offset left behind.
         let clkctrl = (this.cmu + off::CMU_SYSRTC0CLKCTRL) as *mut u32;
+        // SAFETY: `SYSRTC0CLKCTRL` is a hardware register at a fixed offset from the same block; it is read volatile
+        // because the divider field is not something this crate tracks.
         let current = unsafe { core::ptr::read_volatile(clkctrl) };
+        // SAFETY: the write replaces only `CLKSEL` (`CLKSEL_MASK` is cleared first) and leaves the divider as it was
+        // read; volatile because the value lives in hardware.
         unsafe {
             core::ptr::write_volatile(clkctrl, (current & !bits::CLKSEL_MASK) | bits::CLKSEL_LFRCO)
         };
@@ -264,6 +282,8 @@ impl Sysrtc {
         }
 
         // 4. CFG: debug-run off, so the counter stops when the core is halted.
+        // SAFETY: `CFG` is written whole and zero is the whole configuration it needs -- debug-run off, which is also
+        // the only state in which `CFG` is writable at all (measured: writing it while running raises a bus fault).
         this.regs_ref().cfg().write(|w| unsafe { w.bits(0) });
 
         // 5. Group 0, compare channel 0, free-running counter, at the offsets the RAIL blob itself uses:
@@ -281,6 +301,8 @@ impl Sysrtc {
         this.write_cmd(bits::CMD_START);
         // The store must actually leave the core before anything reads the counter again: with a buffered
         // store the first later access is where the core runs into it, which reads as "the counter read hangs".
+        // SAFETY: `dsb`/`isb` on this single core only order this core's own accesses; they cannot affect another
+        // agent, and the alternative -- a buffered store that the next counter read overtakes -- was a measured hang.
         unsafe { core::arch::asm!("dsb 0xf", "isb 0xf") };
 
         this.set_counter(0);
@@ -291,6 +313,8 @@ impl Sysrtc {
         // which is indistinguishable from a driver that never returned.
         this.regs_ref()
             .grp0_if()
+            // SAFETY: `IF` is write-1-to-clear and `GRP0_ALL` is exactly the set of flags this driver owns, so the write
+            // clears the group and cannot clear a bit it did not set.
             .write(|w| unsafe { w.bits(bits::GRP0_ALL) });
 
         this
@@ -310,6 +334,8 @@ impl Sysrtc {
     }
 
     fn write_cmd(&self, value: u32) {
+        // SAFETY: `CMD` takes one command; `value` is always one of this crate's `bits::CMD_*` constants, never a
+        // number from a caller, and those are the encodings the manual gives.
         self.regs_ref().cmd().write(|w| unsafe { w.bits(value) });
     }
 
@@ -330,6 +356,8 @@ impl Sysrtc {
     /// Write the counter, across a synchronisation wait.
     fn set_counter_raw(&self, value: u32) {
         self.wait_sync();
+        // SAFETY: `CNT` is the full 32-bit counter and any value is a legal place to start counting; the write is
+        // bracketed by `wait_sync` because the register crosses clock domains.
         self.regs_ref().cnt().write(|w| unsafe { w.bits(value) });
         self.wait_sync();
     }
@@ -439,8 +467,12 @@ impl Sysrtc {
         let now = regs.cnt().read().bits();
         // A decisao (prazo no passado, ou igual a agora) vive em `cores::sysrtc`, testada no host.
         let (target, passed) = crate::cores::sysrtc::compare_target(now, deadline);
+        // SAFETY: `CMP0VALUE` is a 32-bit compare point and any 32-bit value is legal -- the deadline is produced by
+        // the same wrapping arithmetic the counter uses.
         regs.grp0_cmp0value().write(|w| unsafe { w.bits(target) });
         regs.grp0_ien()
+            // SAFETY: a single bit from `bits::GRP0_CMP0`, written as the whole mask -- the only interrupt this driver
+            // enables at this point.
             .write(|w| unsafe { w.bits(bits::GRP0_CMP0) });
         passed
     }
@@ -512,6 +544,8 @@ impl Sysrtc {
         let ja = self.regs_ref().grp0_ien().read().bits();
         self.regs_ref()
             .grp0_ien()
+            // SAFETY: the mask is this group's compare flags plus `OVF`, all from `bits::*`; unmasking anything else
+            // would hand the handler an event it does not serve.
             .write(|w| unsafe { w.bits(ja | bits::GRP0_OVF) });
         self.wait_sync();
         // Um overflow que já esteja no flag é consumido agora, senão o handler dispara por um evento antigo.

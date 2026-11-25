@@ -110,6 +110,8 @@ mod tests {
     }
 
     impl Channel for Recorder {
+        // SAFETY: the contract is the trait's -- `dst` stays valid until `stop`. This double never dereferences it; it
+        // only refuses the two arguments that mean the caller made a mistake.
         unsafe fn start(&mut self, dst: *mut u8, bytes: usize) {
             assert!(!dst.is_null(), "a transfer must describe real memory");
             assert!(bytes > 0, "a zero-length transfer is a programming error");
@@ -234,6 +236,7 @@ mod control {
     }
 
     impl Channel for Counting {
+        // SAFETY: as for `Recorder` above: the trait's contract holds because `dst` is never read here.
         unsafe fn start(&mut self, dst: *mut u8, bytes: usize) {
             assert!(!dst.is_null() && bytes > 0, "a real transfer");
             self.started += 1;

@@ -126,6 +126,8 @@ impl Emu {
         // This ensures we enter EM1 (sleep) instead of EM2 (deep sleep).
         cortex_m::interrupt::free(|_| {
             let scb = unsafe { &*cortex_m::peripheral::SCB::PTR };
+            // SAFETY: `SCR` is a raw `u32` on the SCB; only `SLEEPDEEP` (bit 2) is cleared, and the read-modify-write leaves the
+            // rest of the register as the core had it.
             unsafe {
                 // Clear SLEEPDEEP bit (bit 2) in SCR register
                 scb.scr.modify(|scr| scr & !(1 << 2));
@@ -188,6 +190,8 @@ impl Emu {
                     VoltageScale::Vscale2 => 2,
                 };
 
+                // SAFETY: `EM23VSCALE` is a 2-bit field and `vscale_bits` is one of this crate's `VS2`/`VS1`/`VS0` encodings,
+                // taken from the manual rather than computed.
                 unsafe {
                     w.em23vscale().bits(vscale_bits);
                 }

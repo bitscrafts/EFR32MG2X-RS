@@ -38,6 +38,27 @@ project keeps relearning: a check that compiles is not a check that reads.
 
 ### Changed
 
+#### Every `unsafe` block now says what it relies on, and the sweep found the buzzer dead
+
+197 sites, every one annotated with the invariant it depends on: a field width read from the manual, a mask that keeps
+the other pins, a pointer taken from the PAC instead of a literal, a `steal()` justified by the board owning the
+singletons. `scripts/check-safety-notes.py` is in the gate now, so the next unexamined register write fails the build
+instead of joining the pile.
+
+Writing the notes is what found three stacked defects on the buzzer path, none of which any test was asking about:
+
+- `CC0_CFG` written while the counter was enabled faults the core at `TIMER0 + 0x60` (measured). `set_frequency` and
+  `square_wave` did exactly that; `take` had always done it with the counter stopped.
+- `EN` crosses into the timer's clock domain, so the `CC0_CFG` write that followed the clear still saw it running. This
+  block exposes no `SYNCBUSY` through the PAC, so the wait is a short delay.
+- The calibration measured the timer against `CYCCNT` without ever enabling the counter: `dwt::start()` was never
+  called, the reading stayed zero, and `Timer0::take` returned `None` -- "timer never started" from a working timer.
+
+With those three fixed: `PASS buzzer tick=19000000Hz (sysclk=19000000) top=3518 tone=2700Hz`.
+
+Also refused rather than truncated, on the same principle as the baud divider: a `TIMER` period that does not fit
+`TOP`, a PWM pin index above 15, and a microphone pacing period that does not fit `TIMER` (`MicError::PeriodOutOfRange`).
+
 #### SPI is measured, and CI stopped building four examples while the tree had a hundred
 
 `hal_spi_loopback` proves the bus with a jumper between D10 (MOSI) and D9 (MISO): eight bytes out, the same eight

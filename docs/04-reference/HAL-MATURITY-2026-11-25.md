@@ -47,7 +47,7 @@ A driver's maturity in this project is not its line count; it is whether a recor
 | `i2c` blocking | `hal_i2c_recovery` `PASS ... depois=0x6a wr=1 rd6=1 nz=1 volta=0x40` (2026-11-23) | **proven** |
 | `i2c` async | measured `who=0x6a` with no blocking call before it (2026-11-22), no dated marker yet | **measured, undated** |
 | `dma` | `hal_dma_stop` `PASS ... stA=1 stS=0 stRe=0` (2026-11-23); LDMA streams the microphone (`hal_mic_level` `PASS`) | **proven** |
-| `timer` | `hal_timer_compare` `PASS late=1 fired=1` and `hal_timer_ticks` `PASS fast=18961kHz` (2026-11-24) | **proven** |
+| `timer` | `hal_timer_compare` `PASS late=1 fired=1` and `hal_timer_ticks` `PASS fast=18961kHz` (2026-11-24); `hal_timer0_pwm` `PASS buzzer tick=19000000Hz top=3518 tone=2700Hz` (2026-11-25) after three stacked defects were found and fixed | **proven** |
 | `sysrtc` | same two examples plus `hal_em2_sleep`/`hal_sysrtc_wide`/`hal_sysrtc_wrap` (undated) | **proven for count/compare; wide/wrap undated** |
 | `wdog` | `hal_wdog_feed` `PASS fed 94 st80000000 sb0 lock1` (2026-11-24) | **proven** |
 | `emu` | `hal_emu_voltage` `PASS 5/5 , 5/5`, three boots (2026-11-24) | **proven** |
@@ -74,7 +74,7 @@ a debug session.
 | hardware evidence | **B** | 15 of 22 examples dated, and every peripheral family with a driver carries a record; two of the undated ones are deliberate (`hal_usart_link` in echo role needs an external adapter). Still short of A: `hal_mvp_bench`'s numbers are `dwt`-based and only valid under a debug session, and three instruments needed rebuilding before they measured anything real |
 | documentation | **B** | `deny(missing_docs)` now holds on all 26 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). The 11 prose references to `docs/0X-…` were turned into repository URLs, so nothing ships pointing at a path a reader cannot open. The crate's status block no longer claims phases; it says what is proven, what is compiled and unmeasured, and what is not implemented |
 | API hygiene | **C+** | the test double is out of the public API (`cores::i2c::sim` is `#[cfg(test)]`; the host harness re-adds it for its own example). Still live: `pub mod cores` exposes the pure logic layer, and `Board` hands out unlimited aliases of its singletons (F10) |
-| safety | **C** | 194 `unsafe` against 88 `SAFETY` notes: ~106 sites unannotated. Most are register writes, which is the cheap kind — but a published crate's auditability is the notes, not the kind |
+| safety | **B** | 197 `unsafe` sites, every one carrying the invariant it relies on, and `scripts/check-safety-notes.py` in the gate refuses a new site without one. The sweep was worth more than the notes: it found the buzzer path had been dead since the PAC regenerated — three stacked defects, below |
 | testing | **B** | 157 host tests across 18 core crates, run by the gate; the HAL's own `#[test]` blocks execute only through their twin crates. **Found and fixed on 2026-11-25**: `check-examples-build.sh` carried a hand-written list of 26 examples while the workspace had 107 — the HAL alone shipped 22 and the script compiled 4, so every instrument added since mid-November was outside CI. It now builds every example of every crate (union of features per crate) and refuses a tree where an example exists that its list does not reach |
 | layering / packaging | **A−** | one registry-resolvable dependency, package builds from its tarball, no paths escaping the package, docs.rs metadata present |
 | error handling | **B** | typed errors; bounded waits everywhere since 2026-11-17; but `wdog` still returns `Error::Locked` for a *timeout*, which is a semantic lie |
@@ -106,6 +106,25 @@ Each item is a document or API change; none needs the board.
    value once the probe detaches is a footgun; say so where the function is documented.
 7. **`spi` and `usart` need one measured example each** before the README's evidence table can be read as complete.
    This is the only item here that wants the board.
+
+## 5b. What the safety sweep found (2026-11-25)
+
+Annotating 197 `unsafe` sites is a mechanical job that pays for itself the moment a note cannot be written. Three
+could not be, and the buzzer path was dead because of them:
+
+1. **`CC0_CFG` written with the counter enabled** faults the core — precisely, at `TIMER0 + 0x60`, measured. The
+   driver wrote it that way in `set_frequency` and `square_wave`, while `Timer0::take` had always done it with the
+   counter stopped.
+2. **Clearing `EN` does not land immediately.** `EN` crosses into the timer's clock domain, so the very next
+   `CC0_CFG` write still saw the counter running. This block exposes no `SYNCBUSY` through the PAC to poll, so the
+   wait is a handful of cycles.
+3. **The calibration read `CYCCNT` without ever enabling it.** `Timer0::take` measured how far the timer got while the
+   DWT counted — and nothing called `dwt::start()`, so `CYCCNT` stayed at zero, the calibration concluded the timer
+   never moved and returned `None`. The example reported "timer never started" with a running timer.
+
+The fix is three small ones, in that order, and the record is `PASS buzzer tick=19000000Hz (sysclk=19000000) top=3518
+tone=2700Hz`. Worth noting where the defects were found: not by a test, but by being asked to write down what each
+`unsafe` block relies on.
 
 ## 6. Verdict
 

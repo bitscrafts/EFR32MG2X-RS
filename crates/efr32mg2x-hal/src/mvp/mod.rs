@@ -116,33 +116,57 @@ impl Mvp {
             // rather than returning the registers.
             match which {
                 0 => {
+                    // SAFETY: `bits()` writes the whole descriptor word. `addr` is a 32-bit pointer into a slice the caller
+                    // owns and ADDR is a 32-bit field, so the value cannot be truncated; no other field of the word is set.
                     self.reg.array0addrcfg().write(|w| unsafe { w.bits(addr) });
                     self.reg
                         .array0dim0cfg()
+                        // SAFETY: the word is `BASETYPE_BINARY16` shifted by `DIM_BASETYPE_SHIFT`, both field positions taken
+                        // from the manual. Nothing else in the register is written.
                         .write(|w| unsafe { w.bits(BASETYPE_BINARY16 << DIM_BASETYPE_SHIFT) });
+                    // SAFETY: a zero word. A one-dimensional array leaves DIM1 unused, and this module only ever builds one
+                    // dimension (`add_fp16`).
                     self.reg.array0dim1cfg().write(|w| unsafe { w.bits(0) });
                     self.reg
                         .array0dim2cfg()
+                        // SAFETY: `stride` is `n - 1 | 1 << DIM_STRIDE_SHIFT`, and `n` was bounded by `MVP_MAX_LEN` on entry, so
+                        // the element count fits its field and the dimension flag sits where the manual puts it.
                         .write(|w| unsafe { w.bits(stride) });
                 }
                 1 => {
+                    // SAFETY: `bits()` writes the whole descriptor word. `addr` is a 32-bit pointer into a slice the caller
+                    // owns and ADDR is a 32-bit field, so the value cannot be truncated; no other field of the word is set.
                     self.reg.array1addrcfg().write(|w| unsafe { w.bits(addr) });
                     self.reg
                         .array1dim0cfg()
+                        // SAFETY: the word is `BASETYPE_BINARY16` shifted by `DIM_BASETYPE_SHIFT`, both field positions taken
+                        // from the manual. Nothing else in the register is written.
                         .write(|w| unsafe { w.bits(BASETYPE_BINARY16 << DIM_BASETYPE_SHIFT) });
+                    // SAFETY: a zero word. A one-dimensional array leaves DIM1 unused, and this module only ever builds one
+                    // dimension (`add_fp16`).
                     self.reg.array1dim1cfg().write(|w| unsafe { w.bits(0) });
                     self.reg
                         .array1dim2cfg()
+                        // SAFETY: `stride` is `n - 1 | 1 << DIM_STRIDE_SHIFT`, and `n` was bounded by `MVP_MAX_LEN` on entry, so
+                        // the element count fits its field and the dimension flag sits where the manual puts it.
                         .write(|w| unsafe { w.bits(stride) });
                 }
                 _ => {
+                    // SAFETY: `bits()` writes the whole descriptor word. `addr` is a 32-bit pointer into a slice the caller
+                    // owns and ADDR is a 32-bit field, so the value cannot be truncated; no other field of the word is set.
                     self.reg.array2addrcfg().write(|w| unsafe { w.bits(addr) });
                     self.reg
                         .array2dim0cfg()
+                        // SAFETY: the word is `BASETYPE_BINARY16` shifted by `DIM_BASETYPE_SHIFT`, both field positions taken
+                        // from the manual. Nothing else in the register is written.
                         .write(|w| unsafe { w.bits(BASETYPE_BINARY16 << DIM_BASETYPE_SHIFT) });
+                    // SAFETY: a zero word. A one-dimensional array leaves DIM1 unused, and this module only ever builds one
+                    // dimension (`add_fp16`).
                     self.reg.array2dim1cfg().write(|w| unsafe { w.bits(0) });
                     self.reg
                         .array2dim2cfg()
+                        // SAFETY: `stride` is `n - 1 | 1 << DIM_STRIDE_SHIFT`, and `n` was bounded by `MVP_MAX_LEN` on entry, so
+                        // the element count fits its field and the dimension flag sits where the manual puts it.
                         .write(|w| unsafe { w.bits(stride) });
                 }
             }
@@ -151,15 +175,24 @@ impl Mvp {
         // One loop of `n` iterations, NOINCR: the streams advance the arrays.
         self.reg
             .loop0cfg()
+            // SAFETY: the iteration count lives at bit 0 and `n - 1` fits it because `n <= MVP_MAX_LEN` is checked
+            // before this write.
             .write(|w| unsafe { w.bits((n as u32 - 1) << LOOP_NUMITERS_SHIFT) });
+        // SAFETY: a zero word -- restarting the loop counter is exactly that, not a value with fields left over.
         self.reg.loop0rst().write(|w| unsafe { w.bits(0) });
 
         self.reg
             .instr0cfg0()
+            // SAFETY: these are the instruction words this module composes (`INSTR0CFG0`/`INSTR0CFG1`), laid out from
+            // the manual's field positions; no value from outside the module reaches them.
             .write(|w| unsafe { w.bits(INSTR0CFG0) });
         self.reg
             .instr0cfg1()
+            // SAFETY: these are the instruction words this module composes (`INSTR0CFG0`/`INSTR0CFG1`), laid out from
+            // the manual's field positions; no value from outside the module reaches them.
             .write(|w| unsafe { w.bits(INSTR0CFG1) });
+        // SAFETY: the ALUOP and ENDPROG fields are placed by `CFG2_ALUOP_SHIFT` and `CFG2_ENDPROG`, both read from
+        // the manual; the rest of the word stays zero.
         self.reg.instr0cfg2().write(|w| unsafe {
             w.bits(
                 (ALUOP_ADDC << CFG2_ALUOP_SHIFT)
