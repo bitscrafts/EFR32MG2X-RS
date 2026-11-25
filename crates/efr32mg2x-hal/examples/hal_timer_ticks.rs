@@ -40,6 +40,7 @@
 
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::entry;
+use efr32mg2x_hal::record::Record;
 use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
@@ -54,46 +55,6 @@ const TICK_HZ: u64 = 32_768;
 /// TIMER0's counter is 16 bits; the rate asked for is the one that puts TOP at its maximum, so the counter is a
 /// free-running 16-bit window into the timer clock and the poll below only has to handle its wrap.
 const TIMER_FULL_TOP_HZ: u32 = 290;
-
-struct Line {
-    buf: [u8; 200],
-    len: usize,
-}
-
-impl Line {
-    fn new() -> Self {
-        Self {
-            buf: [0; 200],
-            len: 0,
-        }
-    }
-    fn s(&mut self, text: &[u8]) {
-        for b in text {
-            if self.len < self.buf.len() {
-                self.buf[self.len] = *b;
-                self.len += 1;
-            }
-        }
-    }
-    fn u(&mut self, mut v: u32) {
-        if v == 0 {
-            self.s(b"0");
-            return;
-        }
-        let mut digits = [0u8; 10];
-        let mut n = 0;
-        while v > 0 {
-            digits[n] = b'0' + (v % 10) as u8;
-            v /= 10;
-            n += 1;
-        }
-        while n > 0 {
-            n -= 1;
-            let d = digits[n];
-            self.s(&[d]);
-        }
-    }
-}
 
 #[entry]
 fn main() -> ! {
@@ -166,7 +127,7 @@ fn main() -> ! {
     let reached = rtc.now();
     let late = reached.wrapping_sub(deadline);
 
-    let mut l = Line::new();
+    let mut l = Record::<200>::new();
     l.s(b"rtc: ticks=");
     l.u(ticks as u32);
     l.s(b" cyc=");
@@ -187,9 +148,9 @@ fn main() -> ! {
         && fired
         && late < WINDOW_TICKS;
     if ok {
-        mailbox::pass(&l.buf[..l.len]);
+        mailbox::pass(l.bytes());
     } else {
-        mailbox::fail(&l.buf[..l.len]);
+        mailbox::fail(l.bytes());
     }
 
     loop {

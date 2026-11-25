@@ -45,7 +45,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. A date next to an example means a record was
+Twenty-seven public modules (`pub mod` in `src/lib.rs`) and twenty examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -93,6 +93,7 @@ Three of those deserve naming rather than a row in a table:
 | `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
 
 | `hal_mvp_bench` | `PASS mvp: n=64 reps=256 tick_mvp=123 tick_cpu=288 mvp_us_x100=1466 cpu_us_x100=3433 ratio_x100=234`, **no probe attached**, repeated within one tick over four boots | the clock is the SYSRTC, not the DWT: a counter that only runs under a debugger cannot support a claim about a product. The batch (256 additions) is what makes a 30.5 µs tick enough resolution |
+- `record` is the one place a line of evidence is formatted, and it used to be eight: an instrument that prints `5` for one byte and `12` for the next cannot be read back without knowing which is which. Two digits always, every digit of a `u64`, `i64::MIN` without overflow, no allocation, and a truncation flag so a cut field is never read as a zero field. Its arithmetic is host-tested in `libraries/record-core`.
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
   last byte of a reception has to be read with NACK, and the flags are only cleared through the `IF_CLR` alias — and

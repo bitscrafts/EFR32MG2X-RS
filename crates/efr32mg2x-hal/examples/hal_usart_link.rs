@@ -43,6 +43,7 @@
 
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::pin::Port;
+use efr32mg2x_hal::record::Record;
 use efr32mg2x_hal::usart::{Config, Usart0};
 use panic_halt as _;
 
@@ -54,6 +55,14 @@ use defmt_rtt as _;
 /// What this build of the example is for. A jumper and an adapter are different benches, and an example that tries to
 /// tell them apart at run time ends up talking to itself.
 const ROLE: Role = Role::Loopback;
+
+/// The pads USART0 is routed to: the board's header serial, D6 (TX) and D7 (RX).
+///
+/// Tried and rejected, 2026-11-25: routing the same USART0 to `PA8`/`PA9` — the pads Seeed's board support uses for its
+/// console, on the theory that the SAMD11 beside the MCU bridges them to the host's `/dev/ttyACM0`. The host read 102
+/// bytes of `0xC0`, which is a line held low, not a console: whatever that CDC is for on this board, it is not this
+/// UART. The witness has to come from the header.
+const PINS: ((Port, u8), (Port, u8)) = ((Port::C, 6), (Port::C, 7));
 
 /// Which bench this build expects.
 #[derive(PartialEq)]
@@ -74,50 +83,6 @@ const WINDOW_TICKS: u32 = 8_192;
 /// Text for a listener that attached late.
 const BANNER: &[u8] = b"EFR32MG24 USART0 @115200 - echo\r\n";
 
-struct Line {
-    buf: [u8; 80],
-    len: usize,
-}
-
-impl Line {
-    fn new() -> Self {
-        Self {
-            buf: [0; 80],
-            len: 0,
-        }
-    }
-    fn s(&mut self, text: &[u8]) {
-        for b in text {
-            if self.len < self.buf.len() {
-                self.buf[self.len] = *b;
-                self.len += 1;
-            }
-        }
-    }
-    fn u(&mut self, mut v: u32) {
-        if v == 0 {
-            self.s(b"0");
-            return;
-        }
-        let mut digits = [0u8; 10];
-        let mut n = 0;
-        while v > 0 {
-            digits[n] = b'0' + (v % 10) as u8;
-            v /= 10;
-            n += 1;
-        }
-        while n > 0 {
-            n -= 1;
-            let d = digits[n];
-            self.s(&[d]);
-        }
-    }
-    fn h(&mut self, v: u8) {
-        const HEX: &[u8; 16] = b"0123456789abcdef";
-        self.s(&[HEX[(v >> 4) as usize], HEX[(v & 0xF) as usize]]);
-    }
-}
-
 #[cortex_m_rt::entry]
 fn main() -> ! {
     mailbox::invalidate();
@@ -125,7 +90,7 @@ fn main() -> ! {
     let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     // Route first, build second: a driver enabled with its pins unrouted drives nothing while looking alive.
-    if board.route_usart0((Port::C, 6), (Port::C, 7)).is_err() {
+    if board.route_usart0(PINS.0, PINS.1).is_err() {
         mailbox::fail(b"usart: the board refused the pin pair");
         halt();
     }
@@ -178,7 +143,7 @@ fn main() -> ! {
         }
     }
 
-    let mut l = Line::new();
+    let mut l = Record::<80>::new();
     l.s(b"usart: baud=");
     l.u(BAUDRATE);
     l.s(b" out=");
@@ -195,9 +160,9 @@ fn main() -> ! {
     }
 
     if recebidos == PATTERN.len() && iguais == PATTERN.len() {
-        mailbox::pass(&l.buf[..l.len]);
+        mailbox::pass(l.bytes());
     } else {
-        mailbox::fail(&l.buf[..l.len]);
+        mailbox::fail(l.bytes());
     }
 
     halt()
@@ -216,12 +181,12 @@ fn echo(usart: &mut Usart0) -> ! {
             usart.flush();
             eco += 1;
 
-            let mut l = Line::new();
+            let mut l = Record::<80>::new();
             l.s(b"usart: echo n=");
             l.u(eco);
             l.s(b" last=");
             l.h(byte);
-            mailbox::pass(&l.buf[..l.len]);
+            mailbox::pass(l.bytes());
         }
     }
 }

@@ -36,6 +36,16 @@ project keeps relearning: a check that compiles is not a check that reads.
 
 ## [Unreleased]
 
+### Added
+
+- `record::Record` — a line of evidence in a fixed buffer, and the one place it is formatted. It replaces eight private
+  copies with small differences between them (one printed `u64` as `u32`, one had no hex, several truncated silently).
+  Exact for every digit, safe on `i64::MIN`, two hex digits always, no allocation, and a `truncated` flag. `no_std`,
+  host-tested in `libraries/record-core` (11 tests, including the near-miss that a record which fits is not flagged).
+- `hal::record` is on the crate's module list; the four instruments whose records were compared byte-for-byte before and
+  after the change printed the same lines.
+
+
 ### Changed
 
 #### The board refuses to hand out the same peripheral twice

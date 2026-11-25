@@ -37,6 +37,7 @@ use defmt_rtt as _;
 use efr32mg2x_hal as _;
 use efr32mg2x_hal::adc::{Channel, Config, Reference};
 use efr32mg2x_hal::board::Board;
+use efr32mg2x_hal::record::Record;
 use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
@@ -45,50 +46,6 @@ mod mailbox;
 /// A ground channel is never exactly zero: there is offset and noise. Two percent of full scale is
 /// generous and still fails a converter that returns nonsense.
 const GND_TOLERANCE: u16 = 4095 * 2 / 100;
-
-/// Fixed-capacity text builder, the same shape the other examples use.
-struct Text {
-    buf: [u8; 96],
-    len: usize,
-}
-
-impl Text {
-    fn new() -> Self {
-        Self {
-            buf: [0; 96],
-            len: 0,
-        }
-    }
-    fn s(&mut self, text: &[u8]) {
-        for b in text {
-            if self.len < self.buf.len() {
-                self.buf[self.len] = *b;
-                self.len += 1;
-            }
-        }
-    }
-    fn u(&mut self, mut v: u32) {
-        if v == 0 {
-            self.s(b"0");
-            return;
-        }
-        let mut digits = [0u8; 10];
-        let mut n = 0;
-        while v > 0 {
-            digits[n] = b'0' + (v % 10) as u8;
-            v /= 10;
-            n += 1;
-        }
-        while n > 0 {
-            n -= 1;
-            let d = digits[n];
-            self.s(&[d]);
-        }
-    }
-    fn bytes(&self) -> &[u8] {
-        &self.buf[..self.len]
-    }
-}
 
 #[entry]
 fn main() -> ! {
@@ -118,7 +75,7 @@ fn main() -> ! {
     let ch0 = adc.read(Channel::Ch0).unwrap_or(0);
     let reference = adc.reference();
 
-    let mut t = Text::new();
+    let mut t = Record::<96>::new();
     t.s(b"adc: gnd=");
     t.u(gnd as u32);
     t.s(b" ch0=");

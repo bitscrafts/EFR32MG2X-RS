@@ -122,6 +122,7 @@ pub mod microphone;
 pub mod mvp;
 pub mod pin;
 pub mod pwm;
+pub mod record;
 pub mod route;
 pub mod rtc;
 pub mod sensors;

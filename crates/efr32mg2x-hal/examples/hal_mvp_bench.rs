@@ -36,6 +36,7 @@ use cortex_m_rt::entry;
 use defmt_rtt as _;
 use efr32mg2x_hal as _;
 use efr32mg2x_hal::board::Board;
+use efr32mg2x_hal::record::Record;
 use panic_probe as _;
 
 #[path = "common/mailbox.rs"]
@@ -55,49 +56,6 @@ const TWO_FP16: u16 = 0x4000;
 /// A ceiling a wedged co-processor would breach: one 64-element addition must not take 100 µs. This is the part of the
 /// verdict that can fail on a block that looks alive.
 const MAX_US_X100: u64 = 10_000;
-
-struct Text {
-    buf: [u8; 200],
-    len: usize,
-}
-
-impl Text {
-    fn new() -> Self {
-        Self {
-            buf: [0; 200],
-            len: 0,
-        }
-    }
-    fn s(&mut self, text: &[u8]) {
-        for b in text {
-            if self.len < self.buf.len() {
-                self.buf[self.len] = *b;
-                self.len += 1;
-            }
-        }
-    }
-    fn u(&mut self, mut v: u64) {
-        if v == 0 {
-            self.s(b"0");
-            return;
-        }
-        let mut d = [0u8; 20];
-        let mut n = 0;
-        while v > 0 {
-            d[n] = b'0' + (v % 10) as u8;
-            v /= 10;
-            n += 1;
-        }
-        while n > 0 {
-            n -= 1;
-            let b = d[n];
-            self.s(&[b]);
-        }
-    }
-    fn bytes(&self) -> &[u8] {
-        &self.buf[..self.len]
-    }
-}
 
 /// Microseconds per addition, in hundredths, from ticks over a batch.
 fn us_x100(ticks: u64) -> u64 {
@@ -179,7 +137,7 @@ fn main() -> ! {
     let mvp_us = us_x100(mvp_ticks);
     let cpu_us = us_x100(cpu_ticks);
 
-    let mut t = Text::new();
+    let mut t = Record::<200>::new();
     t.s(b"mvp: n=");
     t.u(N as u64);
     t.s(b" reps=");

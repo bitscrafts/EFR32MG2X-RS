@@ -15,6 +15,7 @@ members = [
     # `libraries/` is domain policy: no hardware, builds and tests on the host.
     "libraries/adc-core",
     "libraries/slots-core",
+    "libraries/record-core",
     "libraries/clock-core",
     "libraries/emu-core",
     "libraries/gpio-core",

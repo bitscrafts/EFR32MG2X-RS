@@ -14,7 +14,7 @@ build across 9 crates, 197 `unsafe` sites all annotated.
 
 `efr32mg2x-hal` is a `no_std` hardware abstraction layer for the Silicon Labs **EFR32MG24B220F1536IM48** as fitted to the
 Seeed **XIAO MG24 Sense**. It sits on a hand-checked PAC (`efr32mg2x-pac`, published as 0.1.1) and is driven on a real board:
-26 public modules, ~12 500 lines, 23 examples, each example a small instrument that writes a verdict into a mailbox in RAM
+27 public modules, ~12 500 lines, 23 examples, each example a small instrument that writes a verdict into a mailbox in RAM
 that a host reads back over the debugger.
 
 The crate's own rule, which most of the design follows from: **a claim in a document must be a record read back off the

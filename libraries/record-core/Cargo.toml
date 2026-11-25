@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-record-core"
+version = "0.1.0"
+edition = "2021"
+description = "A line of evidence in a fixed buffer: the formatter every instrument writes its record with"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

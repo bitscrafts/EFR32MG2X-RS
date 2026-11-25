@@ -26,6 +26,7 @@
 
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::prelude::*;
+use efr32mg2x_hal::record::Record;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]
@@ -42,55 +43,6 @@ const REQUESTED_MS: u32 = 1000;
 /// Two percent of the interval. Wider than the oscillators and narrower than a delay calibrated for the wrong clock,
 /// which is off by 105 %.
 const TOLERANCE_TICKS: u32 = TICK_HZ / 50;
-
-struct Line {
-    buf: [u8; 120],
-    len: usize,
-}
-
-impl Line {
-    fn new() -> Self {
-        Self {
-            buf: [0; 120],
-            len: 0,
-        }
-    }
-    fn s(&mut self, text: &[u8]) {
-        for b in text {
-            if self.len < self.buf.len() {
-                self.buf[self.len] = *b;
-                self.len += 1;
-            }
-        }
-    }
-    fn u(&mut self, mut v: u32) {
-        if v == 0 {
-            self.s(b"0");
-            return;
-        }
-        let mut digits = [0u8; 10];
-        let mut n = 0;
-        while v > 0 {
-            digits[n] = b'0' + (v % 10) as u8;
-            v /= 10;
-            n += 1;
-        }
-        while n > 0 {
-            n -= 1;
-            let d = digits[n];
-            self.s(&[d]);
-        }
-    }
-    /// Signed difference, so a delay that ran short is not reported as a huge unsigned number.
-    fn i(&mut self, v: i32) {
-        if v < 0 {
-            self.s(b"-");
-            self.u((-v) as u32);
-        } else {
-            self.u(v as u32);
-        }
-    }
-}
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -117,7 +69,7 @@ fn main() -> ! {
     let expected = REQUESTED_MS * TICK_HZ / 1000;
     let error = elapsed as i32 - expected as i32;
 
-    let mut l = Line::new();
+    let mut l = Record::<120>::new();
     l.s(b"hfxo: sel=");
     l.u(selected as u32);
     l.s(b" before=");
@@ -131,9 +83,9 @@ fn main() -> ! {
 
     let ok = selected && after == HFXO_HZ && error.unsigned_abs() <= TOLERANCE_TICKS;
     if ok {
-        mailbox::pass(&l.buf[..l.len]);
+        mailbox::pass(l.bytes());
     } else {
-        mailbox::fail(&l.buf[..l.len]);
+        mailbox::fail(l.bytes());
     }
 
     loop {

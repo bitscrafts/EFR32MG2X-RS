@@ -22,38 +22,13 @@
 #![no_main]
 
 use efr32mg2x_hal::board::{Board, Handout};
+use efr32mg2x_hal::record::Record;
 use panic_halt as _;
 
 #[path = "common/mailbox.rs"]
 mod mailbox;
 
 use defmt_rtt as _;
-
-struct Line {
-    buf: [u8; 96],
-    len: usize,
-}
-
-impl Line {
-    fn new() -> Self {
-        Self {
-            buf: [0; 96],
-            len: 0,
-        }
-    }
-    fn s(&mut self, text: &[u8]) {
-        for b in text {
-            if self.len < self.buf.len() {
-                self.buf[self.len] = *b;
-                self.len += 1;
-            }
-        }
-    }
-    /// `1` for yes, `0` for no: the record is read by a human and compared, not parsed.
-    fn b(&mut self, v: bool) {
-        self.s(if v { b"1" } else { b"0" });
-    }
-}
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
@@ -79,22 +54,22 @@ fn main() -> ! {
         .wdog(efr32mg2x_hal::wdog::WdogConfig::default())
         .is_ok();
 
-    let mut l = Line::new();
+    let mut l = Record::<96>::new();
     l.s(b"one-of-each: sysrtc=");
-    l.b(sysrtc_ok);
+    l.bit(sysrtc_ok);
     l.s(b" sysrtc2=");
-    l.b(sysrtc_recusado);
+    l.bit(sysrtc_recusado);
     l.s(b" adc=");
-    l.b(adc_ok);
+    l.bit(adc_ok);
     l.s(b" adc2=");
-    l.b(adc_recusado);
+    l.bit(adc_recusado);
     l.s(b" wdog=");
-    l.b(wdog_livre);
+    l.bit(wdog_livre);
 
     if sysrtc_ok && sysrtc_recusado && adc_ok && adc_recusado && wdog_livre {
-        mailbox::pass(&l.buf[..l.len]);
+        mailbox::pass(l.bytes());
     } else {
-        mailbox::fail(&l.buf[..l.len]);
+        mailbox::fail(l.bytes());
     }
 
     loop {
