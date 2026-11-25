@@ -15,6 +15,7 @@ pub mod spi;
 // the host tests that the library crates still run.
 pub mod adc;
 pub mod dma;
+pub mod gpcrc;
 pub mod i2c;
 pub mod slots;
 pub mod sysrtc;

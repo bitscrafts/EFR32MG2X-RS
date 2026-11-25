@@ -117,6 +117,7 @@ pub mod display;
 pub mod dma;
 pub mod dwt;
 pub mod emu;
+pub mod gpcrc;
 pub mod i2c;
 pub mod microphone;
 pub mod mvp;

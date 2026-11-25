@@ -1,0 +1,6 @@
+[package]
+name = "efr32mg2x-gpcrc-core"
+version = "0.1.0"
+edition = "2021"
+description = "CRC-32 in both conventions, as arithmetic: what the GPCRC accelerator is checked against"
+license = "MIT OR Apache-2.0"

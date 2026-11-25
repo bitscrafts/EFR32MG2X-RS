@@ -98,6 +98,17 @@ impl<const N: usize> Record<N> {
         self
     }
 
+    /// Append a 32-bit number as eight hexadecimal digits, most significant first.
+    ///
+    /// A CRC is compared digit by digit by a human, and `0376e6e7` reads better than four decimal bytes in a row. Eight
+    /// digits always: a record that prints `376e6e7` for one value and `10376e6e7` for another cannot be compared.
+    pub fn h32(&mut self, value: u32) -> &mut Self {
+        self.h((value >> 24) as u8)
+            .h((value >> 16) as u8)
+            .h((value >> 8) as u8)
+            .h(value as u8)
+    }
+
     /// Append `1` or `0`, the shape a record uses for a verdict field.
     pub fn bit(&mut self, value: bool) -> &mut Self {
         self.push(if value { b'1' } else { b'0' });

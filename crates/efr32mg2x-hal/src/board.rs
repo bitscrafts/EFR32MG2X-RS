@@ -335,6 +335,20 @@ impl Board {
         crate::wdog::Wdog::new(unsafe { pac::Wdog0Ns::steal() }, config).map_err(Handout::Driver)
     }
 
+    /// The CRC accelerator, for checking an image, a configuration blob or a frame.
+    ///
+    /// One engine, so one owner: two callers interleaving bytes into `INPUTDATABYTE` would produce one nonsense CRC and
+    /// two confident callers.
+    pub fn gpcrc(&self, poly: crate::gpcrc::CRCPoly) -> Result<crate::gpcrc::Gpcrc, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Gpcrc)
+            .map_err(Handout::Taken)?;
+        // The bus clock, before anything touches a register in it: measured 2026-11-25, a GPCRC write with its clock
+        // gated is a bus fault, which on this part is a hard fault and a board that never writes a record at all.
+        self.dp.cmu_s.clken0().modify(|_, w| w.gpcrc().set_bit());
+        // SAFETY: the board owns the peripherals and gives this one out exactly once, through the claim table.
+        Ok(unsafe { crate::gpcrc::Gpcrc::new(pac::GpcrcNs::steal(), poly) })
+    }
+
     /// The tick timer, shared by every protocol stack that may run on this radio.
     ///
     /// SYSRTC is one peripheral, so it is handed out here rather than taken by a stack: a second consumer

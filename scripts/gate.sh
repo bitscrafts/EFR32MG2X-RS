@@ -117,6 +117,19 @@ else
   fail "crate docs: $(tail -1 /tmp/gate-examples-doc.log)"
 fi
 
+# The HAL README states how many public modules and examples the crate has, and those numbers are typed by hand. They
+# drifted twice on 2026-11-25 -- one module added, the count left at the old value -- which is the same failure as a rubric
+# row that describes code that no longer exists: a number a reader trusts and nobody checked. Compared against the tree.
+stated_mods=$(grep -oE '[0-9]+ public modules' crates/efr32mg2x-hal/README.md | head -1 | grep -oE '[0-9]+')
+stated_examples=$(grep -oE 'public modules \(`pub mod` in `src/lib.rs`\) and [0-9]+ examples' crates/efr32mg2x-hal/README.md | head -1 | grep -oE '[0-9]+ examples' | grep -oE '[0-9]+')
+real_mods=$(grep -c '^pub mod' crates/efr32mg2x-hal/src/lib.rs)
+real_examples=$(ls crates/efr32mg2x-hal/examples/*.rs 2>/dev/null | wc -l)
+if [ "$stated_mods" = "$real_mods" ] && [ "$stated_examples" = "$real_examples" ]; then
+  pass "hal README counts: $real_mods modules, $real_examples examples"
+else
+  fail "hal README says ${stated_mods:-?} modules and ${stated_examples:-?} examples; the tree has $real_mods and $real_examples"
+fi
+
 # Every crate that ships gets its README generated from templates/readme-<name>.tmpl, and the gate refuses a README
 # that has drifted from it. The list of "crates that ship" comes from check-publishable.py, so adding a crate to the
 # published set immediately requires a template for it -- the rule cannot be forgotten, only enforced.

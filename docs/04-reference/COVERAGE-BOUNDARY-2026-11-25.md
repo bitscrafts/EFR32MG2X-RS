@@ -44,6 +44,7 @@ Modes are listed separately, because a mode is not a family: `EUSART0` is driven
 | `ldma`, `ldmaxbar` | `dma` | channel ownership, transfers, stop | `hal_dma_stop` |
 | `mvp` | `mvp` | matrix/vector co-processor, `binary16` | `hal_mvp_bench` |
 | `wdog0` | `wdog` | windowed watchdog, fed with a budget | `hal_wdog_feed` |
+| `gpcrc` | `gpcrc` | CRC-32, reflected, the caller adds the final xor | `hal_gpcrc` |
 
 ## 2. Absent: families the device has and this crate does not touch
 
@@ -58,7 +59,6 @@ would cost, so that the boundary is a decision and not an omission.
 | `burtc` | backup RTC in the always-on domain | ~150 lines; hard to prove, because "it kept time with the main supply off" needs a power cut |
 | `vdac0`, `vdac1` | 12-bit DACs | ~200 lines each + a meter to read the output |
 | `acmp0`, `acmp1` | analogue comparators | ~150 lines each + a reference voltage to compare against |
-| `gpcrc` | CRC accelerator | ~100 lines; easily host-tested, and useful the moment anything checks a firmware image |
 | `keyscan` | keyboard matrix scanner | ~200 lines + a keypad |
 | `dcdc` | the internal DC-DC converter | small, but a power-mode decision, not a driver: the reset default is the LDO |
 | `radioaes` | AES used by the radio stack | belongs with the radio, not with this crate |

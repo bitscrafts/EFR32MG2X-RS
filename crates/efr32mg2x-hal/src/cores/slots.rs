@@ -41,10 +41,12 @@ pub enum Slot {
     I2c,
     /// `TIMER0` — the counter behind every PWM and buzzer path.
     Timer0,
+    /// `GPCRC` — one CRC engine, one message being checksummed at a time.
+    Gpcrc,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 10;
+pub const SLOT_COUNT: usize = 11;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -60,6 +62,7 @@ impl Slot {
             Slot::Converter => 7,
             Slot::I2c => 8,
             Slot::Timer0 => 9,
+            Slot::Gpcrc => 10,
         }
     }
 }

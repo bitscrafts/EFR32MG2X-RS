@@ -45,7 +45,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-seven public modules (`pub mod` in `src/lib.rs`) and twenty examples. A date next to an example means a record was
+27 public modules (`pub mod` in `src/lib.rs`) and 24 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -89,6 +89,7 @@ read back off the part — not that the code compiled; the table below is counte
 | `hal_spi_loopback` | `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` — eight bytes out on MOSI, the same eight back on MISO, with a jumper between D10 and D9 | **measured, not argued**: routing MISO to an unjumped pin gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` — a floating line reads `0xff`, which matches one byte of the pattern, so the "all eight" rule is what refuses it |
 | `hal_usart_link` | `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` — `EFR32!` out and the same six bytes back, with a jumper between D6 and D7. The receiver's refusal path has its own pair of records: `usart: echo n=0 rxerr=524 why=ferr` with nothing on the pad, and `PASS usart: selftest n=6 ok=6 bad=0 rxerr=0 pre=02 cleared=02 post=03` with the peripheral's internal loopback | two defects measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is one byte at a time; and a floating RX line reports `0x00` often enough that a byte-counting echo test passes on a board with nothing attached — `echo n=271` was that test |
 | `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
+| `hal_gpcrc` | `PASS gpcrc: poly=crc32 raw=340bc6d9 zlib=cbf43926 want=cbf43926 diff=1 seed=1` — the accelerator's result complemented is the published `zlib` check value for `123456789` | a matching number alone would also come from a driver returning a constant, so the record carries `diff=1` (a different message gives a different CRC) and `seed=1` (a different seed does too, which is what proves `CMD.INIT` loads it). The reference-manual description of this engine as MSB-first is wrong on this part, and the measurement is what says so |
 | `hal_mvp_bench` | `PASS mvp: n=64 reps=256 tick_mvp=123 tick_cpu=288 mvp_us_x100=1466 cpu_us_x100=3433 ratio_x100=234`, **no probe attached**, repeated within one tick over four boots | the clock is the SYSRTC, not the DWT: a counter that only runs under a debugger cannot support a claim about a product. The batch (256 additions) is what makes a 30.5 µs tick enough resolution |
 
 **What each module is for**
@@ -124,6 +125,7 @@ peripheral families and re-checked family by family, is
 | `LDMA` | channel ownership, transfers, `stop()` | `hal_dma_stop` |
 | `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
+| `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |
 
 ### Compiled, not measured
 
@@ -133,8 +135,7 @@ routes them. They build; nobody has watched them.
 ### Absent: peripheral families this crate does not touch
 
 `LETIMER0` (low-energy timer) · `PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
-· `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `GPCRC`
-(CRC accelerator) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
+· `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
 `BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
 the flash wait states).
 

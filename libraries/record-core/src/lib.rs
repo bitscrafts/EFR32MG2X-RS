@@ -84,6 +84,14 @@ mod tests {
         assert_eq!(texto(&r), "05 a5 00 ff");
     }
 
+    /// Eight digits, always, and in the order a person reads a CRC.
+    #[test]
+    fn a_word_is_eight_hex_digits() {
+        let mut r = Record::<40>::new();
+        r.h32(0x0376_e6e7).s(b" ").h32(0x0).s(b" ").h32(u32::MAX);
+        assert_eq!(texto(&r), "0376e6e7 00000000 ffffffff");
+    }
+
     #[test]
     fn a_bit_is_one_or_zero() {
         let mut r = Record::<8>::new();

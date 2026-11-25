@@ -16,6 +16,7 @@ members = [
     "libraries/adc-core",
     "libraries/slots-core",
     "libraries/record-core",
+    "libraries/gpcrc-core",
     "libraries/clock-core",
     "libraries/emu-core",
     "libraries/gpio-core",
