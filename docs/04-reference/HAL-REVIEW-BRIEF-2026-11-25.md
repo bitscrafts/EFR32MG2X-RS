@@ -96,8 +96,11 @@ and the whole set is repeatable.
 1. **A second, independent witness for the two loopback proofs.** A loopback proves the driver, not that a *different
    machine* can use the wire. An FT232 on D6/D7 (USART) and a real SPI device on D8-D10 would each turn a self-test into
    an external one. Cost: one afternoon with the bench, one example each.
-2. **`hal_mvp_bench` re-measured without `dwt`.** Its numbers are cycles measured with a counter that needs a probe; a
-   time base that works standalone (SYSRTC at 32.768 kHz, or `TIMER0`) makes the claim usable by a product. Cost: hours.
+2. ~~**`hal_mvp_bench` re-measured without `dwt`.**~~ **Done, 2026-11-25.** The clock is the SYSRTC and the measurement
+   is a batch of 256 additions so one 30.5 µs tick is a fraction of a percent of the total: `PASS mvp: n=64 reps=256
+   tick_mvp=123 tick_cpu=288 mvp_us_x100=1466 cpu_us_x100=3433 ratio_x100=234`, four boots within one tick, no probe
+   attached. Worth noting against the old DWT record: it claimed 921 cycles for the Rust loop where the SYSRTC measures
+   34.3 µs (~652 cycles at 19 MHz), so the probe-era number was not merely unrepeatable, it was 40 % high.
 3. **Repeatability**: every instrument run N times (5 is enough) and the record carries `n/N`. `hal_emu_voltage` already
    does this (`VS2->VS1 5/5`); the rest do not. Cost: mechanical.
 4. **Archive the logs, not just the verdict.** `_tmp/…` holds the flash and mailbox transcripts for this week; they are

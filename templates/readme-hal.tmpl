@@ -92,6 +92,7 @@ read back off the part — not that the code compiled; the table below is counte
 Three of those deserve naming rather than a row in a table:
 | `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
 
+| `hal_mvp_bench` | `PASS mvp: n=64 reps=256 tick_mvp=123 tick_cpu=288 mvp_us_x100=1466 cpu_us_x100=3433 ratio_x100=234`, **no probe attached**, repeated within one tick over four boots | the clock is the SYSRTC, not the DWT: a counter that only runs under a debugger cannot support a claim about a product. The batch (256 additions) is what makes a 30.5 µs tick enough resolution |
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
   last byte of a reception has to be read with NACK, and the flags are only cleared through the `IF_CLR` alias — and

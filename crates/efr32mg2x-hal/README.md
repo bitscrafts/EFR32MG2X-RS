@@ -126,6 +126,7 @@ read back off the part — not that the code compiled; the table below is counte
 Three of those deserve naming rather than a row in a table:
 | `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
 
+| `hal_mvp_bench` | `PASS mvp: n=64 reps=256 tick_mvp=123 tick_cpu=288 mvp_us_x100=1466 cpu_us_x100=3433 ratio_x100=234`, **no probe attached**, repeated within one tick over four boots | the clock is the SYSRTC, not the DWT: a counter that only runs under a debugger cannot support a claim about a product. The batch (256 additions) is what makes a 30.5 µs tick enough resolution |
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
   last byte of a reception has to be read with NACK, and the flags are only cleared through the `IF_CLR` alias — and
@@ -206,7 +207,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-23 examples, **15 of them watched on the part**. A `--` in the last column means nobody
+23 examples, **16 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -224,7 +225,7 @@ mean it works.
 | `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | 2026-11-24 |
 | `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | 2026-11-24 |
-| `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways. | -- |
+| `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways — with a clock that works without a probe. | 2026-11-25 |
 | `hal_one_of_each.rs` | One of each: the board refuses to hand the same peripheral out twice. | -- |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
