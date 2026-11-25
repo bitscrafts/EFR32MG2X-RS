@@ -87,7 +87,18 @@ impl Usart0 {
         clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_r, w| w.usart0().set_bit());
         });
+        Self::new_at(usart, config, clocks.pclk().into())
+    }
 
+    /// The same driver, built from a peripheral clock in hertz instead of a `FrozenClocks`.
+    ///
+    /// `FrozenClocks` owns the CMU, and the `Board` owns the CMU inside `Peripherals` — so a caller that already
+    /// took the board can never build one. That is the same knot `Board::i2c0` unties by taking a `Hertz`, and the
+    /// baud divider only needs one number: PCLK. On this part PCLK = HFCLK (the clock tree sets it so, and nothing in
+    /// this crate touches the prescaler), which the board tracks as `sysclk_hz`.
+    ///
+    /// The caller must have enabled `CMU_CLKEN0.USART0`; `Board::usart0` does.
+    pub fn new_at(usart: pac::Usart0S, config: Config, pclk_hz: u32) -> Result<Self, Error> {
         // Enable USART peripheral
         usart.en().write(|w| w.en().set_bit());
 
@@ -117,7 +128,7 @@ impl Usart0 {
         // The divider comes from `efr32mg2x-usart-core`, where it is measured on the host. The expression that used to be
         // here multiplied in `u32`: at 19 MHz `256 * 19 000 000` is 4 864 000 000, which wraps, and the value written to
         // `DIV` was 52 where the correct divider is 2382 -- a console at the wrong speed and no error anywhere.
-        let pclk: u32 = clocks.pclk().into();
+        let pclk: u32 = pclk_hz;
         let oversample = 16;
         let clkdiv = match crate::cores::usart::clkdiv(pclk, config.baudrate, oversample) {
             Ok(div) => div,

@@ -28,7 +28,7 @@ Read from the source, so it cannot drift:
 | `CmuNs` | `src/mvp/mod.rs` |
 | `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+3 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
-| `Eusart0S` | `src/spi/mod.rs` |
+| `Eusart0S` | `src/board.rs`, `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
 | `GpioNs` | `src/board.rs` |
 | `GpioS` | `src/board.rs` |
@@ -44,7 +44,7 @@ Read from the source, so it cannot drift:
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
 | `Sysrtc0Ns` | `src/rtc/mod.rs`, `src/sysrtc.rs` |
 | `Timer0S` | `src/timer/mod.rs` |
-| `Usart0S` | `src/spi/mod.rs`, `src/usart/mod.rs` |
+| `Usart0S` | `src/board.rs`, `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `cmu_s` | `src/board.rs` |
 | `emu_ns` | `src/sleep.rs` |
@@ -113,10 +113,15 @@ read back off the part — not that the code compiled; the table below is counte
 | `hal_mic_level` | `PASS mic 8 rms=7 pk=18 n=128` | nothing: the LED PWM that fought the microphone for TIMER0 was removed on 2026-11-21 and the README kept the old failure |
 | `hal_wdog_feed` | `PASS wdog: fed 95 st80000000 sb0 lock1` | `feed()` wrote `CMD` without waiting for the previous clear to cross into the WDOG clock domain; the second of two back-to-back feeds was refused with a bus fault |
 
-**No example names these:** `adc`, `clock`, `display`, `dma`, `i2c`, `rtc`, `spi`, `usart`. (`timer` and `pwm` are reached
-through `Board::buzzer_on` / `Board::pwm_on` rather than named directly.)
+**Watched on the board (2026-11-25)**
 
-Two of those deserve naming rather than a row in a table:
+| example | what came back | the control that makes it mean something |
+|---|---|---|
+| `hal_hfxo` | `PASS hfxo: sel=1 before=19M after=39M tick=32974 err=206` — the crystal selected, the core moved from 19 to 39 MHz, and a 1000 ms delay lasted 1006 ms by the SYSRTC | a delay still calibrated for 19 MHz would have taken ~2050 ms, i.e. ~67 000 ticks instead of 32 768: the window is narrow enough to tell the two apart |
+| `hal_adc_read` | `PASS adc: gnd=0 ch0=0 ref=VBGR` — the converter returns zero codes for its own ground channel | the signal path is `hal_mic_level` (`rms=7 pk=18 n=128`), not this example: a converter that only ever returns zero cannot prove itself |
+| `hal_spi_loopback` | `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` — eight bytes out on MOSI, the same eight back on MISO, with a jumper between D10 and D9 | **measured, not argued**: routing MISO to an unjumped pin gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` — a floating line reads `0xff`, which matches one byte of the pattern, so the "all eight" rule is what refuses it |
+
+Three of those deserve naming rather than a row in a table:
 
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
@@ -198,7 +203,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-20 examples, **13 of them watched on the part**. A `--` in the last column means nobody
+22 examples, **14 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -218,11 +223,13 @@ mean it works.
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | 2026-11-24 |
 | `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways. | -- |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
+| `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
 | `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |
 | `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | 2026-11-24 |
+| `hal_usart_link.rs` | USART on the header pads: a jumper D6–D7 for the on-board proof, or an adapter for an outside witness. | -- |
 | `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | 2026-11-24 |
 
 

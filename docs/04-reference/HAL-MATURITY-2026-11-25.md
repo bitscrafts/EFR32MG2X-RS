@@ -56,8 +56,8 @@ A driver's maturity in this project is not its line count; it is whether a recor
 | `sensors` (BME680) | published to a phone as `0x181A` by `base_ble_env_gatt` (2026-11-14) | **proven, in the BSP** |
 | `clock` (HFXO) | `hal_hfxo` `PASS hfxo: sel=1 before=19M after=39M tick=32974 err=206` (2026-11-25): a 1000 ms delay lasted 1006 ms by the SYSRTC | **proven** |
 | `adc` (single-shot, `hal_adc_read`) | `PASS adc: gnd=0 ch0=0 ref=VBGR` (2026-11-25). The oracle is the internal ground channel; `ch0` is a pin left floating on purpose, so the *signal* proof is `hal_mic_level`, not this one | **proven for the path it claims** |
-| `spi` | **no example at all** | **unproven** |
-| `usart` | **no example at all** | **unproven** |
+| `spi` | `hal_spi_loopback` `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` (2026-11-25) with a jumper D10–D9, and **the control measured**: MISO on a pin no jumper reaches gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` | **proven, with a control** |
+| `usart` | `hal_usart_link` written and building: routing (`Board::route_usart0`), a `new_at` constructor and a D6–D7 loopback verdict. Measured while writing it: with D7 floating the receiver reports a byte of `0x00` often enough that a byte-counting echo test passes on an empty board (`usart: echo n=271 last=00`) | **driver and instrument ready; the verdict waits for the jumper** |
 | `mvp` | `hal_mvp_bench` undated, and its numbers are `dwt`-based | **unproven, and suspect** |
 | `dwt` | documented, and `start()` now **proves the counter moves** and returns `DwtError::NotRunning` when it does not -- a frozen counter can no longer be read as zero | **instrument, and says so** |
 
@@ -74,7 +74,7 @@ drivers exist and compile; nobody has watched them move a byte.
 | documentation | **B** | `deny(missing_docs)` now holds on all 26 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). The 11 prose references to `docs/0X-…` were turned into repository URLs, so nothing ships pointing at a path a reader cannot open. The crate's status block no longer claims phases; it says what is proven, what is compiled and unmeasured, and what is not implemented |
 | API hygiene | **C+** | the test double is out of the public API (`cores::i2c::sim` is `#[cfg(test)]`; the host harness re-adds it for its own example). Still live: `pub mod cores` exposes the pure logic layer, and `Board` hands out unlimited aliases of its singletons (F10) |
 | safety | **C** | 194 `unsafe` against 88 `SAFETY` notes: ~106 sites unannotated. Most are register writes, which is the cheap kind — but a published crate's auditability is the notes, not the kind |
-| testing | **B** | 157 host tests across 18 core crates, run by the gate; the HAL's own `#[test]` blocks execute only through their twin crates |
+| testing | **B** | 157 host tests across 18 core crates, run by the gate; the HAL's own `#[test]` blocks execute only through their twin crates. **Found and fixed on 2026-11-25**: `check-examples-build.sh` carried a hand-written list of 26 examples while the workspace had 107 — the HAL alone shipped 22 and the script compiled 4, so every instrument added since mid-November was outside CI. It now builds every example of every crate (union of features per crate) and refuses a tree where an example exists that its list does not reach |
 | layering / packaging | **A−** | one registry-resolvable dependency, package builds from its tarball, no paths escaping the package, docs.rs metadata present |
 | error handling | **B** | typed errors; bounded waits everywhere since 2026-11-17; but `wdog` still returns `Error::Locked` for a *timeout*, which is a semantic lie |
 | observability | **A−** | the mailbox record pattern is better than most commercial HALs, and this week proved why: three of six "red" examples were the instrument, not the driver |

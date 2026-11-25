@@ -80,10 +80,15 @@ read back off the part — not that the code compiled; the table below is counte
 | `hal_mic_level` | `PASS mic 8 rms=7 pk=18 n=128` | nothing: the LED PWM that fought the microphone for TIMER0 was removed on 2026-11-21 and the README kept the old failure |
 | `hal_wdog_feed` | `PASS wdog: fed 95 st80000000 sb0 lock1` | `feed()` wrote `CMD` without waiting for the previous clear to cross into the WDOG clock domain; the second of two back-to-back feeds was refused with a bus fault |
 
-**No example names these:** `adc`, `clock`, `display`, `dma`, `i2c`, `rtc`, `spi`, `usart`. (`timer` and `pwm` are reached
-through `Board::buzzer_on` / `Board::pwm_on` rather than named directly.)
+**Watched on the board (2026-11-25)**
 
-Two of those deserve naming rather than a row in a table:
+| example | what came back | the control that makes it mean something |
+|---|---|---|
+| `hal_hfxo` | `PASS hfxo: sel=1 before=19M after=39M tick=32974 err=206` — the crystal selected, the core moved from 19 to 39 MHz, and a 1000 ms delay lasted 1006 ms by the SYSRTC | a delay still calibrated for 19 MHz would have taken ~2050 ms, i.e. ~67 000 ticks instead of 32 768: the window is narrow enough to tell the two apart |
+| `hal_adc_read` | `PASS adc: gnd=0 ch0=0 ref=VBGR` — the converter returns zero codes for its own ground channel | the signal path is `hal_mic_level` (`rms=7 pk=18 n=128`), not this example: a converter that only ever returns zero cannot prove itself |
+| `hal_spi_loopback` | `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34` — eight bytes out on MOSI, the same eight back on MISO, with a jumper between D10 and D9 | **measured, not argued**: routing MISO to an unjumped pin gives `FAIL spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff` — a floating line reads `0xff`, which matches one byte of the pattern, so the "all eight" rule is what refuses it |
+
+Three of those deserve naming rather than a row in a table:
 
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the

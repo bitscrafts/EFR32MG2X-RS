@@ -236,7 +236,15 @@ impl Spi1 {
         clocks.enable_peripheral_clock(|cmu| {
             cmu.clken1().modify(|_, w| w.eusart0().set_bit());
         });
+        Self::new_at(eusart, config, clocks.hfclk().into())
+    }
 
+    /// The same driver, built from the HFCLK in hertz instead of a `FrozenClocks`.
+    ///
+    /// `FrozenClocks` owns the CMU and the `Board` owns the CMU, so a caller that took the board can never build
+    /// one — the same knot `Board::i2c0` and `Board::usart0` untie by taking the number. The caller must have
+    /// enabled `CMU_CLKEN1.EUSART0`; `Board::spi_on` does.
+    pub fn new_at(eusart: pac::Eusart0S, config: Config, hfclk_hz: u32) -> Self {
         // Configure **before** enabling, and put the divider where the synchronous path reads it.
         //
         // The previous order was: enable the peripheral, then write CFG0/CFG2. The project has already measured that
@@ -251,7 +259,7 @@ impl Spi1 {
                 .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
-        let sdiv = match crate::cores::spi::sdiv(clocks.hfclk().into(), config.frequency) {
+        let sdiv = match crate::cores::spi::sdiv(hfclk_hz, config.frequency) {
             Ok(value) => value as u8,
             Err(_) => 0xFF, // the slowest expressible rate: reported by `actual_frequency`, never silent
         };

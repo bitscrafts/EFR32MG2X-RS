@@ -51,6 +51,11 @@ pub enum PinMode {
     OpenDrainPullUp,
     /// Open-drain with filter and pull-up. Manual: 11.
     OpenDrainPullUpFilter,
+    /// Input enabled, no pull, no filter — an SPI MISO or a UART RX that the other end drives.
+    /// Manual: 1 (`INPUT`), and the pull stays off because `DOUT` is left clear.
+    Input,
+    /// Push-pull output — an SPI clock, MOSI, or a UART TX. Manual: 4.
+    PushPull,
 }
 
 impl PinMode {
@@ -60,7 +65,22 @@ impl PinMode {
             PinMode::OpenDrain => 8,
             PinMode::OpenDrainPullUp => 10,
             PinMode::OpenDrainPullUpFilter => 11,
+            PinMode::Input => 1,
+            PinMode::PushPull => 4,
         }
+    }
+}
+
+/// The number a port takes in a route register: PA = 0, PB = 1, PC = 2, PD = 3.
+///
+/// The same two bits as [`PORT_SHIFT`], spelled so that a caller can pass a `Port` instead of a bare
+/// number and cannot confuse "port C" with "pin C".
+pub fn port_number(port: crate::pin::Port) -> u8 {
+    match port {
+        crate::pin::Port::A => 0,
+        crate::pin::Port::B => 1,
+        crate::pin::Port::C => 2,
+        crate::pin::Port::D => 3,
     }
 }
 
@@ -127,12 +147,31 @@ mod tests {
 
     /// A variant added later must not silently take a number another one already uses. Without this,
     /// a typo in the table would look fine and drive the pin wrongly.
+    /// The two that an SPI bus needs, and the numbers the PAC's `Mode0` enum gives them.
+    #[test]
+    fn input_and_push_pull_are_the_manual_numbers() {
+        assert_eq!(PinMode::Input.value(), 1);
+        assert_eq!(PinMode::PushPull.value(), 4);
+    }
+
+    /// A port is a number in the route register, and the four ports are 0 to 3 in order.
+    #[test]
+    fn ports_are_numbered_in_order() {
+        use crate::pin::Port;
+        assert_eq!(port_number(Port::A), 0);
+        assert_eq!(port_number(Port::B), 1);
+        assert_eq!(port_number(Port::C), 2);
+        assert_eq!(port_number(Port::D), 3);
+    }
+
     #[test]
     fn no_two_modes_share_a_number() {
         let modos = [
             PinMode::OpenDrain,
             PinMode::OpenDrainPullUp,
             PinMode::OpenDrainPullUpFilter,
+            PinMode::Input,
+            PinMode::PushPull,
         ];
         for (i, a) in modos.iter().enumerate() {
             for b in &modos[i + 1..] {

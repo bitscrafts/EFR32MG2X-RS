@@ -38,6 +38,22 @@ project keeps relearning: a check that compiles is not a check that reads.
 
 ### Changed
 
+#### SPI is measured, and CI stopped building four examples while the tree had a hundred
+
+`hal_spi_loopback` proves the bus with a jumper between D10 (MOSI) and D9 (MISO): eight bytes out, the same eight
+back, `PASS spi: n=8 ok=8 err=0 out=a5..34 in=a5..34`. The control is measured too — MISO moved to a pin no jumper
+reaches gives `in=ff..ff` and one accidental match out of eight, which the "all eight" rule refuses.
+
+`scripts/check-examples-build.sh` carried a hand-written list of 26 examples while the workspace had 107: the HAL
+alone shipped twenty-two and the script compiled four, so every instrument added since mid-November was outside CI.
+It now builds every example of every crate, with the feature union each crate needs, and refuses a tree where an
+example exists that its list does not reach. 107 examples build across 9 crates.
+
+Routing for a second and third peripheral, which is what made the proof possible: `Board::route_usart0`,
+`Board::route_eusart0_spi`, `Board::usart0`, `Board::spi_on`, plus `PinMode::Input`/`PushPull` (manual values 1 and 4)
+and `new_at` constructors for the USART and EUSART drivers, which take the clock as a number because `FrozenClocks`
+owns the CMU the board already owns.
+
 #### The first publication is 0.1.0, and it is a minimal working version (2026-11-25)
 
 `efr32mg2x-hal` is not on the registry: the name has no versions, and the 0.1.0/0.1.1 that once existed were withdrawn.

@@ -128,6 +128,126 @@ impl Board {
         Ok(())
     }
 
+    /// USART0 with its clock enabled, ready for the pins to be routed.
+    ///
+    /// Route first ([`Board::route_usart0`]) and then build the driver, and note that the other order is not
+    /// equivalent: a driver enabled with its pins unrouted drives nothing while looking perfectly alive.
+    ///
+    /// The clock is passed as a number because `FrozenClocks` owns the CMU and this board owns the CMU — the same
+    /// reason [`Board::i2c0`] takes a `Hertz`. PCLK is HFCLK here, and the board is what tracks it.
+    pub fn usart0(
+        &self,
+        config: crate::usart::Config,
+    ) -> Result<crate::usart::Usart0, crate::usart::Error> {
+        self.dp.cmu_s.clken0().modify(|_, w| w.usart0().set_bit());
+        crate::usart::Usart0::new_at(
+            unsafe { pac::Usart0S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        )
+    }
+
+    /// EUSART0 as an SPI master on three routed pins: the board's own SPI pads.
+    ///
+    /// D10 = PA5 is MOSI, D9 = PA4 is MISO, D8 = PA3 is SCLK — the same three pads Seeed's board support
+    /// routes for SPI. The clock is enabled here, the pins are routed here, and the driver is built last.
+    pub fn spi_on(
+        &self,
+        mosi: (crate::pin::Port, u8),
+        miso: (crate::pin::Port, u8),
+        sclk: (crate::pin::Port, u8),
+        config: crate::spi::Config,
+    ) -> Result<crate::spi::Spi1, crate::route::RouteError> {
+        self.dp.cmu_s.clken1().modify(|_, w| w.eusart0().set_bit());
+        self.route_eusart0_spi(mosi, miso, sclk)?;
+        Ok(crate::spi::Spi1::new_at(
+            unsafe { pac::Eusart0S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
+    /// Route USART0's transmitter and receiver to two pins.
+    ///
+    /// This is the board's **console** UART: on the XIAO MG24 the pads PA8 (TX) and PA9 (RX) are the ones
+    /// wired to the SAMD11 next to the MCU, and the SAMD11 presents them to the host as a serial port. That
+    /// makes USART0 the one peripheral in this crate that can be watched from *outside* the board without a
+    /// second wire — the host either sees the bytes or it does not.
+    ///
+    /// The order is the one `route_i2c0` uses, and for the same reason: the pin mode first, then the route,
+    /// then the enable. A signal enabled before its pin is driven puts a floating line on the wire.
+    ///
+    /// The transmitter pin is push-pull and the receiver pin is a plain input; there is no transceiver
+    /// direction bit on this part, so telling the two apart is the pin mode's job.
+    pub fn route_usart0(
+        &self,
+        tx: (crate::pin::Port, u8),
+        rx: (crate::pin::Port, u8),
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::route::{port_number, route_value};
+        let tx_valor = route_value(port_number(tx.0), tx.1)?;
+        let rx_valor = route_value(port_number(rx.0), rx.1)?;
+
+        crate::pin::set_mode(&self.dp.gpio_s, tx.0, tx.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(&self.dp.gpio_s, rx.0, rx.1, crate::pin::mode::INPUT);
+
+        self.dp
+            .gpio_ns
+            .usart0_txroute()
+            .write(|w| unsafe { w.bits(tx_valor) });
+        self.dp
+            .gpio_ns
+            .usart0_rxroute()
+            .write(|w| unsafe { w.bits(rx_valor) });
+        self.dp
+            .gpio_ns
+            .usart0_routeen()
+            .modify(|_, w| w.txpen().set_bit().rxpen().set_bit());
+        Ok(())
+    }
+
+    /// Route EUSART0 in synchronous mode: MOSI, MISO and the clock.
+    ///
+    /// On the XIAO MG24 these are the pads the board itself documents as SPI — D10 = PA5 (MOSI),
+    /// D9 = PA4 (MISO), D8 = PA3 (SCLK) — and the same three pins Seeed's board support routes.
+    ///
+    /// MOSI and SCLK are push-pull outputs; MISO is an input, because in master mode the data comes
+    /// back on it. Getting that one wrong is silent: a MISO configured as an output reads back the
+    /// value the pin is driving, which on a loopback looks exactly like a working bus.
+    pub fn route_eusart0_spi(
+        &self,
+        mosi: (crate::pin::Port, u8),
+        miso: (crate::pin::Port, u8),
+        sclk: (crate::pin::Port, u8),
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::route::{port_number, route_value};
+        let mosi_valor = route_value(port_number(mosi.0), mosi.1)?;
+        let miso_valor = route_value(port_number(miso.0), miso.1)?;
+        let sclk_valor = route_value(port_number(sclk.0), sclk.1)?;
+
+        crate::pin::set_mode(&self.dp.gpio_s, mosi.0, mosi.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(&self.dp.gpio_s, sclk.0, sclk.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(&self.dp.gpio_s, miso.0, miso.1, crate::pin::mode::INPUT);
+
+        self.dp
+            .gpio_ns
+            .eusart0_txroute()
+            .write(|w| unsafe { w.bits(mosi_valor) });
+        self.dp
+            .gpio_ns
+            .eusart0_rxroute()
+            .write(|w| unsafe { w.bits(miso_valor) });
+        self.dp
+            .gpio_ns
+            .eusart0_sclkroute()
+            .write(|w| unsafe { w.bits(sclk_valor) });
+        self.dp
+            .gpio_ns
+            .eusart0_routeen()
+            .modify(|_, w| w.txpen().set_bit().rxpen().set_bit().sclkpen().set_bit());
+        Ok(())
+    }
+
     /// Gate the SYSRTC's clocks without starting it. The state the Bluetooth stack needs before it configures the
     /// radio; see `sysrtc::Sysrtc::enable_clocks` for the two faults that bracket this state.
     pub fn prepare_sysrtc_clocks(&self) {

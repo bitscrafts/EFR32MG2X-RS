@@ -10,7 +10,7 @@
 connections, GATT read/write/notify, and the BME680 published as the standard Environmental Sensing service
 (`base_ble_env_gatt`, verified with nRF Connect). Two items remain inside Phase D2: **D2f pairing/bonding** (the PSA
 layer is written and verified on the board; the security manager fails before the key exchange, so it stays out of the
-product build) and **D2g BME680 gas resistance**. All 26 examples compile under `scripts/check-examples-build.sh` and
+product build) and **D2g BME680 gas resistance**. All 107 examples compile under `scripts/check-examples-build.sh`, which now builds every example of every crate and
 `scripts/gate.sh` reports `VERDICT: PASS`. See the Gantt and phase table in `README.md`.
 
 **Repository Structure**:

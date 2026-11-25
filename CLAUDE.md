@@ -19,7 +19,7 @@ This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silic
 
 **Status**: the radio works on hardware and a phone can use it -- advertising, scanning, connections, GATT
 read/write/notify, and the BME680 published as the standard Environmental Sensing service (`base_ble_env_gatt`,
-verified with nRF Connect). 26 examples compile under `scripts/check-examples-build.sh` and `scripts/gate.sh` reports
+verified with nRF Connect). all 107 examples compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
 `VERDICT: PASS`. Open inside Phase D2: **D2f pairing** (the PSA layer is written and verified; the security manager
 fails before the key exchange, so it stays out of the product build) and **D2g BME680 gas resistance**. Next phases:
 D3 (Zigbee) / Phase E (Application Development). The Gantt and the phase table are in `README.md`; the open items with
