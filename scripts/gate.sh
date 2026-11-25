@@ -422,6 +422,16 @@ for dir in libraries/*/; do
     fail "$name: host tests"
   fi
 
+  # Doc-tests, because a code block in a doc comment is documentation a reader will copy, and until 2026-11-25 nothing
+  # compiled one. `cargo test` does not run them; only `--doc` does. A crate with no doc-tests reports "0 passed", which
+  # is honest: the check exists so that a doc-test that stops compiling is a red gate rather than a broken page.
+  if cargo test -p "$pkg" --doc --target "$HOST" >"/tmp/gate-$name-doc.log" 2>&1; then
+    n=$(grep -oE '[0-9]+ passed' "/tmp/gate-$name-doc.log" | head -1)
+    pass "$name: doc-tests (${n:-0 passed})"
+  else
+    fail "$name: doc-tests"
+  fi
+
   # The hardware stack, as a dependency, in any kind: normal or build.
   #
   # Until 2026-11-22 this check could not run and printed "pass" anyway -- three faults, each hiding the next:

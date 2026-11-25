@@ -114,8 +114,10 @@ a control, generated from the examples' own headers by a script (the same way th
 **A means**: a stranger can use the crate without reading its source, and the documentation cannot drift from the tree
 because a check would fail.
 
-1. **Doc-tests.** `cargo test --doc` is not in the gate; most examples in the rustdoc blocks are `no_run`. Turning them
-   into compiling doc-tests (with `# #[cfg(not(target_os = "none"))]` where needed) makes the front page executable.
+1. **Doc-tests.** *Started, 2026-11-25.* The gate's host-test loop now runs `cargo test --doc` per crate, and a
+   deliberately wrong assertion was measured turning it red. Three doc-tests exist (`record-core` 2, `slots-core` 1);
+   the other eighteen crates are honest zeros. Finishing means writing the examples for the pure API of every core crate
+   — the place a consumer copies from — which is content, not mechanism.
 2. **Per-module "what it does not do"**. Several modules say what they do; the honest half — the limitations table — is
    only in this assessment. Move it into each module header.
 3. **A generated evidence table**, as in 3.2.

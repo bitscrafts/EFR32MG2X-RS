@@ -2,6 +2,32 @@
 //!
 //! The source lives in the HAL (`crates/efr32mg2x-hal/src/record.rs`) and is compiled here through `#[path]`, the same
 //! arrangement the other `libraries/*-core` crates use: one copy, and the tests run on the host.
+//!
+//! # Writing a record
+//!
+//! ```
+//! use efr32mg2x_record_core::Record;
+//!
+//! let mut line = Record::<32>::new();
+//! line.s(b"adc: gnd=").u(0u16).s(b" ch0=").u(12u16);
+//!
+//! assert_eq!(line.bytes(), b"adc: gnd=0 ch0=12");
+//! assert!(!line.truncated());
+//! ```
+//!
+//! # A buffer too small says so
+//!
+//! A number cut by the end of the buffer reads as a smaller number, which is why the record carries a flag instead of
+//! stopping silently:
+//!
+//! ```
+//! # use efr32mg2x_record_core::Record;
+//! let mut tight = Record::<8>::new();
+//! tight.u(u32::MAX);
+//!
+//! assert_eq!(tight.bytes(), b"42949672");
+//! assert!(tight.truncated());
+//! ```
 
 #![no_std]
 #![forbid(unsafe_code)]
