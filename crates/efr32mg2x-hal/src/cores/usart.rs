@@ -65,10 +65,68 @@ pub fn actual_baud(pclk_hz: u32, div: u32, oversample: u32) -> u32 {
     ((pclk_hz as u64 * 256) / denominator) as u32
 }
 
+/// `IF.RXOF` — the receiver ran out of room and a byte was lost.
+pub const IF_RXOF: u32 = 1 << 4;
+
+/// `IF.PERR` — the byte arrived with a parity error.
+pub const IF_PERR: u32 = 1 << 8;
+
+/// `IF.FERR` — the byte arrived with a framing error: there was no stop bit where one belonged.
+pub const IF_FERR: u32 = 1 << 9;
+
+/// Why a byte at the front of the receiver is not data.
+///
+/// This exists because of a measurement, not a theory: with nothing driving the RX pad, `hal_usart_link` reported
+/// `echo n=271` — 271 bytes that were never sent. A floating line produces start bits out of noise, and every one of them
+/// sets `RXDATAV`, so a driver that trusts `RXDATAV` alone reads noise as a message and reports a working link.
+///
+/// This MCU has no per-byte error bit in `STATUS`; the only evidence a frame was broken is in `IF`, which is why the
+/// driver has to look there before believing the byte.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum RxProblem {
+    /// `IF.RXOF`: the receiver overran -- at least one byte is gone, and this one may not be the one that was read.
+    Overrun,
+    /// `IF.FERR`: the frame had no stop bit. On a floating line this is the usual verdict.
+    Framing,
+    /// `IF.PERR`: the parity bit did not match.
+    Parity,
+}
+
+impl RxProblem {
+    /// The flag as it appears in a record.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RxProblem::Overrun => "rxof",
+            RxProblem::Framing => "ferr",
+            RxProblem::Parity => "perr",
+        }
+    }
+}
+
+/// Whether the byte waiting in the receiver can be believed, given the `IF` register.
+///
+/// Returns `None` when the byte is data, and the reason when it is not. The order is deliberate: an overrun is reported
+/// ahead of a framing error, because an overrun means bytes are missing and the count of what arrived is wrong, which
+/// no later reading can repair.
+#[must_use]
+pub fn rx_problem(if_bits: u32) -> Option<RxProblem> {
+    if if_bits & IF_RXOF != 0 {
+        Some(RxProblem::Overrun)
+    } else if if_bits & IF_FERR != 0 {
+        Some(RxProblem::Framing)
+    } else if if_bits & IF_PERR != 0 {
+        Some(RxProblem::Parity)
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
     extern crate std;
     use super::*;
+    use super::{rx_problem, RxProblem, IF_FERR, IF_PERR, IF_RXOF};
 
     /// The five clock rates this project has measured on the board, at the rate a debug console uses.
     #[test]
@@ -134,5 +192,43 @@ mod tests {
                 "pclk {pclk}: {actual} baud is {error_ppm} ppm off, more than the 1 % a UART tolerates"
             );
         }
+    }
+
+    /// The defect, as a test: a frame with no stop bit is not a byte of data. Before this existed, `read_byte` returned
+    /// `Some(0xFF)` for it, and an instrument reported 271 bytes that were never sent.
+    #[test]
+    fn a_broken_frame_is_not_data() {
+        assert_eq!(rx_problem(IF_FERR), Some(RxProblem::Framing));
+        assert_eq!(rx_problem(IF_PERR), Some(RxProblem::Parity));
+        assert_eq!(rx_problem(IF_RXOF), Some(RxProblem::Overrun));
+    }
+
+    /// The control that keeps the test above honest: a clean flag word means the byte *is* used. A predicate that
+    /// refused everything would also pass "a broken frame is not data".
+    #[test]
+    fn a_clean_frame_is_data() {
+        assert_eq!(rx_problem(0), None);
+        // Other flags in the same register must not turn a good byte into a bad one: `TXC` (6) and `TXBL` (7) are set
+        // for most of the driver's life.
+        assert_eq!(rx_problem(1 << 6 | 1 << 7), None);
+    }
+
+    /// An overrun is reported ahead of a framing error: it means bytes are missing, and a count taken after it is wrong
+    /// in a way a later reading cannot repair.
+    #[test]
+    fn an_overrun_outranks_the_other_reasons() {
+        assert_eq!(
+            rx_problem(IF_RXOF | IF_FERR | IF_PERR),
+            Some(RxProblem::Overrun)
+        );
+        assert_eq!(rx_problem(IF_FERR | IF_PERR), Some(RxProblem::Framing));
+    }
+
+    /// The flag names are what a record prints, and a record with the wrong name sends a reader after the wrong cause.
+    #[test]
+    fn every_reason_has_its_register_name() {
+        assert_eq!(RxProblem::Overrun.as_str(), "rxof");
+        assert_eq!(RxProblem::Framing.as_str(), "ferr");
+        assert_eq!(RxProblem::Parity.as_str(), "perr");
     }
 }

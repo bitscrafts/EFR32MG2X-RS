@@ -45,14 +45,24 @@
 mod traits;
 mod types;
 
+pub use crate::cores::usart::RxProblem;
 pub use types::{Config, DataBits, Error, Parity, StopBits};
 
 use crate::clock::FrozenClocks;
+use crate::cores::usart::{rx_problem, IF_FERR, IF_PERR, IF_RXOF};
 use efr32mg2x_pac as pac;
 
 /// USART0 peripheral
 pub struct Usart0 {
     pub(crate) usart: pac::Usart0S,
+    /// How many bytes were refused because the receiver said the frame was broken.
+    ///
+    /// A refused byte is not an error the caller can handle -- there is nothing to hand it -- so it is counted instead,
+    /// and an instrument prints the count next to the byte count. A link that reports bytes and refuses some of them is a
+    /// link with a problem, and the two numbers together say so; either alone can look like a working link.
+    rx_errors: u32,
+    /// Why the last one was refused, so a record can say `ferr` instead of leaving a reader to guess.
+    last_rx_problem: Option<RxProblem>,
 }
 
 impl Usart0 {
@@ -149,7 +159,11 @@ impl Usart0 {
             w.rxen().set_bit()
         });
 
-        Ok(Self { usart })
+        Ok(Self {
+            usart,
+            rx_errors: 0,
+            last_rx_problem: None,
+        })
     }
 
     /// Write a single byte (blocking)
@@ -196,11 +210,60 @@ impl Usart0 {
     /// }
     /// ```
     pub fn read_byte(&mut self) -> Option<u8> {
-        if self.usart.status().read().rxdatav().bit_is_set() {
-            Some(self.usart.rxdata().read().rxdata().bits())
-        } else {
-            None
+        if !self.usart.status().read().rxdatav().bit_is_set() {
+            return None;
         }
+
+        // Read the byte before anything else: `RXDATA` is what advances the receiver, and a byte refused below still has
+        // to leave the FIFO -- otherwise the next one arrives one position late and as an overrun.
+        let byte = self.usart.rxdata().read().rxdata().bits();
+
+        // This MCU has no per-byte error bit in `STATUS`; the only evidence that the frame was broken is in `IF`. That is
+        // the whole reason this check exists: with nothing driving the RX pad, `hal_usart_link` once reported
+        // `echo n=271` -- 271 bytes nobody sent -- because a floating line produces start bits out of noise and every one
+        // of them sets `RXDATAV`.
+        let flags = self.usart.if_().read().bits();
+        if let Some(problem) = rx_problem(flags) {
+            self.rx_errors = self.rx_errors.saturating_add(1);
+            self.last_rx_problem = Some(problem);
+            // Write 1 to the flags that were just reported: they are sticky, and a flag left set would refuse every later
+            // byte on a link that has recovered. NOT MEASURED ON THE PART as of 2026-11-25 -- the classification is
+            // host-tested, the clear is from the manual, and the first board session with a deliberately quiet RX line
+            // has to confirm the receiver recovers rather than staying refused.
+            self.usart.if_().write(|w| {
+                if flags & IF_RXOF != 0 {
+                    w.rxof().set_bit();
+                }
+                if flags & IF_PERR != 0 {
+                    w.perr().set_bit();
+                }
+                if flags & IF_FERR != 0 {
+                    w.ferr().set_bit();
+                }
+                w
+            });
+            return None;
+        }
+
+        Some(byte)
+    }
+
+    /// How many received bytes were refused because their frame was broken.
+    ///
+    /// Print this next to the byte count: an instrument that shows only the bytes it accepted cannot tell a quiet link
+    /// from a link reading noise.
+    #[must_use]
+    pub fn rx_errors(&self) -> u32 {
+        self.rx_errors
+    }
+
+    /// Why the last refused byte was refused, if any was.
+    ///
+    /// A record that prints only a count leaves a reader unable to tell an overrun (bytes are missing, the count is
+    /// short) from a framing error (nothing was wired, the "data" was noise).
+    #[must_use]
+    pub fn last_rx_problem(&self) -> Option<RxProblem> {
+        self.last_rx_problem
     }
 
     /// Write a slice of bytes (blocking)
