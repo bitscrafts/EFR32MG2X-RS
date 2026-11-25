@@ -220,8 +220,8 @@ fn main() -> ! {
     let start_cmd = unsafe { efr32mg24_bluetooth_sys::ffi::sl_bt_system_start_bluetooth() };
     stage(b"startcmd", start_cmd as u32, 0);
 
-    // 2. The timer, now that the radio owns the counter. `board.sysrtc()` returns immediately on a running module.
-    let rtc = board.sysrtc();
+    // 2. The timer, now that the radio owns the counter. `board.sysrtc().expect("SYSRTC is handed out once")` returns immediately on a running module.
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
     let mut handle = [0u8; 32];
     // The vendor contract returns a status and writes the ticks through a pointer (`sl_sleeptimer.h:707`); this
     // example used to call it as if it returned the value, which is how `B5` survived unnoticed.

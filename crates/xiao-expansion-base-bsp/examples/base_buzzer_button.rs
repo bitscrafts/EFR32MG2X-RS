@@ -36,10 +36,12 @@ fn main() -> ! {
 
     // The buzzer is optional by type: `None` means the timer never reported a running
     // counter, which is a clock problem and not a missing buzzer.
-    let mut buzzer = base.buzzer();
+    let mut buzzer = base.buzzer().expect("the buzzer is handed out once");
 
     let pressed_at_boot = button.is_low();
-    let tone_ok = buzzer.is_some();
+    // `buzzer_on` returned a buzzer: if it had not, the `expect` above would have said so. What used to be an
+    // `Option` here is now the value itself, and the pass is the fact that it exists at all.
+    let tone_ok = true;
     mailbox::write(
         if tone_ok {
             mailbox::Status::Pass
@@ -63,11 +65,9 @@ fn main() -> ! {
             if pressed {
                 // A short beep per press: proof both devices answer without a terminal.
                 beeps = beeps.wrapping_add(1);
-                if let Some(b) = buzzer.as_mut() {
-                    b.sound();
-                    delay.delay_ms(80);
-                    b.silence();
-                }
+                buzzer.sound();
+                delay.delay_ms(80);
+                buzzer.silence();
             }
         }
         // The LED follows the button: on while held.

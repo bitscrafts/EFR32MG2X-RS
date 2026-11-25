@@ -331,10 +331,13 @@ echo "=== layer boundaries: the PAC belongs to the PAC, the wiring to a BSP ==="
 
 # 1. An example may only name the layer it demonstrates. A HAL example that mentions the PAC
 #    is a HAL that failed to hand out what it owns; the caller then has to steal the singleton.
-offenders=$(grep -rln "efr32mg24_pac\|pac::" crates/*/examples/ --include=*.rs 2>/dev/null \
-  | grep -v "^crates/efr32mg2x-pac/" \
-  | grep -v "^crates/efr32mg24-bluetooth-sys/" \
-  | grep -v "^crates/efr32mg24-rail-sys/" || true)
+# Comments are stripped before the search: the rule is about code that *names* a PAC type, and a documentation line
+# that mentions `pac::X::steal()` is explaining why the example does not use it. Matching those made the honest
+# examples the ones that failed, which is how a rule gets reworded away instead of kept.
+offenders=$(grep -rn "efr32mg24_pac\|pac::" crates/*/examples/ --include=*.rs 2>/dev/null \
+  | grep -vE ':[0-9]+:[[:space:]]*(//|/\*|\*)' \
+  | grep -vE "^crates/(efr32mg2x-pac|efr32mg24-bluetooth-sys|efr32mg24-rail-sys)/" \
+  | cut -d: -f1 | sort -u || true)
 if [ -z "$offenders" ]; then
   pass "examples outside the PAC crate name no PAC type"
 else

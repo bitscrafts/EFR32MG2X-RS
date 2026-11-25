@@ -76,8 +76,8 @@ fn main() -> ! {
 
     // The board owns the PAC peripherals, so it is what hands out a buzzer.
     let mut buzzer = match board.buzzer_on(Port::C, 3) {
-        Some(b) => b,
-        None => {
+        Ok(b) => b,
+        Err(_) => {
             mailbox::fail(b"buzzer: timer never started");
             loop {
                 led.toggle();

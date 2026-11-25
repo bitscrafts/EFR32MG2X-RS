@@ -55,7 +55,9 @@ fn main() -> ! {
     let _power = board.output_on(Port::D, 5, true);
     board.delay().delay_ms(50);
     let _ = board.route_i2c0((Port::B, 3), (Port::B, 2), PinMode::OpenDrainPullUp);
-    let mut i2c = board.i2c0(Config::new(Speed::Standard100kHz), board.clock_hz());
+    let mut i2c = board
+        .i2c0(Config::new(Speed::Standard100kHz), board.clock_hz())
+        .expect("I2C0 is handed out once");
 
     // 1. Controlo: o bus funciona antes de qualquer erro.
     let mut id = [0u8; 1];

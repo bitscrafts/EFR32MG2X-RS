@@ -38,6 +38,23 @@ project keeps relearning: a check that compiles is not a check that reads.
 
 ### Changed
 
+#### The board refuses to hand out the same peripheral twice
+
+`Board` was a singleton by claim and not by construction: every hand-out method took `&self` and built a driver from
+`pac::X::steal()`, so `board.sysrtc()` called twice returned two counters over one `SYSRTC0` and said nothing. Review
+finding F10, open since 2026-11-17.
+
+- Every `steal()` now goes through a claim table: `Board::i2c0`, `usart0`, `spi_on`, `emu`, `wdog`, `mvp`, `sysrtc`,
+  `converter`, `adc`, `timer0_on`, `pwm_on` and `buzzer_on` return `Result<_, Handout<_>>`, whose `Taken` variant names
+  the peripheral that was already out. The table itself is arithmetic over ten booleans, so it is tested on the host:
+  `libraries/slots-core`, five tests, including the near-miss that a refusal leaves the *other* slots free.
+- Measured on the board: `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1`.
+- `mod cores` is private now, with `is_future`, `ticks_until`, `has_passed`, `WideTick`, `compare_target`,
+  `ticks_for_ms` and `ms_for_ticks` re-exported from `sysrtc` — the pure layer stops being API by accident and starts
+  being API where a consumer needs it (the Bluetooth sleeptimer uses two of them).
+- The layering check no longer fails on a documentation line that mentions `pac::`: a rule that makes honest examples
+  fail is a rule that gets reworded away.
+
 #### Every `unsafe` block now says what it relies on, and the sweep found the buzzer dead
 
 197 sites, every one annotated with the invariant it depends on: a field width read from the manual, a mask that keeps

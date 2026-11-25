@@ -30,6 +30,21 @@ pub struct Board {
     /// from here instead of being handed a number at every call site: a caller repeating `DEFAULT_SYSCLK_HZ` is a
     /// caller that can repeat the wrong one, and a driver that assumed 19 MHz was already one defect too many.
     sysclk_hz: core::cell::Cell<u32>,
+    /// Which peripherals have been handed out. See [`Handout`] for what this can and cannot enforce.
+    slots: core::cell::Cell<crate::cores::slots::Slots>,
+}
+
+/// Why a peripheral was not handed out.
+///
+/// Two different facts, kept apart on purpose: the board may have already given this peripheral away, or the
+/// peripheral may be available and have refused its configuration. A single "error" would make a caller read the
+/// first as the second.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Handout<E> {
+    /// The board already handed this peripheral out. One `steal()` per program is the rule; this is the refusal.
+    Taken(crate::cores::slots::Taken),
+    /// The peripheral was available and refused what it was asked to do.
+    Driver(E),
 }
 
 impl Board {
@@ -50,7 +65,20 @@ impl Board {
             _cp: cp,
             // Reset brings the part up on HFRCO at 19 MHz; `boost` is the only thing here that moves it.
             sysclk_hz: core::cell::Cell::new(crate::clock::DEFAULT_SYSCLK_HZ),
+            slots: core::cell::Cell::new(crate::cores::slots::Slots::new()),
         })
+    }
+
+    /// Claim a peripheral for this program, or refuse because it is already out.
+    ///
+    /// Every hand-out below goes through here. The claim is a table of booleans rather than a move because the PAC's
+    /// `steal()` hands back a zero-sized handle to a fixed address: two of them are indistinguishable to the compiler,
+    /// so the only place the second one can be caught is here, at run time.
+    fn claim(&self, slot: crate::cores::slots::Slot) -> Result<(), crate::cores::slots::Taken> {
+        let mut table = self.slots.get();
+        table.claim(slot)?;
+        self.slots.set(table);
+        Ok(())
     }
 
     /// The hardware I2C0, with its clock enabled and its two lines still unrouted.
@@ -61,11 +89,21 @@ impl Board {
     /// device that never acknowledges.
     ///
     /// Route the pins before using it: [`Board::route_i2c0`].
-    pub fn i2c0(&self, config: crate::i2c::Config, hfclk: crate::clock::Hertz) -> crate::i2c::I2c0 {
+    pub fn i2c0(
+        &self,
+        config: crate::i2c::Config,
+        hfclk: crate::clock::Hertz,
+    ) -> Result<crate::i2c::I2c0, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::I2c)
+            .map_err(Handout::Taken)?;
         self.dp.cmu_s.clken0().modify(|_, w| w.i2c0().set_bit());
         // SAFETY: `Board` took `Peripherals` once and holds every singleton for the life of the program. Handing I2C0
         // out here is the only path a caller has to it, and no second `steal()` can happen while the board owns the tree.
-        crate::i2c::I2c0::new(unsafe { pac::I2c0Ns::steal() }, config, hfclk)
+        Ok(crate::i2c::I2c0::new(
+            unsafe { pac::I2c0Ns::steal() },
+            config,
+            hfclk,
+        ))
     }
 
     /// Points I2C0's SCL and SDA at real pins, and puts those pins in open-drain.
@@ -145,7 +183,9 @@ impl Board {
     pub fn usart0(
         &self,
         config: crate::usart::Config,
-    ) -> Result<crate::usart::Usart0, crate::usart::Error> {
+    ) -> Result<crate::usart::Usart0, Handout<crate::usart::Error>> {
+        self.claim(crate::cores::slots::Slot::Usart0)
+            .map_err(Handout::Taken)?;
         self.dp.cmu_s.clken0().modify(|_, w| w.usart0().set_bit());
         // SAFETY: as with I2C0 -- the board owns the PAC tree, and this is the single hand-out of USART0.
         crate::usart::Usart0::new_at(
@@ -153,6 +193,7 @@ impl Board {
             config,
             self.sysclk_hz.get(),
         )
+        .map_err(Handout::Driver)
     }
 
     /// EUSART0 as an SPI master on three routed pins: the board's own SPI pads.
@@ -165,9 +206,12 @@ impl Board {
         miso: (crate::pin::Port, u8),
         sclk: (crate::pin::Port, u8),
         config: crate::spi::Config,
-    ) -> Result<crate::spi::Spi1, crate::route::RouteError> {
+    ) -> Result<crate::spi::Spi1, Handout<crate::route::RouteError>> {
+        self.claim(crate::cores::slots::Slot::Spi)
+            .map_err(Handout::Taken)?;
         self.dp.cmu_s.clken1().modify(|_, w| w.eusart0().set_bit());
-        self.route_eusart0_spi(mosi, miso, sclk)?;
+        self.route_eusart0_spi(mosi, miso, sclk)
+            .map_err(Handout::Driver)?;
         // SAFETY: as with I2C0 -- the board owns the PAC tree, and this is the single hand-out of EUSART0.
         Ok(crate::spi::Spi1::new_at(
             unsafe { pac::Eusart0S::steal() },
@@ -272,27 +316,36 @@ impl Board {
 
     /// The energy management unit, handed out through the board like every other peripheral: an example outside this
     /// crate must not name a PAC type, and the gate enforces that.
-    pub fn emu(&self) -> crate::emu::Emu {
+    pub fn emu(&self) -> Result<crate::emu::Emu, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Emu)
+            .map_err(Handout::Taken)?;
         // SAFETY: `Board` holds the PAC singletons for the whole program; this hands the EMU out through the board, once,
         // instead of letting a caller `steal()` it behind the board's back.
-        crate::emu::Emu::new(unsafe { pac::EmuS::steal() })
+        Ok(crate::emu::Emu::new(unsafe { pac::EmuS::steal() }))
     }
 
     /// The watchdog, configured at construction. Same reason as `emu`: no PAC type crosses the crate boundary.
     pub fn wdog(
         &self,
         config: crate::wdog::WdogConfig,
-    ) -> Result<crate::wdog::Wdog, crate::wdog::Error> {
+    ) -> Result<crate::wdog::Wdog, Handout<crate::wdog::Error>> {
+        self.claim(crate::cores::slots::Slot::Wdog)
+            .map_err(Handout::Taken)?;
         // SAFETY: same as `emu`: the board owns the peripherals and gives this one out exactly once.
-        crate::wdog::Wdog::new(unsafe { pac::Wdog0Ns::steal() }, config)
+        crate::wdog::Wdog::new(unsafe { pac::Wdog0Ns::steal() }, config).map_err(Handout::Driver)
     }
 
     /// The tick timer, shared by every protocol stack that may run on this radio.
     ///
     /// SYSRTC is one peripheral, so it is handed out here rather than taken by a stack: a second consumer
     /// (Zigbee, Thread, or the application's own scheduler) shares this counter instead of starting another.
-    pub fn sysrtc(&self) -> crate::sysrtc::Sysrtc {
-        crate::sysrtc::Sysrtc::take(&self.dp.cmu_ns, &self.dp.sysrtc0_ns)
+    pub fn sysrtc(&self) -> Result<crate::sysrtc::Sysrtc, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Sysrtc)
+            .map_err(Handout::Taken)?;
+        Ok(crate::sysrtc::Sysrtc::take(
+            &self.dp.cmu_ns,
+            &self.dp.sysrtc0_ns,
+        ))
     }
 
     /// Entry and exit of EM2, carrying the `EMU` it drives.
@@ -310,10 +363,13 @@ impl Board {
     ///
     /// The non-secure window is used deliberately. In the secure alias the configuration registers read back
     /// as zero from a non-secure image — measured on this board, in `pac_mvp_add`.
-    pub fn mvp(&self) -> Result<crate::mvp::Mvp, crate::mvp::Error> {
+    pub fn mvp(&self) -> Result<crate::mvp::Mvp, Handout<crate::mvp::Error>> {
+        self.claim(crate::cores::slots::Slot::Mvp)
+            .map_err(Handout::Taken)?;
         // SAFETY: the board owns `Peripherals`, so MVP cannot be taken twice; `Mvp::take` still checks that the block
         // answers before it returns, which is what catches a die where this peripheral is absent.
         crate::mvp::Mvp::take(&self.dp.cmu_ns, unsafe { pac::MvpNs::steal() })
+            .map_err(Handout::Driver)
     }
 
     /// Raise the core clock to the 38 MHz HFRCODPLL band, and report the calibration word it wrote.
@@ -631,8 +687,15 @@ impl Board {
     /// TIMER0 on the pin the caller names, calibrated but undecided about what it means.
     ///
     /// `None` when the counter does not move — a clock that is not running.
-    pub fn timer0_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::pwm::Timer0<'_>> {
+    pub fn timer0_on(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+    ) -> Result<crate::pwm::Timer0<'_>, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Timer0)
+            .map_err(Handout::Taken)?;
         crate::pwm::Timer0::take(&self.dp, port, pin, self.sysclk_hz.get())
+            .ok_or(Handout::Driver(()))
     }
 
     /// A PWM channel on the pin the caller names, at `freq_hz`, dark.
@@ -645,16 +708,26 @@ impl Board {
         port: crate::pin::Port,
         pin: u8,
         freq_hz: u32,
-    ) -> Option<crate::pwm::Pwm<'_>> {
-        Some(crate::pwm::Pwm::new(self.timer0_on(port, pin)?, freq_hz))
+    ) -> Result<crate::pwm::Pwm<'_>, Handout<()>> {
+        let timer = self.timer0_on(port, pin)?;
+        Ok(crate::pwm::Pwm::new(timer, freq_hz))
     }
 
     /// A TIMER0 PWM buzzer on the pin the caller names.
     ///
     /// `None` if the timer never reports a running counter — a missing clock, not a missing
     /// buzzer.
-    pub fn buzzer_on(&self, port: crate::pin::Port, pin: u8) -> Option<crate::buzzer::Buzzer<'_>> {
+    pub fn buzzer_on(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+    ) -> Result<crate::buzzer::Buzzer<'_>, Handout<()>> {
+        // The buzzer takes TIMER0 through `Buzzer::new`, so the slot is claimed here rather than inside the driver: the
+        // board is the only thing that knows what else has been handed out.
+        self.claim(crate::cores::slots::Slot::Timer0)
+            .map_err(Handout::Taken)?;
         crate::buzzer::Buzzer::new(&self.dp, port, pin, self.sysclk_hz.get())
+            .ok_or(Handout::Driver(()))
     }
 
     /// IADC0 clocked from HFRCOEM23, ready for the microphone driver.
@@ -664,7 +737,9 @@ impl Board {
     /// configuration write faulted. HFRCOEM23 is the oscillator already proven
     /// to clock TIMER0 here, so it is forced on and waited for before the IADC
     /// clock is pointed at it.
-    pub fn converter(&self) -> crate::microphone::Converter {
+    pub fn converter(&self) -> Result<crate::microphone::Converter, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Converter)
+            .map_err(Handout::Taken)?;
         // The analog bus comes first. PC9 is an odd-numbered pin, and an odd pin only reaches ADC0 if
         // the odd CD bus is allocated to it: measured 2026-11-17, without this write the converter
         // delivers a flat zero, and `Microphone::level` reports that as `rms=2048` because it centres
@@ -700,7 +775,7 @@ impl Board {
         // true -- the same argument `gpio_static` makes. The address is the one the PAC gives for IADC0.
         const IADC0_BASE: usize = 0x4900_4000;
         let reg = unsafe { &*(IADC0_BASE as *const pac::iadc0_s::RegisterBlock) };
-        crate::microphone::Converter::new(reg)
+        Ok(crate::microphone::Converter::new(reg))
     }
 
     /// The general-purpose ADC, distinct from the microphone's converter.
@@ -711,10 +786,16 @@ impl Board {
     /// The oscillator is forced on here for the same reason it is in `converter()`: measured
     /// 2026-11-15, an IADC whose `IADCCLK` points at a stopped HFRCOEM23 faults on the first
     /// `CTRL` write, at `0x49004008`.
-    pub fn adc(&self, config: crate::adc::Config) -> crate::adc::Adc {
+    pub fn adc(&self, config: crate::adc::Config) -> Result<crate::adc::Adc, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Adc)
+            .map_err(Handout::Taken)?;
         self.run_hfrcoem23();
         // SAFETY: the board owns `Peripherals`; the ADC is handed out through it, so no caller can reach it another way.
-        crate::adc::Adc::new(unsafe { pac::Iadc0S::steal() }, config, &self.dp.cmu_s)
+        Ok(crate::adc::Adc::new(
+            unsafe { pac::Iadc0S::steal() },
+            config,
+            &self.dp.cmu_s,
+        ))
     }
 
     /// Force HFRCOEM23 on and wait for it, then point `IADCCLK` at it.

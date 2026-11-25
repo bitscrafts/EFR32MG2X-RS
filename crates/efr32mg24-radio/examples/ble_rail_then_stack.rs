@@ -74,7 +74,7 @@ fn stage(tag: &[u8], a: u32, b: u32) {
 fn main() -> ! {
     let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
-    let _rtc = board.sysrtc();
+    let _rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     stage(b"boot", 0, 0);
 

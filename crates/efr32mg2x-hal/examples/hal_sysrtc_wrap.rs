@@ -122,7 +122,7 @@ fn report(ok: bool, wraps: u32, entradas: u32, antes: u32, depois: u32, delta: u
 fn main() -> ! {
     let board = Board::take().unwrap();
     let mut led = board.output_on(Port::A, 7, false);
-    let rtc = board.sysrtc();
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     // Armar primeiro a interrupção, senão a volta acontece antes de alguém a contar.
     rtc.enable_overflow_interrupt();

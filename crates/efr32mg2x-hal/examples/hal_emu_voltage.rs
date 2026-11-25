@@ -71,7 +71,7 @@ fn main() -> ! {
             core::hint::spin_loop();
         },
     };
-    let emu = board.emu();
+    let emu = board.emu().expect("the EMU is handed out once");
 
     let mut down_ok = 0u32;
     let mut up_ok = 0u32;

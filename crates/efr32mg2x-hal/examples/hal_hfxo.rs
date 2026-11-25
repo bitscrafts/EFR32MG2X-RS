@@ -100,7 +100,7 @@ fn main() -> ! {
 
     // The referee is set up before the clock changes, so a failure to reach the crystal cannot also cost the
     // instrument.
-    let rtc = board.sysrtc();
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     let selected = board.select_hfxo(HFXO_HZ).is_ok();
     let after = board.clock_hz().0;

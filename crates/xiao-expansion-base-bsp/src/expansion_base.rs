@@ -111,8 +111,12 @@ impl ExpansionBase {
 
     /// The piezo buzzer on PC03 (TIMER0 CC0), calibrated and silent.
     ///
-    /// `None` when the timer never reports a running counter.
-    pub fn buzzer(&self) -> Option<efr32mg2x_hal::buzzer::Buzzer<'_>> {
+    /// The board refuses a second hand-out and says so; the timer itself reporting no running counter is the other
+    /// way this fails. Both arrive as the board's `Handout`, because collapsing them into `None` would make a caller
+    /// read "asked twice" as "no buzzer on this board".
+    pub fn buzzer(
+        &self,
+    ) -> Result<efr32mg2x_hal::buzzer::Buzzer<'_>, efr32mg2x_hal::board::Handout<()>> {
         self.module.hal().buzzer_on(Port::C, 3)
     }
 
@@ -165,7 +169,13 @@ impl ExpansionBase {
     ) -> Result<efr32mg2x_hal::microphone::Microphone<'_>, efr32mg2x_hal::microphone::MicError>
     {
         self.module.hal().output_on(Port::C, 8, false).on();
-        self.module.hal().converter().microphone()
+        // One converter per program: a second `converter()` is a bug in the caller, not a condition this facade can
+        // model, so it stops here with the reason instead of returning a second handle to the same IADC0.
+        self.module
+            .hal()
+            .converter()
+            .expect("the converter is handed out once")
+            .microphone()
     }
 
     /// Verify the devices the facade claims are present, and report which answered.

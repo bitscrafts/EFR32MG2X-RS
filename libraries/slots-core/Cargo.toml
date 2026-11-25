@@ -1,0 +1,8 @@
+[package]
+name = "efr32mg2x-slots-core"
+version = "0.1.0"
+edition = "2021"
+description = "One of each peripheral: the claim table Board uses to refuse a second hand-out"
+license = "MIT OR Apache-2.0"
+
+[dependencies]

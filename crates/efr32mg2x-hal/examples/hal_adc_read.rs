@@ -100,7 +100,9 @@ fn main() -> ! {
             core::hint::spin_loop();
         },
     };
-    let mut adc = board.adc(Config::default().with_reference(Reference::Vbgr));
+    let mut adc = board
+        .adc(Config::default().with_reference(Reference::Vbgr))
+        .expect("the ADC is handed out once");
 
     let gnd = match adc.read(Channel::Gnd) {
         Ok(v) => v,

@@ -151,7 +151,9 @@ fn main() -> ! {
         .route_i2c0((Port::B, 3), (Port::B, 2), PinMode::OpenDrainPullUp)
         .unwrap();
 
-    let mut i2c = board.i2c0(Config::new(Speed::Standard100kHz), board.clock_hz());
+    let mut i2c = board
+        .i2c0(Config::new(Speed::Standard100kHz), board.clock_hz())
+        .expect("I2C0 is handed out once");
 
     // **O controlo, no mesmo firmware e nos mesmos pinos.** O caminho bloqueante já está provado
     // (`hal_i2c_hardware_imu` devolve 0x6a): se ele responder aqui e o assíncrono não, a diferença está no

@@ -77,7 +77,8 @@ fn main() -> ! {
     // The microphone: PC8 enable (active high), then the converter.
     board.output_on(Port::C, 8, false).on();
     delay.delay_ms(5);
-    let mic = match board.converter().microphone() {
+    let converter = board.converter().expect("the converter is handed out once");
+    let mic = match converter.microphone() {
         Ok(mic) => mic,
         Err(_) => {
             mailbox::write(mailbox::Status::Fail, b"mic: converter will not start");

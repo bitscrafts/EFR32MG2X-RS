@@ -133,7 +133,7 @@ fn main() -> ! {
     mailbox::invalidate();
     let board = Board::take().unwrap();
     let mut led = board.output_on(Port::A, 7, false);
-    let rtc = board.sysrtc();
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     // A interrupção do comparador tem de estar ligada no periférico antes do primeiro `wfi`.
     rtc.unmask_interrupt();
@@ -181,7 +181,7 @@ fn main() -> ! {
         let alvo = rtc.now_wide() + TICKS_100MS as u64;
         // `is_future` é a comparação em 32 bits que sobrevive à volta do contador; a decisão vive no núcleo
         // testado, não aqui.
-        while efr32mg2x_hal::cores::sysrtc::is_future(rtc.now(), alvo as u32) {
+        while efr32mg2x_hal::sysrtc::is_future(rtc.now(), alvo as u32) {
             cortex_m::asm::nop();
         }
     }

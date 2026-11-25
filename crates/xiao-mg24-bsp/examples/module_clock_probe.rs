@@ -93,7 +93,7 @@ fn main() -> ! {
 
     // `Board::sysrtc()` is the seam: it takes the CMU and SYSRTC singletons and configures the
     // low-frequency clock, which is the domain this measurement borrows.
-    let sysrtc: Sysrtc = module.hal().sysrtc();
+    let sysrtc: Sysrtc = module.hal().sysrtc().expect("SYSRTC is handed out once");
 
     // SAFETY: nothing else in this program touches DWT; it is taken here for good.
     let start = unsafe { dwt::start() }

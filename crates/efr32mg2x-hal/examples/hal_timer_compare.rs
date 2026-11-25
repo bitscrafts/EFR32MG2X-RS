@@ -72,7 +72,7 @@ fn main() -> ! {
             core::hint::spin_loop();
         },
     };
-    let rtc = board.sysrtc();
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     // The compare flag survives a reset in this part's block, so a stale one would be taken as "fired" before the counter
     // had moved at all. Measured: without this clear the record read `reached == start`, `fired=1` and `late = -3200`

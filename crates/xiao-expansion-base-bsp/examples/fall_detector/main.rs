@@ -170,7 +170,9 @@ fn main() -> ! {
     let mut display = Ssd1306::new(SharedBus::new(&base_bus));
 
     // An alarm you can hear: the panel shows the count, the buzzer says it happened.
-    let mut buzzer = board.buzzer_on(Port::C, 3);
+    let mut buzzer = board
+        .buzzer_on(Port::C, 3)
+        .expect("the buzzer is handed out once");
     let mut alarm = app::Alarm::new();
 
     // ---- self tests, before the live loop --------------------------------
@@ -275,11 +277,11 @@ fn main() -> ! {
         }
 
         let sounding = alarm.tick(dt_us);
-        if let Some(b) = buzzer.as_mut() {
+        {
             if sounding {
-                b.sound();
+                buzzer.sound();
             } else {
-                b.silence();
+                buzzer.silence();
             }
         }
 

@@ -130,7 +130,10 @@ async fn dorme_e_conta() {
 #[entry]
 fn main() -> ! {
     let board = Board::take().unwrap();
-    board.sysrtc().unmask_interrupt();
+    board
+        .sysrtc()
+        .expect("SYSRTC is handed out once")
+        .unmask_interrupt();
 
     let executor = unsafe { (*core::ptr::addr_of_mut!(EXECUTOR)).insert(Executor::new()) };
     // `Executor::run` devolve `!`: nunca regressa, e é por isso que não há código depois dele. O compilador disse-o

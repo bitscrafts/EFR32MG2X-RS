@@ -46,6 +46,7 @@ Read from the source, so it cannot drift:
 | `Timer0S` | `src/timer/mod.rs` |
 | `Usart0S` | `src/board.rs`, `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
+| `X` | `src/cores/slots.rs` |
 | `cmu_s` | `src/board.rs` |
 | `emu_ns` | `src/sleep.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
@@ -123,6 +124,7 @@ read back off the part — not that the code compiled; the table below is counte
 
 | `hal_usart_link` | `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` — `EFR32!` out and the same six bytes back, with a jumper between D6 and D7 | two defects measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is one byte at a time; and a floating RX line reports `0x00` often enough that a byte-counting echo test passes on a board with nothing attached |
 Three of those deserve naming rather than a row in a table:
+| `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
 
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
@@ -204,7 +206,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-22 examples, **15 of them watched on the part**. A `--` in the last column means nobody
+23 examples, **15 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -223,6 +225,7 @@ mean it works.
 | `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | 2026-11-24 |
 | `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways. | -- |
+| `hal_one_of_each.rs` | One of each: the board refuses to hand the same peripheral out twice. | -- |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |

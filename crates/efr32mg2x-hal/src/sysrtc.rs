@@ -32,6 +32,31 @@ use efr32mg2x_pac::{
     cmu_ns::RegisterBlock as CmuBlock, sysrtc0_ns::RegisterBlock, CmuNs, Sysrtc0Ns,
 };
 
+/// Whether `deadline` has still to be reached, on a counter that wraps: `now` and `deadline` are compared by their
+/// difference rather than by magnitude, so the answer stays right across the wrap.
+///
+/// The decision lives in the host-tested core (`cores::sysrtc`); this is its public name, so a caller waiting on a
+/// compare channel does not have to reach into the crate's internals to ask the question.
+pub use crate::cores::sysrtc::is_future;
+
+/// Ticks from `now` to `deadline`, in the same wrapping arithmetic the counter uses.
+pub use crate::cores::sysrtc::ticks_until;
+
+/// Whether `deadline` has already passed, in the same wrapping arithmetic.
+pub use crate::cores::sysrtc::has_passed;
+
+/// The counter widened to 64 bits by tracking its wraps: 36.4 h at 32768 Hz becomes 17 million years.
+pub use crate::cores::sysrtc::WideTick;
+
+/// The compare value to program for `deadline`, and whether that deadline is already behind `now`.
+pub use crate::cores::sysrtc::compare_target;
+
+/// Ticks that `ms` milliseconds are worth at 32768 Hz.
+pub use crate::cores::sysrtc::ticks_for_ms;
+
+/// Milliseconds that `ticks` are worth at 32768 Hz.
+pub use crate::cores::sysrtc::ms_for_ticks;
+
 /// Offsets measured against the vendor headers (see the module note).
 mod off {
     /// `CMU_SYSRTC0CLKCTRL`, relative to the CMU base.

@@ -30,7 +30,13 @@ more than a documentation fix.
   `TIMER0 + 0x60`; `EN` crossing the clock domain; the calibration reading `CYCCNT` that was never enabled). Result:
   `PASS buzzer tick=19000000Hz top=3518 tone=2700Hz`.
 
-Documentation grades moved: evidence B− → **B**, safety C → **B**, publication hygiene D → **B**. What is still below B
+Then F10, the last item that kept the API below B: `Board` handed out unlimited aliases of its singletons, because every
+hand-out built a driver from a `steal()`. It now goes through a claim table (`cores::slots`, host-tested in
+`libraries/slots-core`), a second request is refused by name, and `hal_one_of_each` measures it on the board:
+`PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1`. `mod cores` also stopped being public API; what a consumer
+needs from it is re-exported by `sysrtc`.
+
+Documentation grades moved: evidence B− → **B**, safety C → **B**, publication hygiene D → **B**, API C+ → **B**. What is still below B
 is API hygiene (C+: `Board` hands out unlimited aliases, `pub mod cores` is public) and error handling (`wdog` returns
 `Error::Locked` for a timeout).
 

@@ -108,7 +108,10 @@ pub mod board;
 pub mod bus;
 pub mod buzzer;
 pub mod clock;
-pub mod cores;
+// The pure logic layer is deliberately **not** public: it exists so the arithmetic in every driver can be measured on
+// the host, and a caller who reaches into it is using an implementation detail that moves with the drivers. What a
+// caller needs from it is re-exported by the driver it belongs to (`sysrtc::is_future`, ...).
+mod cores;
 pub mod delay;
 pub mod display;
 pub mod dma;

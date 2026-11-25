@@ -159,8 +159,11 @@ fn main() -> ! {
     let board = Board::take().unwrap();
     let mut led = board.output_on(Port::A, 7, false);
 
-    // `board.sysrtc()` também regista a base no HAL, que é o que os acessores globais usam.
-    board.sysrtc().unmask_interrupt();
+    // `board.sysrtc().expect("SYSRTC is handed out once")` também regista a base no HAL, que é o que os acessores globais usam.
+    board
+        .sysrtc()
+        .expect("SYSRTC is handed out once")
+        .unmask_interrupt();
 
     let hw_hz: u32 = board.clock_hz().into();
     let w = waker();

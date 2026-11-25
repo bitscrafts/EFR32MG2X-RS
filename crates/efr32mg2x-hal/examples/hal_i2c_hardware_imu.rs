@@ -60,7 +60,9 @@ fn main() -> ! {
         }
     }
 
-    let mut i2c = board.i2c0(Config::new(Speed::Standard100kHz), board.clock_hz());
+    let mut i2c = board
+        .i2c0(Config::new(Speed::Standard100kHz), board.clock_hz())
+        .expect("I2C0 is handed out once");
 
     let mut id = [0u8; 1];
     match i2c.write_read(IMU_ADDR, WHO_AM_I, &mut id) {

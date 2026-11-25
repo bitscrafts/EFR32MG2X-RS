@@ -104,7 +104,7 @@ fn main() -> ! {
             core::hint::spin_loop();
         },
     };
-    let rtc = board.sysrtc();
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     // TIMER0 as a free-running counter into the fast clock. `pace_microphone` is the board's door to it: it unlocks
     // the timer, sets the prescaler to /1 and starts it, which is what a counter read needs. It returns the period it

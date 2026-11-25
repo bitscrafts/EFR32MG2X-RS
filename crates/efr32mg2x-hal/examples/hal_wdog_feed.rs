@@ -86,7 +86,7 @@ fn main() -> ! {
         },
     };
 
-    // NOTE: not read before `board.wdog(..)` -- with `CMU_CLKEN0.WDOG0` clear (its reset state) *any* access to this
+    // NOTE: not read before `board.wdog(..).expect("the watchdog is handed out once")` -- with `CMU_CLKEN0.WDOG0` clear (its reset state) *any* access to this
     // block faults, reads included. Measured: reading IPVERSION first gave a precise data access error at 0x5b004000.
     let config = WdogConfig {
         period: TimeoutPeriod::Cycles8k,

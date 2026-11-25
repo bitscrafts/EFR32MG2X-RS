@@ -122,7 +122,7 @@ impl Line {
 fn main() -> ! {
     mailbox::invalidate();
     let board = Board::take().expect("peripherals taken twice");
-    let rtc = board.sysrtc();
+    let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
     // Route first, build second: a driver enabled with its pins unrouted drives nothing while looking alive.
     if board.route_usart0((Port::C, 6), (Port::C, 7)).is_err() {

@@ -115,7 +115,10 @@ impl Module {
     pub fn microphone(&self) -> Result<Microphone<'_>, MicError> {
         // PC8: enable, active high. PC9 stays in disabled mode so the ADC owns the pad.
         self.board.output_on(Port::C, 8, false).on();
-        self.board.converter().microphone()
+        self.board
+            .converter()
+            .expect("the converter is handed out once")
+            .microphone()
     }
 
     /// The matrix/vector processor, enabled and ready.
@@ -131,8 +134,14 @@ impl Module {
     /// # Errors
     ///
     /// [`efr32mg2x_hal::mvp::Error::StuckDisabling`] when the block will not leave its disabled state,
-    /// which is what a missing clock gate looks like from the outside.
-    pub fn mvp(&self) -> Result<efr32mg2x_hal::mvp::Mvp, efr32mg2x_hal::mvp::Error> {
+    /// which is what a missing clock gate looks like from the outside, and
+    /// [`efr32mg2x_hal::board::Handout::Taken`] when this board already handed the block out.
+    pub fn mvp(
+        &self,
+    ) -> Result<efr32mg2x_hal::mvp::Mvp, efr32mg2x_hal::board::Handout<efr32mg2x_hal::mvp::Error>>
+    {
+        // The board refuses a second hand-out, so the refusal is part of what this returns -- a caller that asked
+        // twice gets an error naming it, not a second handle to the same block.
         self.board.mvp()
     }
 }

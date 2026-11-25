@@ -15,7 +15,7 @@
 //! The offset was measured with `offsetof` against the vendor headers and confirmed against the RAIL blob.
 
 use core::ffi::c_void;
-use efr32mg2x_hal::cores::sysrtc::WideTick;
+use efr32mg2x_hal::sysrtc::WideTick;
 
 /// `SYSRTC0->CNT` (non-secure alias). Measured, and confirmed by `RTCCSYNC_GetRtccCount` in the RAIL blob,
 /// which reads `[r3, #24]` from the same base.
@@ -66,7 +66,7 @@ unsafe fn arm(next: u32) {
     // again until the counter wraps -- 36.4 h at 32768 Hz -- and the stack's timer would stall for that long.
     // The decision is shared through `libraries/sysrtc-core`, which the host tests, so the two backends
     // cannot drift apart on it.
-    let (alvo, _atrasado) = efr32mg2x_hal::cores::sysrtc::compare_target(now(), next);
+    let (alvo, _atrasado) = efr32mg2x_hal::sysrtc::compare_target(now(), next);
     core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_CMP0) as *mut u32, alvo);
     core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IF + IF_CLEAR_ALIAS) as *mut u32, 0xFF);
     core::ptr::write_volatile((SYSRTC_BASE + R_GRP0_IEN) as *mut u32, IEN_CMP0);

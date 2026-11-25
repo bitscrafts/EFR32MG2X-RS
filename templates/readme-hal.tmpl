@@ -90,6 +90,7 @@ read back off the part — not that the code compiled; the table below is counte
 
 | `hal_usart_link` | `PASS usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21` — `EFR32!` out and the same six bytes back, with a jumper between D6 and D7 | two defects measured on the way: a six-byte burst overruns the two-deep receiver (`in=3 ok=2 45 46 21`), so the instrument is one byte at a time; and a floating RX line reports `0x00` often enough that a byte-counting echo test passes on a board with nothing attached |
 Three of those deserve naming rather than a row in a table:
+| `hal_one_of_each` | `PASS one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 wdog=1` — the first ask for SYSRTC and for the ADC succeeded, the *second* ask for each was refused, and a third peripheral was still free | the refusal is per slot, not a global stop: the same firmware proves both at once, so a table that simply refused everything could not pass |
 
 - `i2c` drives the hardware I2C0 peripheral, and on this board it reads and writes: `hal_i2c_hardware_imu` and
   `hal_i2c_recovery` are the examples that reach it. What looked like a silicon defect was two driver defects — the
