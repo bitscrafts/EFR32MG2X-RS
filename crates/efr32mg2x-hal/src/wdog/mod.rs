@@ -374,7 +374,7 @@ impl Wdog {
     /// # Returns
     ///
     /// * `Ok(())` - Synchronization complete
-    /// * `Err(Error::Locked)` - Timeout waiting for sync (unlikely)
+    /// * `Err(Error::SyncTimeout)` - The write did not cross into the watchdog's clock domain in time
     fn wait_syncbusy() -> Result<(), Error> {
         // SAFETY: SYNCBUSY register read is safe and non-destructive.
         let wdog = unsafe { &(*pac::Wdog0Ns::ptr()) };
@@ -386,7 +386,9 @@ impl Wdog {
         while wdog.syncbusy().read().bits() != 0 {
             cycles += 1;
             if cycles > TIMEOUT_CYCLES {
-                return Err(Error::Locked); // Timeout (shouldn't happen)
+                // A write that never lands is a clock that is not running, not a lock: `LOCK` is a different register
+                // and a different decision, and reporting one as the other sends a reader to the wrong chapter.
+                return Err(Error::SyncTimeout);
             }
         }
 

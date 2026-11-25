@@ -11,6 +11,12 @@ pub enum Error {
     InvalidPeriod,
     /// Watchdog already enabled
     AlreadyEnabled,
+    /// A register write did not cross into the watchdog's clock domain in time.
+    ///
+    /// Separate from [`Error::Locked`] on purpose: a lock is a decision the hardware made about `LOCK`, and this is a
+    /// clock that is not running. Returning `Locked` here said "the watchdog refused to be configured" when the truth
+    /// was "the write never landed", and the two lead a reader to different places.
+    SyncTimeout,
 }
 
 /// A snapshot of the watchdog's registers.
