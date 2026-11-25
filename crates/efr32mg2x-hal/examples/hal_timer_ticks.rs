@@ -32,6 +32,8 @@
 //!      land near 19 MHz, the nominal HFRCOEM23 rate.
 //!   2. Compare channel 0, the way a scheduler uses it: schedule an absolute deadline, wait for the flag, then check
 //!      the counter had reached it. That is the whole contract the vendor stack needs.
+//!
+//! VERIFIED ON HARDWARE (2026-11-24): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

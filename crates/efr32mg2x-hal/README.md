@@ -78,8 +78,8 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. Eleven of them carry a date, and a date means
-a record was read back off the part — not that the code compiled.
+Twenty-six public modules (`pub mod` in `src/lib.rs`) and twenty examples. A date next to an example means a record was
+read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
 
@@ -198,32 +198,32 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-20 examples, **3 of them watched on the part**. A `--` in the last column means nobody
+20 examples, **11 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
 | example | what it shows | watched on hardware |
 |---|---|---|
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | -- |
-| `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | -- |
+| `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
-| `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | -- |
+| `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | 2026-11-24 |
 | `hal_hfxo.rs` | HFXO: correr do cristal, e provar que o relógio do sistema o seguiu. | -- |
 | `hal_i2c_async.rs` | O IMU lido pelo caminho **assíncrono** do I2C, num executor mínimo. | -- |
 | `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |
 | `hal_i2c_hardware_imu.rs` | The IMU on the hardware I2C bus: routed pins, a power gate, one byte back. | -- |
-| `hal_i2c_recovery.rs` | After a NACK, does the bus still work? | -- |
-| `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | -- |
+| `hal_i2c_recovery.rs` | After a NACK, does the bus still work? | 2026-11-23 |
+| `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | 2026-11-24 |
 | `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
-| `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | -- |
+| `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | 2026-11-24 |
 | `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways. | -- |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
 | `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
-| `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | -- |
-| `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | -- |
-| `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | -- |
+| `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |
+| `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | 2026-11-24 |
+| `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | 2026-11-24 |
 
 
 ## Building

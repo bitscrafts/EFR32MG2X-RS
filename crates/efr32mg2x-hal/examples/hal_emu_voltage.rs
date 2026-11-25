@@ -17,6 +17,8 @@
 //!
 //! What it does *not* prove: that the core actually ran at the lower scale. That needs a current measurement this
 //! board cannot give from here, so the record says "accepted", not "measured at 1.0 V".
+//!
+//! VERIFIED ON HARDWARE (2026-11-24): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

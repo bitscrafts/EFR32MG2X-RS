@@ -19,6 +19,8 @@
 //!
 //! Verification without eyes: the mailbox reports RMS, peak and the duty being applied. The
 //! brightness itself needs a human — the numbers do not.
+//!
+//! VERIFIED ON HARDWARE (2026-11-24): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

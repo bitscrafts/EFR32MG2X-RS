@@ -15,6 +15,8 @@
 //!
 //! Report goes to the SWD mailbox (see `common/mailbox.rs`), so the result can be read
 //! without eyes on the board.
+//!
+//! VERIFIED ON HARDWARE (2026-11-24): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

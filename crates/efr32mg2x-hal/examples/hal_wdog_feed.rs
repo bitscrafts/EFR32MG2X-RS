@@ -31,6 +31,8 @@
 //! feed: if the feed faults, the last record is the state at the moment it did, which is the instrument this example
 //! was missing. Next instruments, in order: the `CMD` write through the SET alias (`0x100C`), `STATUS`/`SYNCBUSY`
 //! read from inside a fault handler, and the vendor's own `WDOG_Feed` in the same boot as a control.
+//!
+//! VERIFIED ON HARDWARE (2026-11-24): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

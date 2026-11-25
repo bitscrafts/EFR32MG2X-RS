@@ -30,6 +30,8 @@
 //! boot, or the zero afterwards would prove nothing.
 //!
 //! Every reading goes into the record, so a reader can tell "the check answered" from "the check agreed".
+//!
+//! VERIFIED ON HARDWARE (2026-11-23): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

@@ -7,6 +7,8 @@
 //!
 //! No DWT anywhere: the counter is the clock. A separate absolute measurement (two reads from the host with a
 //! stopwatch between them) established 32 968 Hz, so `ticks_per_ms = 32` is right to within 0.6%.
+//!
+//! VERIFIED ON HARDWARE (2026-11-24): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]

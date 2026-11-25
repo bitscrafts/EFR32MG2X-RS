@@ -18,6 +18,8 @@
 //! The record is `antes=<hex> erro=<n> depois=<hex> wr=<0|1> volta=<hex>`, and it only passes when all of them are
 //! right: the control answered, the refusal came back as Nack, the bus came back, and the round trip wrote and read
 //! back the same byte.
+//!
+//! VERIFIED ON HARDWARE (2026-11-23): the record is in this file's header and in the crate README's dated table.
 
 #![no_std]
 #![no_main]
