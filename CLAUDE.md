@@ -542,8 +542,10 @@ cargo doc --no-deps --features rt --open
 - [x] 10+ BLE/BSP examples
 
 **Long Term Goals**:
-- [x] Published to crates.io — `efr32mg2x-pac` and `efr32mg2x-hal` (0.1.1). The radio, the board BSPs and the helper
-      libraries are not published: the radio carries vendor binaries and needs the build-time fetch first.
+- [x] Published to crates.io — **`efr32mg2x-pac` (0.1.1) only.** `efr32mg2x-hal` was withdrawn from the registry and is
+      not published; the assessment and the checklist for publishing it are in
+      `docs/04-reference/HAL-MATURITY-2026-11-25.md`. The radio, the board BSPs and the helper libraries are not
+      published: the radio carries vendor binaries and needs the build-time fetch first.
 - [x] Hardware tested on XIAO MG24 Sense — BLE read by a phone, the BME680 published as a standard service, the blink
       measured at 1.02 Hz, `hal_env_display` showing T/P/RH on the OLED
 - [ ] Phase D3: Zigbee 3.0 integration

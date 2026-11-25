@@ -36,6 +36,18 @@ project keeps relearning: a check that compiles is not a check that reads.
 
 ## [Unreleased]
 
+### Changed
+
+#### The HAL is not published, and the next version is 0.2.0 (2026-11-25)
+
+`efr32mg2x-hal` was withdrawn from the registry: the sparse index answers `NoSuchKey` for the name. The 0.1.1 entry
+below describes a publication that no longer exists, and is kept only as the record of what was fixed on that day.
+`efr32mg2x-pac 0.1.1` is still published and not yanked.
+
+The next HAL version is **0.2.0**, not 0.1.2: the tree a reader would get today is not the 0.1.x tree, and a version
+number that implies a patch would misdescribe it. The conditions for publishing are written, with the numbers that
+justify them, in `docs/04-reference/HAL-MATURITY-2026-11-25.md`; nothing is published without an express order.
+
 ### Added
 
 #### Bluetooth on hardware: a phone can use the board (2026-11-14)
