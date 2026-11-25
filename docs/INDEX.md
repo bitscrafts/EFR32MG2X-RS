@@ -257,6 +257,7 @@ See [LICENSE](../LICENSE) file for details.
 - [I2C after a NACK](04-reference/I2C-RECOVERY-STATE.md) - closed with a control in both directions, and the sequence `ABORT` + `STOP`, then `CLEARPC`, `CLEARTX`
 - [HAL maturity and publication](04-reference/HAL-MATURITY-2026-11-25.md) - what is proven per peripheral, what blocks a publish, and the checklist
 - [HAL review brief and the path to A](04-reference/HAL-REVIEW-BRIEF-2026-11-25.md) - a self-contained brief for an outside reviewer: the records, the rubric, and what B -> A means per dimension
+- [Coverage boundary](04-reference/COVERAGE-BOUNDARY-2026-11-25.md) - every peripheral family the device has, which ones this crate drives with a record, which are absent, and which modes of the driven ones are missing (SPI slave, I2C slave, I2S, capture, differential)
 - [DWT needs a debug session](04-reference/DWT-NEEDS-A-DEBUG-SESSION.md) - the cycle counter freezes when the probe detaches; use SysTick for standalone timing
 - [DMA channel stop](04-reference/DMA-CHANNEL-STOP.md) - `CHSTATUS` not `CHBUSY` is the armed state; `stop()` proven, and a blocking transfer no longer leaves the channel armed
 - [PAC clock and timer notes](04-reference/PAC-CLOCK-AND-TIMER-NOTES.md) - the register orders this die demands
