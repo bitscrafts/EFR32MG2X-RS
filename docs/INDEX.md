@@ -97,6 +97,7 @@ Research, analysis, and reference materials.
 - [I2C recovery state](04-reference/I2C-RECOVERY-STATE.md) - a NACK is now reported as one; the bus still does not survive it, with the decode of `IF = 0x109f9` and the next step
 - [SYSRTC compare channel ownership](04-reference/SYSRTC-OWNERSHIP.md) - channel 0 belongs to the Bluetooth sleep timer; the application takes 1 or 2, and the token that would enforce it
 - [The IMU FIFO, measured](04-reference/IMU-FIFO-MEASURED.md) - why the FIFO is not justified for throughput, and the one thing (contiguity) that would change the answer
+- [LETIMER0's top, measured](04-reference/LETIMER-TOP-2026-11-26.md) - `CTRL.CNTTOPEN` is the switch, the top is 24 bits at reset and not the manual's 65535, and the earlier "`TOP` is ignored" was a `u16` truncation
 
 **Bootloader Research:**
 - [Gecko Bootloader Research](04-reference/GECKO_BOOTLOADER_RESEARCH.md) - Silicon Labs bootloader analysis
