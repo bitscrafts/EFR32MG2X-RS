@@ -4,21 +4,26 @@
 
 **Goal**: Create production-ready Peripheral Access Crate (PAC), Hardware Abstraction Layer (HAL), and radio/Bluetooth stack for Silicon Labs EFR32MG24 wireless SoC in Rust.
 
-**Status**: Phase D2 Complete - Bluetooth 5.3 LE Integration done. HAL core (12 modules), RAIL FFI bindings, Bluetooth stack, and XiaoBle BSP all production-ready. Next: Phase D3 (Zigbee 3.0) / Phase E (Security).
+**Status**: Phase D2 verified on hardware -- a phone advertises, connects, reads and writes, and the BME680 answers as
+the standard Environmental Sensing service. Open inside D2: **D2f pairing/bonding** (the PSA layer is written and
+verified on the board; the security manager fails before the key exchange, so it stays out of the product build) and
+**D2g BME680 gas resistance**. Phase D3 (Zigbee 3.0) and Phase E (Security) are next. The state of the tree, counted,
+and the open items are in [`STATUS.md`](STATUS.md) and [`BACKLOG.md`](BACKLOG.md); this file is the plan and the
+decisions behind it.
 
-**Status 2026-11-14**: the Bluetooth stack now runs on hardware and a phone can use it -- advertising, scanning,
-connections, GATT read/write/notify, and the BME680 published as the standard Environmental Sensing service
-(`base_ble_env_gatt`, verified with nRF Connect). Two items remain inside Phase D2: **D2f pairing/bonding** (the PSA
-layer is written and verified on the board; the security manager fails before the key exchange, so it stays out of the
-product build) and **D2g BME680 gas resistance**. All 107 examples compile under `scripts/check-examples-build.sh`, which now builds every example of every crate and
-`scripts/gate.sh` reports `VERDICT: PASS`. See the Gantt and phase table in `README.md`.
+**Status 2026-11-26**: the HAL has 29 public modules and 28 examples, and every example of every crate compiles under
+`scripts/check-examples-build.sh`; `scripts/gate.sh` reports `VERDICT: PASS`. What each peripheral does, and what has a
+record read back off the part, is measured rather than asserted: `LETIMER0`, the IADC's PRS trigger and a timer feeding
+the converter through the PRS were all closed on 2026-11-26, each with a document in `docs/04-reference/`. The text
+below is the plan as it was written in December 2025 and January 2026; where a phase marker disagrees with the table in
+"Where the plan stands", the table is the current one.
 
 **Repository Structure**:
 ```
 EFR32MG24/
-├── Cargo.toml                     # Workspace configuration (5 member crates)
-├── crates/efr32mg2x-pac/                 # Peripheral Access Crate (B220, 138K lines)
-├── crates/efr32mg2x-hal/                 # Hardware Abstraction Layer (12 modules)
+├── Cargo.toml                     # Workspace configuration (32 members: 10 crates, 22 libraries)
+├── crates/efr32mg2x-pac/                 # Peripheral Access Crate (B220, 2,633 files, 103 instances)
+├── crates/efr32mg2x-hal/                 # Hardware Abstraction Layer (29 public modules, 28 examples)
 ├── crates/efr32mg24-rail-sys/            # RAIL radio FFI bindings
 ├── crates/efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
 ├── crates/xiao-mg24-bsp/                 # Board Support Package (XIAO MG24 Sense)
@@ -27,6 +32,28 @@ EFR32MG24/
 ├── HANDOFF.md                     # Project handoff
 └── CLAUDE.md                      # Project-specific instructions
 ```
+
+---
+
+## Where the plan stands (2026-11-26)
+
+| phase | state | evidence |
+|---|---|---|
+| P -- preparation | complete | PAC generated from the B220 SVD: 2,633 files, 103 peripheral instances in 46 families |
+| A -- essential | complete | `gpio`, `clock`, `delay`; the LED blink measured at 1.02 Hz |
+| B -- communication | complete | `usart`, `i2c`, `spi`, `timer`, `pwm`; USART loopback with a control, SPI with a jumper and a control, I2C on the IMU |
+| C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |
+| D0-D1 -- radio foundation | complete | RAIL FFI bindings, board crate |
+| D2 -- Bluetooth 5.3 LE | complete to D2e, on hardware | advertising, scanning, GATT read/write/notify, the BME680 on a phone |
+| D2f -- pairing and bonding | open | PSA layer verified; the security manager fails before the key exchange |
+| D2g -- BME680 gas resistance | open | heater, `res_heat` and `par_g*` missing |
+| D3 -- Zigbee 3.0 | not started | -- |
+| D4 -- Thread/Matter | not started | -- |
+| E -- security | not started | `radioaes` is in the PAC and no driver opens it |
+
+The peripheral inventory behind that table -- 29 public modules, and `pcnt0`, `burtc`, `acmp`, `vdac`, `keyscan`,
+`radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco` and `hfrcoem23` still absent -- is
+[`COVERAGE-BOUNDARY-2026-11-25.md`](../04-reference/COVERAGE-BOUNDARY-2026-11-25.md).
 
 ---
 
@@ -200,7 +227,12 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
 
 ---
 
-### ⏳ Phase B: Extended HAL Development - Communication Peripherals (IN PROGRESS)
+### ✅ Phase B: Extended HAL Development - Communication Peripherals (COMPLETE)
+
+Delivered: `usart`, `i2c`, `spi`, `timer`, plus the ones this section numbered without status in December --
+`adc` (`hal_adc_read`, and the PRS trigger of 2026-11-26), `dma` (stages 1 and 2), `rtc`/`sysrtc` and `wdog`. `prs` is
+delivered as one channel with named producers. Still absent, and named as such rather than marked done: `pcnt0`,
+`burtc`, `acmp`, `vdac`, `keyscan`, `radioaes`.
 
 **Tier 2 Peripherals** (Important):
 
@@ -209,114 +241,101 @@ svd2rust --locked -i svd/EFR32MG24B220F1536IM48.svd --target cortex-m -o src
    - ✅ 7-bit addressing
    - ✅ Standard (100 kHz) and Fast (400 kHz) modes
    - ✅ embedded-hal I2C traits
-   - ✅ Example: 05_i2c.rs
+   - ✅ Example: `hal_i2c_hardware_imu`, `hal_i2c_recovery`, `hal_i2c_async`
    - ⏳ Slave mode (deferred)
    - ⏳ 10-bit addressing (deferred)
 
-7. **IADC** (ADC)
-   - Single-shot conversion
-   - Continuous conversion
-   - Multi-channel support
-   - embedded-hal ADC traits
+7. **IADC** (ADC) - ✅ COMPLETE for single-shot
+   - ✅ Single-shot conversion, 12-bit
+   - ✅ Started by the CPU, by a PRS edge, or by a timer's overflow through the PRS
+   - ⏳ Continuous conversion and multi-channel scan (deferred; the microphone path uses LDMA instead)
+   - ✅ Examples: `hal_adc_read`, `hal_adc_prs_trigger`, `hal_adc_prs_timer`
 
-8. **LDMA** (DMA Controller)
-   - Linked descriptor support
-   - Peripheral-to-memory transfers
-   - Memory-to-memory transfers
+8. **LDMA** (DMA Controller) - ✅ STAGES 1-2
+   - ✅ Memory-to-memory transfers
+   - ✅ Peripheral-to-memory transfers with a circular buffer
+   - ⏳ Linked descriptors and interrupt-driven async (stages 3-4, deferred)
+   - ✅ Example: `hal_dma_stop`
 
-9. **PRS** (Peripheral Reflex System)
-   - Inter-peripheral signaling
-   - Producer/consumer configuration
+9. **PRS** (Peripheral Reflex System) - ✅ ONE CHANNEL, MEASURED
+   - ✅ `Prs::connect` writes `ASYNC_CHn_CTRL` whole; `Prs::channel_ctrl` reads it back
+   - ✅ Producers named: `Off`, `Timer0Overflow`, `Timer0Compare0`, `Timer1Overflow`, `GpioPin`
+   - ⏳ `GpioPin` encoded and never driven (open item); synchronous channels and other consumers untouched
+   - ✅ Example: `hal_adc_prs_timer`
 
-10. **SYSRTC/LETIMER** (Low-Power Timers)
-    - Real-time clock
-    - Low-energy timer
-    - Wakeup from sleep modes
+10. **SYSRTC/LETIMER** (Low-Power Timers) - ✅ COMPLETE
+    - ✅ SYSRTC0: 32.768 kHz counter, compare, 64-bit extended
+    - ✅ LETIMER0: 24-bit counter, `TOP` with `CNTTOPEN`, two compares, runs in EM2
+    - ✅ Examples: `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_letimer_compare`
 
 **Estimated Duration**: 4-6 weeks
 
 ---
 
-### ⏳ Phase C: Advanced Features (PENDING)
+### ◐ Phase C: Advanced Features (PARTLY DELIVERED)
 
-**Tier 3 Peripherals** (Advanced):
+11. **MVP** (Math Vector Processor) - ✅ MEASURED
+    - `hal_mvp_bench`: 256 additions in 14.66 µs against 34.33 µs on the CPU, `ratio_x100=234`
 
-11. **MVP** (Math Vector Processor)
-    - DSP operations
-    - Vector math acceleration
+12. **VDAC** (DAC) - ⏳ NOT STARTED
+    - Analog output, waveform generation
 
-12. **VDAC** (DAC)
-    - Analog output
-    - Waveform generation
+13. **ACMP** (Analog Comparator) - ⏳ NOT STARTED
+    - Voltage comparison, interrupt on threshold
 
-13. **ACMP** (Analog Comparator)
-    - Voltage comparison
-    - Interrupt on threshold
+14. **Security Peripherals** - ⏳ NOT STARTED in the HAL
+    - `radioaes` is in the PAC and no driver opens it; the PSA layer used by Bluetooth lives in the radio crate
+    - AES acceleration, SHA acceleration, ECC, Secure Vault integration
 
-14. **Security Peripherals**
-    - AES acceleration
-    - SHA acceleration
-    - ECC operations
-    - Secure Vault integration
-
-15. **Radio Support** (Complex)
-    - Basic radio initialization
-    - FFI bindings to Silicon Labs libraries
-    - Consider pure Rust implementation long-term
+15. **Radio Support** - ✅ DELIVERED, AND IT RUNS
+    - `efr32mg24-rail-sys` (FFI) and `efr32mg24-bluetooth-sys` (BGAPI plus a safe blocking API)
+    - The stack advertises, connects, and serves GATT; the BME680 is published as the standard Environmental Sensing
+      service and a phone reads it
+    - Pure Rust, no vendor externs: not started, ordered after Bluetooth is closed
 
 **Estimated Duration**: 2-3 months
 
 ---
 
-### ⏳ Phase 8: Testing & Examples (ONGOING)
+### ◐ Phase 8: Testing & Examples (ONGOING, AND IT IS THE POINT)
 
 **Parallel with Development**:
 
-1. **Unit Tests**
-   - Per-peripheral HAL tests
-   - Mock hardware testing
+1. **Unit Tests** - ◐ PARTLY
+   - Host tests live in `libraries/` (`record-core`, `bt-heap`, `aes-modes`, `motion-detection`) and run in the gate
+   - Per-peripheral HAL tests cannot be host tests: a driver that touches registers has to be measured on the part
 
-2. **Hardware-in-Loop Tests**
-   - Dev kit required: xG24-DK2601B (~$50)
-   - Real hardware validation
+2. **Hardware-in-Loop Tests** - ✅ UNDERWAY ON THE REAL BOARD
+   - The XIAO MG24 Sense is on the bench at `lnx`, flashed with `scripts/flash.sh --confirm` and read back with
+     `scripts/read-mailbox.sh`; no dev kit was needed
+   - 19 of the 28 HAL examples carry a `VERIFIED ON HARDWARE (date)` marker, and every claim in this plan that has a
+     number behind it came from that loop
 
-3. **Examples Repository**
-   - Blink LED
-   - Serial echo
-   - I2C sensor reading
-   - ADC sampling
-   - PWM generation
-   - Low-power modes
+3. **Examples Repository** - ✅ DELIVERED
+   - One example per peripheral, named after what it proves, plus a runnable examples repository at
+     <https://github.com/bitscrafts/efr32mg2x-examples>
 
-4. **Documentation**
-   - API documentation (rustdoc)
-   - Peripheral usage guides
-   - Migration guides from C
-   - Comparison with Silicon Labs SDK
+4. **Documentation** - ✅ CONTINUOUS
+   - Crate READMEs generated from the tree and gate-checked; `docs/04-reference/` holds one document per measurement
 
 **Estimated Duration**: Ongoing throughout development
 
 ---
 
-### ⏳ Phase 9: Community & Ecosystem (PENDING)
+### ◐ Phase 9: Community & Ecosystem (PARTLY DELIVERED)
 
 **Long-term Goals**:
 
-1. **Embassy Support** (Async Framework)
-   - Timer driver implementation
-   - DMA abstraction
-   - Async peripheral drivers
-   - Executor integration
+1. **Embassy Support** (Async Framework) - ✅ DRIVER, EXECUTOR AND TIME DRIVER PROVEN
+   - A time driver and executor on the SYSRTC, including the 32-bit wrap, measured
+   - `embedded_hal_async::i2c::I2c` measured on the board (`WHO_AM_I = 0x6a`)
+   - What it does not do: the wait returns `Pending` and self-wakes, so the core does not sleep during a transfer
 
-2. **Board Support Packages**
-   - xG24-DK2601B dev kit
-   - Common EFR32MG24 modules
-   - Custom board templates
+2. **Board Support Packages** - ✅ TWO, AND ON HARDWARE
+   - `xiao-mg24-bsp` (28 examples) and `xiao-expansion-base-bsp` (10 examples) for the XIAO MG24 Sense and its carrier
 
-3. **Device Variant Support**
-   - All 20 EFR32MG24 variants
-   - EFR32MG21 family
-   - EFR32MG26 family
+3. **Device Variant Support** - ⏳ ONE VARIANT
+   - B220 only; the A-series and the MG21/MG26 families are not generated
 
 4. **Community Engagement**
    - Rust Embedded Working Group
@@ -553,40 +572,24 @@ openocd -f interface/jlink.cfg -f target/efr32mg24.cfg
 
 ## Next Actions (Immediate)
 
-### To Unblock Phase 3:
+The PAC generation problem this section used to describe -- svd2rust failing until it was installed with `--locked` --
+closed in December 2025 and the resolution is in `CLAUDE.md`, not here. What is open now, in order:
 
-1. **Try svd2rust v0.30.3** (older, stable version)
-   ```bash
-   cargo install svd2rust --version 0.30.3 --force
-   cd efr32mg2x-pac
-   svd2rust -i ../efr32mg2x-hal/svd/EFR32MG24A020F1536GM48.svd \
-            --target cortex-m -o src
-   ```
+1. **D2f pairing.** Reproduce the DHKey failure with the security manager enabled and the PSA layer's entry points
+   instrumented, so that the state machine's last step before key generation is named rather than inferred.
+2. **D2g BME680 gas resistance.** Implement the heater, `res_heat` and the `par_g*` curves, and measure the resistance
+   against a known gas event rather than against the datasheet's typical value.
+3. **PRS with a GPIO producer.** `Source::GpioPin` is encoded and never driven; the measurement is N edges producing N
+   conversions, with a control in which the pin does not move.
+4. **Phase D3 (Zigbee 3.0)**, following the `-sys` pattern that RAIL and Bluetooth already use, then **Phase D4**
+   (Thread/Matter) and **Phase E** (security).
 
-2. **If still fails, create minimal SVD** with just a few peripherals
-   - Test svd2rust with minimal input
-   - Incrementally add peripherals to find problematic one
-
-3. **Install svdtools and create patches**
-   ```bash
-   pip3 install svdtools
-   # Create efr32mg24.yaml patch file
-   svd patch efr32mg24.yaml
-   ```
-
-4. **Report issue to svd2rust project**
-   - With minimal reproduction case
-   - SVD file samples
-   - Full error output
-
-5. **Research alternative code generation**
-   - Check if anyone else has EFR32MG24 PAC
-   - Look for ARM CMSIS-Pack tools
-   - Consider chiptool (alternative to svd2rust)
+Detail, with what each one needs to count as measured, is in [`BACKLOG.md`](BACKLOG.md).
 
 ---
 
-**Last Updated**: June 28, 2026
-**Current Phase**: Phase D2 Complete - Bluetooth 5.3 LE Integration done
-**Progress**: Phases P, A, B, C (Stage 1), D0, D1, D2 complete (12 HAL modules + RAIL + BLE + BSP)
-**Next Milestone**: Phase D3 (Zigbee 3.0) or Phase E (Security features)
+**Last Updated**: 2026-11-26
+**Current Phase**: Phase D2 verified on hardware; D2f pairing and D2g gas resistance open
+**Progress**: phases P, A, B, C (to DMA stage 2), D0, D1 and D2 complete -- 29 public HAL modules, 28 HAL examples,
+RAIL plus Bluetooth plus both board crates
+**Next Milestone**: D2f and D2g, then Phase D3 (Zigbee 3.0) or Phase E (Security features)

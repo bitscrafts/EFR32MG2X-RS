@@ -10,6 +10,12 @@ the carrier's OLED through the HAL alone. 26 examples compile under `scripts/che
 `scripts/gate.sh` reports `VERDICT: PASS`; open items (pairing, gas resistance) are listed in
 `docs/03-development/BACKLOG.md`.
 
+**Update 2026-11-26**: the HAL has 29 public modules and 28 examples, and the numbers in the crate README are counted
+from the tree by `scripts/gate.sh` rather than typed here. The per-module sections below are the January record of what
+each driver was built with; what each one does now, and what has a record read back off the part, is the crate README
+(`crates/efr32mg2x-hal/README.md`) and the module READMEs beside the code. `letimer` and `prs` were added after this
+file was written.
+
 > **Note**: The authoritative workspace-wide status lives in
 > [docs/03-development/STATUS.md](../../docs/03-development/STATUS.md).
 > This file tracks HAL-specific implementation details only.
