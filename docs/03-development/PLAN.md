@@ -11,7 +11,7 @@ verified on the board; the security manager fails before the key exchange, so it
 and the open items are in [`STATUS.md`](STATUS.md) and [`BACKLOG.md`](BACKLOG.md); this file is the plan and the
 decisions behind it.
 
-**Status 2026-11-26**: the HAL has 29 public modules and 28 examples, and every example of every crate compiles under
+**Status 2026-11-26**: the HAL has 29 public modules and 29 examples, and every example of every crate compiles under
 `scripts/check-examples-build.sh`; `scripts/gate.sh` reports `VERDICT: PASS`. What each peripheral does, and what has a
 record read back off the part, is measured rather than asserted: `LETIMER0`, the IADC's PRS trigger and a timer feeding
 the converter through the PRS were all closed on 2026-11-26, each with a document in `docs/04-reference/`. The text

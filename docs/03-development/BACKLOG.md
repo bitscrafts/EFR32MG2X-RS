@@ -54,12 +54,13 @@ carries the record that closed it.
 These are the items that need the part, in the order the night queue takes them. Each one names what would count as
 measured, because "it compiles" has never been the bar here.
 
-- **PRS with a GPIO producer.** `prs::Source::GpioPin` is encoded and has never been driven. Needs
-  `GPIO_EXTIPINSELn` plus `EXTIRISE`/`EXTIFALL` on a pin somebody moves, N edges producing N conversions, and a control
-  with the pin held still. `Prs::connect` writes `ASYNC_CHn_CTRL` whole, so the producer is the only thing that changes
-  between the two runs.
+- **PRS with a GPIO producer at a real rate.** The pin is measured: a pad moved by its own pull resistor paces
+  conversions, one per rising pad edge, and `EXTIRISE`/`EXTIFALL` turned out not to be in the PRS path at all --
+  [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md). What is still open is a pad
+  driven by a wire, a button or another peripheral, which is the case a product has and the pull resistor is not, and
+  the fastest rate the converter can follow such a producer.
 - **The root README's project metrics.** It still says "12 peripheral modules", "Examples: 83 files, 26 of them
-  checked" and "Crates: 12 total". The tree has 29 public HAL modules and 28 HAL examples, and the example count the
+  checked" and "Crates: 12 total". The tree has 29 public HAL modules and 29 HAL examples, and the example count the
   build script checks is a number that script can print.
 - **DMA stages 3 and 4**: linked descriptors and interrupt-driven async. Deferred, not broken.
 - **The families nobody has written a driver for**: `pcnt0`, `burtc`, `acmp0`/`acmp1`, `vdac0`/`vdac1`, `keyscan`,
@@ -80,6 +81,9 @@ Each of these has a record read back off the part; the record string is in the d
   something -- [`IADC-PRS-TRIGGER-2026-11-26.md`](../04-reference/IADC-PRS-TRIGGER-2026-11-26.md).
 - PRS as a real producer: TIMER0's overflow through channel 0 converted once per overflow, with no CPU write in the
   loop and four controls at zero -- [`PRS-TIMER-PRODUCER-2026-11-26.md`](../04-reference/PRS-TIMER-PRODUCER-2026-11-26.md).
+- A GPIO pad as the PRS producer: `pin::EdgeWatch` plus `Input::set_pull_up` move the pad with its own pull resistor,
+  the converter fires once per rising pad edge, and `EXTIRISE`/`EXTIFALL` were measured to sit outside the PRS path --
+  [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md).
 - Before those, and already closed: the I2C read defect and its recovery, the USART receiver's refusal, SPI loopback
   with a control, the WDOG feed budget, the CRC-32 check values, the MVP benchmark, the SYSRTC 64-bit path and the
   Embassy time driver. All in `docs/04-reference/` and in the HAL README's measured table.

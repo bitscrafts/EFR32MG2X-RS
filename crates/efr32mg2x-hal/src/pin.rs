@@ -218,4 +218,167 @@ impl<'a> Input<'a> {
     pub fn is_low(&self) -> bool {
         read_din(self.gpio, self.port) & self.mask == 0
     }
+
+    /// True while the pad reads high.
+    pub fn is_high(&self) -> bool {
+        read_din(self.gpio, self.port) & self.mask != 0
+    }
+
+    /// Choose which way the internal pull resistor drives the pin.
+    ///
+    /// In the pull mode, the output latch is not a data output — it selects the resistor: `true` ties the pad
+    /// towards VDD, `false` towards ground. On a pin with nothing attached that makes the latch a slow but real
+    /// edge generator, which is how a probe with no jumper wire can drive the edge detector.
+    pub fn set_pull_up(&self, up: bool) {
+        let latch = if up {
+            read_dout(self.gpio, self.port) | self.mask
+        } else {
+            read_dout(self.gpio, self.port) & !self.mask
+        };
+        write_dout(self.gpio, self.port, latch);
+    }
+}
+
+/// One GPIO external-interrupt channel, bound to the pin it watches and the edges it reacts to.
+///
+/// ## What the registers actually say, and why this is written in nibbles
+///
+/// The 2025.6.2 SVD and the vendor header agree on the layout, and both differ from what one expects from the
+/// Series 1 parts: an external interrupt is **not** pointed at (port, pin) with a single 7-bit field. The port is a
+/// two-bit field in `EXTIPSELL` (`EXTIPSELH` for channels 8..15), the pin is a two-bit field in `EXTIPINSELL`
+/// (`EXTIPINSELH`), and the two bits hold the pin's index **inside its group of four**. The emlib macro says the
+/// same thing from the caller's side: `GPIO_INTNO_PIN_VALID(intNo, pin)` requires
+/// `(intNo & ~3) == (pin & ~3)`. Measured 2026-11-26: channel 3 on port C, pin 3 reads back `EXTIPSEL = 0x2000`
+/// and `EXTIPINSELL = 0x3000`, which is that encoding with both nibbles non-zero.
+///
+/// So a channel can only watch within its own group: channel `n` watches pin `(n & 0xC) | v` for `v` in `0..4`.
+/// [`Board::watch_edges`](crate::board::Board::watch_edges) binds channel `n = pin`, which is always legal, and the
+/// PRS refuses channels above 7 because the vendor signal table only names `GPIOPIN0..7`.
+///
+/// ## The edges, and what they are not
+///
+/// `EXTIRISE`/`EXTIFALL` arm the GPIO's own interrupt flag. They are **not** the path the PRS takes: measured
+/// 2026-11-26, a channel with `EXTIRISE` cleared and only `EXTIFALL` armed still let four rising pad edges drive four
+/// conversions, because the asynchronous signal carries the pad's level. Configuring both edges remains the right
+/// default — a caller of this type is normally asking for an interrupt as well.
+///
+/// ## The flag
+///
+/// `IF` is the sticky per-channel flag. As on LETIMER (measured 2026-11-26), writing a one to `IF` sets it; it is
+/// cleared through the alias window at `IF + 0x2000`. Measured for this block as well: after eight edges `IF` read
+/// `0x9` (channels 0 and 3) and `clear()` on channel 3 left `0x1`, so the alias clears the channel it names and no
+/// other.
+pub struct EdgeWatch<'a> {
+    gpio: &'a pac::gpio_s::RegisterBlock,
+    channel: u8,
+}
+
+/// Offset of `IF` in the GPIO block; the vendor header and the PAC agree on `0x420`.
+const IF_OFFSET: usize = 0x420;
+
+/// Offset added to a register to reach its clear alias. The LETIMER record measured the same `+0x2000` window.
+const CLR_ALIAS: usize = 0x2000;
+
+impl<'a> EdgeWatch<'a> {
+    /// Point external-interrupt `channel = pin` at `port`/`pin`, with the requested edges, and clear its flag.
+    pub(crate) fn bind(
+        gpio: &'a pac::gpio_s::RegisterBlock,
+        port: Port,
+        pin: u8,
+        rising: bool,
+        falling: bool,
+    ) -> Self {
+        debug_assert!(pin < 16, "pin index out of range");
+        let channel = pin;
+        let bit = 1u32 << channel;
+        let shift = 4 * u32::from(channel % 8);
+        let field = 0x3u32 << shift;
+
+        // One macro, because every write below is the same shape: a read-modify-write of one register with a mask
+        // that holds only this channel's bits. The four select registers have different generated types, and a note
+        // repeated six times is a note nobody reads.
+        macro_rules! merge {
+            ($reg:expr, $mask:expr, $value:expr) => {{
+                // SAFETY: `$mask` is the complement of this channel's own field (or that field itself), so every
+                // other channel's bits keep their value; `channel < 16` and the field width is two bits, so the
+                // shifted value cannot leave its nibble.
+                $reg.modify(|r, w| unsafe { w.bits((r.bits() & $mask) | $value) });
+            }};
+        }
+
+        // Both edge masks off first: a channel left armed by an earlier configuration keeps generating edges while
+        // the port and pin fields are being rewritten, which is an edge from the old pin attributed to the new one.
+        merge!(gpio.extirise(), !bit, 0);
+        merge!(gpio.extifall(), !bit, 0);
+
+        let port_bits = match port {
+            Port::A => 0u32,
+            Port::B => 1,
+            Port::C => 2,
+            Port::D => 3,
+        };
+        let port_word = port_bits << shift;
+        let pin_word = (u32::from(pin) & 0x3) << shift;
+        if channel < 8 {
+            merge!(gpio.extipsell(), !field, port_word);
+            merge!(gpio.extipinsell(), !field, pin_word);
+        } else {
+            merge!(gpio.extipselh(), !field, port_word);
+            merge!(gpio.extipinselh(), !field, pin_word);
+        }
+
+        let watch = Self { gpio, channel };
+        // A flag left over from whatever the channel watched before would be read as this pin's first edge.
+        watch.clear();
+
+        if rising {
+            merge!(gpio.extirise(), !bit, bit);
+        }
+        if falling {
+            merge!(gpio.extifall(), !bit, bit);
+        }
+        watch
+    }
+
+    /// The external-interrupt channel this watch drives, which is also the PRS `SIGSEL` for `SOURCE = GPIO`.
+    pub fn channel(&self) -> u8 {
+        self.channel
+    }
+
+    /// The whole `IF` word, for a probe that reports what the hardware latched rather than what it expected.
+    pub fn flags(&self) -> u32 {
+        self.gpio.if_().read().bits()
+    }
+
+    /// The port and pin select words this channel sits in, as they read back.
+    ///
+    /// Channels 8..15 live in the `*H` registers, so a caller comparing the two channels also compares the two
+    /// registers; the value is the whole word, not the channel's own nibble, because a nibble that was not written
+    /// is exactly the thing worth seeing.
+    pub fn selection(&self) -> (u32, u32) {
+        if self.channel < 8 {
+            (
+                self.gpio.extipsell().read().bits(),
+                self.gpio.extipinsell().read().bits(),
+            )
+        } else {
+            (
+                self.gpio.extipselh().read().bits(),
+                self.gpio.extipinselh().read().bits(),
+            )
+        }
+    }
+
+    /// True while this channel's flag is latched.
+    pub fn pending(&self) -> bool {
+        self.flags() & (1u32 << self.channel) != 0
+    }
+
+    /// Clear this channel's flag through the alias window.
+    pub fn clear(&self) {
+        let address = self.gpio as *const _ as usize + IF_OFFSET + CLR_ALIAS;
+        // SAFETY: the alias window maps the same `IF` word with write-one-to-clear semantics, and the mask is this
+        // channel's own bit, so no other channel's flag is touched.
+        unsafe { core::ptr::write_volatile(address as *mut u32, 1u32 << self.channel) }
+    }
 }

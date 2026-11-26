@@ -753,6 +753,25 @@ impl Board {
         crate::pin::Input::with_pull_up(&self.dp.gpio_s, port, pin)
     }
 
+    /// Point an external-interrupt channel at `port`/`pin` and have it react to the edges named.
+    ///
+    /// The channel number is the pin number: on this part an external interrupt can only watch within its own group
+    /// of four pins (`(channel & ~3) == (pin & ~3)`, the constraint emlib encodes in `GPIO_INTNO_PIN_VALID`), so
+    /// binding `channel = pin` is the one choice that is always legal. The returned handle reports and clears the
+    /// channel's sticky flag; the channel number is also the `SIGSEL` the PRS needs for `Source::GpioPin`.
+    ///
+    /// The pin keeps whatever mode it was configured with. `input_on` + `set_pull_up` is enough for a probe with no
+    /// jumper wire, because the pull resistor slews the pad on a pin with nothing attached.
+    pub fn watch_edges(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+        rising: bool,
+        falling: bool,
+    ) -> crate::pin::EdgeWatch<'_> {
+        crate::pin::EdgeWatch::bind(&self.dp.gpio_s, port, pin, rising, falling)
+    }
+
     /// TIMER0 on the pin the caller names, calibrated but undecided about what it means.
     ///
     /// `None` when the counter does not move — a clock that is not running.

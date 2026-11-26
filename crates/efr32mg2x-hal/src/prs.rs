@@ -25,7 +25,7 @@ use crate::pac;
 pub enum Error {
     /// There is no asynchronous channel above 15: `ASYNC_SWPULSE` is sixteen bits.
     NoSuchChannel,
-    /// A GPIO producer names an external-interrupt channel, and there are sixteen of those.
+    /// A GPIO producer names an external-interrupt channel above 7, which has no PRS signal to carry it.
     NoSuchPin,
 }
 
@@ -46,7 +46,18 @@ pub enum Source {
     /// silent: a timer nobody started produces nothing.
     Timer1Overflow,
     /// GPIO external-interrupt channel `n` (`SOURCESEL = 0x04`, `SIGSEL = n`). Which pin feeds channel `n` is the GPIO
-    /// block's business (`EXTIPINSELn`), and this crate does not configure it.
+    /// block's business ([`Board::watch_edges`](crate::board::Board::watch_edges)): the channel is the pin, inside the
+    /// pin's own group of four.
+    ///
+    /// **Measured 2026-11-26 on this board: this producer carries the pad's level, not the edge detector's output.**
+    /// Eight pad changes (four rising, four falling) gave four conversions, and clearing `EXTIRISE` for the channel —
+    /// so that only falling edges were armed — still gave four. The masks configure the GPIO interrupt flag, which is
+    /// a separate consumer; a consumer of this signal sees a level, and an IADC `PRSPOS` trigger therefore converts on
+    /// the pad's rising edge (`docs/04-reference/PRS-GPIO-PRODUCER-2026-11-26.md`).
+    ///
+    /// `n` stops at 7, and this is a property of the signal table rather than of the field: the vendor header names
+    /// `PRS_ASYNC_GPIO_PIN0` .. `PRS_ASYNC_GPIO_PIN7` and nothing above, while the asynchronous channel's `SIGSEL` is
+    /// three bits wide. A pin in 8..15 has an external interrupt but no PRS producer to carry it.
     GpioPin(u8),
 }
 
@@ -59,7 +70,7 @@ impl Source {
             Source::Timer0Compare0 => (0x21, 2),
             Source::Timer1Overflow => (0x22, 1),
             Source::GpioPin(pin) => {
-                if pin > 15 {
+                if pin > 7 {
                     return None;
                 }
                 (0x04, u32::from(pin))
@@ -114,7 +125,7 @@ impl Prs {
     ///
     /// # Errors
     ///
-    /// [`Error::NoSuchChannel`] for a channel above 15, [`Error::NoSuchPin`] for a GPIO channel above 15. Both are
+    /// [`Error::NoSuchChannel`] for a channel above 15, [`Error::NoSuchPin`] for a GPIO channel above 7. Both are
     /// refused before anything is written.
     pub fn connect(&mut self, channel: u8, source: Source) -> Result<(), Error> {
         if channel > 15 {
