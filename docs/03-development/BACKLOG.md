@@ -54,6 +54,12 @@ carries the record that closed it.
 These are the items that need the part, in the order the night queue takes them. Each one names what would count as
 measured, because "it compiles" has never been the bar here.
 
+- **PCNT0's ceiling: parked on external hardware.** The item asked for the ceiling between 25 and 50 kHz with a
+  producer whose rate does not come from `delay_us`. Two such producers were built and neither reached the counter:
+  TIMER0's overflow is one clock wide (53 ns) and the block samples S0IN at 32.768 kHz, so 13 edges at 1 kHz produced
+  zero counts; a pad driven by the timer as an output is not on the PRS producer path at all (zero at every rate up to
+  25 kHz). The ceiling is a pulse-width limit and cannot be measured without an external pulse source --
+  [`PCNT-CEILING-2026-11-26.md`](../04-reference/PCNT-CEILING-2026-11-26.md).
 - **PRS with a GPIO producer at a real rate.** The pin is measured: a pad moved by its own pull resistor paces
   conversions, one per rising pad edge, and `EXTIRISE`/`EXTIFALL` turned out not to be in the PRS path at all --
   [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md). What is still open is a pad

@@ -13,6 +13,14 @@
 //! - **The PRS path counts.** Eight pull moves of a pad (four rising edges) gave four, an odd number of moves split
 //!   between the two polarities gave the split exactly, and the four controls gave zero
 //!   (`docs/04-reference/PCNT-GPIO-2026-11-26.md`).
+//! - **The ceiling is a pulse-width limit, not a bandwidth.** `EM23GRPACLK` has only LFRCO, LFXO and ULFRCO in this
+//!   part, so the sampler cannot be moved faster than 32.768 kHz: a pulse narrower than 30.5 us is seen with probability
+//!   `width / 30.5 us` and usually not at all. A timer's overflow event is one clock wide (53 ns at 19 MHz) and gave
+//!   **zero** counts at 1 kHz, where 13 edges were produced -- measured twice, with two producers
+//!   (`docs/04-reference/PCNT-CEILING-2026-11-26.md`).
+//! - **The GPIO producer is the pad's input.** A pad the timer drives as an output is not on the path: driving PA0 at
+//!   50 % duty and reading `GpioPin(0)` back gave zero at every rate from 1 kHz to 25 kHz, with a high time seventeen
+//!   sampling periods long. A producer has to be a signal presented *to* the pin.
 //! - **It is sampled, so it has a ceiling.** `CFG.MODE = OVSSINGLE` samples S0IN with the `EM23GRPACLK` branch, which
 //!   this board runs at 32.768 kHz. The ladder in the example finds the rate at which edges start being lost.
 //! - **`CFG` is write-protected while `EN` is set**: writing it there raises a precise bus error at `PCNT0 + 0x0C`
