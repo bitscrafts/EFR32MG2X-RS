@@ -53,7 +53,7 @@ would cost, so that the boundary is a decision and not an omission.
 
 | family | what it is | cost to drive it |
 |---|---|---|
-| `letimer0` | low-energy timer: two compare channels, runs in EM2 | ~200 lines + routing + one instrument; the arithmetic is a sibling of `timer` |
+| `letimer0` | low-energy timer: two compare channels, runs in EM2 | **attempted 2026-11-26 and parked.** A driver (~200 lines), a slot and an instrument were written; the instrument never got past the hand-out. Two facts came out of it, both measured: (i) `CLKEN0` alone is not enough — every `SYNCBUSY` bit stayed set and `start()` reported `SyncTimeout` until `EM23GRPACLKCTRL.CLKSEL` was pointed at LFXO, which is the branch this peripheral is actually clocked from; (ii) with the branch clocked, writing `CMD.STOP`/`CMD.CLEAR` halts the core before the next record — a fault with no probe attached is a silent stop. The work is in `_trash/letimer-2026-11-26/`, not in the tree: an unmeasured driver is a claim. Next attempt starts from those two facts |
 | `prs` | peripheral reflex system: routes an event from one peripheral to another without the CPU | ~250 lines; the value is that it makes Timer→ADC→DMA possible at all, and the test is a record with a count the CPU never touched. `wdog`'s own documentation already lists "PRS integration" as a TODO, so the absence is now written down in two places |
 | `pcnt0` | pulse counter with external inputs, direction and S0/S1 | ~200 lines + a signal source to test it, which is bench work |
 | `burtc` | backup RTC in the always-on domain | ~150 lines; hard to prove, because "it kept time with the main supply off" needs a power cut |
