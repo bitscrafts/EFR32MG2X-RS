@@ -86,7 +86,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-30 public modules (`pub mod` in `src/lib.rs`) and 30 examples. A date next to an example means a record was
+30 public modules (`pub mod` in `src/lib.rs`) and 31 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -268,7 +268,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-30 examples, **21 of them watched on the part**. A `--` in the last column means nobody
+31 examples, **21 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -299,6 +299,7 @@ mean it works.
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
 | `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
+| `hal_timer0_repacing.rs` | Pace TIMER0 twice, and a third time: does the second write to `CFG` still land? | -- |
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |
 | `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | 2026-11-24 |
 | `hal_usart_link.rs` | USART on the header pads: a jumper D6–D7 for the on-board proof, or an adapter for an outside witness. | 2026-11-25 |

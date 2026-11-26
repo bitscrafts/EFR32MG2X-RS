@@ -133,7 +133,7 @@ gantt
 Every number below is counted by `scripts/check-root-readme.py`, which `scripts/gate.sh` runs: it recomputes each one
 from the tree and fails the gate when this page disagrees. Numbers on a page drift because nobody checks them -- this
 one said "12 peripheral modules" and "83 files, 26 of them checked" while the HAL had 30 public modules and the tree
-built 115 example targets.
+built 116 example targets.
 
 **Workspace**: 31 crates
 - `crates/`: 10 -- the hardware stack, one direction only (`efr32mg2x-pac` (138,448 lines, 133 peripherals) <-
@@ -146,7 +146,7 @@ built 115 example targets.
 `clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `gpcrc`, `i2c`, `letimer`, `microphone`, `mvp`, `pcnt`, `pin`, `prs`, `pwm`,
 `record`, `route`, `rtc`, `sensors`, `sleep`, `spi`, `sysrtc`, `timer`, `usart`, `wdog` and `prelude`.
 
-**Examples**: 115 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
+**Examples**: 116 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
 line, which this page quotes rather than fixes by hand. That script builds every example with the features it declares
 and fails if one does not compile; the Bluetooth and BSP examples declare `required-features`, so a plain
 `cargo build --examples` skips them silently. The other 15 `.rs` files under `crates/*/examples/` are shared modules
