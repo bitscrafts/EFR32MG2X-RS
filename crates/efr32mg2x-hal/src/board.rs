@@ -425,6 +425,29 @@ impl Board {
         Ok(unsafe { crate::prs::Prs::new(pac::PrsS::steal()) })
     }
 
+    /// The pulse counter, with its clock open, counting nothing yet.
+    ///
+    /// `CLKEN1.PCNT0` gates the block and `PCNT0CLKCTRL.CLKSEL` (reset value 1) sends it the `EM23GRPACLK` branch;
+    /// that branch has no source of its own at reset, so it is pinned to LFRCO here for the same reason the LETIMER
+    /// hand-out pins it — a module with an unsourced branch answers on the bus and never counts. The counted edges
+    /// themselves come from S0IN ([`crate::pcnt::Pcnt::use_prs_input`]), not from this branch.
+    pub fn pcnt(&self) -> Result<crate::pcnt::Pcnt<'_>, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Pcnt)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken1().modify(|_r, w| w.pcnt0().set_bit());
+        self.dp
+            .cmu_s
+            .pcnt0clkctrl()
+            .modify(|_r, w| w.clksel().em23grpaclk());
+        self.dp
+            .cmu_s
+            .em23grpaclkctrl()
+            .modify(|_r, w| w.clksel().lfrco());
+        // SAFETY: `Board` holds the PAC singletons and hands PCNT0 out through the claim table, so no second driver
+        // can reach the same registers. The CMU block is lent, not moved, for the clock-select write the driver owns.
+        Ok(unsafe { crate::pcnt::Pcnt::new(pac::Pcnt0Ns::steal(), &self.dp.cmu_s) })
+    }
+
     /// The matrix/vector processor, enabled and ready.
     ///
     /// The board hands it out for the same reason it hands out the others: an example outside the PAC must
@@ -642,6 +665,18 @@ impl Board {
             // gives for TIMER; the same constant `pwm::Timer0::take` uses.
             .write(|w| unsafe { w.lockkey().bits(0xCE80) });
         self.dp.timer0_s.en().write(|w| w.en().clear_bit());
+        // `CFG` may not be written while the timer is enabled — measured 2026-11-17, a precise bus error at
+        // `TIMER0 + 0x04` — and clearing `EN` is not instantaneous: `EN.DISABLING` reports when the block has actually
+        // stopped. Without this wait a *second* pacing (a caller re-pacing the same timer) faults on the `CFG` write
+        // below, which is exactly what the PCNT measurement hit on 2026-11-26, at `BFAR = 0x4004_8004`.
+        cortex_m::asm::delay(16);
+        let mut settling = 0u32;
+        while self.dp.timer0_s.en().read().disabling().bit_is_set() {
+            settling += 1;
+            if settling > 2_000_000 {
+                break;
+            }
+        }
         self.dp
             .timer0_s
             .cfg()

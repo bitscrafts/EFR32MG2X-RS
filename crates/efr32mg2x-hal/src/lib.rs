@@ -123,6 +123,7 @@ pub mod i2c;
 pub mod letimer;
 pub mod microphone;
 pub mod mvp;
+pub mod pcnt;
 pub mod pin;
 pub mod prs;
 pub mod pwm;

@@ -47,10 +47,12 @@ pub enum Slot {
     Letimer,
     /// The PRS — one routing fabric; two owners would select and pulse each other's channels.
     Prs,
+    /// `PCNT0` — one counter, one pair of input routes.
+    Pcnt,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 13;
+pub const SLOT_COUNT: usize = 14;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -69,6 +71,7 @@ impl Slot {
             Slot::Gpcrc => 10,
             Slot::Letimer => 11,
             Slot::Prs => 12,
+            Slot::Pcnt => 13,
         }
     }
 }
@@ -176,6 +179,7 @@ mod tests {
             Slot::Gpcrc,
             Slot::Letimer,
             Slot::Prs,
+            Slot::Pcnt,
         ] {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(

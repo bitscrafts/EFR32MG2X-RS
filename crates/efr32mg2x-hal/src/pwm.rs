@@ -98,6 +98,17 @@ impl<'a> Timer0<'a> {
         // gives for TIMER; a wrong sequence is refused by the hardware.
         reg.lock().write(|w| unsafe { w.lockkey().bits(0xCE80) });
         reg.en().write(|w| w.en().clear_bit());
+        // `CFG` faults while the timer is enabled (measured 2026-11-17) and clearing `EN` is not instantaneous; on a
+        // timer that was already running the write below lands before the block has stopped. `EN.DISABLING` is the
+        // handshake that says it has (measured 2026-11-26 on the PCNT measurement's second pacing).
+        cortex_m::asm::delay(16);
+        let mut settling = 0u32;
+        while reg.en().read().disabling().bit_is_set() {
+            settling += 1;
+            if settling > 2_000_000 {
+                break;
+            }
+        }
         reg.cfg()
             .write(|w| w.mode().up().clksel().prescem01grpaclk().presc().div1());
         reg.cc0_cfg().write(|w| w.mode().pwm());

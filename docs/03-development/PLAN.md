@@ -11,7 +11,7 @@ verified on the board; the security manager fails before the key exchange, so it
 and the open items are in [`STATUS.md`](STATUS.md) and [`BACKLOG.md`](BACKLOG.md); this file is the plan and the
 decisions behind it.
 
-**Status 2026-11-26**: the HAL has 29 public modules and 29 examples, and every example of every crate compiles under
+**Status 2026-11-26**: the HAL has 30 public modules and 30 examples, and every example of every crate compiles under
 `scripts/check-examples-build.sh`; `scripts/gate.sh` reports `VERDICT: PASS`. What each peripheral does, and what has a
 record read back off the part, is measured rather than asserted: `LETIMER0`, the IADC's PRS trigger and a timer feeding
 the converter through the PRS were all closed on 2026-11-26, each with a document in `docs/04-reference/`. The text
@@ -23,7 +23,7 @@ below is the plan as it was written in December 2025 and January 2026; where a p
 EFR32MG24/
 ├── Cargo.toml                     # Workspace configuration (32 members: 10 crates, 22 libraries)
 ├── crates/efr32mg2x-pac/                 # Peripheral Access Crate (B220, 2,633 files, 103 instances)
-├── crates/efr32mg2x-hal/                 # Hardware Abstraction Layer (29 public modules, 28 examples)
+├── crates/efr32mg2x-hal/                 # Hardware Abstraction Layer (30 public modules, 30 examples)
 ├── crates/efr32mg24-rail-sys/            # RAIL radio FFI bindings
 ├── crates/efr32mg24-bluetooth-sys/       # Bluetooth 5.3 LE (BGAPI FFI + safe API)
 ├── crates/xiao-mg24-bsp/                 # Board Support Package (XIAO MG24 Sense)
@@ -51,7 +51,7 @@ EFR32MG24/
 | D4 -- Thread/Matter | not started | -- |
 | E -- security | not started | `radioaes` is in the PAC and no driver opens it |
 
-The peripheral inventory behind that table -- 29 public modules, and `pcnt0`, `burtc`, `acmp`, `vdac`, `keyscan`,
+The peripheral inventory behind that table -- 30 public modules, and `burtc`, `acmp`, `vdac`, `keyscan`,
 `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco` and `hfrcoem23` still absent -- is
 [`COVERAGE-BOUNDARY-2026-11-25.md`](../04-reference/COVERAGE-BOUNDARY-2026-11-25.md).
 

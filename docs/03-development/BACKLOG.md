@@ -88,7 +88,7 @@ Each of these has a record read back off the part; the record string is in the d
 Closed without a part record, 2026-11-26 (documentation):
 
 - The root README's project metrics. The page said "Crates: 12 total", "12 peripheral modules" and "Examples: 83
-  files, 26 of them checked"; counted from the tree it is 31 workspace members, 29 HAL `pub mod` and 114 example
+  files, 26 of them checked"; counted from the tree it is 31 workspace members, 30 HAL `pub mod` and 115 example
   targets, the last of those the number `scripts/check-examples-build.sh` prints in its own verdict. The page now
   quotes it, and `scripts/check-root-readme.py` -- run by `scripts/gate.sh` -- recomputes all four counts so the page
   cannot drift again. The script's first run also found `libraries/bt-heap` listed twice in `Cargo.toml`.

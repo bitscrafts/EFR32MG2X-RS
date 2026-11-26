@@ -43,6 +43,7 @@ Read from the source, so it cannot drift:
 | `LdmaxbarS` | `src/dma/mod.rs` |
 | `Letimer0Ns` | `src/board.rs`, `src/letimer.rs` |
 | `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
+| `Pcnt0Ns` | `src/board.rs`, `src/pcnt.rs` |
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
 | `PrsS` | `src/board.rs`, `src/prs.rs` |
 | `Sysrtc0Ns` | `src/rtc/mod.rs`, `src/sysrtc.rs` |
@@ -50,13 +51,14 @@ Read from the source, so it cannot drift:
 | `Usart0S` | `src/board.rs`, `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `X` | `src/cores/slots.rs` |
-| `cmu_s` | `src/board.rs` |
+| `cmu_s` | `src/board.rs`, `src/pcnt.rs` |
 | `emu_ns` | `src/sleep.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
 | `i2c0_ns` | `src/i2c/async_impl.rs` |
 | `iadc0_s` | `src/board.rs`, `src/microphone.rs` |
 | `letimer0_ns` | `src/letimer.rs` |
-| `prs_s` | `src/adc/mod.rs` |
+| `pcnt0_ns` | `src/pcnt.rs` |
+| `prs_s` | `src/adc/mod.rs`, `src/pcnt.rs` |
 | `timer0_s` | `src/pwm.rs` |
 
 
@@ -84,7 +86,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-29 public modules (`pub mod` in `src/lib.rs`) and 29 examples. A date next to an example means a record was
+30 public modules (`pub mod` in `src/lib.rs`) and 30 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -266,7 +268,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-29 examples, **20 of them watched on the part**. A `--` in the last column means nobody
+30 examples, **21 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -291,6 +293,7 @@ mean it works.
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | 2026-11-24 |
 | `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways — with a clock that works without a probe. | 2026-11-25 |
 | `hal_one_of_each.rs` | One of each: the board refuses to hand the same peripheral out twice. | -- |
+| `hal_pcnt_gpio.rs` | The PRS producer measured on 2026-11-26 carries a pad's level, and the IADC converts once per rising edge of it. | 2026-11-26 |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
