@@ -25,7 +25,9 @@ record. What has no hardware proof says so.
 
 The HAL counts are the ones `scripts/gate.sh` compares against the tree, so they cannot drift quietly. The HAL README
 carries the per-example table of what came back off the part, generated from the example headers rather than typed by
-hand.
+hand. The root `README.md` is held to the same rule: `scripts/check-root-readme.py` recomputes its workspace, library,
+module and example counts -- the example count is the 114 targets that `scripts/check-examples-build.sh` prints -- and
+the gate refuses the page when one disagrees.
 
 ## What this HAL drives, and what it does not
 
@@ -59,7 +61,7 @@ README's measured section and in `docs/04-reference/`, one document per measurem
 | D2g BME680 gas resistance | the heater, `res_heat` and the `par_g*` curves are not implemented, so the reading that separates a 680 from a 688 is missing | `BACKLOG.md` |
 | the delay runs 2.3x short | measured against two clocks and an independent DWT count: a "10 ms" delay produced 82 680 core cycles at 19 MHz | [`DELAY-CLOCK-DEFECT.md`](../04-reference/DELAY-CLOCK-DEFECT.md) |
 | DMA stages 3 and 4 | linked descriptors and interrupt-driven async are deferred, not broken | `BACKLOG.md` |
-| the root README's project metrics | still say "12 peripheral modules" and "83 files, 26 checked"; the HAL alone has 29 public modules and 29 examples, and the tree has 130 `.rs` files under `crates/*/examples/` | queued as a documentation item |
+| the root README's project metrics | checked now: the page quotes the 114 example targets `scripts/check-examples-build.sh` prints, and `scripts/check-root-readme.py` recomputes the workspace, library, module and example counts from the tree on every gate run | `README.md`, `scripts/gate.sh` |
 | absent families | `pcnt0`, `burtc`, `acmp`, `vdac`, `keyscan`, `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco`, `hfrcoem23` | `COVERAGE-BOUNDARY-2026-11-25.md` |
 
 ## Where the state lives

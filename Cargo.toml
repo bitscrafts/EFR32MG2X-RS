@@ -34,7 +34,6 @@ members = [
     "libraries/aes-ctr-radio",
     "libraries/aes-modes",
     "libraries/bt-heap",
-    "libraries/bt-heap",
 ]
 exclude = [
     "crates/efr32mg24-bootloader",

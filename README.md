@@ -130,27 +130,27 @@ gantt
 
 ### Project Metrics
 
-**Crates**: 12 total
-- efr32mg2x-pac (138,448 lines, 133 peripherals)
-- efr32mg2x-hal (12 peripheral modules)
-- efr32mg24-radio (Bluetooth API, RAIL, diagnostics)
-- efr32mg24-rail-sys (3,974 FFI bindings)
-- efr32mg24-bluetooth-sys (4,307 BGAPI bindings)
-- efr32mg24-emlib-sys, efr32mg24-bt-stubs, cmsis-stubs (C interop for the vendor blobs)
-- xiao-mg24-bsp (XIAO MG24 Sense)
-- xiao-expansion-base-bsp (XIAO Expansion Base)
-- efr32mg24-bootloader, bootloader-test-app
+Every number below is counted by `scripts/check-root-readme.py`, which `scripts/gate.sh` runs: it recomputes each one
+from the tree and fails the gate when this page disagrees. Numbers on a page drift because nobody checks them -- this
+one said "12 peripheral modules" and "83 files, 26 of them checked" while the HAL had 29 public modules and the tree
+built 114 example targets.
 
-**Libraries** (`libraries/`): bt-heap, aes-modes, aes-ctr-radio, motion-detection -- `no_std`, tested on the host
+**Workspace**: 31 crates
+- `crates/`: 10 -- the hardware stack, one direction only (`efr32mg2x-pac` (138,448 lines, 133 peripherals) <-
+  `efr32mg2x-hal` <- the BSPs), plus `efr32mg24-rail-sys` (3,974 FFI bindings), `efr32mg24-bluetooth-sys` (4,307 BGAPI
+  bindings), `efr32mg24-radio`, `efr32mg24-emlib-sys`, `efr32mg2x-cmsis-stubs` and `embassy-efr32`
+- `libraries/`: 21 -- domain policy with no hardware, built and tested on the host
+- outside the workspace, built by their own scripts: `efr32mg2x-bootloader`, `efr32mg2x-bootloader-test-app`
 
-**HAL Modules**: 12 production-ready drivers
-- Phase A: clock, gpio, delay (3 modules)
-- Phase B: usart, i2c, spi, timer (4 modules)
-- Phase C: adc, dma, emu, rtc, wdog (5 modules)
+**HAL modules**: 29 public modules (`pub mod` in `crates/efr32mg2x-hal/src/lib.rs`): `adc`, `board`, `bus`, `buzzer`,
+`clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `gpcrc`, `i2c`, `letimer`, `microphone`, `mvp`, `pin`, `prs`, `pwm`,
+`record`, `route`, `rtc`, `sensors`, `sleep`, `spi`, `sysrtc`, `timer`, `usart`, `wdog` and `prelude`.
 
-**Examples**: 83 files, 26 of them checked by `scripts/check-examples-build.sh` across the PAC, HAL, radio and BSP levels
-- The Bluetooth and BSP examples declare `required-features`, so a plain `cargo build --examples` skips them silently;
-  that script names each one with its features and fails if any does not compile.
+**Examples**: 114 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
+line, which this page quotes rather than fixes by hand. That script builds every example with the features it declares
+and fails if one does not compile; the Bluetooth and BSP examples declare `required-features`, so a plain
+`cargo build --examples` skips them silently. The other 15 `.rs` files under `crates/*/examples/` are shared modules
+(`examples/common/`, `examples/fall_detector/`), not targets.
 
 **Build Status**: All examples compile successfully with zero errors; `scripts/gate.sh` reports `VERDICT: PASS`
 
@@ -391,7 +391,9 @@ cargo build --release --target thumbv8m.main-none-eabihf
 
 **Build Results**:
 - PAC: 112 MB .rlib with 133 peripherals
-- HAL: 12 production-ready peripheral modules (GPIO, CMU, Delay, USART, I2C, SPI, Timer, ADC, DMA, EMU, RTC, WDOG)
+- HAL: 29 public modules (`adc`, `board`, `bus`, `buzzer`, `clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `gpcrc`,
+  `i2c`, `letimer`, `microphone`, `mvp`, `pin`, `prs`, `pwm`, `record`, `route`, `rtc`, `sensors`, `sleep`, `spi`,
+  `sysrtc`, `timer`, `usart`, `wdog`, `prelude`)
 - Build Time: ~3 minutes (release mode)
 - Clean Compilation: ✅ No errors or warnings
 

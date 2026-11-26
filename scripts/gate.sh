@@ -130,6 +130,12 @@ else
   fail "hal README says ${stated_mods:-?} modules and ${stated_examples:-?} examples; the tree has $real_mods and $real_examples"
 fi
 
+if python3 scripts/check-root-readme.py >/tmp/gate-root-readme.log 2>&1; then
+  pass "root README counts: $(tail -1 /tmp/gate-root-readme.log | sed 's/^PASS //')"
+else
+  fail "root README counts: $(grep -m1 '^FAIL' /tmp/gate-root-readme.log | sed 's/^FAIL //')"
+fi
+
 # Every crate that ships gets its README generated from templates/readme-<name>.tmpl, and the gate refuses a README
 # that has drifted from it. The list of "crates that ship" comes from check-publishable.py, so adding a crate to the
 # published set immediately requires a template for it -- the rule cannot be forgotten, only enforced.

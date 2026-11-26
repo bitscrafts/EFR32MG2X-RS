@@ -59,9 +59,6 @@ measured, because "it compiles" has never been the bar here.
   [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md). What is still open is a pad
   driven by a wire, a button or another peripheral, which is the case a product has and the pull resistor is not, and
   the fastest rate the converter can follow such a producer.
-- **The root README's project metrics.** It still says "12 peripheral modules", "Examples: 83 files, 26 of them
-  checked" and "Crates: 12 total". The tree has 29 public HAL modules and 29 HAL examples, and the example count the
-  build script checks is a number that script can print.
 - **DMA stages 3 and 4**: linked descriptors and interrupt-driven async. Deferred, not broken.
 - **The families nobody has written a driver for**: `pcnt0`, `burtc`, `acmp0`/`acmp1`, `vdac0`/`vdac1`, `keyscan`,
   `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco`, `hfrcoem23`. What each would cost is in
@@ -87,6 +84,14 @@ Each of these has a record read back off the part; the record string is in the d
 - Before those, and already closed: the I2C read defect and its recovery, the USART receiver's refusal, SPI loopback
   with a control, the WDOG feed budget, the CRC-32 check values, the MVP benchmark, the SYSRTC 64-bit path and the
   Embassy time driver. All in `docs/04-reference/` and in the HAL README's measured table.
+
+Closed without a part record, 2026-11-26 (documentation):
+
+- The root README's project metrics. The page said "Crates: 12 total", "12 peripheral modules" and "Examples: 83
+  files, 26 of them checked"; counted from the tree it is 31 workspace members, 29 HAL `pub mod` and 114 example
+  targets, the last of those the number `scripts/check-examples-build.sh` prints in its own verdict. The page now
+  quotes it, and `scripts/check-root-readme.py` -- run by `scripts/gate.sh` -- recomputes all four counts so the page
+  cannot drift again. The script's first run also found `libraries/bt-heap` listed twice in `Cargo.toml`.
 
 ---
 
