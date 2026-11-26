@@ -29,11 +29,11 @@ efr32mg2x-xiao-bsp     the board: which pin the LED is on, which pins power the 
 
 ## What is in the tree
 
-Twenty-one modules, each one a peripheral, a bus or a driver:
+Twenty-two modules, each one a peripheral, a bus or a driver:
 
 ```
 adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
-i2c  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
+i2c  letimer  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
 ```
 
 The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
@@ -45,7 +45,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-27 public modules (`pub mod` in `src/lib.rs`) and 25 examples. A date next to an example means a record was
+28 public modules (`pub mod` in `src/lib.rs`) and 26 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -127,6 +127,7 @@ peripheral families and re-checked family by family, is
 | `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
 | `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |
+| `LETIMER0` | 24-bit counter, two compare channels, `TOP`; runs in EM2 | `hal_letimer_compare` |
 
 ### Compiled, not measured
 
@@ -135,7 +136,7 @@ routes them. They build; nobody has watched them.
 
 ### Absent: peripheral families this crate does not touch
 
-`LETIMER0` (low-energy timer) · `PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
+`PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
 · `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
 `BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
 the flash wait states).

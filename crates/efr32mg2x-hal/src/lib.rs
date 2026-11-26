@@ -74,6 +74,7 @@
 //! - [`emu`] - Energy Management Unit (power modes)
 //! - [`gpio`] - General Purpose I/O
 //! - [`i2c`] - I2C master mode
+//! - [`letimer`] - Low-energy timer that keeps counting in EM2 (LETIMER0)
 //! - [`rtc`] - Real-Time Clock (SYSRTC0)
 //! - [`spi`] - SPI master mode (USART in SPI mode)
 //! - [`timer`] - Timer and PWM functionality (TIMER0-4)
@@ -119,6 +120,7 @@ pub mod dwt;
 pub mod emu;
 pub mod gpcrc;
 pub mod i2c;
+pub mod letimer;
 pub mod microphone;
 pub mod mvp;
 pub mod pin;

@@ -362,6 +362,28 @@ impl Board {
         ))
     }
 
+    /// The low-energy timer: 24-bit counter, two compare channels, and the only timer here that runs in EM2.
+    ///
+    /// The clock is part of the hand-out because it is part of the measurement: `CLKEN0.LETIMER0` alone is not enough,
+    /// the EM23 group branch has no source at reset, and a module without one answers on the bus and never counts. The
+    /// branch is pinned to LFRCO here, which is the source the record was taken with.
+    ///
+    /// Left stopped and with `CTRL.CNTTOPEN` set, so the first `TOP` the caller writes is the top.
+    pub fn letimer(&self) -> Result<crate::letimer::Letimer, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Letimer)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.letimer0().set_bit());
+        // 32.768 kHz LFRCO: the low-frequency domain the module is designed to run from, and the branch the 2026-11-26
+        // measurement used. Selecting a source the part does not have running is the defect this line exists to avoid.
+        self.dp
+            .cmu_s
+            .em23grpaclkctrl()
+            .modify(|_, w| w.clksel().lfrco());
+        // SAFETY: `Board` holds the PAC singletons for the whole program; this hands LETIMER0 out through the claim table,
+        // so no second driver can reach the same registers.
+        Ok(unsafe { crate::letimer::Letimer::new(pac::Letimer0Ns::steal()) })
+    }
+
     /// Entry and exit of EM2, carrying the `EMU` it drives.
     ///
     /// Handed out here for the same reason the timer is: EM2 is where the core stops running from the

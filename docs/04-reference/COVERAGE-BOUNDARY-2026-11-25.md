@@ -23,7 +23,8 @@ in the "absent" list below — not "absent as far as I remember", absent as far 
 with their capitalisation (`Prs`, `Msc`, `Letimer0`) and so reported "0" for `msc`, whose unlock key and `READCTRL` write
 are in `board.rs`, and for `prs`, which `wdog`'s documentation already names as a TODO. A case-sensitive search over
 prose does not find the prose. The tables below were rebuilt with `grep -i`, and every remaining zero was re-checked by
-reading the hits it did find: `letimer` and `burtc` appear only inside `emu`'s comments, and `wdog1` only in a doc title.
+reading the hits it did find: at that time `letimer` and `burtc` appeared only inside `emu`'s comments (`letimer0` has
+since been driven and moved to section 1), and `wdog1` only in a doc title.
 
 Modes are listed separately, because a mode is not a family: `EUSART0` is driven, and `EUSART0` in slave mode is not.
 
@@ -45,6 +46,7 @@ Modes are listed separately, because a mode is not a family: `EUSART0` is driven
 | `mvp` | `mvp` | matrix/vector co-processor, `binary16` | `hal_mvp_bench` |
 | `wdog0` | `wdog` | windowed watchdog, fed with a budget | `hal_wdog_feed` |
 | `gpcrc` | `gpcrc` | CRC-32, reflected, the caller adds the final xor | `hal_gpcrc` |
+| `letimer0` | `letimer` | 24-bit counter, two compare channels, `TOP`; runs in EM2 | `hal_letimer_compare` — a `TOP` of 1000 with compares at 500 and 250, both matches timed against the SYSRTC, `p1=501 pq=250 p2=499`; record in [`LETIMER-COMPARE-2026-11-26.md`](LETIMER-COMPARE-2026-11-26.md) |
 
 ## 2. Absent: families the device has and this crate does not touch
 
@@ -53,7 +55,6 @@ would cost, so that the boundary is a decision and not an omission.
 
 | family | what it is | cost to drive it |
 |---|---|---|
-| `letimer0` | low-energy timer: two compare channels, runs in EM2 | **the counter runs and the top is measured; the driver is not in the tree yet.** Measured, in the order the board gave them: (i) `CLKEN0` alone leaves `SYNCBUSY` stuck; (ii) LETIMER0 is clocked from a `GRPACLK` branch; (iii) reading `SYNCBUSY` stalls the bus -- never poll it; (iv) `SWRST` and `CMD.STOP`/`CMD.CLEAR` are not the problem; (v) **`EN` is the gate**: the module answers on the bus while disabled and never counts; (vi) **`CTRL.CNTTOPEN` is the switch**: with it at reset the top is the full 24-bit counter (0xFFFFFF, not the 65535 the manual's bit table claims) and `TOP` is ignored, and with it set `TOP` decides -- `cnt0=1000 w1=1001 w2=2002` ticks, a period of `TOP`+1. The earlier `cnt_start=65525 cnt=62315` were that 24-bit count truncated to 16 bits by a `u16` counter read, which is what made `TOP` look ignored. Record: `docs/04-reference/LETIMER-TOP-2026-11-26.md`; work in `_trash/letimer-2026-11-26/`. Next: put the driver and an example in the tree, with the counter as 24 bits and both compares below the top |
 | `prs` | peripheral reflex system: routes an event from one peripheral to another without the CPU | ~250 lines; the value is that it makes Timer→ADC→DMA possible at all, and the test is a record with a count the CPU never touched. `wdog`'s own documentation already lists "PRS integration" as a TODO, so the absence is now written down in two places |
 | `pcnt0` | pulse counter with external inputs, direction and S0/S1 | ~200 lines + a signal source to test it, which is bench work |
 | `burtc` | backup RTC in the always-on domain | ~150 lines; hard to prove, because "it kept time with the main supply off" needs a power cut |

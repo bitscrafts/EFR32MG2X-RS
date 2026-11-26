@@ -26,7 +26,7 @@ Read from the source, so it cannot drift:
 | what it takes | where it is used |
 |---|---|
 | `CmuNs` | `src/mvp/mod.rs` |
-| `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+3 more) |
+| `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+4 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
 | `Eusart0S` | `src/board.rs`, `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
@@ -41,6 +41,7 @@ Read from the source, so it cannot drift:
 | `Interrupt` | `src/sysrtc.rs` |
 | `LdmaS` | `src/dma/mod.rs` |
 | `LdmaxbarS` | `src/dma/mod.rs` |
+| `Letimer0Ns` | `src/board.rs`, `src/letimer.rs` |
 | `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
 | `Sysrtc0Ns` | `src/rtc/mod.rs`, `src/sysrtc.rs` |
@@ -53,6 +54,7 @@ Read from the source, so it cannot drift:
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
 | `i2c0_ns` | `src/i2c/async_impl.rs` |
 | `iadc0_s` | `src/board.rs`, `src/microphone.rs` |
+| `letimer0_ns` | `src/letimer.rs` |
 | `timer0_s` | `src/pwm.rs` |
 
 
@@ -64,11 +66,11 @@ Read from the source, so it cannot drift:
 
 ## What is in the tree
 
-Twenty-one modules, each one a peripheral, a bus or a driver:
+Twenty-two modules, each one a peripheral, a bus or a driver:
 
 ```
 adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
-i2c  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
+i2c  letimer  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
 ```
 
 The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
@@ -80,7 +82,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-27 public modules (`pub mod` in `src/lib.rs`) and 25 examples. A date next to an example means a record was
+28 public modules (`pub mod` in `src/lib.rs`) and 26 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -162,6 +164,7 @@ peripheral families and re-checked family by family, is
 | `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
 | `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |
+| `LETIMER0` | 24-bit counter, two compare channels, `TOP`; runs in EM2 | `hal_letimer_compare` |
 
 ### Compiled, not measured
 
@@ -170,7 +173,7 @@ routes them. They build; nobody has watched them.
 
 ### Absent: peripheral families this crate does not touch
 
-`LETIMER0` (low-energy timer) · `PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
+`PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
 · `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
 `BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
 the flash wait states).
@@ -261,7 +264,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-25 examples, **16 of them watched on the part**. A `--` in the last column means nobody
+26 examples, **17 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -279,6 +282,7 @@ mean it works.
 | `hal_i2c_recovery.rs` | After a NACK, does the bus still work? | 2026-11-23 |
 | `hal_imu_read.rs` | The IMU at the HAL's level: two pins, a power gate and a driver. | 2026-11-24 |
 | `hal_led_blink.rs` | Blink at the HAL's level: one pin primitive, no board. | 2026-11-15 |
+| `hal_letimer_compare.rs` | Does `LETIMER0` hold the top it was given, and does a compare below it fire twice? | 2026-11-26 |
 | `hal_mic_level.rs` | Shout at the board and the light gets brighter — with hardware PWM. | 2026-11-24 |
 | `hal_mvp_bench.rs` | Does the MVP pay for itself? One number, measured both ways — with a clock that works without a probe. | 2026-11-25 |
 | `hal_one_of_each.rs` | One of each: the board refuses to hand the same peripheral out twice. | -- |

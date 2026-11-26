@@ -43,10 +43,12 @@ pub enum Slot {
     Timer0,
     /// `GPCRC` — one CRC engine, one message being checksummed at a time.
     Gpcrc,
+    /// `LETIMER0` — one counter, one pair of compare channels, one wake-up source.
+    Letimer,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 11;
+pub const SLOT_COUNT: usize = 12;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -63,6 +65,7 @@ impl Slot {
             Slot::I2c => 8,
             Slot::Timer0 => 9,
             Slot::Gpcrc => 10,
+            Slot::Letimer => 11,
         }
     }
 }
@@ -167,6 +170,8 @@ mod tests {
             Slot::Converter,
             Slot::I2c,
             Slot::Timer0,
+            Slot::Gpcrc,
+            Slot::Letimer,
         ] {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(
