@@ -84,7 +84,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-29 public modules (`pub mod` in `src/lib.rs`) and 27 examples. A date next to an example means a record was
+29 public modules (`pub mod` in `src/lib.rs`) and 28 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -266,12 +266,13 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-27 examples, **18 of them watched on the part**. A `--` in the last column means nobody
+28 examples, **19 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
 | example | what it shows | watched on hardware |
 |---|---|---|
+| `hal_adc_prs_timer.rs` | The PRS trigger measured on 2026-11-26 was driven by `ASYNC_SWPULSE` — a CPU write. That proves the converter's | 2026-11-26 |
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | 2026-11-25 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |

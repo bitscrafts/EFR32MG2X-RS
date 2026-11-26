@@ -100,6 +100,7 @@ Research, analysis, and reference materials.
 - [LETIMER0's top, measured](04-reference/LETIMER-TOP-2026-11-26.md) - `CTRL.CNTTOPEN` is the switch, the top is 24 bits at reset and not the manual's 65535, and the earlier "`TOP` is ignored" was a `u16` truncation
 - [LETIMER0's compares, measured](04-reference/LETIMER-COMPARE-2026-11-26.md) - the flags are set by a write to `IF` and cleared only through `IF + 0x2000`, the down-counter reaches `COMP0` before `COMP1`, and a `TOP` readback on a stopped timer can return 0
 - [The IADC on a PRS edge, measured](04-reference/IADC-PRS-TRIGGER-2026-11-26.md) - `TRIGGER.SINGLETRIGSEL = PRSPOS` converts once per edge on an asynchronous channel (`TRIGGER = 0x300`, 8 pulses -> 8 conversions), and the three controls that make the count mean something: arming alone converts, no pulse converts nothing, an unarmed queue ignores edges
+- [A timer's overflow driving the PRS, measured](04-reference/PRS-TIMER-PRODUCER-2026-11-26.md) - TIMER0's overflow on channel 0 gave `ev=8` for `ovf=8` with no CPU write in the loop, the channel word `0x000c2101` (`FNSEL`/`SOURCESEL`/`SIGSEL`), four zero controls, and the 16-bit `CNT` that made the first instrument report a working path as dead
 
 **Bootloader Research:**
 - [Gecko Bootloader Research](04-reference/GECKO_BOOTLOADER_RESEARCH.md) - Silicon Labs bootloader analysis
