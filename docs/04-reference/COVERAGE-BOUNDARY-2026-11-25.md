@@ -41,7 +41,7 @@ Modes are listed separately, because a mode is not a family: `EUSART0` is driven
 | `eusart1` | `usart` | the same driver, second instance | compiled, **not measured** — no example routes it |
 | `eusart0` | `spi` | SPI **master**, 8-bit, blocking | `hal_spi_loopback` — with a jumper on D9–D10, and a control that reads `ff..ff` without it |
 | `i2c0`, `i2c1` | `i2c` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
-| `iadc0` | `adc`, `microphone` | single-ended conversion; the microphone path | `hal_adc_read`, `hal_mic_level` |
+| `iadc0` | `adc`, `microphone` | single-ended conversion, started by the CPU or by a PRS positive edge; the microphone path | `hal_adc_read`, `hal_mic_level`, `hal_adc_prs_trigger` — `TRIGGER = 0x300` with 8 pulses on PRS channel 0 gave 8 conversions (`prs=8 armB=0`), and the three controls held: arming alone converts once (`armA=1 imm=0`), no pulse converts nothing (`quiet=0`), an unarmed queue ignores edges (`noarm=0`); record in [`IADC-PRS-TRIGGER-2026-11-26.md`](IADC-PRS-TRIGGER-2026-11-26.md) |
 | `ldma`, `ldmaxbar` | `dma` | channel ownership, transfers, stop | `hal_dma_stop` |
 | `mvp` | `mvp` | matrix/vector co-processor, `binary16` | `hal_mvp_bench` |
 | `wdog0` | `wdog` | windowed watchdog, fed with a budget | `hal_wdog_feed` |
@@ -55,7 +55,7 @@ would cost, so that the boundary is a decision and not an omission.
 
 | family | what it is | cost to drive it |
 |---|---|---|
-| `prs` | peripheral reflex system: routes an event from one peripheral to another without the CPU | ~250 lines; the value is that it makes Timer→ADC→DMA possible at all, and the test is a record with a count the CPU never touched. `wdog`'s own documentation already lists "PRS integration" as a TODO, so the absence is now written down in two places |
+| `prs` | peripheral reflex system: routes an event from one peripheral to another without the CPU | ~250 lines; the value is that it makes Timer→ADC→DMA possible at all. **Partially reached, not driven**: the IADC's own trigger path is measured (channel 0, `ASYNC_SWPULSE` as the producer, [`IADC-PRS-TRIGGER-2026-11-26.md`](IADC-PRS-TRIGGER-2026-11-26.md)), but there is no channel, producer or consumer driver — the pulse in that example is a raw register write. `wdog`'s documentation lists "PRS integration" as a TODO, so the absence is written down in two places |
 | `pcnt0` | pulse counter with external inputs, direction and S0/S1 | ~200 lines + a signal source to test it, which is bench work |
 | `burtc` | backup RTC in the always-on domain | ~150 lines; hard to prove, because "it kept time with the main supply off" needs a power cut |
 | `vdac0`, `vdac1` | 12-bit DACs | ~200 lines each + a meter to read the output |
@@ -81,6 +81,7 @@ This is the list that matters most for honesty, because a reader sees "SPI suppo
 | `eusart0` | **I2S** (`I2SCTRL`) | absent. The audio mode of the same peripheral |
 | `iadc0` | differential input | deliberately absent, and refused rather than misread: `cores::adc::parse` returns an error for a differential word instead of reading it as single-ended |
 | `iadc0` | scan / multiple channels per trigger | absent; one conversion at a time |
+| `iadc0` | trigger modes other than software and `PRSPOS` | absent and measured nowhere: `PRSCLKGRP` (a timer in the ADC clock group), `PRSNEG` and `SINGLETRIGACTION = CONTINUOUS` are not written by this crate. The local-timer pacing path (`SINGLETRIGSEL = Timer`) is driven by `microphone::Converter` and recorded in the microphone notes |
 | `timer0`–`timer4` | input capture | absent as a driver; the decision layer is host-tested (`cores::timer::CaptureSlot` and the wrapping interval arithmetic). Compare and PWM are driven and proven |
 | `eusart0` | SPI with a device on the pads | the loopback proof has a jumper on D9–D10; a real device has never spoken on that bus |
 

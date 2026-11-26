@@ -124,6 +124,7 @@ pub mod letimer;
 pub mod microphone;
 pub mod mvp;
 pub mod pin;
+pub mod prs;
 pub mod pwm;
 pub mod record;
 pub mod route;

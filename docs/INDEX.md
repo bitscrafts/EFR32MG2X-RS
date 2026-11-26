@@ -99,6 +99,7 @@ Research, analysis, and reference materials.
 - [The IMU FIFO, measured](04-reference/IMU-FIFO-MEASURED.md) - why the FIFO is not justified for throughput, and the one thing (contiguity) that would change the answer
 - [LETIMER0's top, measured](04-reference/LETIMER-TOP-2026-11-26.md) - `CTRL.CNTTOPEN` is the switch, the top is 24 bits at reset and not the manual's 65535, and the earlier "`TOP` is ignored" was a `u16` truncation
 - [LETIMER0's compares, measured](04-reference/LETIMER-COMPARE-2026-11-26.md) - the flags are set by a write to `IF` and cleared only through `IF + 0x2000`, the down-counter reaches `COMP0` before `COMP1`, and a `TOP` readback on a stopped timer can return 0
+- [The IADC on a PRS edge, measured](04-reference/IADC-PRS-TRIGGER-2026-11-26.md) - `TRIGGER.SINGLETRIGSEL = PRSPOS` converts once per edge on an asynchronous channel (`TRIGGER = 0x300`, 8 pulses -> 8 conversions), and the three controls that make the count mean something: arming alone converts, no pulse converts nothing, an unarmed queue ignores edges
 
 **Bootloader Research:**
 - [Gecko Bootloader Research](04-reference/GECKO_BOOTLOADER_RESEARCH.md) - Silicon Labs bootloader analysis

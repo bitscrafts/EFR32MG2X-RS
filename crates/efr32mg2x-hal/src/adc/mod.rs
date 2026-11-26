@@ -49,14 +49,22 @@
 mod traits;
 mod types;
 
-pub use types::{Channel, Config, Error, Reference, Resolution};
+pub use types::{Channel, Config, Error, Reference, Resolution, Trigger};
 
 use crate::pac;
+
+/// The PRS register block.
+///
+/// `CONSUMER_IADC0_SINGLETRIGGER` lives in PRS, not in the IADC, but it is the IADC's own routing word: it says which
+/// asynchronous channel feeds `SINGLETRIGSEL = PRSPOS`. Reaching it from here keeps the PRS block out of this crate's
+/// public API, and the address is the PAC's (`prs_s`, 0x4003_8000) rather than a number chosen here.
+const PRS_BASE: usize = 0x4003_8000;
 
 /// ADC instance
 pub struct Adc {
     adc: pac::Iadc0S,
     reference: Reference,
+    trigger: Trigger,
 }
 
 /// Wait for the converter's synchroniser to settle: `SYNCBUSY` clear and `EN.DISABLING` clear.
@@ -94,8 +102,11 @@ impl Adc {
     pub fn new(adc: pac::Iadc0S, config: Config, cmu: &pac::CmuS) -> Self {
         // The driver opens its own gate, the way `Wdog` does: an example should not have to
         // freeze the whole clock tree to read a channel.
+        // The PRS bus clock is opened here because the converter's PRS trigger path writes a PRS register
+        // (`CONSUMER_IADC0_SINGLETRIGGER`): a block whose bus clock is off reads back zero and drops writes, which
+        // would make `use_prs_trigger` look accepted and do nothing.
         cmu.clken0()
-            .modify(|_, w| w.iadc0().set_bit().hfrcoem23().set_bit());
+            .modify(|_, w| w.iadc0().set_bit().hfrcoem23().set_bit().prs().set_bit());
         cmu.iadcclkctrl().modify(|_, w| w.clksel().hfrcoem23());
 
         // Measured 2026-11-15, in this order, and the order is the whole point:
@@ -116,6 +127,7 @@ impl Adc {
             return Self {
                 adc,
                 reference: config.reference,
+                trigger: Trigger::Software,
             };
         }
 
@@ -170,6 +182,7 @@ impl Adc {
         Self {
             adc,
             reference: config.reference,
+            trigger: Trigger::Software,
         }
     }
 
@@ -219,23 +232,12 @@ impl Adc {
     /// offset. `microphone.rs` shows the shape of the missing piece: it configures its own input end to end, including
     /// the bus, which is why the microphone works and this driver does not.
     pub fn read_on(&mut self, port: crate::pin::Port, pin: u8) -> Result<u16, Error> {
-        // The word comes from `efr32mg2x-adc-core`, where the four fields and their positions are measured on the host
-        // (64 inputs, 64 distinct words, every one parseable back). This block only writes it.
-        let port_enum = match port {
-            crate::pin::Port::A => crate::cores::adc::Port::A,
-            crate::pin::Port::B => crate::cores::adc::Port::B,
-            crate::pin::Port::C => crate::cores::adc::Port::C,
-            crate::pin::Port::D => crate::cores::adc::Port::D,
-        };
-        let input = match crate::cores::adc::Input::new(port_enum, pin) {
-            Ok(input) => input,
-            Err(_) => return Err(Error::Timeout), // no such pin: refused before anything is written
-        };
-        let word = input.single_word();
-        critical_section::with(|_cs| {
-            // SAFETY: the word is built by the core crate from the fields the PAC documents.
-            self.adc.single().write(|w| unsafe { w.bits(word) });
-        });
+        // A conversion started by PRS has no edge to wait for here: arming and polling would time out, and it would
+        // look like a broken channel instead of a caller using the wrong entry point.
+        if self.trigger != Trigger::Software {
+            return Err(Error::Triggered);
+        }
+        self.select_input(port, pin)?;
         self.adc.cmd().write(|w| w.singlestart().set_bit());
         const TIMEOUT_CYCLES: u32 = 100_000;
         let mut timeout = 0;
@@ -253,6 +255,9 @@ impl Adc {
     /// Kept as it was for callers that rely on it, with the limitation named: `Channel` carries a pin number and the
     /// port is fixed to Port A by the code below. Use [`Adc::read_on`] to name the port.
     pub fn read(&mut self, channel: Channel) -> Result<u16, Error> {
+        if self.trigger != Trigger::Software {
+            return Err(Error::Triggered);
+        }
         // Configure single conversion for the selected channel
         // Use critical section for atomic configuration
         critical_section::with(|_cs| {
@@ -300,6 +305,129 @@ impl Adc {
     /// Get the configured reference voltage source
     pub fn reference(&self) -> Reference {
         self.reference
+    }
+
+    /// What starts a conversion right now.
+    pub fn trigger(&self) -> Trigger {
+        self.trigger
+    }
+
+    /// Point the next single conversion at `pin` on `port`, without starting one.
+    ///
+    /// This is the other half of a triggered conversion: under a PRS trigger the CPU never writes `SINGLESTART`, so
+    /// nothing in that path writes `SINGLE` unless the caller does. The word comes from
+    /// `efr32mg2x-adc-core`, where the four fields and their positions are measured on the host (64 inputs, 64
+    /// distinct words, every one parseable back); this function only writes it.
+    ///
+    /// The analogue bus is still the caller's business: an odd pin reaches `ADC0` only if `GPIO.CDBUSALLOC` gives it the
+    /// odd CD bus. Measured 2026-11-26 — an unallocated input still "converts", returns 0, and raises
+    /// `IF.PORTALLOCERR`, which is a silent wrong answer unless someone looks at the flag.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Timeout`] for a pin above 15, refused before anything is written.
+    pub fn select_input(&mut self, port: crate::pin::Port, pin: u8) -> Result<(), Error> {
+        let port_enum = match port {
+            crate::pin::Port::A => crate::cores::adc::Port::A,
+            crate::pin::Port::B => crate::cores::adc::Port::B,
+            crate::pin::Port::C => crate::cores::adc::Port::C,
+            crate::pin::Port::D => crate::cores::adc::Port::D,
+        };
+        let input = match crate::cores::adc::Input::new(port_enum, pin) {
+            Ok(input) => input,
+            Err(_) => return Err(Error::Timeout), // no such pin: refused before anything is written
+        };
+        let word = input.single_word();
+        critical_section::with(|_cs| {
+            // SAFETY: the word is built by the core crate from the fields the PAC documents.
+            self.adc.single().write(|w| unsafe { w.bits(word) });
+        });
+        Ok(())
+    }
+
+    /// Take one conversion from PRS: a positive edge on asynchronous `channel` converts once.
+    ///
+    /// `TRIGGER` is write-protected while the converter runs, so the write happens with `EN` down and the converter is
+    /// brought back up afterwards — the same order `new` uses, and the one that does not fault. The routing word
+    /// (`PRS.CONSUMER_IADC0_SINGLETRIGGER.PRSSEL`) is written with it: without it the trigger would listen on channel 0
+    /// whatever the caller asked for. Measured 2026-11-26 on this board (channel 0, eight pulses, PC9):
+    ///
+    /// ```text
+    /// TRIGGER = 0x00000300 (SINGLETRIGSEL = PRSPOS, SINGLETRIGACTION = ONCE)
+    /// eight pulses -> eight conversions, 0x267..0x2a7; no pulse -> zero; immediate trigger -> one, on the arm alone
+    /// ```
+    ///
+    /// `SINGLETRIGACTION = ONCE` is what the timer-paced path also uses, and it does not stop later edges from
+    /// converting: each edge starts the queue again.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::InvalidChannel`] for a channel above 15 (the `PRSSEL` field is four bits), and [`Error::Timeout`] if the
+    /// converter will not leave its enabled state.
+    pub fn use_prs_trigger(&mut self, channel: u8) -> Result<(), Error> {
+        if channel > 15 {
+            return Err(Error::InvalidChannel);
+        }
+        self.adc.en().write(|w| w.en().clear_bit());
+        if !wait_ready(&self.adc) {
+            return Err(Error::Timeout);
+        }
+        self.adc
+            .trigger()
+            .write(|w| w.singletrigsel().prspos().singletrigaction().once());
+        // SAFETY: PRS is at a fixed address for the life of the program and this write targets the IADC's own consumer
+        // word. `Board::adc` hands out one `Adc`, so no second owner writes it.
+        let prs = unsafe { &*(PRS_BASE as *const pac::prs_s::RegisterBlock) };
+        prs.consumer_iadc0_singletrigger()
+            // SAFETY: `PRSSEL` is a four-bit field and `channel` was checked against 15 above.
+            .write(|w| unsafe { w.prssel().bits(channel).sprssel().bits(0) });
+        self.adc.en().write(|w| w.en().set_bit());
+        let _ = wait_ready(&self.adc);
+        self.trigger = Trigger::PrsPositiveEdge(channel);
+        Ok(())
+    }
+
+    /// Go back to the CPU-started path: `CMD.SINGLESTART` converts once.
+    ///
+    /// # Errors
+    ///
+    /// [`Error::Timeout`] if the converter will not leave its enabled state.
+    pub fn use_software_trigger(&mut self) -> Result<(), Error> {
+        self.adc.en().write(|w| w.en().clear_bit());
+        if !wait_ready(&self.adc) {
+            return Err(Error::Timeout);
+        }
+        self.adc
+            .trigger()
+            .write(|w| w.singletrigsel().immediate().singletrigaction().once());
+        self.adc.en().write(|w| w.en().set_bit());
+        let _ = wait_ready(&self.adc);
+        self.trigger = Trigger::Software;
+        Ok(())
+    }
+
+    /// Arm the single queue, so that the next trigger converts once.
+    ///
+    /// Under a PRS trigger this is the whole of what the CPU does: arming converts nothing by itself (measured
+    /// 2026-11-26, `arm=0` with `TRIGGER = PRSPOS` and every conversion attributed to an edge), while under the software
+    /// trigger it converts immediately (`arm=1`).
+    pub fn arm_single(&mut self) {
+        self.adc.cmd().write(|w| w.singlestart().set_bit());
+    }
+
+    /// Pop one finished conversion, waiting at most `polls` reads of `STATUS` for it.
+    ///
+    /// `None` means no conversion arrived in that window — which is the measurement a control phase wants, not an error.
+    /// The FIFO is one deep (`SINGLEFIFOCFG.DVL = valid1`), so a caller pulsing a trigger faster than it pops loses the
+    /// conversions in between. `SINGLEFIFODATA` is read, not `SINGLEDATA`: the latter does not pop, so it returns the
+    /// same value for ever and makes a stalled converter look busy.
+    pub fn take_single(&mut self, polls: u32) -> Option<u16> {
+        for _ in 0..polls {
+            if self.adc.status().read().singlefifodv().bit_is_set() {
+                return Some(self.adc.singlefifodata().read().data().bits() as u16);
+            }
+        }
+        None
     }
 
     /// Disable the ADC peripheral

@@ -79,4 +79,19 @@ pub enum Error {
     Timeout,
     /// Invalid channel
     InvalidChannel,
+    /// A conversion was read while the converter is armed by PRS, where only a PRS edge starts one.
+    Triggered,
+}
+
+/// What starts one conversion.
+///
+/// The default, and what every caller of [`Adc::read`](crate::adc::Adc::read) uses, is the CPU writing
+/// `CMD.SINGLESTART`. The other variant is measured on the board (2026-11-26): with `TRIGGER.SINGLETRIGSEL = PRSPOS`, one
+/// positive edge on an asynchronous PRS channel converts once, and arming the queue alone converts nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Trigger {
+    /// The CPU writes `CMD.SINGLESTART` and gets one conversion.
+    Software,
+    /// A positive edge on this asynchronous PRS channel converts once.
+    PrsPositiveEdge(u8),
 }

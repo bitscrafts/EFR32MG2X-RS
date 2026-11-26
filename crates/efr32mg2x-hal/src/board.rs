@@ -392,6 +392,39 @@ impl Board {
         crate::sleep::Sleep::new(&self.dp.emu_ns)
     }
 
+    /// Give the odd CD bus to `ADC0`, which is what an odd pin needs to reach the converter.
+    ///
+    /// Measured twice, in two places: 2026-11-17 without this write the microphone's converter delivers a flat zero
+    /// (`Microphone::level` reports `rms=2048`, mid-scale, because the zero is centred), and 2026-11-26 an unallocated
+    /// input still "converted" — it returned 0 and raised `IADC.IF.PORTALLOCERR` (bit 13) — which is a wrong answer
+    /// nobody would notice without reading the flag.
+    ///
+    /// This is one bus and not a per-pin table: it is what this board's odd analogue input (PC9) needs, and the HAL's
+    /// `adc` driver refuses to guess about any other pin (`cores::adc::bus_for`).
+    pub fn allocate_odd_cd_bus(&self) {
+        self.dp
+            .gpio_s
+            .cdbusalloc()
+            // SAFETY: `CDODD0` is a one-bit allocate field; 1 is the only value written, and giving the odd CD bus to
+            // IADC0 is what PC9 needs.
+            .modify(|_r, w| unsafe { w.cdodd0().bits(1) });
+    }
+
+    /// The PRS block, with its bus clock open, for a caller that drives its own trigger.
+    ///
+    /// Measured 2026-11-26: the IADC converts on a positive edge of an asynchronous PRS channel, and the pulse is a
+    /// write to `ASYNC_SWPULSE` that needs no channel configuration. What this hands out is the block and its clock;
+    /// [`crate::prs::Prs`] says what it does and does not drive.
+    pub fn prs(&self) -> Result<crate::prs::Prs, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Prs)
+            .map_err(Handout::Taken)?;
+        // The consumer words live in PRS, and a block without its bus clock drops writes: the ADC's triggered path
+        // writes `CONSUMER_IADC0_SINGLETRIGGER`, so the gate is opened here, once, for both users.
+        self.dp.cmu_s.clken0().modify(|_r, w| w.prs().set_bit());
+        // SAFETY: the board owns `Peripherals` and hands PRS out through the claim table, so no second `Prs` exists.
+        Ok(unsafe { crate::prs::Prs::new(pac::PrsS::steal()) })
+    }
+
     /// The matrix/vector processor, enabled and ready.
     ///
     /// The board hands it out for the same reason it hands out the others: an example outside the PAC must
@@ -776,17 +809,8 @@ impl Board {
     pub fn converter(&self) -> Result<crate::microphone::Converter, Handout<()>> {
         self.claim(crate::cores::slots::Slot::Converter)
             .map_err(Handout::Taken)?;
-        // The analog bus comes first. PC9 is an odd-numbered pin, and an odd pin only reaches ADC0 if
-        // the odd CD bus is allocated to it: measured 2026-11-17, without this write the converter
-        // delivers a flat zero, and `Microphone::level` reports that as `rms=2048` because it centres
-        // at mid-scale. The PAC example has always written it (`pac_mic_level`); this path had not,
-        // which is why the HAL's microphone read nothing while the PAC's read a noise floor.
-        self.dp
-            .gpio_s
-            .cdbusalloc()
-            // SAFETY: `CDODD0` is a one-bit allocate field; 1 is the only value written, and giving the odd CD bus to
-            // IADC0 is what PC9 needs (measured 2026-11-17: without it the converter reads a flat zero).
-            .modify(|_r, w| unsafe { w.cdodd0().bits(1) });
+        // The analog bus comes first: PC9 is an odd-numbered pin, and an odd pin does not reach ADC0 without it.
+        self.allocate_odd_cd_bus();
 
         self.dp
             .cmu_s
