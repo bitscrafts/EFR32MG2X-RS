@@ -27,13 +27,14 @@ Read from the source, so it cannot drift:
 |---|---|
 | `BurtcNs` | `src/board.rs`, `src/burtc/mod.rs` |
 | `CmuNs` | `src/mvp/mod.rs` |
-| `CmuS` | `src/adc/mod.rs`, `src/burtc/mod.rs`, `src/clock/clocks.rs` (+5 more) |
+| `CmuS` | `src/adc/mod.rs`, `src/burtc/mod.rs`, `src/clock/clocks.rs` (+6 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
 | `Eusart0S` | `src/board.rs`, `src/eusart/mod.rs`, `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
 | `GpcrcNs` | `src/board.rs`, `src/gpcrc.rs` |
 | `GpioNs` | `src/board.rs` |
 | `GpioS` | `src/board.rs` |
+| `Hfrcoem23S` | `src/clock/sources.rs` |
 | `Hfxo0Ns` | `src/clock/clocks.rs` |
 | `I2c0Ns` | `src/board.rs`, `src/i2c/async_impl.rs`, `src/i2c/mod.rs` |
 | `I2c0S` | `src/i2c/async_impl.rs`, `src/i2c/mod.rs` |
@@ -87,7 +88,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-33 public modules (`pub mod` in `src/lib.rs`) and 36 examples. A date next to an example means a record was
+33 public modules (`pub mod` in `src/lib.rs`) and 37 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -170,6 +171,10 @@ peripheral families and re-checked family by family, is
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
 | `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |
 | `LETIMER0` | 24-bit counter, two compare channels, `TOP`; runs in EM2 | `hal_letimer_compare` |
+| `PCNT0` | pulse counting from a GPIO producer; the ceiling is pulse width, not bandwidth | `hal_pcnt_gpio` |
+| `PRS` | producers measured: a GPIO pin, a timer overflow, a software pulse | `hal_adc_prs_gpio`, `hal_adc_prs_timer`, `hal_adc_prs_trigger` |
+| `BURTC` | 32-bit backup counter, power-of-two prescaler, `EM4GRPACLK` source; survives a core reset | `hal_burtc_backup` |
+| `CMU` clock sources | `FSRCO`, `HFRCOEM23` (band read back from `CAL`), `ULFRCO` and `LFRCO` measured against the crystal | `hal_cmu_sources` |
 
 ### Compiled, not measured
 
@@ -178,13 +183,13 @@ routes them. They build; nobody has watched them.
 
 ### Absent: peripheral families this crate does not touch
 
-`PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
-· `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
+`VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
 `BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
 the flash wait states).
 
-Clock sources (`HFRCO0`, `HFRCOEM23`, `FSRCO`, `ULFRCO`, `DPLL0`) are owned by `clock` through `CMU` and correctly have
-no driver of their own. The radio is a different crate: [`efr32mg24-radio`](https://crates.io/crates/efr32mg24-radio).
+Clock sources are selected through `CMU`: `clock` owns the tree the core runs on, `clock::sources` owns `FSRCO`,
+`HFRCOEM23` and the datasheet limits they are judged against, and `burtc` selects `ULFRCO` for its own counter. None of
+them has a driver of its own. The radio is a different crate: [`efr32mg24-radio`](https://crates.io/crates/efr32mg24-radio).
 
 ### Absent: modes of the peripherals that are here
 
@@ -269,7 +274,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-36 examples, **26 of them watched on the part**. A `--` in the last column means nobody
+37 examples, **27 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -280,6 +285,7 @@ mean it works.
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | 2026-11-25 |
 | `hal_burtc_backup.rs` | `BURTC` against `SYSRTC` over a known window: two counters on the same 32.768 kHz branch, and a control that takes the | 2026-11-27 |
+| `hal_cmu_sources.rs` | The clocks nobody had measured: `FSRCO`, `HFRCOEM23`, `ULFRCO` -- and the crystal as the referee. | 2026-11-27 |
 | `hal_dma_irq.rs` | Does the LDMA end a transfer with an interrupt, with the core asleep, and does `IEN` gate it? | 2026-11-27 |
 | `hal_dma_link.rs` | Do the LDMA's linked descriptors actually chain, and does the second leg move only because of the link? | 2026-11-27 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |

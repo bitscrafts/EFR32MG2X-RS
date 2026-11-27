@@ -45,7 +45,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-33 public modules (`pub mod` in `src/lib.rs`) and 36 examples. A date next to an example means a record was
+33 public modules (`pub mod` in `src/lib.rs`) and 37 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -128,6 +128,10 @@ peripheral families and re-checked family by family, is
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
 | `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |
 | `LETIMER0` | 24-bit counter, two compare channels, `TOP`; runs in EM2 | `hal_letimer_compare` |
+| `PCNT0` | pulse counting from a GPIO producer; the ceiling is pulse width, not bandwidth | `hal_pcnt_gpio` |
+| `PRS` | producers measured: a GPIO pin, a timer overflow, a software pulse | `hal_adc_prs_gpio`, `hal_adc_prs_timer`, `hal_adc_prs_trigger` |
+| `BURTC` | 32-bit backup counter, power-of-two prescaler, `EM4GRPACLK` source; survives a core reset | `hal_burtc_backup` |
+| `CMU` clock sources | `FSRCO`, `HFRCOEM23` (band read back from `CAL`), `ULFRCO` and `LFRCO` measured against the crystal | `hal_cmu_sources` |
 
 ### Compiled, not measured
 
@@ -136,13 +140,13 @@ routes them. They build; nobody has watched them.
 
 ### Absent: peripheral families this crate does not touch
 
-`PRS` (peripheral reflex system — the thing that lets Timer→ADC→DMA run without the CPU)
-· `PCNT0` (pulse counter) · `BURTC` (backup RTC) · `VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
+`VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
 `BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
 the flash wait states).
 
-Clock sources (`HFRCO0`, `HFRCOEM23`, `FSRCO`, `ULFRCO`, `DPLL0`) are owned by `clock` through `CMU` and correctly have
-no driver of their own. The radio is a different crate: [`efr32mg24-radio`](https://crates.io/crates/efr32mg24-radio).
+Clock sources are selected through `CMU`: `clock` owns the tree the core runs on, `clock::sources` owns `FSRCO`,
+`HFRCOEM23` and the datasheet limits they are judged against, and `burtc` selects `ULFRCO` for its own counter. None of
+them has a driver of its own. The radio is a different crate: [`efr32mg24-radio`](https://crates.io/crates/efr32mg24-radio).
 
 ### Absent: modes of the peripherals that are here
 

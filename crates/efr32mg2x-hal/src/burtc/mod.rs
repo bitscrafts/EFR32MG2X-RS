@@ -97,6 +97,18 @@ pub fn select_lfrco() {
     cmu.em4grpaclkctrl().modify(|_, w| w.clksel().lfrco());
 }
 
+/// Point `EM4GRPACLK` at ULFRCO, the 1 kHz branch that keeps running with the rest of the part asleep.
+///
+/// The same register as [`select_lfrco`], a different source: it exists so an instrument can tell a counter that is
+/// counting at 32.768 kHz from one that is counting at 1 kHz, and so a product can be clocked from the oscillator that
+/// survives EM4. The rate is `clock::sources`'s subject, not this driver's: what is measured here is the ratio, and
+/// `docs/04-reference/CMU-MISSING-CLOCKS-2026-11-27.md` carries the number.
+pub fn select_ulfrco() {
+    // SAFETY: same register and same argument as `select_lfrco`: only `CLKSEL` is written.
+    let cmu = unsafe { pac::CmuS::steal() };
+    cmu.em4grpaclkctrl().modify(|_, w| w.clksel().ulfrco());
+}
+
 /// Remove the source from `EM4GRPACLK` (`CLKSEL = 0`), leaving the module enabled and its registers reachable.
 ///
 /// This is the control for "the counter is counting because it is clocked": the block is otherwise untouched, and the

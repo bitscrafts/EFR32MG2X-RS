@@ -815,6 +815,62 @@ impl Board {
         self.dp.timer0_s.cnt().read().bits()
     }
 
+    /// TIMER0 as a free-running 16-bit counter in the `EM01GRPACLK` group, with that group's source left alone.
+    ///
+    /// `pace_microphone` is the board's other door to a free-running TIMER0 and, on the way, it points
+    /// `EM01GRPACLK` at `HFRCOEM23`. That is right for the IADC's trigger and wrong for an instrument that wants to
+    /// count *other* members of the group: the source has to be the caller's choice, so this configures the timer and
+    /// nothing else. `clock::sources::em01_select` decides what is being counted.
+    ///
+    /// Returns `true` when `CNT` moved, so an oscillator that never arrives is a `false` rather than a plausible
+    /// count of zeros. The probe is a bounded wait of about 50 ms at 19 MHz, long enough for the slowest source the
+    /// group has and short enough that a stopped timer reports instead of hanging.
+    ///
+    /// # Errors
+    ///
+    /// [`Handout::Taken`] when another owner already has TIMER0 (`pwm_on`, `buzzer_on`, `pace_microphone`).
+    pub fn timer0_free_running(&self, top: u16) -> Result<bool, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Timer0)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_r, w| w.timer0().set_bit());
+        // Same order `pace_microphone` uses and paid for: the lock key, `EN` down, wait out `EN.DISABLING`, `CFG`,
+        // `EN` up, `TOP` (which is only writable with the timer enabled -- measured 2026-11-17, `BFAR = 0x4004_801C`),
+        // then `CMD.START`.
+        self.dp
+            .timer0_s
+            .lock()
+            // SAFETY: `LOCKKEY` is a 16-bit field and `0xCE80` is the unlock sequence the reference manual gives.
+            .write(|w| unsafe { w.lockkey().bits(0xCE80) });
+        self.dp.timer0_s.en().write(|w| w.en().clear_bit());
+        cortex_m::asm::delay(16);
+        let mut settling = 0u32;
+        while self.dp.timer0_s.en().read().disabling().bit_is_set() {
+            settling += 1;
+            if settling > 2_000_000 {
+                break;
+            }
+        }
+        self.dp
+            .timer0_s
+            .cfg()
+            .write(|w| w.mode().up().clksel().prescem01grpaclk().presc().div1());
+        self.dp.timer0_s.en().write(|w| w.en().set_bit());
+        self.dp
+            .timer0_s
+            .top()
+            // SAFETY: `top` is a `u16` and `TOP` is a 16-bit field, so the write cannot exceed it.
+            .write(|w| unsafe { w.top().bits(u32::from(top)) });
+        self.dp.timer0_s.cmd().write(|w| w.start().set_bit());
+
+        let first = self.timer0_counter() as u16;
+        for _ in 0..200_000u32 {
+            if (self.timer0_counter() as u16) != first {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
     /// Run the core from the crystal and report the frequency in force.
     ///
     /// The sequence lives in `clock::start_hfxo` and is the same one `Clocks::new` uses; this is the door that was

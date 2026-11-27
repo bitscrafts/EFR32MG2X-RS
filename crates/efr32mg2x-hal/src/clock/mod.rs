@@ -65,6 +65,7 @@
 
 mod clocks;
 mod frozen;
+pub mod sources;
 mod types;
 
 // Re-export public types
