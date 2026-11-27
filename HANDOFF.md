@@ -479,3 +479,47 @@ and what exactly does the boot delete (`dl=`)?
 **Unattended work in place:** `scripts/ble-bond-cycle.sh` reproduces the whole cycle and logs to
 `_tmp/ble-bond-cycle.log`; a cron runs it every three hours; an analysis dispatch for the identifier question
 runs after the account window reopens (`scripts/run-bond-id-review.sh`, brief in `_tmp/review-bond-id/brief.md`).
+
+
+---
+
+## 2026-11-27 (noite) — duas revisões do Opus, e nove commits a fechá-las
+
+**Estado:** `master` = `origin/master` = `2aca49a`, árvore limpa, gate PASS.
+
+**O que as revisões trouxeram.** Duas passagens, arquivadas com proveniência em
+`docs/04-reference/OPUS-REVIEW-2026-11-27.md` (24 achados, sessão `f65803bd`) e
+`docs/04-reference/OPUS-REVIEW-2-2026-11-27.md` (17 novos, B1–B17, sessão `052d4f81`, mais as três respostas:
+production-ready, publicação, próximos periféricos).
+
+**Fechado hoje** (cada um com controlo medido, não afirmado):
+
+| o que estava partido | commit |
+|---|---|
+| o gate corria testes de host só em `libraries/*/` — os 102 da HAL nunca correram | `a84d777` |
+| o passo dos exemplos imprimia `N examples` contando ficheiros e construía menos: rádio 7→2, xiao 27→19, 15 no total | `863866e` |
+| a feature `diag` não compilava (6 wrappers sem docs, sob `deny(missing_docs)`) | `863866e` |
+| `i2c::I2c1` era público e inconstruível (4ª instância da classe) | `60a3b48` |
+| o gerador arquivava o relatório do Opus como se fosse medição de um módulo | `60a3b48` |
+| `--resume` era deitado fora em silêncio pelo dispatch | `ceb9182` |
+| README dizia `I2C1` medido e "Nothing" não-medido; doc de outro item sobre o `i2c_on`; nota do gate a mentir sobre `ble_gatt` | `96c00b4` |
+| um pin fora de gama reconfigurava **PA12** em release (`debug_assert`) | `2aca49a` |
+
+**Aberto, por ordem de risco×custo (da 2ª revisão):**
+1. **B1** dois `memory.x` — HAL 1472K, PAC 1512K; o consumidor fica com o que o linker encontrar primeiro. Um layout, no BSP.
+2. **B3** a HAL impõe `critical-section-single-core` como dependência normal (o PAC acerta: dev-dependency).
+3. **B2** `publish = false` existe numa crate só; as outras podem sair sem querer.
+4. **B13** sem `rust-version`, sem toolchain pin, sem `Cargo.lock` — o "constrói do tarball" não é reproduzível.
+5. **f5/B5/f6** a tabela de posse é por papel (USART0/EUSART1/IADC0 entregues duas vezes) e não há tipo de pin.
+6. **f20** esperas de TX sem limite; timeouts engolidos.
+7. **B7** o `TIMER4` só tem o controlo (não arrancado); falta um boot com ele a contar.
+8. **f3/f7** `DMA` e `rtc::Rtc` continuam inalcançáveis a partir do `Board`.
+
+**Duas lições de método, medidas hoje e registadas no código:**
+- um check cujo input é uma constante escrita à mão é um verde falso — o meu próprio check dos contadores passou
+  com "999 example targets" ao lado do nome do script até o controlo o apanhar;
+- um documento *sobre* a árvore não é um registo *da* árvore — o gerador dos READMEs de módulo citava a revisão
+  como medição; agora recusa documentos cujo nome os marca como sendo sobre a árvore.
+
+**Pendente do operador:** o jumper **D9 (MISO, PA4) – D10 (MOSI, PA5)**, sem o qual os três masters SPI não se ouvem
+(`hal_spi_masters` fica sem registo e `hal_spi_loopback` mostra `in=00..00`).
