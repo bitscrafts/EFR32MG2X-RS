@@ -44,7 +44,10 @@ pub mod mode {
 /// half-port offset 16 -- PA12's field -- and rewrites a pin nobody named. A test that pins this is a test that fails
 /// if anyone reintroduces the `% 8` without the range check.
 pub(crate) fn mode_shift(pin: u8) -> u32 {
-    assert!(pin < 16, "pin index {pin} is outside 0..=15 for any port on this part");
+    assert!(
+        pin < 16,
+        "pin index {pin} is outside 0..=15 for any port on this part"
+    );
     4 * u32::from(pin % 8)
 }
 
@@ -61,9 +64,15 @@ pub(crate) fn mode_shift(pin: u8) -> u32 {
 /// panic on a programming error is a halt one can see; a pin silently reconfigured is a bus that fails later, somewhere
 /// else. (Found by an outside review, 2026-11-27, B4.)
 pub(crate) fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, value: u32) {
-    assert!(pin < 16, "pin index {pin} is outside 0..=15 for any port on this part");
+    assert!(
+        pin < 16,
+        "pin index {pin} is outside 0..=15 for any port on this part"
+    );
     if matches!(port, Port::B | Port::D) {
-        assert!(pin < 8, "port {port:?} exposes pins 0..=7 only; {pin} is a wiring error");
+        assert!(
+            pin < 8,
+            "port {port:?} exposes pins 0..=7 only; {pin} is a wiring error"
+        );
     }
     let shift = mode_shift(pin);
     let clear = !(0xF << shift);
