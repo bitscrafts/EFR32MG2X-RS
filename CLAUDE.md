@@ -38,7 +38,7 @@ This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silic
 
 **Status**: the radio works on hardware and a phone can use it -- advertising, scanning, connections, GATT
 read/write/notify, and the BME680 published as the standard Environmental Sensing service (`base_ble_env_gatt`,
-verified with nRF Connect). all 118 example targets compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
+verified with nRF Connect). all 124 example targets compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
 `VERDICT: PASS`. Open inside Phase D2: **D2f pairing** (the PSA layer is written and verified; the security manager
 fails before the key exchange, so it stays out of the product build) and **D2g BME680 gas resistance**. Next phases:
 D3 (Zigbee) / Phase E (Application Development). The Gantt and the phase table are in `README.md`; the open items with
@@ -252,7 +252,7 @@ EFR32MG24/
 ### Build Statistics
 - Total HAL code: 12,003 lines (16 modules plus 11 top-level modules). The README is one per **crate**, generated
   by `scripts/gen-crate-readme.py` and checked by the gate -- not one per module.
-- HAL examples: 33, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
+- HAL examples: 40, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
   numbered `00_recovery`..`12_wdog` set is gone; the files were renamed when each one started proving something.
 - BLE examples: 4 (bluetooth-sys) + 6 (BSP integration)
 - BSP examples: 9 (blink variants + BLE + microphone streaming)
@@ -519,7 +519,16 @@ cargo doc --no-deps --features rt --open
 7. **Testing**: The board is on the bench and most claims here carry a recorded mailbox line. What has no hardware
    proof is named as such in `docs/04-reference/` -- see `I2C-RECOVERY-STATE.md`, `IMU-FIFO-MEASURED.md`,
    `SYSRTC-OWNERSHIP.md`.
-8. **Radio**: RAIL/Bluetooth bindings require Silicon Labs binary blobs (MSLA licensing)
+8. **ACMP0**: the analog comparator is implemented and measured (2026-11-27) -- `src/acmp/mod.rs`, with the internal
+   ladder against an internal reference and no wire: `acmp0` is handed out by the board and the record carries the two
+   ladder levels and the off control (`docs/04-reference/ACMP-2026-11-27.md`).
+9. **AES (RADIOAES)**: AES-128 ECB is implemented and measured (2026-11-27) -- `src/aes/mod.rs` drives the BA411E
+   engine through descriptor chains (fetcher key -> mode -> payload, pusher to the caller's buffer). The record is
+   `aes: ok=1 n=4 ct=69c4e0d86a7b0430d8cdb78070b4c55a c2=3ad77bb40d7a3660a89ecaf32466ef97 pt=00112233445566778899aabbccddeeff
+   f0=0x0 f1=0x12 st=0x0 hw=0x05030127`, byte-identical on three boots, and a control image with bit 0 of the key
+   flipped produced a ciphertext that matches OpenSSL's. `STATUS.SOFTRSTBSY` is set at reset and never clears, so the
+   driver does not attempt a soft reset (`docs/04-reference/AES-KAT-2026-11-27.md`).
+10. **Radio**: RAIL/Bluetooth bindings require Silicon Labs binary blobs (MSLA licensing)
 
 ### Future Work
 1. **Phase D3**: Zigbee 3.0 protocol stack integration
@@ -579,7 +588,9 @@ cargo doc --no-deps --features rt --open
       measured at 1.02 Hz, `hal_env_display` showing T/P/RH on the OLED
 - [ ] Phase D3: Zigbee 3.0 integration
 - [ ] Phase D4: Thread/Matter support
-- [ ] Phase E: Security features (AES, SHA, Secure Vault)
+- [x] Phase E: AES-128 ECB on the RADIOAES block, measured against FIPS-197 C.1 and NIST SP 800-38A F.1.1, with a
+      control image whose one-bit key change was checked against OpenSSL on the host
+- [ ] Phase E, the rest: SHA, ECDSA/ECDH, Secure Vault key storage
 - [x] Embassy async support (B9: driver, executor and the 32-bit wrap, all measured)
 - [ ] Community contributors
 
