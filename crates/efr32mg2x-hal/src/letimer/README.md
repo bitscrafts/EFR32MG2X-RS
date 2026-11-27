@@ -81,7 +81,7 @@ yet: none of them has an instrument in this crate, and a driver written without 
     letimer: clk=00000401 want=500 rb=500 fired1=0 rtc1=1600 fired2=0 rtc2=1600 cnt_start=65525 cnt=62315
 ```
 
-Controls and the full story: [LETIMER-COMPARE-2026-11-26.md](../../../../docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md)
+Controls and the full story: [LETIMER-COMPARE-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-TOP-2026-11-26.md)
 
 ## What is not proven
 

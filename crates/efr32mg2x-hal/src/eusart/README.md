@@ -65,7 +65,7 @@ what the wrap that once wrote `52` where `2382` belonged was about.
     eusart: ok=1 n=8 am=8 wr=8 err=0 ctl=0 div=297 cal=3290 ct=23 tt=23 bd=113975 if=0x000c2007 ft=0x000c2007 fc=0x000c2007 cf=0x00000002
 ```
 
-Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md)
+Controls and the full story: [EUSART-ASYNC-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/EUSART-ASYNC-2026-11-27.md)
 
 ## What is not proven
 

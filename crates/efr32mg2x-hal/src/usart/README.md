@@ -85,7 +85,7 @@ if let Some(data) = usart.read_byte() {
     usart: echo n=0 rxerr=524 why=ferr
 ```
 
-Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [USART-RX-REFUSAL-2026-11-25.md](../../../../docs/04-reference/USART-RX-REFUSAL-2026-11-25.md)
+Controls and the full story: [EUSART-ASYNC-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/EUSART-ASYNC-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [USART-RX-REFUSAL-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/USART-RX-REFUSAL-2026-11-25.md)
 
 ## What is not proven
 

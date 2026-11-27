@@ -90,7 +90,7 @@ let value = adc.read(Channel::Ch0).unwrap();
     adcprs: trig=prs0 refused=1 armA=1 imm=0 armB=0 prs=8 v0=0x0000026c v7=0x000002a9 quiet=0 noarm=0
 ```
 
-Controls and the full story: [ACMP-LADDER-2026-11-27.md](../../../../docs/04-reference/ACMP-LADDER-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [IADC-PRS-TRIGGER-2026-11-26.md](../../../../docs/04-reference/IADC-PRS-TRIGGER-2026-11-26.md), [PRS-GPIO-PRODUCER-2026-11-26.md](../../../../docs/04-reference/PRS-GPIO-PRODUCER-2026-11-26.md)
+Controls and the full story: [ACMP-LADDER-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/ACMP-LADDER-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [IADC-PRS-TRIGGER-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/IADC-PRS-TRIGGER-2026-11-26.md), [PRS-GPIO-PRODUCER-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PRS-GPIO-PRODUCER-2026-11-26.md)
 
 ## What is not proven
 

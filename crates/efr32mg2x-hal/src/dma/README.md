@@ -95,7 +95,7 @@ and not in a caller's macro.
     dmalink: ok=1 d1=8 d2=8 s2=1 lk=0x0 cto=1 c1=8 c2=0 c1r=1 clk=0x0 keep=0xdeadbeef ctl=0x81f0008 ssrc=0x2003ee7c sdst=0x2003eebc
 ```
 
-Controls and the full story: [DMA-IRQ-2026-11-27.md](../../../../docs/04-reference/DMA-IRQ-2026-11-27.md), [DMA-LINKED-2026-11-27.md](../../../../docs/04-reference/DMA-LINKED-2026-11-27.md)
+Controls and the full story: [DMA-IRQ-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DMA-IRQ-2026-11-27.md), [DMA-LINKED-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DMA-LINKED-2026-11-27.md)
 
 ## What is not proven
 

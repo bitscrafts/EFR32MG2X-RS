@@ -51,7 +51,7 @@ None directly: this module composes other drivers and reaches no `pac::` periphe
     adcgpio: ch=3 sel=0x00002000 isel=0x00003000 din=1 a=0 b=4 c=4 mv=8 up=4 off=0 other=0 pin0=4 up0=4 long=8 upg=8 fall=4 ifb=0x00000009 ifc=0x00000001 v0=0x00000233 vl=0x0000023a
 ```
 
-Controls and the full story: [GPIO-INTERRUPT-2026-11-27.md](../../../../docs/04-reference/GPIO-INTERRUPT-2026-11-27.md), [PAIRING-D2F-STATE.md](../../../../docs/04-reference/PAIRING-D2F-STATE.md), [PRS-GPIO-PRODUCER-2026-11-26.md](../../../../docs/04-reference/PRS-GPIO-PRODUCER-2026-11-26.md)
+Controls and the full story: [GPIO-INTERRUPT-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/GPIO-INTERRUPT-2026-11-27.md), [PAIRING-D2F-STATE.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PAIRING-D2F-STATE.md), [PRS-GPIO-PRODUCER-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PRS-GPIO-PRODUCER-2026-11-26.md)
 
 ## What is not proven
 

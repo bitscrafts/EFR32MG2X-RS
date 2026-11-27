@@ -90,7 +90,7 @@ spi.transfer(&mut rx_data, &tx_data).unwrap();
     spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff                               FAIL   …the same firmware with MISO moved off the jumper
 ```
 
-Controls and the full story: [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
+Controls and the full story: [HAL-REVIEW-BRIEF-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
 
 ## What is not proven
 

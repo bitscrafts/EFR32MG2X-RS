@@ -72,11 +72,14 @@ The measured record, the control and what each run rules out are in `../../../..
     burtc: ok=1 run=1 pre=0 d0=32900 s0=32900 r0=1000 pd=3 d1=4112 s1=32899 r1=124 ctl=0 cs=32899 bk=16446 bs=16450 rb=999 if=0x00000000 st=0x00000001 sb=0x00000000 ck=0x00000101
 ```
 
-Controls and the full story: [BURTC-2026-11-27.md](../../../../docs/04-reference/BURTC-2026-11-27.md)
+Controls and the full story: [BURTC-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/BURTC-2026-11-27.md)
 
 ## What is not proven
 
-Nothing in `docs/` records an unproven path for this module.
+From the record's own list: two counters agreeing on one LFRCO is not an absolute frequency -- the crystal was not
+used; `CNT` retention across an EM4 entry is `emu`'s subject and has no instrument here; the compare/overflow path is
+not armed (`COMPTOP` clear, `IF` only read); and the prescaler's phase at the moment a change takes effect is not
+visible in a one-second window.
 
 ## Using it
 

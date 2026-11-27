@@ -116,7 +116,7 @@ lfxo: Some(LfxoConfig::default()),  // Enable LFXO for RTC
     cmp: start=…57 deadline=…77 reached=…78 late=1 fired=1 en=1 run=1      PASS   SYSRTC compare fires once, late=1
 ```
 
-Controls and the full story: [BURTC-2026-11-27.md](../../../../docs/04-reference/BURTC-2026-11-27.md), [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md)
+Controls and the full story: [BURTC-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/BURTC-2026-11-27.md), [DWT-NEEDS-A-DEBUG-SESSION.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [HAL-REVIEW-BRIEF-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [LETIMER-TOP-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-TOP-2026-11-26.md)
 
 ## What is not proven
 

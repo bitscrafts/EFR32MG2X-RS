@@ -97,7 +97,7 @@ timer.enable_channel(PwmChannel::Channel0);
     letimer: clk=0x00000101 top0=1000 top=1000 comp0=500 comp1=250 refused=1 cnt0=1000 p1=501 qe=0 ql=1 pq=250 wrap=1 if1=0x00000001 ifc=0x00000000 if2=0x00000001 p2=499 cnt=499
 ```
 
-Controls and the full story: [APP-LOOP-BUDGET.md](../../../../docs/04-reference/APP-LOOP-BUDGET.md), [APP-LOOP-WITH-BLE-OPEN.md](../../../../docs/04-reference/APP-LOOP-WITH-BLE-OPEN.md), [LETIMER-COMPARE-2026-11-26.md](../../../../docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md)
+Controls and the full story: [APP-LOOP-BUDGET.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/APP-LOOP-BUDGET.md), [APP-LOOP-WITH-BLE-OPEN.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/APP-LOOP-WITH-BLE-OPEN.md), [LETIMER-COMPARE-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-TOP-2026-11-26.md)
 
 ## What is not proven
 

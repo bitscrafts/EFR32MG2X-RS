@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Does every public module have a README, and does the README still describe the module?
 
-Four findings, each fatal:
+Six findings, each fatal:
 
   missing     a `pub mod x;` with no `src/x/README.md`
   placeholder a README still carrying a `TODO(measured)` marker
   stale       a public item the source defines and the README never names (the drift nobody notices)
+  leaks       a link that resolves outside the crate -- these READMEs ship inside the package, where the
+              repository's `docs/` tree is not there, so the link is dead for whoever reads the crate page
+  dead        a relative link that resolves inside the crate but at nothing
   empty       zero modules inspected -- a check that inspects nothing passes by vacuity, so it fails instead
 
 The generator and the template for these READMEs live in the Hermes skill `hal-module-readme`
@@ -23,6 +26,7 @@ from pathlib import Path
 
 MOD = re.compile(r"^pub mod ([a-z_][a-z0-9_]*)\s*;", re.MULTILINE)
 ITEM = re.compile(r"^\s*pub (?:fn|struct|enum|trait|const|type|union) ([A-Za-z_][A-Za-z0-9_]*)", re.MULTILINE)
+LINK = re.compile(r"\]\(([^)\s]+)\)")
 
 
 def main() -> int:
@@ -62,6 +66,25 @@ def main() -> int:
         text = readme.read_text()
         if "TODO(measured)" in text:
             findings.append(f"placeholder: src/{name}/README.md still carries a TODO(measured) marker")
+
+        # A link is checked from where the README lives. Anything that climbs out of the crate is dead in the
+        # published package: `cargo package --list` for this crate is 167 files and none of them is under the
+        # repository's `docs/04-reference/`, so `../../../../docs/...` reads fine in the checkout and 404s on
+        # the crate page. Measured on the first version of these READMEs: 41 such links across 21 files.
+        for link in LINK.findall(text):
+            if link.startswith(("http://", "https://", "#", "mailto:")):
+                continue
+            target = (readme.parent / link).resolve()
+            try:
+                target.relative_to(hal)
+            except ValueError:
+                findings.append(
+                    f"leaks: src/{name}/README.md links to {link}, which is outside the crate -- "
+                    "the package ships without the repository's docs/ tree"
+                )
+                continue
+            if not target.exists():
+                findings.append(f"dead: src/{name}/README.md links to {link}, which is not there")
 
         for path in sources:
             for item in ITEM.findall(path.read_text()):

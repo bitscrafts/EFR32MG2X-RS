@@ -77,7 +77,7 @@ and the defaults that the hardware demands (gate first, then configure).
     board: gatt c0 notif=0 refused=0 ev=0 se=4/4616 sm=1 h=010603a0 ua=00000000x0 cv=
 ```
 
-Controls and the full story: [BLE-STATUS.md](../../../../docs/04-reference/BLE-STATUS.md)
+Controls and the full story: [BLE-STATUS.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/BLE-STATUS.md)
 
 ## What is not proven
 

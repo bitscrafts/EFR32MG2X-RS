@@ -48,7 +48,7 @@ the block out. (The positive direction is measured — every run had the gate op
     adcprst: trig=prs0 hz=500 period=38000 src=0x000c2101 off=0 idle=0 noarm=0 ev=8 quiet=0 v0=0x0000026b vl=0x00000230 ovf=8 ch0=0x000c0000
 ```
 
-Controls and the full story: [IADC-PRS-TRIGGER-2026-11-26.md](../../../../docs/04-reference/IADC-PRS-TRIGGER-2026-11-26.md), [PRS-TIMER-PRODUCER-2026-11-26.md](../../../../docs/04-reference/PRS-TIMER-PRODUCER-2026-11-26.md)
+Controls and the full story: [IADC-PRS-TRIGGER-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/IADC-PRS-TRIGGER-2026-11-26.md), [PRS-TIMER-PRODUCER-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PRS-TIMER-PRODUCER-2026-11-26.md)
 
 ## What is not proven
 

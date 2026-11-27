@@ -48,11 +48,13 @@ delay.delay_us(100);
     hfxo: sel=1 before=19M after=39M tick=32974 err=206                    PASS   crystal, and a 1000 ms delay = 1006 ms
 ```
 
-Controls and the full story: [DELAY-MEASURED-2026-11-27.md](../../../../docs/04-reference/DELAY-MEASURED-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
+Controls and the full story: [DELAY-MEASURED-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DELAY-MEASURED-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
 
 ## What is not proven
 
-Nothing in `docs/` records an unproven path for this module.
+From the record's own list: `delay_ns` below 1 us was never timed; a delay taken while an interrupt sleeps past one
+24-bit SysTick wrap (0.43 s at 39 MHz) is not covered; EM2/EM3, where SysTick is not clocked, and temperature were not
+measured; and the 5 per mille residual on the 200 ms call is recorded rather than explained.
 
 ## Using it
 

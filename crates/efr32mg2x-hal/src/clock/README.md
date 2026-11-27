@@ -55,7 +55,7 @@ This module implements actual hardware configuration for the EFR32MG24 clock sys
     tx: pdu=20B clock=39000
 ```
 
-Controls and the full story: [RAIL-BLE-ON-XIAO.md](../../../../docs/04-reference/RAIL-BLE-ON-XIAO.md)
+Controls and the full story: [RAIL-BLE-ON-XIAO.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/RAIL-BLE-ON-XIAO.md)
 
 ## What is not proven
 
