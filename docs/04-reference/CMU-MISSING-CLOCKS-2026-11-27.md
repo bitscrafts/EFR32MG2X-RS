@@ -1,9 +1,9 @@
 # The clocks nobody had measured: `FSRCO`, `HFRCOEM23`, `ULFRCO`
 
-**Measured 2026-11-27 on the XIAO MG24 (EFR32MG24B220F1536IM48-B).** Eight flashes, eight boots, `status=PASS` on all
-eight, and the two frequencies that matter repeat to 0.03 % and 0.11 %. The instrument is `examples/hal_cmu_sources.rs`
-on top of `clock::sources` (`em01_select`, `hfrcoem23_band`, `hfrcoem23_cal`), `burtc::select_ulfrco` and
-`Board::timer0_free_running`.
+**Measured 2026-11-27 on the XIAO MG24 (EFR32MG24B220F1536IM48-B).** Nine flashes, nine boots, `status=PASS` on all
+nine, and the two frequencies that matter repeat to 0.03 % and 0.11 %. The last boot is the formatted tree this commit
+ships. The instrument is `examples/hal_cmu_sources.rs` on top of `clock::sources` (`em01_select`, `hfrcoem23_band`,
+`hfrcoem23_cal`), `burtc::select_ulfrco` and `Board::timer0_free_running`.
 
 Three numbers for `HFRCOEM23` were in circulation before this run -- 18.5 MHz from a blink, 18.961 MHz from the tick
 timer, "19.6 MHz" in a register note -- and none of them could be reproduced from a record. `FSRCO` and `ULFRCO` had no
@@ -39,6 +39,14 @@ the line: `f = 39 MHz x counts / reference counts`.
 | 6 | 19.1787 MHz | 20.2191 MHz | 993.8 Hz | -- |
 | 7 | 19.1771 MHz | 20.2184 MHz | 993.7 Hz | 32 959.5 Hz |
 | 8 | 19.1763 MHz | 20.2157 MHz | 993.7 Hz | 32 958.9 Hz |
+| 9 | 19.1765 MHz | 20.2157 MHz | 993.8 Hz | 32 961.9 Hz |
+
+Boot 9 is the formatted tree the commit ships, and its record is:
+
+```text
+cmu: ok=1 hx=38771190 hx2=38770484 hb=19064028 bnd=8 fs=20096778 ul=993 bu=988 tu=38771274
+lf=32961 bl=32768 tl=38770592 ul0=0 ur=988 dr=0 em=2 bc=769 hs=0x00010001 hc=0xd868a141
+```
 
 `ULFRCO` and `LFRCO` only appear from boot 5: the first four boots used an instrument that computed them but did not
 put their raw counts in the record, and a rate nobody can recompute is the defect this file exists to avoid. Boots 1-4

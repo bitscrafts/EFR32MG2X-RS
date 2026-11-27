@@ -188,6 +188,15 @@ else
   fail "flash: $(grep -m1 '^  ' /tmp/gate-flash-addr.log | sed 's/^  //')"
 fi
 
+# Nothing the workspace loads may reach outside the checkout. One line in a member manifest cost every CI job of a
+# whole morning (2026-11-27): a path dependency pointing at a directory that only exists on the development machine,
+# which cargo resolves when the workspace loads. The local gate was green precisely because that directory was there.
+if python3 scripts/check-workspace-paths.py . >/tmp/gate-paths.log 2>&1; then
+  pass "$(sed -n 's/^  PASS  //p' /tmp/gate-paths.log | head -1)"
+else
+  grep -E '^  FAIL|^        ' /tmp/gate-paths.log | while IFS= read -r line; do fail "${line#  FAIL  }"; done
+fi
+
 # The product itself, which now lives in `apps/dosimeter-ble` -- outside the workspace, because it depends on
 # `dosimeter-mg24` and that crate is outside the repository by its own project's rule. A path dependency pointing outside
 # the checkout is resolved when the workspace loads, so keeping the firmware as a workspace member made every CI job

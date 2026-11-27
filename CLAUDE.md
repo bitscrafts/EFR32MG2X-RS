@@ -1,5 +1,24 @@
 # EFR32MG24 Project Instructions
 
+<!-- REGRA-DO-OPERADOR: nao remover -->
+# HARD RULE — um agente não age pelo operador
+
+Palavras do operador (2026-11-27, verbatim): **«nao pode agir por mim!!! nem utilizar de contas sem o
+meu pedido explicito!»**
+
+- **Nunca agir em nome do operador**: decisões, compromissos, palavras dirigidas a terceiros e
+  entregas são dele. O agente prepara, mostra o rascunho, espera.
+- **Nunca usar as contas dele sem pedido explícito na mesma conversa** — email, Drive, Classroom,
+  SIGAA, GitHub, calendário, cloud. Pedido explícito vale para *aquela* acção, não para a seguinte.
+- **Ler não é escrever.** Consultar e verificar não autoriza enviar, publicar, apagar, comentar,
+  abrir PR nem fazer commit.
+- **Pedido ambíguo resolve-se para o lado seguro.** «Envia para o professor» = preparar o email em
+  ficheiro e devolver o caminho. «Responde» = o mesmo.
+- Enforcement: `/root/.hermes/hooks/operator-account-guard.sh` (pre_tool_call, fail_closed) bloqueia
+  envio de email para destinatário que não seja o próprio operador. Violação registada em
+  2026-11-26 (email ao professor de CC0452).
+
+
 ## HARD RULE — no publication without an express order
 
 **Never run `cargo publish`, `cargo yank`, or anything else that writes to crates.io — at any time, for any crate,
