@@ -46,7 +46,7 @@ None directly: this module composes other drivers and reaches no `pac::` periphe
     pending: the interrupt that ended the sleep was the controller's. The handler cleared the flag (`af=0`), and the
 ```
 
-Controls and the full story: [DMA-IRQ-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DMA-IRQ-2026-11-27.md)
+Controls and the full story: [DMA-IRQ-2026-11-27.md](../../../../docs/04-reference/DMA-IRQ-2026-11-27.md)
 
 ## What is not proven
 

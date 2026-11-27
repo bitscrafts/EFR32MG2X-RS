@@ -91,7 +91,7 @@ Every synchronised register is read or written across a `SYNCBUSY` wait.
     cmp: start=…57 deadline=…77 reached=…78 late=1 fired=1 en=1 run=1      PASS   SYSRTC compare fires once, late=1
 ```
 
-Controls and the full story: [DWT-NEEDS-A-DEBUG-SESSION.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [HAL-REVIEW-BRIEF-2026-11-25.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
+Controls and the full story: [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
 
 ## What is not proven
 
@@ -100,4 +100,4 @@ Controls and the full story: [DWT-NEEDS-A-DEBUG-SESSION.md](https://github.com/b
 
 ## Using it
 
-See `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer_compare.rs`
+See `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`

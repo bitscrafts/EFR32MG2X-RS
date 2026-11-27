@@ -56,7 +56,7 @@ uses it never enables the transceiver: the measurement is a cipher, not a transm
     aes: ok=1 n=4 ct=69c4e0d86a7b0430d8cdb78070b4c55a c2=3ad77bb40d7a3660a89ecaf32466ef97
 ```
 
-Controls and the full story: [AES-KAT-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/AES-KAT-2026-11-27.md)
+Controls and the full story: [AES-KAT-2026-11-27.md](../../../../docs/04-reference/AES-KAT-2026-11-27.md)
 
 ## What is not proven
 

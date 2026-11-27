@@ -47,7 +47,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-35 public modules (`pub mod` in `src/lib.rs`) and 40 examples. A date next to an example means a record was
+35 public modules (`pub mod` in `src/lib.rs`) and 41 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -121,6 +121,7 @@ peripheral families and re-checked family by family, is
 | `CMU`, `EMU`, `HFXO`, `LFXO`, `LFRCO` | clock tree, energy modes, oscillator start | `hal_hfxo`, `hal_emu_voltage`, `hal_em2_sleep` |
 | `SYSRTC0` | 32.768 kHz counter, compare, 64-bit extension | `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_timer_ticks` |
 | `TIMER0` | count, compare, PWM | `hal_timer_compare`, `hal_timer0_pwm` |
+| `TIMER1`–`TIMER4` | the same driver on each of the other four instances, one claim each | `hal_timer_instances` — overflows counted against a 50 ms SYSRTC window: `o1=48 o2=48 o3=48 o4=0 stopped=0 top=18999 clean=1 refused=1`, three boots identical; the stopped instance and the never-started one are the controls |
 | `USART0` | asynchronous serial, echo, a receiver that refuses a broken frame | `hal_usart_link` |
 | `EUSART0` | SPI **master**, 8-bit, blocking; asynchronous serial with the block's own divider | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it), `hal_eusart_loopback` (internal loopback and a control with it off) |
 | `I2C0`, `I2C1` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
@@ -139,8 +140,11 @@ peripheral families and re-checked family by family, is
 
 ### Compiled, not measured
 
-`TIMER1`–`TIMER4` and `EUSART1` are driven by the same code as `TIMER0` and `USART0` — one instance each, no example
-routes them. They build; nobody has watched them.
+`EUSART1` is driven by the same code as `USART0` — one instance, no example routes it. It builds; nobody has watched it.
+`TIMER1`–`TIMER4` were on this line until 2026-11-27, when building the four of them turned up two defects in a
+constructor nothing had ever called: the `EN`/`CFG` order (a bus fault on every call) and `clear_overflow` clearing
+`TIMER0` from every instance. Record:
+[`docs/04-reference/TIMER-INSTANCES-2026-11-27.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/TIMER-INSTANCES-2026-11-27.md).
 
 ### Absent: peripheral families this crate does not touch
 

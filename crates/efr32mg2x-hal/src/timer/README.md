@@ -77,6 +77,7 @@ timer.enable_channel(PwmChannel::Channel0);
 | `is_overflow` | fn | Check if overflow interrupt flag is set. |
 | `listen_overflow` | fn | Enable timer overflow interrupt This enables the overflow/underflow interrupt, useful for periodic tasks synchronized with the timer period. |
 | `new` | fn | Creates a new timer instance # Arguments * `timer` - Timer peripheral instance * `config` - Timer configuration * `clocks` - Frozen clock configuration. |
+| `new_at` | fn | The same driver, built from the timer clock in hertz instead of a `FrozenClocks`. |
 | `reset_counter` | fn | Reset counter to zero. |
 | `set_duty_cycle` | fn | Set duty cycle for a PWM channel # Arguments * `channel` - PWM channel (0, 1, or 2) * `duty_percent` - Duty cycle percentage (0-100) # Returns `Ok(())` on success, `Err(Error)` if duty cycle is invalid # Thread Safety This function uses critical sections for atomic register access, making it safe to call from interrupt contexts or RTOS tasks. |
 | `set_duty_raw` | fn | Set raw duty cycle value for a PWM channel This provides direct access to the compare register for applications requiring precise control beyond percentage-based duty cycles. |
@@ -86,7 +87,7 @@ timer.enable_channel(PwmChannel::Channel0);
 
 ## Registers it touches
 
-`Peripherals`, `Timer0S`
+`Peripherals`
 
 ## What was measured
 
@@ -97,14 +98,14 @@ timer.enable_channel(PwmChannel::Channel0);
     letimer: clk=0x00000101 top0=1000 top=1000 comp0=500 comp1=250 refused=1 cnt0=1000 p1=501 qe=0 ql=1 pq=250 wrap=1 if1=0x00000001 ifc=0x00000000 if2=0x00000001 p2=499 cnt=499
 ```
 
-Controls and the full story: [APP-LOOP-BUDGET.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/APP-LOOP-BUDGET.md), [APP-LOOP-WITH-BLE-OPEN.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/APP-LOOP-WITH-BLE-OPEN.md), [LETIMER-COMPARE-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/LETIMER-TOP-2026-11-26.md)
+Controls and the full story: [APP-LOOP-BUDGET.md](../../../../docs/04-reference/APP-LOOP-BUDGET.md), [APP-LOOP-WITH-BLE-OPEN.md](../../../../docs/04-reference/APP-LOOP-WITH-BLE-OPEN.md), [LETIMER-COMPARE-2026-11-26.md](../../../../docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md)
 
 ## What is not proven
 
 - C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
-- `timer1`–`timer4` | `timer` | same driver, one instance each | compiled, not measured |. (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
-- `prs` | peripheral reflex system: routes an event from one peripheral to another without the CPU | ~250 lines, of which the crate now drives a channel: `prs::Source` names the producers it encodes (`Off`, `Timer0Overflow`, `Timer0Compare0`, `Timer1Overflow`, `GpioPin`), `Prs::connect` writes `ASYNC_CHn_CTRL` whole and `Prs::channel_ctrl` reads it back, and `Prs::pulse` is the software edge. (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
+- Wake latency:** if the MCU timer paces each sample, every sample costs an EM2→EM0 wake and an I2C transfer. (HAL-OPUS-ANALYSIS-2026-11-22.md (`../../../../docs/04-reference/HAL-OPUS-ANALYSIS-2026-11-22`))
+- PRS routing | No hardware trigger path between timers, the IADC and the radio; needed for 802.15.4 timing. (HAL-RADIO-BLE-REVIEW-2026-11-17.md (`../../../../docs/04-reference/HAL-RADIO-BLE-REVIEW-2026-11-17`))
 
 ## Using it
 
-No example imports this module yet, so its API has never been exercised from `examples/`.
+See `examples/hal_timer_instances.rs`

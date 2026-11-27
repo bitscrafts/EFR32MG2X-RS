@@ -85,13 +85,48 @@ macro_rules! impl_timer {
                 clocks.enable_peripheral_clock(|cmu| {
                     cmu.clken0().modify(|_, w| w.$clken_bit().set_bit());
                 });
+                Self::new_at(timer, config, clocks.hfclk().into())
+            }
 
-                // Enable timer peripheral
-                timer.en().write(|w| w.en().set_bit());
+            /// The same driver, built from the timer clock in hertz instead of a `FrozenClocks`.
+            ///
+            /// `FrozenClocks` owns the CMU and the `Board` owns the CMU inside `Peripherals`, so a caller that already
+            /// took the board can never build one: this constructor was in the crate's documentation and reachable
+            /// from nowhere, which is why `TIMER1`–`TIMER4` were "compiled, not measured" for as long as they were.
+            /// `usart::Usart0::new_at` and `i2c` had already been untied the same way; `timer` was the last one left.
+            ///
+            /// The prescaler and `TOP` need one number — HFCLK — and nothing else, so that is what it takes.
+            ///
+            /// The caller must have enabled `CMU_CLKEN0.$clken_bit`; the `Board`'s hand-outs do, and a caller driving
+            /// the PAC directly must do it before this call.
+            pub fn new_at(timer: pac::$timerX_s, config: Config, hfclk_hz: u32) -> Self {
+                // Unlock, disable, and wait for the block to say it has stopped -- in that order, because `CFG` faults
+                // while the timer is enabled.
+                //
+                // That was known here: `pwm::Timer0::take` has carried the measurement since 2026-11-17. What nobody
+                // knew is that *this* constructor enabled the block first and configured it second, so every call
+                // was a bus fault. It went unnoticed for as long as it did because nothing in the crate could build
+                // a `FrozenClocks` after `Board::take` -- the constructor was documented and unreachable. The first
+                // four instances ever built through it died with `Escalated BusFault (Precise data access error) at
+                // 0x4004c004`, which is `TIMER1`'s `CFG`.
+                //
+                // SAFETY: `LOCKKEY` is a 16-bit field and `0xCE80` is the unlock sequence the reference manual gives
+                // for TIMER; a wrong sequence is refused by the hardware.
+                timer.lock().write(|w| unsafe { w.lockkey().bits(0xCE80) });
+                timer.en().write(|w| w.en().clear_bit());
+                // Clearing `EN` is not instantaneous; `EN.DISABLING` is the handshake that says it has stopped.
+                cortex_m::asm::delay(16);
+                let mut settling = 0u32;
+                while timer.en().read().disabling().bit_is_set() {
+                    settling += 1;
+                    if settling > 2_000_000 {
+                        break;
+                    }
+                }
 
                 // Calculate prescaler and top value for desired frequency
                 let (prescaler, top) =
-                    Self::calculate_prescaler_and_top(clocks.hfclk().into(), config.frequency);
+                    Self::calculate_prescaler_and_top(hfclk_hz, config.frequency);
 
                 // Configure PWM mode if requested
                 let pwm_enabled = if let Some(pwm_mode) = config.pwm_mode {
@@ -125,8 +160,12 @@ macro_rules! impl_timer {
                 };
 
                 // Set top value (PWM period)
-                // SAFETY: TOP value is calculated by calculate_prescaler_and_top() to fit within
-                // the timer's 16-bit range (0x0000 to 0xFFFF). The calculation ensures TOP <= 0xFFFF.
+                // `TOP` is written with the block ENABLED -- the order `pwm::Timer0::take` proves works, and measured
+                // here the other way round: with `EN` still clear this write is a bus fault at `base + 0x1c`
+                // (`Escalated BusFault at 0x4004c01c`). `CFG` wants the timer stopped, `TOP` wants it running.
+                timer.en().write(|w| w.en().set_bit());
+                // SAFETY: `TOP` is the timer's own 16-bit field and `top` is computed to fit it (`calculate_prescaler_and_top`
+                // refuses a value above `0xFFFF`).
                 timer.top().write(|w| unsafe { w.bits(top) });
 
                 Self {
@@ -418,7 +457,9 @@ macro_rules! impl_timer {
                 critical_section::with(|_cs| {
                     // SAFETY: `alias::clear_window` gives the same block through its `_CLR` window, where writing 1 to `IF.OF`
                     // clears the flag; a plain write to `IF` would set it instead, which is the defect the alias exists to avoid.
-                    unsafe { crate::alias::clear_window(pac::Timer0S::ptr()) }
+                    // The base is this instance's own: hard-coding `Timer0S` here cleared TIMER0's flag from every other
+                    // instance, which no single-timer instrument could have noticed (measured 2026-11-27 on TIMER1).
+                    unsafe { crate::alias::clear_window(pac::$timerX_s::ptr()) }
                         .if_()
                         .write(|w| w.of().set_bit());
                 });

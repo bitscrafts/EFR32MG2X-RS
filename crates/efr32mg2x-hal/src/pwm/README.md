@@ -63,7 +63,7 @@ discipline rather than a runtime surprise.
     pcntpwm: r1k=0/13 r5k=0/68 r10k=0/137 r16k=0/219 r25k=0/343 w=450 followed=0 ceiling=0k
 ```
 
-Controls and the full story: [PCNT-CEILING-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PCNT-CEILING-2026-11-26.md)
+Controls and the full story: [PCNT-CEILING-2026-11-26.md](../../../../docs/04-reference/PCNT-CEILING-2026-11-26.md)
 
 ## What is not proven
 

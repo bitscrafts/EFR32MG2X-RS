@@ -77,7 +77,7 @@ producer looks like a counter that cannot keep up. [`Pcnt::set_top`] is called b
     pcnt: ch=3 cfg=0x00000100 ctrl=0x00000010 st=0x00000000 a=4 lv=4 b=2 c=3 off=0 stop=0 q=0 mm=0 p0=4 ok=25000 bad=50000 g=77 e=200 of=0 ar=4 br=2 cf=2 cm=4 hr=4 em=8 if=0x00000000
 ```
 
-Controls and the full story: [PCNT-CEILING-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PCNT-CEILING-2026-11-26.md), [PCNT-GPIO-2026-11-26.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/PCNT-GPIO-2026-11-26.md)
+Controls and the full story: [PCNT-CEILING-2026-11-26.md](../../../../docs/04-reference/PCNT-CEILING-2026-11-26.md), [PCNT-GPIO-2026-11-26.md](../../../../docs/04-reference/PCNT-GPIO-2026-11-26.md)
 
 ## What is not proven
 

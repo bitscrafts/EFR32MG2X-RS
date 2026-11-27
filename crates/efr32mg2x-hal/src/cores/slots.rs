@@ -41,6 +41,14 @@ pub enum Slot {
     I2c,
     /// `TIMER0` — the counter behind every PWM and buzzer path.
     Timer0,
+    /// `TIMER1` — the same block, its own clock-enable bit and its own interrupt line.
+    Timer1,
+    /// `TIMER2` — as `TIMER1`: same driver, one `CLKEN0` bit apart.
+    Timer2,
+    /// `TIMER3` — as `TIMER1`.
+    Timer3,
+    /// `TIMER4` — as `TIMER1`.
+    Timer4,
     /// `GPCRC` — one CRC engine, one message being checksummed at a time.
     Gpcrc,
     /// `LETIMER0` — one counter, one pair of compare channels, one wake-up source.
@@ -58,7 +66,7 @@ pub enum Slot {
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 17;
+pub const SLOT_COUNT: usize = 21;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -81,6 +89,10 @@ impl Slot {
             Slot::Burtc => 14,
             Slot::Acmp0 => 15,
             Slot::Aes => 16,
+            Slot::Timer1 => 17,
+            Slot::Timer2 => 18,
+            Slot::Timer3 => 19,
+            Slot::Timer4 => 20,
         }
     }
 }
@@ -169,8 +181,11 @@ mod tests {
         assert!(!slots.is_taken(Slot::I2c));
     }
 
-    /// Every slot claims once and only once -- written as a loop so a slot added to the enum without an index is
-    /// caught here rather than by two drivers fighting over one peripheral.
+    /// Every slot claims once and only once.
+    ///
+    /// The list below is written by hand, and on 2026-11-27 it was two slots behind the enum (`Acmp0` and `Aes` had
+    /// never been claimed here), so it is a smoke test and not the guard its first version claimed to be. The real
+    /// guard is `Slot::index`: its `match` is exhaustive, so a new variant does not compile until it has an index.
     #[test]
     fn every_slot_is_claimable_once() {
         let mut slots = Slots::new();
@@ -190,6 +205,12 @@ mod tests {
             Slot::Prs,
             Slot::Pcnt,
             Slot::Burtc,
+            Slot::Acmp0,
+            Slot::Aes,
+            Slot::Timer1,
+            Slot::Timer2,
+            Slot::Timer3,
+            Slot::Timer4,
         ] {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(

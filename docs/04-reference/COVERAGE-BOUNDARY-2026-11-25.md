@@ -36,7 +36,7 @@ Modes are listed separately, because a mode is not a family: `EUSART0` is driven
 | `cmu`, `emu`, `hfxo0`, `lfxo`, `lfrco` | `clock`, `emu`, `sleep` | clock tree, energy modes, oscillator start | `hal_hfxo`, `hal_emu_voltage`, `hal_em2_sleep` |
 | `sysrtc0` | `sysrtc` | 32.768 kHz counter, compare, 64-bit extended | `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_timer_ticks` |
 | `timer0` | `timer`, `pwm`, `buzzer` | count, compare, PWM | `hal_timer_compare`, `hal_timer0_pwm` |
-| `timer1`–`timer4` | `timer` | same driver, one instance each | compiled, not measured |
+| `timer1`–`timer4` | `timer` | same driver, one instance each, one claim each | `hal_timer_instances` — each built at 1000 Hz and its **overflows** counted against a 50 ms SYSRTC window: `o1=48 o2=48 o3=48 o4=0 stopped=0 top=18999 clean=1 refused=1`, three boots identical; the stopped instance and the never-started one are the controls. Getting there found two defects in a constructor nothing had ever called (the `EN`/`CFG` order, and `clear_overflow` clearing `TIMER0` from every instance) — record in [`TIMER-INSTANCES-2026-11-27.md`](TIMER-INSTANCES-2026-11-27.md) |
 | `usart0` | `usart` | asynchronous serial: echo, and a receiver that refuses a broken frame | `hal_usart_link` |
 | `eusart1` | `usart` | the same driver, second instance | compiled, **not measured** — no example routes it |
 | `eusart0` | `spi` | SPI **master**, 8-bit, blocking | `hal_spi_loopback` — with a jumper on D9–D10, and a control that reads `ff..ff` without it |

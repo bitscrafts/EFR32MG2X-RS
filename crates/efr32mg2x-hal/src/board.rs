@@ -196,6 +196,122 @@ impl Board {
         .map_err(Handout::Driver)
     }
 
+    /// Bring up the branch clock the `TIMER` block counts from, the way `pwm::Timer0::take` learned to do it.
+    ///
+    /// Measured 2026-11-27, and it cost a flash to find out: gating `CLKEN0.TIMEn` alone is not enough. The first write
+    /// to `TIMER1`'s `EN` with the branch clock not running was a **precise bus fault at `0x4004c004`** —
+    /// `Escalated BusFault (Precise data access error)` in the fault trace. `EM01GRPACLK` has to be pointed at a
+    /// running oscillator, and the oscillator has to be forced on: a selector aimed at an oscillator that nobody turned
+    /// on gives a timer that does not count, with no error anywhere.
+    ///
+    /// Returns `false` if `HFRCOEM23` never reports ready, which is the one failure here that is not a bus fault.
+    fn open_timer_branch(&self) -> bool {
+        self.dp
+            .cmu_s
+            .clken0()
+            .modify(|_r, w| w.hfrcoem23().set_bit());
+        self.dp
+            .hfrcoem23_s
+            .ctrl()
+            .modify(|_r, w| w.forceen().set_bit());
+        let mut spin = 0u32;
+        while !self.dp.hfrcoem23_s.status().read().rdy().bit_is_set() {
+            spin += 1;
+            if spin > 1_000_000 {
+                return false;
+            }
+        }
+        self.dp
+            .cmu_s
+            .em01grpaclkctrl()
+            .modify(|_r, w| w.clksel().hfrcoem23());
+        true
+    }
+
+    /// `TIMER1`, handed out with its own claim so two owners cannot pace the same counter.
+    ///
+    /// This is the first instance `timer::TimerN` can be built for at all. Until now every `Board` hand-out built its
+    /// driver from a clock in hertz, and the timer driver's only constructor wanted a `FrozenClocks` the board does not
+    /// keep — so `TIMER1`–`TIMER4` compiled, were documented, and were reachable from nowhere. See
+    /// [`crate::timer::Timer1::new_at`], which is the same constructor without the clock handle.
+    ///
+    /// No pin is routed: a timer that only counts and compares needs no pad, and routing one would claim a pin the
+    /// caller did not ask for.
+    pub fn timer1(
+        &self,
+        config: crate::timer::Config,
+    ) -> Result<crate::timer::Timer1, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Timer1)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.timer1().set_bit());
+        if !self.open_timer_branch() {
+            return Err(Handout::Driver(()));
+        }
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of TIMER1.
+        Ok(crate::timer::Timer1::new_at(
+            unsafe { pac::Timer1S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
+    /// `TIMER2` — the same driver and the same claim discipline as [`Board::timer1`].
+    pub fn timer2(
+        &self,
+        config: crate::timer::Config,
+    ) -> Result<crate::timer::Timer2, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Timer2)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.timer2().set_bit());
+        if !self.open_timer_branch() {
+            return Err(Handout::Driver(()));
+        }
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of TIMER2.
+        Ok(crate::timer::Timer2::new_at(
+            unsafe { pac::Timer2S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
+    /// `TIMER3` — the same driver and the same claim discipline as [`Board::timer1`].
+    pub fn timer3(
+        &self,
+        config: crate::timer::Config,
+    ) -> Result<crate::timer::Timer3, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Timer3)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.timer3().set_bit());
+        if !self.open_timer_branch() {
+            return Err(Handout::Driver(()));
+        }
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of TIMER3.
+        Ok(crate::timer::Timer3::new_at(
+            unsafe { pac::Timer3S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
+    /// `TIMER4` — the same driver and the same claim discipline as [`Board::timer1`].
+    pub fn timer4(
+        &self,
+        config: crate::timer::Config,
+    ) -> Result<crate::timer::Timer4, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::Timer4)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.timer4().set_bit());
+        if !self.open_timer_branch() {
+            return Err(Handout::Driver(()));
+        }
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of TIMER4.
+        Ok(crate::timer::Timer4::new_at(
+            unsafe { pac::Timer4S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
     /// EUSART0 as an SPI master on three routed pins: the board's own SPI pads.
     ///
     /// D10 = PA5 is MOSI, D9 = PA4 is MISO, D8 = PA3 is SCLK — the same three pads Seeed's board support

@@ -64,14 +64,11 @@ without one is a claim. The measured record and what each run rules out are in
     acmp: ok=1 n=252 c1=44 c2=22 c3=44 e=111 f=0 u=0 lo=853 hi=873 sw=01 off=01 st=0x00000000 ic=0x003f2012
 ```
 
-Controls and the full story: [ACMP-LADDER-2026-11-27.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/ACMP-LADDER-2026-11-27.md)
+Controls and the full story: [ACMP-LADDER-2026-11-27.md](../../../../docs/04-reference/ACMP-LADDER-2026-11-27.md)
 
 ## What is not proven
 
-The record's own list, one line each: the ladder is not a calibrated voltage (both ends come from the same bandgap);
-nothing is claimed about `VSENSE0`; no package pin was driven through `POSSEL`/`NEGSEL`; the `IF`/`IEN` interrupt path,
-`ACMP1`, hibernate mode, the capacitive-sense bank and the GPIO output route are not exercised; tap 0 was not compared;
-and temperature was not varied. The section "What this does not prove" in the record above is the authority.
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

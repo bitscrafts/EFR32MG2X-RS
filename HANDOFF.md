@@ -5,6 +5,38 @@ was found faulty on 2026-11-15 and is away for replacement (about a month); that
 anything already measured with it — those dates stand — and the examples that need the carrier say so
 until another one is on the bench. The board left running `hal_wdog_feed`, its record `PASS`.
 
+## Session 2026-11-27 — TIMER1–TIMER4 measured, and the constructor nobody could call was wrong twice
+
+**State: green.** Branch `master`, pushed. Board left running `hal_timer_instances`, `status=PASS`
+(`timers: ms=50 o1=48 o2=48 o3=48 o4=0 stopped=0 top=18999 want=1000 clean=1 refused=1`, three boots identical).
+
+The four rows in the coverage boundary that read "compiled, not measured" for `TIMER1`–`TIMER4` were not laziness: the
+driver's only constructor took a `&FrozenClocks`, and `FrozenClocks` owns the CMU that the `Board` owns, so **no
+`Board` hand-out could build one**. Making them reachable took:
+
+- `TimerN::new_at(timer, config, hfclk_hz)` — the shape `usart` and `i2c` had already adopted; `new` now delegates.
+- `Board::timer1()` … `timer4()`, one claim each (`Slot::Timer1`…`Slot::Timer4`, `SLOT_COUNT` 17 → 21).
+- `Board::open_timer_branch()` — `CLKEN0.HFRCOEM23`, `FORCEEN`, wait `STATUS.RDY`, `EM01GRPACLK = HFRCOEM23`. Gating
+  `CLKEN0.TIMEn` alone is not enough: the first register write faults.
+
+**Two defects came out of the first run, both in code that had never executed.** The constructor enabled the block
+*before* writing `CFG`, which faults (`Escalated BusFault ... at 0x4004c004` = `TIMER1`'s `CFG`); with the order fixed,
+`TOP` turned out to fault the other way round, with the block disabled (`... at 0x4004c01c`). And `clear_overflow()`
+cleared **`TIMER0`'s** flag from every instance, because the base was hard-coded in the macro that generates all five
+drivers. A crate with one measured timer cannot see either.
+
+The measurement counts **overflows**, not the raw counter: `CNT` advances at the oscillator and wraps at `TOP`, so
+counting `CNT` measures the clock while counting overflows measures the period the driver was asked for. 48 overflows
+against a 50 ms SYSRTC window at 1000 Hz is a measured ~960 Hz; the two oscillators are not the same to 1 %, and the
+tolerance (±3 in 50) still refuses a stopped counter or a prescaler off by two.
+
+**Uncommitted by design:** nothing. `scripts/check-missing-docs.py` and the 41-file `missing_docs` sweep were committed by
+the night cron at 15:31 (`e878719`) after this session's edit to the coverage boundary was already in the tree; that
+edit went in separately as `437c752`, and this session's work follows it.
+
+**Next:** `EUSART1` is the last "compiled, not measured" row; then the PRS consumers beyond the IADC trigger; then the
+modes in section 3 of the boundary (SPI/I2C slave, 9-bit, IrDA/ISO7816, I2S, IADC scan, timer input capture).
+
 ## Session 2026-11-25 — SPI and USART measured, the CI that built a quarter of the tree, and a safety sweep that found the buzzer dead
 
 **State: green.** Branch `master`, pushed. Board left running `hal_usart_link` (jumper D6–D7 fitted, record `PASS`).

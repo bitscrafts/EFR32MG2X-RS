@@ -63,13 +63,17 @@ and the defaults that the hardware demands (gate first, then configure).
 | `timer0_free_running` | fn | TIMER0 as a free-running 16-bit counter in the `EM01GRPACLK` group, with that group's source left alone. |
 | `timer0_free_running_prescaled` | fn | The same counter with its prescaler chosen by the caller, `divide_log2` being the number of halvings. |
 | `timer0_on` | fn | TIMER0 on the pin the caller names, calibrated but undecided about what it means. |
+| `timer1` | fn | `TIMER1`, handed out with its own claim so two owners cannot pace the same counter. |
+| `timer2` | fn | `TIMER2` — the same driver and the same claim discipline as [`Board::timer1`]. |
+| `timer3` | fn | `TIMER3` — the same driver and the same claim discipline as [`Board::timer1`]. |
+| `timer4` | fn | `TIMER4` — the same driver and the same claim discipline as [`Board::timer1`]. |
 | `usart0` | fn | USART0 with its clock enabled, ready for the pins to be routed. |
 | `watch_edges` | fn | Point an external-interrupt channel at `port`/`pin` and have it react to the edges named. |
 | `wdog` | fn | The watchdog, configured at construction. |
 
 ## Registers it touches
 
-`Acmp0S`, `BurtcNs`, `EmuS`, `Eusart0S`, `GpcrcNs`, `GpioNs`, `GpioS`, `I2c0Ns`, `Iadc0S`, `Letimer0Ns`, `MvpNs`, `Pcnt0Ns`, `Peripherals`, `PrsS`, `RadioaesS`, `Usart0S`, `Wdog0Ns`
+`Acmp0S`, `BurtcNs`, `EmuS`, `Eusart0S`, `GpcrcNs`, `GpioNs`, `GpioS`, `I2c0Ns`, `Iadc0S`, `Letimer0Ns`, `MvpNs`, `Pcnt0Ns`, `Peripherals`, `PrsS`, `RadioaesS`, `Timer1S`, `Timer2S`, `Timer3S`, `Timer4S`, `Usart0S`, `Wdog0Ns`
 
 ## What was measured
 
@@ -77,7 +81,7 @@ and the defaults that the hardware demands (gate first, then configure).
     board: gatt c0 notif=0 refused=0 ev=0 se=4/4616 sm=1 h=010603a0 ua=00000000x0 cv=
 ```
 
-Controls and the full story: [BLE-STATUS.md](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/BLE-STATUS.md)
+Controls and the full story: [BLE-STATUS.md](../../../../docs/04-reference/BLE-STATUS.md)
 
 ## What is not proven
 
@@ -86,4 +90,4 @@ Controls and the full story: [BLE-STATUS.md](https://github.com/bitscrafts/EFR32
 
 ## Using it
 
-See `examples/hal_acmp_ladder.rs`, `examples/hal_adc_prs_gpio.rs`, `examples/hal_adc_prs_timer.rs`, `examples/hal_adc_prs_trigger.rs`, `examples/hal_adc_read.rs`, `examples/hal_aes_kat.rs`, `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_delay_clock.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_emu_voltage.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_gpcrc.rs`, `examples/hal_gpio_interrupt.rs`, `examples/hal_hfxo.rs`, `examples/hal_i2c_async.rs`, `examples/hal_i2c_bitbang.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_imu_read.rs`, `examples/hal_led_blink.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_mic_level.rs`, `examples/hal_mvp_bench.rs`, `examples/hal_one_of_each.rs`, `examples/hal_pcnt_gpio.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer0_pwm.rs`, `examples/hal_timer0_repacing.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_ticks.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`, `examples/hal_wdog_feed.rs`
+See `examples/hal_acmp_ladder.rs`, `examples/hal_adc_prs_gpio.rs`, `examples/hal_adc_prs_timer.rs`, `examples/hal_adc_prs_trigger.rs`, `examples/hal_adc_read.rs`, `examples/hal_aes_kat.rs`, `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_delay_clock.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_emu_voltage.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_gpcrc.rs`, `examples/hal_gpio_interrupt.rs`, `examples/hal_hfxo.rs`, `examples/hal_i2c_async.rs`, `examples/hal_i2c_bitbang.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_imu_read.rs`, `examples/hal_led_blink.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_mic_level.rs`, `examples/hal_mvp_bench.rs`, `examples/hal_one_of_each.rs`, `examples/hal_pcnt_gpio.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer0_pwm.rs`, `examples/hal_timer0_repacing.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`, `examples/hal_timer_ticks.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`, `examples/hal_wdog_feed.rs`
