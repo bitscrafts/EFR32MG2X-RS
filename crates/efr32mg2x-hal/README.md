@@ -49,6 +49,7 @@ Read from the source, so it cannot drift:
 | `Pcnt0Ns` | `src/board.rs`, `src/pcnt.rs` |
 | `Peripherals` | `src/adc/mod.rs`, `src/board.rs`, `src/buzzer.rs` (+13 more) |
 | `PrsS` | `src/board.rs`, `src/prs.rs` |
+| `RadioaesS` | `src/aes/mod.rs`, `src/board.rs` |
 | `Sysrtc0Ns` | `src/rtc/mod.rs`, `src/sysrtc.rs` |
 | `Timer0S` | `src/timer/mod.rs` |
 | `Usart0S` | `src/board.rs`, `src/spi/mod.rs`, `src/usart/mod.rs` |
@@ -78,7 +79,7 @@ Every peripheral family the crate drives, one module each -- a peripheral, a bus
 only re-exports):
 
 ```
-acmp  adc  board  burtc  bus  buzzer  clock  delay  display  dma  dwt  emu  eusart
+acmp  adc  aes  board  burtc  bus  buzzer  clock  delay  display  dma  dwt  emu  eusart
 extint  gpcrc  i2c  letimer  microphone  mvp  pcnt  pin  prs  pwm  record  route
 rtc  sensors  sleep  spi  sysrtc  timer  usart  wdog
 ```
@@ -92,7 +93,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-34 public modules (`pub mod` in `src/lib.rs`) and 38 examples. A date next to an example means a record was
+35 public modules (`pub mod` in `src/lib.rs`) and 39 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -179,6 +180,8 @@ peripheral families and re-checked family by family, is
 | `PRS` | producers measured: a GPIO pin, a timer overflow, a software pulse | `hal_adc_prs_gpio`, `hal_adc_prs_timer`, `hal_adc_prs_trigger` |
 | `BURTC` | 32-bit backup counter, power-of-two prescaler, `EM4GRPACLK` source; survives a core reset | `hal_burtc_backup` |
 | `CMU` clock sources | `FSRCO`, `HFRCOEM23` (band read back from `CAL`), `ULFRCO` and `LFRCO` measured against the crystal | `hal_cmu_sources` |
+| `ACMP0` | internal input mux and the 63-tap reference ladder, read as a ruler | `hal_acmp_ladder` |
+| `RADIOAES` | AES-128 ECB, one block per call, through scatter-gather descriptor chains; the radio itself is not touched | `hal_aes_kat` (FIPS-197 C.1 and NIST SP 800-38A F.1.1, plus a decrypt round trip) |
 
 ### Compiled, not measured
 
@@ -187,7 +190,7 @@ routes them. They build; nobody has watched them.
 
 ### Absent: peripheral families this crate does not touch
 
-`VDAC0`/`VDAC1` (DACs) · `ACMP0`/`ACMP1` (comparators) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
+`VDAC0`/`VDAC1` (DACs) · `ACMP1` (the second comparator) · `KEYSCAN` (keyboard matrix) · `DCDC` · `SMU` · `WDOG1` · and the infrastructure set `SYSCFG`, `DMEM`,
 `BURAM`, `SCRATCHPAD`, `HOSTMAILBOX`, `ICACHE0` (`MSC` is *not* here: `Board::take` unlocks it and writes `READCTRL` for
 the flash wait states).
 
@@ -278,7 +281,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-38 examples, **28 of them watched on the part**. A `--` in the last column means nobody
+39 examples, **29 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -289,6 +292,7 @@ mean it works.
 | `hal_adc_prs_timer.rs` | The PRS trigger measured on 2026-11-26 was driven by `ASYNC_SWPULSE` — a CPU write. That proves the converter's | 2026-11-26 |
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | 2026-11-25 |
+| `hal_aes_kat.rs` | `RADIOAES` against the two published AES-128 known answers, plus the controls that make them mean something. | 2026-11-27 |
 | `hal_burtc_backup.rs` | `BURTC` against `SYSRTC` over a known window: two counters on the same 32.768 kHz branch, and a control that takes the | 2026-11-27 |
 | `hal_cmu_sources.rs` | The clocks nobody had measured: `FSRCO`, `HFRCOEM23`, `ULFRCO` -- and the crystal as the referee. | 2026-11-27 |
 | `hal_dma_irq.rs` | Does the LDMA end a transfer with an interrupt, with the core asleep, and does `IEN` gate it? | 2026-11-27 |

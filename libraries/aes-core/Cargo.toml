@@ -1,0 +1,6 @@
+[package]
+name = "efr32mg2x-aes-core"
+version = "0.1.0"
+edition = "2021"
+description = "The RADIOAES scatter-gather words and the published AES-128 known answers, as host-testable arithmetic"
+license = "MIT OR Apache-2.0"

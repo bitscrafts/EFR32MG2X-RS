@@ -502,6 +502,20 @@ impl Board {
         crate::acmp::Acmp0::new(unsafe { pac::Acmp0S::steal() }).map_err(Handout::Driver)
     }
 
+    /// The `RADIOAES` crypto block, with its bus gate on.
+    ///
+    /// The gate is `CMU_CLKEN0.RADIOAES` (bit 2) -- the first bank, unlike `ACMP0`'s. Nothing here touches
+    /// `CMU_RADIOCLKCTRL`: the AES engine is in the EM1 power domain with its own bus clock and answers without the
+    /// transceiver's clock, which the measurement in `docs/04-reference/AES-KAT-2026-11-27.md` records.
+    pub fn aes(&self) -> Result<crate::aes::Aes, Handout<crate::aes::Error>> {
+        self.claim(crate::cores::slots::Slot::Aes)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.radioaes().set_bit());
+        // SAFETY: `Board` holds the PAC singletons for the whole program; this hands RADIOAES out through the claim
+        // table, so no second driver can reach the same registers.
+        crate::aes::Aes::new(unsafe { pac::RadioaesS::steal() }).map_err(Handout::Driver)
+    }
+
     /// Entry and exit of EM2, carrying the `EMU` it drives.
     ///
     /// Handed out here for the same reason the timer is: EM2 is where the core stops running from the
