@@ -201,6 +201,20 @@ fi
 # and nothing checked it: 35 public modules carried zero per-module READMEs while the gate was green, because the only
 # generator in the tree writes one README per CRATE. The checker fails on a missing README, on a surviving
 # `TODO(measured)` marker, on a public item with no API row, and on inspecting zero modules.
+# The checker is the Hermes skill's file, installed here byte-identically because a CI runner has no `~/.hermes`.
+# One authority, one installed copy: where the skill is present, drift between the two is a failure; where it is not
+# (every runner), the comparison prints a named SKIP instead of pretending it passed.
+SKILL_COPY="$HOME/.hermes/skills/software-development/hal-module-readme/scripts/check-module-readmes.py"
+if [ -f "$SKILL_COPY" ]; then
+  if cmp -s "$SKILL_COPY" scripts/check-module-readmes.py; then
+    pass "skill artefact: scripts/check-module-readmes.py matches the skill's copy"
+  else
+    fail "skill artefact: scripts/check-module-readmes.py has drifted from $SKILL_COPY (copy the skill's file, do not edit this one)"
+  fi
+else
+  echo "  SKIP  skill artefact: the hal-module-readme skill is not on this machine, so drift cannot be compared here"
+fi
+
 if python3 scripts/check-module-readmes.py --hal crates/efr32mg2x-hal >/tmp/gate-module-readmes.log 2>&1; then
   pass "$(sed -n 's/^  PASS  //p' /tmp/gate-module-readmes.log | head -1)"
 else
