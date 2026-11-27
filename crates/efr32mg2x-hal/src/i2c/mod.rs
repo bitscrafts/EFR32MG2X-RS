@@ -51,7 +51,7 @@
 
 mod async_impl;
 
-pub use async_impl::{last_state, waits};
+pub use async_impl::{last_state, on_interrupt, waits};
 mod traits;
 mod types;
 

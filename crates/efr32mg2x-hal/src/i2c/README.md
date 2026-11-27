@@ -35,6 +35,7 @@ num firmware que nunca usasse I2C assíncrono.
 | `fn` | const | Create new I2C configuration with specified speed. |
 | `last_state` | fn | O `(STATUS, IF)` da última espera falhada -- a leitura que diz em que estado o barramento ficou. |
 | `new` | fn | Creates a new I2C0 instance # Arguments * `i2c` - I2C0_S peripheral instance * `config` - I2C configuration * `hfclk` - the HFCLK frequency the divider is computed from # Example ```no_run let i2c = I2c0::new(dp.i2c0_ns, Config::new(Speed::Standard100kHz), clocks.hfclk()); ```. |
+| `on_interrupt` | fn | — |
 | `read` | fn | Read data from I2C device # Arguments * `addr` - 7-bit device address * `buffer` - Buffer to store read data # Returns `Ok(())` on success, `Err(Error)` on failure. |
 | `waits` | fn | Os contadores, para quem os quiser ler sem `nm`. |
 | `write` | fn | Write data to I2C device # Arguments * `addr` - 7-bit device address * `bytes` - Data to write # Returns `Ok(())` on success, `Err(Error)` on failure. |
@@ -42,7 +43,7 @@ num firmware que nunca usasse I2C assíncrono.
 
 ## Registers it touches
 
-`I2c0Ns`, `I2c0S`, `I2c1S`, `Peripherals`
+`I2c0Ns`, `I2c0S`, `I2c1S`, `Interrupt`, `Peripherals`
 
 ## What was measured
 

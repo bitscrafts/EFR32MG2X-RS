@@ -516,9 +516,11 @@ cargo doc --no-deps --features rt --open
    The record is `dmalink: ok=1 d1=8 d2=8 s2=1 lk=0x0 cto=1 c1=8 c2=0 c1r=1 clk=0x0`
    (`docs/04-reference/DMA-LINKED-2026-11-27.md`)
 6. **Async**: `embedded_hal_async::i2c::I2c` is implemented and measured on the board (`WHO_AM_I = 0x6a` with no
-   help from the blocking path); an Embassy time driver and executor on the SYSRTC are proven (B9). The wait does
-   not use the peripheral interrupt: it returns `Pending` and self-wakes, so the core does not sleep during a
-   transfer. Arming `IEN` for those flags re-entered the handler 44 647 591 times -- measured.
+   help from the blocking path); an Embassy time driver and executor on the SYSRTC are proven (B9). The wait now
+   **sleeps**: one `IEN` bit armed per wait, `on_interrupt()` disarms before it clears — the order that turns 44 647 591
+   handler entries into 6 — and the record is `i2c-async: who=0x6a pending=23 irq=12 wfi=12` over two transactions,
+   three boots identical. The earlier version self-woke and never let the core sleep
+   (`docs/04-reference/ASYNC-I2C-INTERRUPT-2026-11-27.md`).
 7. **Testing**: The board is on the bench and most claims here carry a recorded mailbox line. What has no hardware
    proof is named as such in `docs/04-reference/` -- see `I2C-RECOVERY-STATE.md`, `IMU-FIFO-MEASURED.md`,
    `SYSRTC-OWNERSHIP.md`.

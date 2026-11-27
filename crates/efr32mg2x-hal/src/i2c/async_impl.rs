@@ -36,18 +36,23 @@ use super::{Error, I2c0, WAIT_POLLS};
 // A lição não é sobre o I2C: a resposta estava num core com testes no host, e a primeira versão deste ficheiro foi
 // escrita a partir do que parecia certo em vez de ser lida a partir dele. Custou seis flashes.
 //
-// ## Porque é que isto não usa a interrupção do I2C
+// ## A interrupção do I2C, e a razão pela qual a primeira versão reentrou 44 milhões de vezes
 //
-// A primeira versão deste ficheiro armava `IEN` para `txc`/`rxdatav`/`nack`/`mstop` e acordava a tarefa na
-// interrupção. Medido na placa: **44 647 591** entradas no handler em poucos segundos (`ICSR = 0x82b`, vector 43),
-// porque neste periférico o flag de `IF` volta a afirmar-se enquanto a condição for verdadeira -- limpar não o
-// desarma, ao contrário de um evento latched. Uma versão futura tem de desarmar o bit certo por espera, e não
-// armar todos de uma vez.
+// A primeira versão armava `IEN` para `txc`/`rxdatav`/`nack`/`mstop` **de uma vez**, e acordava a tarefa na interrupção.
+// Medido na placa: **44 647 591** entradas no handler em poucos segundos (`ICSR = 0x82b`, vector 43). A causa está
+// neste periférico e não no handler: `IF` **volta a afirmar-se enquanto a condição for verdadeira**, ao contrário de
+// um evento latched, e limpar não desarma. Armar todos os bits e limpá-los no handler é uma comporta aberta.
 //
-// Enquanto isso, a espera é esta: o futuro devolve `Pending` e **pede para ser sondado outra vez**. Não bloqueia
-// nada -- o executor corre outras tarefas entre sondagens --, mas também não deixa o núcleo dormir enquanto uma
-// transferência está em curso, que a 100 kHz são cerca de um milissegundo por dezena de bytes.
-
+// O que aqui se faz agora, uma espera de cada vez:
+//
+//   1. limpa o `IF` do evento que se vai esperar (pela janela `_CLR`, onde escrever 1 limpa);
+//   2. arma **só** o `IEN` desse evento e desmascara o vector no NVIC;
+//   3. devolve `Pending` sem pedir nova sondagem — é isto que deixa o núcleo dormir;
+//   4. a interrupção chama [`on_interrupt`], que **desarma primeiro** e só depois limpa, e acorda a tarefa.
+//
+// Desarmar antes de limpar é a diferença entre uma entrada por evento e 44 milhões: enquanto o `IEN` estiver armado e
+// a condição for verdadeira, o vector volta a disparar no instante em que a ISR regressa.
+//
 // --- marcadores, para um travamento dizer onde travou ---------------------------------------------
 //
 // Uma espera que nunca se satisfaz não escreve registo nenhum, e um firmware mudo não diz qual das três esperas do
@@ -91,12 +96,24 @@ pub fn last_state() -> (u32, u32) {
     (ULTIMO_STATUS.load(Relaxed), ULTIMO_IF.load(Relaxed))
 }
 
+/// Os bits de `IEN` que este ficheiro arma, um por espera.
+///
+/// Um de cada vez, e é o ponto do ficheiro: armar vários de uma vez e limpá-los no handler é o que produziu 44 milhões
+/// de entradas. Os números são os do registo (`ien.rs` do PAC: `START` 0, `TXC` 3, `TXBL` 4, `RXDATAV` 5, `MSTOP` 8).
+const IEN_START: u32 = 1 << 0;
+const IEN_TXC: u32 = 1 << 3;
+const IEN_TXBL: u32 = 1 << 4;
+const IEN_RXDATAV: u32 = 1 << 5;
+const IEN_MSTOP: u32 = 1 << 8;
+
 /// Um futuro que termina quando `pronto` disser que sim, ou com erro quando o barramento recusar.
 ///
 /// O limite de voltas não é um `timeout` de tempo real: conta as **vezes que a tarefa voltou a ser acordada**, e
 /// existe para uma interrupção perdida virar um erro visível em vez de uma tarefa que nunca mais corre. Uma
 /// transferência de I2C a 100 kHz levanta estas notificações dezenas de vezes, não milhares.
 struct Ate<F> {
+    /// O bit de `IEN` que corresponde ao evento esperado. Um de cada vez: ver a nota do topo.
+    mask: u32,
     pronto: F,
 }
 
@@ -126,19 +143,51 @@ where
             core::sync::atomic::Ordering::Relaxed,
         );
 
-        // Sondar outra vez, sem interrupção. Ver a nota no topo do ficheiro.
-        cx.waker().wake_by_ref();
+        // Limpar o evento *antes* de o armar: um `IF` já posto faria a interrupção disparar imediatamente e o
+        // handler desarmá-lo-ia sem que a condição tivesse mudado. A janela `_CLR` é onde escrever 1 limpa.
+        // SAFETY: a janela segura do I2C0 é o mesmo bloco noutro offset, e só se escrevem bits de flag.
+        let seguro = unsafe { crate::alias::clear_window(efr32mg2x_pac::I2c0S::ptr()) };
+        // SAFETY: `this.mask` vem de uma tabela de bits de `IEN` deste periférico, não de um número do chamador.
+        seguro.if_().write(|w| unsafe { w.bits(this.mask) });
+        // SAFETY: idem -- os mesmos bits, agora no registo de enable da vista segura.
+        let seguro_en = unsafe { efr32mg2x_pac::I2c0S::steal() };
+        seguro_en
+            .ien()
+            .modify(|r, w| unsafe { w.bits(r.bits() | this.mask) });
+        // O vector é da aplicação, mas quem sabe que a espera está armada é o driver: desmascarar aqui é o que
+        // transforma `Pending` num núcleo a dormir em vez de uma tarefa a girar.
+        // SAFETY: `unmask` mexe no NVIC, que não é um periférico desta HAL; o efeito é uma interrupção a mais.
+        unsafe { cortex_m::peripheral::NVIC::unmask(efr32mg2x_pac::Interrupt::I2C0) };
+        // Sem `wake_by_ref()`: a tarefa não pede para ser sondada, é a interrupção que a acorda.
+        let _ = cx;
         Poll::Pending
     }
 }
 
+/// O que a aplicação chama no seu `I2C0_IRQHandler`.
+///
+/// Devolve o `IF` que estava posto e deixa o periférico com o `IEN` **desarmado**, para o vector não voltar a disparar
+/// enquanto a condição se mantiver verdadeira. Quem chama acorda a sua tarefa; ver o exemplo `hal_i2c_async`.
+#[must_use]
+pub fn on_interrupt() -> u32 {
+    // SAFETY: vista segura do I2C0, a mesma que o resto deste ficheiro usa para `IF`; só se lê e limpam flags.
+    let seguro = unsafe { efr32mg2x_pac::I2c0S::steal() };
+    let pendente = seguro.if_().read().bits();
+    // Desarmar primeiro. Isto é a correcção do defeito dos 44 milhões de entradas.
+    seguro.ien().write(|w| unsafe { w.bits(0) });
+    // SAFETY: janela `_CLR` do mesmo bloco; escrever 1 em cada bit pendente limpa-o.
+    let limpar = unsafe { crate::alias::clear_window(efr32mg2x_pac::I2c0S::ptr()) };
+    limpar.if_().write(|w| unsafe { w.bits(pendente) });
+    pendente
+}
+
 impl I2c0 {
     /// O estado do barramento, para o predicado de [`Ate`].
-    fn espera<F>(&self, pronto: F) -> Ate<F>
+    fn espera<F>(&self, mask: u32, pronto: F) -> Ate<F>
     where
         F: FnMut(&efr32mg2x_pac::i2c0_ns::RegisterBlock) -> bool,
     {
-        Ate { pronto }
+        Ate { mask, pronto }
     }
 
     /// Põe um byte no barramento: espera pelo buffer livre, escreve, espera pela transmissão e verifica o NACK.
@@ -151,13 +200,13 @@ impl I2c0 {
     async fn put_byte(&mut self, byte: u8) -> Result<(), Error> {
         ULTIMA_ESPERA.store(1, core::sync::atomic::Ordering::Relaxed);
         ESPERAS_TXBL.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
-        self.espera(|r| r.status().read().txbl().bit_is_set())
+        self.espera(IEN_TXBL, |r| r.status().read().txbl().bit_is_set())
             .await?;
         // SAFETY: `TXDATA` takes the byte being shifted out; `byte` is a `u8`, so the widening to `u32` adds nothing.
         self.i2c.txdata().write(|w| unsafe { w.bits(byte as u32) });
         ULTIMA_ESPERA.store(2, core::sync::atomic::Ordering::Relaxed);
         ESPERAS_TXC.fetch_add(1, core::sync::atomic::Ordering::Relaxed);
-        self.espera(|r| r.status().read().txc().bit_is_set())
+        self.espera(IEN_TXC, |r| r.status().read().txc().bit_is_set())
             .await?;
         // SAFETY: as mesmas duas linhas do caminho bloqueante -- a janela segura do I2C0 e a limpeza de um flag.
         let seguro = unsafe { crate::alias::clear_window(efr32mg2x_pac::I2c0S::ptr()) };
@@ -187,7 +236,7 @@ impl AsyncI2c for I2c0 {
 
         for operation in operations.iter_mut() {
             self.i2c.cmd().write(|w| w.start().set_bit());
-            self.espera(|r| !r.status().read().pstart().bit_is_set())
+            self.espera(IEN_START, |r| !r.status().read().pstart().bit_is_set())
                 .await?;
 
             match operation {
@@ -214,7 +263,7 @@ impl AsyncI2c for I2c0 {
                     // desta comparação.
                     let total = buffer.len();
                     for (i, slot) in buffer.iter_mut().enumerate() {
-                        self.espera(|r| r.status().read().rxdatav().bit_is_set())
+                        self.espera(IEN_RXDATAV, |r| r.status().read().rxdatav().bit_is_set())
                             .await?;
                         if i + 1 == total {
                             self.i2c.cmd().write(|w| w.nack().set_bit());
@@ -228,7 +277,7 @@ impl AsyncI2c for I2c0 {
         }
 
         self.i2c.cmd().write(|w| w.stop().set_bit());
-        self.espera(|r| !r.status().read().pstop().bit_is_set())
+        self.espera(IEN_MSTOP, |r| !r.status().read().pstop().bit_is_set())
             .await?;
         Ok(())
     }

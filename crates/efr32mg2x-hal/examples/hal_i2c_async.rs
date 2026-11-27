@@ -46,6 +46,19 @@ static WFIS: AtomicU32 = AtomicU32::new(0);
 /// Quantas interrupções do I2C foram servidas.
 static IRQS: AtomicU32 = AtomicU32::new(0);
 
+/// O vector do I2C0. É a aplicação que o define -- a HAL traz o futuro, a trait e `on_interrupt`, e não instala
+/// handlers em crates de biblioteca: um handler instalado ali correria mesmo num firmware que nunca usasse I2C
+/// assíncrono.
+///
+/// `on_interrupt` **desarma** o `IEN` antes de limpar o `IF`, e é essa ordem que separa uma entrada por evento das
+/// 44 647 591 entradas medidas na primeira versão, quando o handler só limpava.
+#[no_mangle]
+pub extern "C" fn I2C0_IRQHandler() {
+    let _pendente = efr32mg2x_hal::i2c::on_interrupt();
+    IRQS.fetch_add(1, Ordering::Relaxed);
+    ACORDADO.store(true, Ordering::SeqCst);
+}
+
 /// Ligado pelo waker quando alguém pede uma nova sondagem.
 static ACORDADO: core::sync::atomic::AtomicBool = core::sync::atomic::AtomicBool::new(false);
 
@@ -165,13 +178,34 @@ fn main() -> ! {
         &mut [Operation::Write(&[0x0f]), Operation::Read(&mut who)],
     ));
 
+    // Segunda leitura no mesmo firmware: as contagens têm de **escalar com o trabalho**. Uma constante fixa passaria
+    // na primeira; se `irq` não subir com uma transacção a mais, o que se está a contar não é a interrupção.
+    let primeiro_irq = IRQS.load(Ordering::Relaxed);
+    let primeiro_wfi = WFIS.load(Ordering::Relaxed);
+    let mut who2 = [0u8; 1];
+    let res2 = block_on(i2c.transaction(
+        0x6a,
+        &mut [Operation::Write(&[0x0f]), Operation::Read(&mut who2)],
+    ));
+    let irq_escalou = IRQS.load(Ordering::Relaxed) > primeiro_irq;
+    let wfi_escalou = WFIS.load(Ordering::Relaxed) > primeiro_wfi;
+    let _ = (res2, who2, irq_escalou, wfi_escalou);
+
     let pendings = PENDINGS.load(Ordering::Relaxed);
     let irqs = IRQS.load(Ordering::Relaxed);
     let wfis = WFIS.load(Ordering::Relaxed);
 
     // O IMU responde 0x6a em `WHO_AM_I`. E o caminho tem de ter esperado de verdade: um futuro que nunca devolve
     // `Pending` teria `wfi=0`, que é o que a versão bloqueante faria.
-    let ok = res.is_ok() && who[0] == 0x6a && pendings > 0;
+    let ok = res.is_ok()
+        && who[0] == 0x6a
+        && pendings > 0
+        && irqs > 0
+        && wfis > 0
+        && irq_escalou
+        && wfi_escalou
+        && res2.is_ok()
+        && who2[0] == 0x6a;
 
     report(ok, who[0], pendings, irqs, wfis);
     led.on();
