@@ -324,7 +324,10 @@ features_for() {
   # Keyed by directory basename on purpose: the crates.io name may change, the directory may not.
   case "$1" in
     efr32mg2x-pac|efr32mg2x-hal) echo "--features rt" ;;
-    xiao-mg24-bsp) echo "--features sense" ;;   # the microphone and the IMU exist only on the Sense variant
+    xiao-mg24-bsp) echo "--features sense" ;;  # the microphone and the IMU exist only on the Sense variant
+    # `efr32mg24-radio` and `xiao-expansion-base-bsp` need no baseline: every one of their examples declares its own
+    # `required-features`, and the gate now builds each example with exactly those (scripts/example-groups.py).
+    # Adding a baseline here for them is what made the two untagged radio examples stop linking.
     *) echo "" ;;
   esac
 }
@@ -365,7 +368,9 @@ for dir in $CRATES; do
   # The skip list is keyed by directory: a rename must not resurrect a crate that is deliberately not gated.
   case " $SKIP " in *" $(basename "$dir") "*) continue ;; esac
   [ -f "$dir/Cargo.toml" ] || continue
-  extra=$(features_for "$(basename "$dir")")
+  # The crate-level baseline its examples need but do not declare (the HAL's examples all need `rt`), composed with the
+  # features each group declares in Cargo.toml.
+  baseline=$(features_for "$(basename "$dir")" | sed 's/^--features //')
   count=$(ls "$dir/examples/"*.rs 2>/dev/null | wc -l)
   # A domain crate's examples run on the host: they are how its API is exercised without a
   # board, and building them for the embedded target would be the wrong question.
@@ -373,19 +378,47 @@ for dir in $CRATES; do
     libraries/*) example_target="$HOST" ;;
     *)          example_target="$TARGET" ;;
   esac
-  if cargo build --release --target "$example_target" -p "$pkg" $extra --examples >/tmp/gate-examples-$pkg.log 2>&1; then
-    pass "$pkg: $count examples"
-  else
-    # Keep the compiler's own words. A gate that reports "do not build" without saying why forces the
-    # next person to reproduce the build by hand -- and on a CI runner they often cannot.
-    fail "$pkg: examples do not build"
-    echo "--- first errors from /tmp/gate-examples-$pkg.log:"
-    if grep -qE "^error(\[|:)" "/tmp/gate-examples-$pkg.log"; then
-      grep -E "^error(\[|:)" -A4 "/tmp/gate-examples-$pkg.log" | head -20 | sed 's/^/      /'
+  # What cargo built, not what the directory holds, and each example with the features *it* declares.
+  #
+  # Two defects lived here, and the second only showed once the first was fixed:
+  #   * the count came from `ls examples/*.rs`, while an example behind `required-features` is *skipped*, not failed --
+  #     `efr32mg2x-radio` printed "7 examples" while building 2;
+  #   * one union of features per crate is the wrong instrument: with the union enabled, radio's two untagged examples
+  #     stop *linking* (`rust-lld` exit 1), so the union build can neither prove the five nor leave the two alone.
+  # Groups are computed from Cargo.toml, so the number of cargo invocations is the number of distinct feature vectors.
+  built=0
+  if ! groups=$(python3 scripts/example-groups.py "$dir" 2>/dev/null); then
+    fail "$pkg: could not read the example groups from its Cargo.toml"
+    continue
+  fi
+  while IFS=$'\t' read -r group_features group_names; do
+    [ -z "${group_features:-}" ] && continue
+    example_args=()
+    for one in ${group_names}; do example_args+=(--example "$one"); done
+    combined="${baseline}"
+    [ "${group_features}" != "-" ] && combined="${combined:+${combined},}${group_features}"
+    feature_args=()
+    [ -n "${combined}" ] && feature_args=(--features "${combined}")
+    if cargo build --release --target "$example_target" -p "$pkg" "${feature_args[@]}" "${example_args[@]}" \
+         --message-format=json-render-diagnostics >/tmp/gate-examples-$pkg.json 2>/tmp/gate-examples-$pkg.log; then
+      built=$((built + $(python3 scripts/count-built-examples.py "/tmp/gate-examples-$pkg.json" 2>/dev/null || echo 0)))
     else
-      # Not every failure announces itself with "error:": a build script that panics, a missing
-      # tool, or a linker that dies all read differently. Print the tail rather than nothing.
-      tail -20 "/tmp/gate-examples-$pkg.log" | sed 's/^/      /'
+      fail "$pkg: examples do not build (features: ${group_features}, examples: ${group_names})"
+      echo "--- first errors from /tmp/gate-examples-$pkg.log:"
+      if grep -qE "^error(\[|:)" "/tmp/gate-examples-$pkg.log"; then
+        grep -E "^error(\[|:)" -A4 "/tmp/gate-examples-$pkg.log" | head -20 | sed 's/^/      /'
+      else
+        tail -20 "/tmp/gate-examples-$pkg.log" | sed 's/^/      /'
+      fi
+      built=-1
+      break
+    fi
+  done <<< "${groups}"
+  if [ "${built}" -ge 0 ]; then
+    if [ "${built}" -lt "${count}" ]; then
+      fail "$pkg: $count examples on disk, $built built -- the rest are skipped, so nothing compiles them"
+    else
+      pass "$pkg: $built examples"
     fi
   fi
   # A hardware crate whose API nothing builds is a crate whose API is not tested. Only the

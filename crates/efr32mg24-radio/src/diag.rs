@@ -168,12 +168,14 @@ pub struct ScheduleTxConfig {
 }
 
 #[no_mangle]
+/// `__wrap_RAIL_GetTime`, wrapped so that `DIAG` can count the calls the BLE stack makes to it.
 pub unsafe extern "C" fn __wrap_RAIL_GetTime() -> u32 {
     DIAG[GET_TIME].fetch_add(1, Relaxed);
     __real_RAIL_GetTime()
 }
 
 #[no_mangle]
+/// `__wrap_RAIL_ConfigEvents`, wrapped so that `DIAG` can count the calls the BLE stack makes to it.
 pub unsafe extern "C" fn __wrap_RAIL_ConfigEvents(
     handle: *mut core::ffi::c_void,
     mask: u64,
@@ -184,6 +186,7 @@ pub unsafe extern "C" fn __wrap_RAIL_ConfigEvents(
 }
 
 #[no_mangle]
+/// `__wrap_RAIL_StartTx`, wrapped so that `DIAG` can count the calls the BLE stack makes to it.
 pub unsafe extern "C" fn __wrap_RAIL_StartTx(
     handle: *mut core::ffi::c_void,
     channel: u16,
@@ -203,6 +206,7 @@ pub unsafe extern "C" fn __wrap_RAIL_StartTx(
 }
 
 #[no_mangle]
+/// `__wrap_RAIL_StartScheduledTx`, wrapped so that `DIAG` can count the calls the BLE stack makes to it.
 pub unsafe extern "C" fn __wrap_RAIL_StartScheduledTx(
     handle: *mut core::ffi::c_void,
     channel: u16,
@@ -238,6 +242,7 @@ pub unsafe extern "C" fn __wrap_RAIL_StartScheduledTx(
 }
 
 #[no_mangle]
+/// `__wrap_RAIL_Idle`, wrapped so that `DIAG` can count the calls the BLE stack makes to it.
 pub unsafe extern "C" fn __wrap_RAIL_Idle(handle: *mut core::ffi::c_void, mode: u8, wait: bool) {
     DIAG[IDLE].fetch_add(1, Relaxed);
     DIAG[IDLE_MODE].store(u32::from(mode), Relaxed);
@@ -245,6 +250,7 @@ pub unsafe extern "C" fn __wrap_RAIL_Idle(handle: *mut core::ffi::c_void, mode: 
 }
 
 #[no_mangle]
+/// `__wrap_RAIL_WriteTxFifo`, wrapped so that `DIAG` can count the calls the BLE stack makes to it.
 pub unsafe extern "C" fn __wrap_RAIL_WriteTxFifo(
     handle: *mut core::ffi::c_void,
     data: *const u8,
