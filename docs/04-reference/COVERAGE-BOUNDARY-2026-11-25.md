@@ -47,21 +47,22 @@ Modes are listed separately, because a mode is not a family: `EUSART0` is driven
 | `wdog0` | `wdog` | windowed watchdog, fed with a budget | `hal_wdog_feed` |
 | `gpcrc` | `gpcrc` | CRC-32, reflected, the caller adds the final xor | `hal_gpcrc` |
 | `letimer0` | `letimer` | 24-bit counter, two compare channels, `TOP`; runs in EM2 | `hal_letimer_compare` — a `TOP` of 1000 with compares at 500 and 250, both matches timed against the SYSRTC, `p1=501 pq=250 p2=499`; record in [`LETIMER-COMPARE-2026-11-26.md`](LETIMER-COMPARE-2026-11-26.md) |
+| `prs` | `prs` | routes an event from one peripheral to another without the CPU: `Source` names the producers it encodes (`Off`, `Timer0Overflow`, `Timer0Compare0`, `Timer1Overflow`, `GpioPin`), `connect` writes `ASYNC_CHn_CTRL` whole, `channel_ctrl` reads it back, `pulse` is the software edge | `hal_adc_prs_timer` — TIMER0's overflow on channel 0 converts the IADC once per overflow (`ev=8` for `ovf=8`, four controls at zero), and `hal_adc_prs_gpio` — a pad moved by its own pull resistor paces one conversion per rising edge (`c=4 up=4`), with `EXTIRISE`/`EXTIFALL` proved *not* to be in that path (`fall=4` with the rising mask cleared). Records: [`PRS-TIMER-PRODUCER-2026-11-26.md`](PRS-TIMER-PRODUCER-2026-11-26.md), [`PRS-GPIO-PRODUCER-2026-11-26.md`](PRS-GPIO-PRODUCER-2026-11-26.md) |
+| `pcnt0` | `pcnt` | pulse counter fed by a `PRS` producer; its ceiling is pulse **width**, not bandwidth, because the pins are sampled at 32.768 kHz | `hal_pcnt_gpio` — `pcnt: ch=3 … a=4 lv=4 b=2 c=3 … ar=4 br=2`, and `hal_pcnt_timer_rate` sweeps the rate until the count stops moving (`ceiling=0k`). Records: [`PCNT-GPIO-2026-11-26.md`](PCNT-GPIO-2026-11-26.md), [`PCNT-CEILING-2026-11-26.md`](PCNT-CEILING-2026-11-26.md) |
+| `acmp0` | `acmp` | the comparator's input mux and its 63-tap reference ladder, read as a ruler | `hal_acmp_ladder` — the ladder swept against a fixed internal source, read three times: `acmp: ok=1 n=252 c1=43 c2=22 c3=43 … lo=833 hi=853 sw=01`, three boots identical; record in [`ACMP-LADDER-2026-11-27.md`](ACMP-LADDER-2026-11-27.md) |
+| `radioaes` | `aes` | AES-128 ECB, one block per call, through scatter-gather descriptor chains; the cipher the radio stack uses, not the radio | `hal_aes_kat` — FIPS-197 C.1 and NIST SP 800-38A F.1.1 byte-exact plus a decrypt round trip: `aes: ok=1 n=4 ct=69c4e0d8…c55a c2=3ad77bb4…ef97 hw=0x05030127`; record in [`AES-KAT-2026-11-27.md`](AES-KAT-2026-11-27.md) |
+| `burtc` | `burtc` | 32-bit backup counter in the always-on domain, power-of-two prescaler, `EM4GRPACLK` source; keeps counting across a core reset | `hal_burtc_backup` — two counters on the same 32.768 kHz branch over a known window (`d1=4113 s1=32901 r1=125`), four boots identical, and a control that takes the SYSRTC out of the comparison; record in [`BURTC-2026-11-27.md`](BURTC-2026-11-27.md). **Not proved**: surviving a real power cut — that needs the supply pulled, which no instrument here can do |
 
 ## 2. Absent: families the device has and this crate does not touch
 
-None of these appears in `crates/efr32mg2x-hal/src/` at all. Each line says what the peripheral is and what driving it
+None of these appears in `crates/efr32mg2x-hal/src/` at all. Families that were on this list and are now driven (`prs`, `pcnt0`, `acmp0`, `radioaes`, `burtc`) moved to section 1 with their records; `acmp1`, which is an instance rather than a family, moved to section 3.
 would cost, so that the boundary is a decision and not an omission.
 
 | family | what it is | cost to drive it |
 |---|---|---|
-| `prs` | peripheral reflex system: routes an event from one peripheral to another without the CPU | ~250 lines, of which the crate now drives a channel: `prs::Source` names the producers it encodes (`Off`, `Timer0Overflow`, `Timer0Compare0`, `Timer1Overflow`, `GpioPin`), `Prs::connect` writes `ASYNC_CHn_CTRL` whole and `Prs::channel_ctrl` reads it back, and `Prs::pulse` is the software edge. Measured: TIMER0's overflow through channel 0 converts the IADC once per overflow (`ev=8` for `ovf=8`), with controls that keep the channel's source the only thing that changed ([`PRS-TIMER-PRODUCER-2026-11-26.md`](PRS-TIMER-PRODUCER-2026-11-26.md)). Measured as well: a GPIO pad moved by its own pull resistor, on channel 3 of port C, paces one conversion per rising pad edge (`c=4 up=4` of eight pad changes, `long=8 upg=8` of sixteen), `EXTIRISE`/`EXTIFALL` are not in that path (`fall=4` with the rising mask cleared), and three controls stayed at zero ([`PRS-GPIO-PRODUCER-2026-11-26.md`](PRS-GPIO-PRODUCER-2026-11-26.md)). **Not driven**: no consumer word other than the IADC's single trigger is written by this crate, the synchronous channels are untouched, a pad driven by a wire rather than by its pull resistor is unmeasured, and `Source::GpioPin` refuses channels above 7 because the vendor signal table stops there |
-| `burtc` | backup RTC in the always-on domain | ~150 lines; hard to prove, because "it kept time with the main supply off" needs a power cut |
 | `vdac0`, `vdac1` | 12-bit DACs | ~200 lines each + a meter to read the output |
-| `acmp0`, `acmp1` | analogue comparators | ~150 lines each + a reference voltage to compare against |
 | `keyscan` | keyboard matrix scanner | ~200 lines + a keypad |
 | `dcdc` | the internal DC-DC converter | small, but a power-mode decision, not a driver: the reset default is the LDO |
-| `radioaes` | AES used by the radio stack | belongs with the radio, not with this crate |
 | `wdog1` | a second watchdog instance | trivial once `wdog0` exists; nothing needs two |
 | `smu` | safety management unit | configuration, not a driver |
 | `syscfg`, `dmem`, `buram`, `scratchpad`, `hostmailbox`, `icache0` | infrastructure: memory and bus configuration | not touched. (`msc` is **not** here: `Board::take` unlocks it with `0x1B71` and writes `READCTRL` for the flash wait states — one privileged write, not a driver) |
@@ -73,6 +74,7 @@ This is the list that matters most for honesty, because a reader sees "SPI suppo
 
 | peripheral | mode | status |
 |---|---|---|
+| `acmp` | **ACMP1**, and any comparator input arriving on a pin | absent, and the module says so: `acmp/mod.rs` exposes the internal input mux and the 63-tap ladder only. A comparator fed from a pad needs a reference on another pad and two instruments to watch it; neither is on the bench |
 | `eusart0` / `usart0` | **SPI slave** | absent as a driver. `spi::Spi0`/`Spi1` are master only. The decision layer exists and is host-tested (`cores::spi::Mode`, `cores::spi::SlaveRx` with its overrun rule), but the register path is not written: it cannot be proven without a master on the other side, and this crate does not ship unproven drivers |
 | `i2c0`, `i2c1` | **I2C slave** (address match) | absent as a driver. The state machine is host-tested (`cores::i2c::slave`: seven-bit address match, NACK on a full receive buffer, stretch on an empty transmit one), but 10-bit addressing, general call and the stretch's timing are hardware this crate has not measured |
 | `usart0`, `eusart1` | 9-bit / multiprocessor address mode | absent |
