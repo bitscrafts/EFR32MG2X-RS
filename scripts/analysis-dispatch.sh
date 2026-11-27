@@ -10,8 +10,19 @@ set -u
 BRIEF="${1:?usage: analysis-dispatch.sh <brief.md> <session-id-file> [--resume <uuid>]}"
 SID_FILE="${2:?usage: analysis-dispatch.sh <brief.md> <session-id-file> [--resume <uuid>]}"
 shift 2
-RESUME=""
-[ "${1:-}" = "--resume" ] && RESUME="${2:-}"
+# `RESUME` from the environment, or `--resume <sid>` / `--resume=<sid>` anywhere in the arguments. It used to be
+# positional only, and `RESUME=<sid> bash script ...` was silently ignored: measured 2026-11-27, a dispatch meant to
+# continue session f65803bd started a fresh one (052d4f81) and the only sign was a different id in the sid file.
+RESUME="${RESUME:-}"
+ARGS=()
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --resume)   RESUME="${2:-}"; shift 2 ;;
+        --resume=*) RESUME="${1#--resume=}"; shift ;;
+        *)          ARGS+=("$1"); shift ;;
+    esac
+done
+set -- "${ARGS[@]+"${ARGS[@]}"}"
 
 MODEL="${MODEL:-claude-fable-5-2}"      # or claude-opus-5-5; never the `opusplan` alias for analysis -- it resolves to sonnet
 MAX_TURNS="${MAX_TURNS:-80}"            # an analysis that wanders is not improved by more turns
