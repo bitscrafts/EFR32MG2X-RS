@@ -168,7 +168,7 @@ same tree:
 
 - `deny(missing_docs)` at the root of **33 crates**, with `scripts/check-missing-docs.py` in the gate proving both that
   the lint is installed and that it still fires (a fixture with an undocumented item must be refused).
-- **34 module READEs generated from the code** and a checker in the gate that fails on a stale, empty or placeholder
+- **34 module READMEs generated from the code** and a checker in the gate that fails on a stale, empty or placeholder
   one — so a module that gains an item without its README following turns the gate red.
 - The crate README generated from `templates/readme-hal.tmpl` and checked, with the module and example counts asserted
   rather than remembered.
