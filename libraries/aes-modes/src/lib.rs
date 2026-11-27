@@ -19,7 +19,7 @@
 //!
 //! This module had that bug before the vectors existed: the tag was masked with the block after the last data
 //! block instead of block zero. The round trip could not see it.
-
+#![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]
 

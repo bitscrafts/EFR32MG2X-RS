@@ -757,8 +757,6 @@ impl Bluetooth {
         self.enable_pairing_with(0x04, 0x03)
     }
 
-    /// The same two calls with the flags and IO capability named by the caller, for isolating which one of them
-    /// changes what the stack does to the link.
     /// Answer `sl_bt_evt_sm_confirm_bonding`: may this pairing create a bond?
     ///
     /// The stack raises the event only when `BONDING_REQUEST_REQUIRED` (`0x08`) is among the flags given to
@@ -770,6 +768,10 @@ impl Bluetooth {
         unsafe { bt::sl_bt_sm_bonding_confirm(connection, accept) as u8 }
     }
 
+    /// The same two calls with the flags and IO capability named by the caller, for isolating which one of them
+    /// changes what the stack does to the link.
+    ///
+    /// `(configure, bondable)` are the two status codes as they came back; 0 is success for both.
     pub fn enable_pairing_with(&mut self, flags: u8, io: u8) -> (u8, u8) {
         let configure = unsafe { bt::sl_bt_sm_configure(flags, io) };
         let bondable = unsafe { bt::sl_bt_sm_set_bondable_mode(1) };

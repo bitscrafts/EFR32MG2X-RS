@@ -20,6 +20,7 @@
 //! // 4 Mbaud out of a 19 MHz clock would need a negative divider.
 //! assert_eq!(clkdiv(19_000_000, 4_000_000, 16), Err(DividerError::TooFast));
 //! ```
+#![deny(missing_docs)]
 
 //! Host-test harness for the usart logic.
 //!

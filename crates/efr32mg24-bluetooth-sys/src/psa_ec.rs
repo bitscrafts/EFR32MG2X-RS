@@ -100,6 +100,7 @@ pub struct KeyAttributes {
     pub alg2: u32,
     /// `psa_key_attributes_flag_t` (u16), followed by two bytes of padding to align the pointer below.
     pub flags: u16,
+    /// Two bytes of padding so the pointer below starts on a word boundary; never read or written.
     pub _padding: u16,
     /// `domain_parameters`
     pub domain_parameters: *mut c_void,

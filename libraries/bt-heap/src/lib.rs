@@ -26,7 +26,7 @@
 //! - **The free list lives in the payload area** of free blocks, so a 4 KiB arena is mostly available to the
 //!   stack.
 //! - **`ALIGN` is 8**: the stack's structures hold 64-bit counters, and an unaligned `u64` faults on this core.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// Every block starts on this boundary and every size is a multiple of it.

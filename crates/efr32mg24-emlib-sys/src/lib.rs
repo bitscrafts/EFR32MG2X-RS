@@ -24,7 +24,7 @@
 //! Source: `github.com/SiliconLabs/simplicity_sdk`, Zlib licence (see `vendor/LICENCE.txt`).
 //! The blobs stay proprietary; this is the open part of the same SDK, which is the part that was
 //! missing.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// The part this build targets. Kept here so a wrong-device build fails in one visible place.

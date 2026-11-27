@@ -28,7 +28,7 @@
 //! assert_eq!(tight.bytes(), b"42949672");
 //! assert!(tight.truncated());
 //! ```
-
+#![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]
 

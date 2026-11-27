@@ -730,11 +730,6 @@ pub unsafe extern "C" fn psa_set_key_domain_parameters(
     PSA_SUCCESS
 }
 
-/// Import a key into a slot and return its id in `*key`.
-///
-/// # Safety
-///
-/// `data` must point to `data_length` readable bytes and `key` to four writable bytes.
 /// The last refused import, packed as `(code << 16) | length`.
 ///
 /// A count of failures ("imp=15/14") says that one import was refused and nothing about which, and a refusal in the
@@ -743,11 +738,12 @@ pub unsafe extern "C" fn psa_set_key_domain_parameters(
 /// last refusal so the next run can name the key that was missing.
 static mut IMPORT_FAILED: u32 = 0;
 
+/// The packed `(code << 16) | length` of the last refused import; 0 when nothing was refused yet.
 pub fn import_failed() -> u32 {
     unsafe { core::ptr::read_volatile(core::ptr::addr_of!(IMPORT_FAILED)) }
 }
 
-/// Import a key, recording the code and length of the last refusal.
+/// Import a key into a slot and return its id in `*key`, recording the code and length of the last refusal.
 ///
 /// # Safety
 ///
@@ -1517,6 +1513,10 @@ pub unsafe extern "C" fn psa_raw_key_agreement(
 // whole interface: the blobs import seventeen PSA symbols (`nm -u` on the three archives), and the security
 // manager may stop at any one of them. These counters are here so the next pairing attempt answers "where did it
 // stop" with a number per symbol instead of a guess.
+/// The seventeen PSA entry points the blobs import (`nm -u` on the three archives), in counter order.
+///
+/// Index *i* here is index *i* in the counters, so a non-zero entry names the symbol the security manager
+/// reached instead of leaving "no PSA entry point was called" as the whole answer.
 pub const PSA_CALL_NAMES: [&str; 17] = [
     "psa_crypto_init",
     "psa_generate_random",

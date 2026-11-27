@@ -9,7 +9,7 @@
 //! Two things make it testable here: the fields are four bits wide at a known position (`MODEL n` occupies bits
 //! `4n..4n+3`), and the route encoding is `port << 4 | pin` (`efr32mg24_gpio.h`). Both are arithmetic, and arithmetic
 //! with a mask is exactly what a host test can enumerate: every pin, every mode, and a check that no other pin moved.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// Pins per port on this family.

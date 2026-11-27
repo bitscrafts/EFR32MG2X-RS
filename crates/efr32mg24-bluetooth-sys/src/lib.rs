@@ -1,4 +1,5 @@
 #![no_std]
+#![deny(missing_docs)]
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
@@ -92,6 +93,10 @@ pub mod vendor_support;
 #[allow(clippy::missing_safety_doc)]
 // ^ the safety docs are in the C headers this module is generated from, and bindgen does not carry
 // them across; adding them here would be documenting generated code that regenerates on every build
+#[allow(missing_docs)]
+// ^ the same reason, for the doc comments: the 600 items here are `sl_bt_api.h`'s declarations and
+// documenting them would last until the next build. Everything hand-written in this crate is
+// documented and the crate denies `missing_docs` outside this module.
 pub mod ffi {
     //! Raw BGAPI FFI bindings
     //!

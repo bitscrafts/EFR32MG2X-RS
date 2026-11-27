@@ -7,7 +7,7 @@
 //! What is tested is the mapping from a ladder tap to a voltage and the interval a crossing brackets; what is **not**
 //! tested, because it cannot be, is whether the part's ladder follows that mapping. That answer is on the board:
 //! `docs/04-reference/ACMP-LADDER-2026-11-27.md`.
-
+#![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]
 

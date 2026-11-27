@@ -35,8 +35,6 @@ pub struct Module {
 }
 
 impl Module {
-    /// Take the peripherals. `None` if they were already taken.
-    #[must_use]
     /// The chip-level board underneath this module.
     ///
     /// A carrier (the Expansion Base, for instance) has to wire its own devices onto the same
@@ -50,6 +48,8 @@ impl Module {
         &self.board
     }
 
+    /// Take the peripherals. `None` if they were already taken.
+    #[must_use]
     pub fn take() -> Option<Self> {
         // Before anything can touch the flash: the emlib's write and erase routines live in `.ram` and must execute
         // from RAM. `memory.x` links that section with its load image in flash; this copies it, once, here — every

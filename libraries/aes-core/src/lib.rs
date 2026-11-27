@@ -8,7 +8,7 @@
 //! known-answer predicate rejects a block it should reject; what is **not** tested, because it cannot be, is whether the
 //! part's crypto core answers those vectors. That answer is on the board:
 //! `docs/04-reference/AES-KAT-2026-11-27.md`.
-
+#![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]
 

@@ -1,5 +1,6 @@
 #![no_std]
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 
 //! The radio layer: what a product needs to talk, and nothing about which pins it uses.
 //!

@@ -7,7 +7,7 @@
 //!
 //! The list below is the one the reference manual gives for entering EM2 and it is modelled as an enum, so a caller has to
 //! say *which* condition it cleared rather than assert a single boolean.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// Why EM2 cannot be entered.

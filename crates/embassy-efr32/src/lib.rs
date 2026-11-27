@@ -28,7 +28,7 @@
 //! task on the board does **not** -- it needs the board, a deadline shorter than a second and a
 //! waker that prints. This crate is a skeleton that compiles and whose logic is tested; it is not
 //! a measured driver, and nothing should claim otherwise until that print exists.
-
+#![deny(missing_docs)]
 #![no_std]
 
 pub mod alarm;
@@ -53,6 +53,8 @@ pub trait Platform: Send + Sync + 'static {
 pub struct Efr32Driver<P: Platform>(PhantomData<P>);
 
 impl<P: Platform> Efr32Driver<P> {
+    /// The driver. Nothing to carry: the clock and the comparator are the platform's, and the pending
+    /// waker belongs to [`alarm`].
     pub const fn new() -> Self {
         Self(PhantomData)
     }

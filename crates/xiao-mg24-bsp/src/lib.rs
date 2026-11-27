@@ -1,5 +1,6 @@
 #![no_std]
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 
 //! Board support package for the Seeed XIAO MG24 family.
 //!

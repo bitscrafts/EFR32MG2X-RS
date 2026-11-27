@@ -10,7 +10,7 @@
 //! **H12's shape, on the timer side.** `TOP` is a 16-bit field and the prescaler can only be a power of two from 1 to 1024,
 //! so not every period is expressible. The crate returns the closest expressible rate and says how far off it is, instead
 //! of silently truncating a value into a 16-bit field.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// The prescalers this family offers: powers of two from 1 to 1024.

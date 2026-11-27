@@ -326,6 +326,10 @@ pub unsafe extern "C" fn sl_sleeptimer_start_timer(
     sl_sleeptimer_restart_timer(handle, timeout, callback, data, priority, flags)
 }
 
+/// `sl_sleeptimer_init` as the vendor declares it.
+///
+/// Nothing to initialise here: the counter is started by the HAL before the stack runs. The symbol has to exist
+/// because `timer.c.obj` imports it and calls it during the stack's own init.
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_init() -> u32 {
     // Nothing to initialise: the counter is started by the HAL before the stack runs. Kept as a symbol because
@@ -348,16 +352,19 @@ fn tick64() -> u64 {
     }
 }
 
+/// `sl_sleeptimer_get_tick_count`: the 32-bit counter, which wraps every 36.4 h at 32 768 Hz.
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_get_tick_count() -> u32 {
     now()
 }
 
+/// `sl_sleeptimer_get_tick_count64`: the widened counter that survives the 36.4 h wrap.
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_get_tick_count64() -> u64 {
     tick64()
 }
 
+/// `sl_sleeptimer_get_timer_frequency`: ticks per second, [`TICKS_PER_SECOND`].
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_get_timer_frequency() -> u32 {
     TICKS_PER_SECOND
@@ -370,6 +377,8 @@ pub extern "C" fn sl_sleeptimer_get_clock_accuracy() -> u16 {
     500
 }
 
+/// `sl_sleeptimer_ms_to_tick`: milliseconds to ticks, exact through a 64-bit intermediate (no truncation of the
+/// 32.768 factor).
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_ms_to_tick(ms: u16) -> u32 {
     // Exact conversion, through 64 bits: `32768/1000` is 32.768, and dropping the fraction made every duration
@@ -393,6 +402,7 @@ pub unsafe extern "C" fn sl_sleeptimer_ms32_to_tick(ms: u32, tick: *mut u32) -> 
     0
 }
 
+/// `sl_sleeptimer_tick_to_ms`: ticks to milliseconds, truncating the remainder.
 #[no_mangle]
 pub extern "C" fn sl_sleeptimer_tick_to_ms(ticks: u32) -> u32 {
     ticks_to_ms(ticks as u64) as u32

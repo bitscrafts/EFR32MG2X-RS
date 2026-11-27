@@ -10,7 +10,7 @@
 //! session key for -- a longer key is refused rather than silently truncated.
 //!
 //! Verified against the FIPS-197 example vector, which is the only way a hand-written AES earns belief.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// One AES-128 block, encrypted.

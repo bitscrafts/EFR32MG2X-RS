@@ -46,11 +46,17 @@ pub struct StackConfig {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct RfConfig {
+    /// Transmit gain, in the units `sl_bt_rf_config_t.tx_gain` uses (dBm × 10).
     pub tx_gain: i16,
+    /// Receive gain, in the units `sl_bt_rf_config_t.rx_gain` uses (dBm × 10).
     pub rx_gain: i16,
+    /// Vendor flags word; 0 selects the defaults.
     pub flags: u8,
+    /// Antenna path: 0 none, 1 the internal antenna, other values the vendor's own paths.
     pub antenna: u8,
+    /// Lowest transmit power the stack may use (dBm × 10).
     pub tx_min_power: i16,
+    /// Highest transmit power the stack may use (dBm × 10); 0 means "no limit stated".
     pub tx_max_power: i16,
 }
 
@@ -58,14 +64,20 @@ pub struct RfConfig {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct Configuration {
+    /// `SL_BT_CONFIG_FLAG_*` word: which parts of the stack the host brings up.
     pub config_flags: u32,
+    /// The buffer budget and link-layer options.
     pub bluetooth: StackConfig,
     /// The GATT database. Null is accepted for advertising-only builds; a connectable product needs
     /// a real database, which is what `docs/04-reference/BLE-GATT-GAP.md` is about.
     pub gattdb: *const c_void,
+    /// Called when the host has link-layer work waiting; the bare-metal layer raises `PendSV` from it.
     pub scheduler_callback: Option<extern "C" fn()>,
+    /// Called when the host has host-side work waiting; serviced by [`pump`].
     pub stack_schedule_callback: Option<extern "C" fn()>,
+    /// How many sleeptimer slots the stack may allocate.
     pub max_timers: u8,
+    /// Gains and antenna selection.
     pub rf: RfConfig,
 }
 
@@ -224,13 +236,16 @@ pub fn link_layer_services() -> u32 {
     LINK_LAYER_SERVICES.load(Ordering::Relaxed)
 }
 
+// The cost of `pump`, counted because it is the only call in every application's loop: a loop that runs at a fraction
+// of the rate the application asks for explains sparse advertising and three notifications where a hundred were
+// expected, and a rate is a number, not an impression. Read by `pump_cost`.
+static PUMP_CALLS: AtomicU32 = AtomicU32::new(0);
+static PUMP_CYCLES: AtomicU32 = AtomicU32::new(0);
+
 /// Service the host. Call this from the application's main loop, as often as it comes round.
 ///
 /// One call performs one unit of link-layer work if the host asked for it. Events are *not* consumed here: the
 /// application pops them with `sl_bt_pop_event`, which is where it wants them anyway.
-static PUMP_CALLS: AtomicU32 = AtomicU32::new(0);
-static PUMP_CYCLES: AtomicU32 = AtomicU32::new(0);
-
 pub fn pump() {
     // The link layer is *not* serviced here: `PendSV` does it, raised by the host's scheduler callback. A second
     // caller from thread context would run `BTLE_LL_Process` re-entrantly with the exception.

@@ -1,5 +1,6 @@
 #![no_std]
 #![doc = include_str!("../README.md")]
+#![deny(missing_docs)]
 
 //! This crate has no Rust API on purpose.
 //!

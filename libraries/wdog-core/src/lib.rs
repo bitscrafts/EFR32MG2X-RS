@@ -7,7 +7,7 @@
 //! The other half is the arithmetic. A watchdog period is `(prescaler * (top + 1)) / clock`, with the same fields as any
 //! timer, and the point of a watchdog is that the number it was given is the number it uses -- a period that silently
 //! truncates is a reset nobody can explain.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// The prescalers this family offers for the watchdog: powers of two from 1 to 32768.

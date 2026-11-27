@@ -17,7 +17,7 @@
 //! // A refusal leaves the *other* slots free: one peripheral taken twice must not cost a second, unrelated one.
 //! assert!(slots.claim(Slot::Adc).is_ok());
 //! ```
-
+#![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]
 

@@ -86,6 +86,7 @@
 //! # }
 //! assert_eq!(write_read(&mut Quiet, 0x6a, 0x00, &mut []), Err(Error::InvalidData));
 //! ```
+#![deny(missing_docs)]
 
 //! Host-test harness for the i2c logic.
 //!

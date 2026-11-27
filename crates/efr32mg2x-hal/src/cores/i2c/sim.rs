@@ -12,17 +12,21 @@ use super::{write_read, Bus, Error};
 /// is *lost* when the bus is released, so a master that emits STOP between the write and the read reads from
 /// register 0 instead of the one it asked for. That is the symptom, not a rule invented for the test.
 pub struct Slave {
+    /// The register file, eight bytes initialised to `0x10 + index` so a wrong pointer reads a wrong value.
     pub registers: [u8; 8],
+    /// The register the next read comes from; latched by a write, reset by STOP.
     pub pointer: u8,
-    /// The address byte the master sent last, and the phase it selected.
+    /// Whether the master's last address byte selected the read phase.
     pub read_phase: bool,
     /// Everything the master did, in order: 'S' start, 'W' byte written, 'R' byte read, 'P' stop.
     pub trace: [u8; 32],
+    /// How many bytes of `trace` were written.
     pub trace_len: usize,
     /// Whether the current transaction is still addressed to this slave.
     pub addressed: bool,
     /// Set when a START arrives on a bus that was released: the pointer restart a real device does.
     pub pointer_after_stop: u8,
+    /// When set, the slave refuses the next address byte with `Error::Nack`.
     pub nack_address: bool,
 }
 
@@ -33,6 +37,7 @@ impl Default for Slave {
 }
 
 impl Slave {
+    /// A slave with the default register file (`0x10..0x17`), pointer 0, and no NACK armed.
     pub fn new() -> Self {
         let mut registers = [0u8; 8];
         for (i, r) in registers.iter_mut().enumerate() {
@@ -57,6 +62,7 @@ impl Slave {
         }
     }
 
+    /// The recorded trace as text, for comparing against a recording: `"SWWRSRW..."`, `"?"` if it is not valid UTF-8.
     pub fn trace_str(&self) -> &str {
         core::str::from_utf8(&self.trace[..self.trace_len]).unwrap_or("?")
     }
@@ -64,6 +70,7 @@ impl Slave {
 
 /// The master side of the bus, driven by the slave above.
 pub struct MockBus<'a> {
+    /// The slave this master addresses; every operation is recorded there.
     pub slave: &'a mut Slave,
 }
 
@@ -120,9 +127,13 @@ impl Bus for MockBus<'_> {
 pub struct SimResult {
     /// `S` start, `W` byte written, `R` byte read, `P` stop, in order.
     pub trace_tail: [u8; 32],
+    /// How many bytes of `trace_tail` were written.
     pub trace_len: usize,
+    /// The bytes the master read, in order.
     pub values: [u8; 8],
+    /// How many of `values` were read; `count` minus this is what the transfer did not deliver.
     pub count: usize,
+    /// Whether the whole exchange returned `Ok`.
     pub ok: bool,
 }
 

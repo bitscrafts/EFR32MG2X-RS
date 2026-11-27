@@ -12,7 +12,7 @@
 //! is the property that lets a tool which only knows one check the other.
 //!
 //! Both are `no_std` and table-free: eight iterations per byte, short enough to read and audit against the polynomial.
-
+#![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]
 

@@ -41,8 +41,16 @@ if ! command -v cargo >/dev/null 2>&1; then
   exit 1
 fi
 FAILED=0
+# `fail` is called from inside `printf | while` pipelines in three places below, and a pipeline runs in
+# a subshell: `FAILED=1` set there is thrown away with the subshell and the verdict then reads PASS on a
+# check whose FAIL line is printed right above it. The marker file outlives the subshell, and the verdict
+# asks it too. Measured 2026-11-27 on the first run of the `missing_docs` step, which printed a blank
+# PASS line while the verdict stayed green. The marker gets a byte, not just a touch: `mktemp` already
+# created the file, so its existence says nothing and only its size can.
+FAILMARK="$(mktemp)"
+trap 'rm -f "$FAILMARK"' EXIT
 pass() { printf '  PASS  %s\n' "$1"; }
-fail() { printf '  FAIL  %s\n' "$1"; FAILED=1; }
+fail() { printf '  FAIL  %s\n' "$1"; FAILED=1; printf x > "$FAILMARK"; }
 
 echo "=== format ==="
 if cargo fmt --all --check >/dev/null 2>&1; then
@@ -219,6 +227,28 @@ if python3 scripts/check-module-readmes.py --hal crates/efr32mg2x-hal >/tmp/gate
   pass "$(sed -n 's/^  PASS  //p' /tmp/gate-module-readmes.log | head -1)"
 else
   grep -E '^  FAIL|^        ' /tmp/gate-module-readmes.log | head -8 | while IFS= read -r line; do fail "${line#  FAIL  }"; done
+fi
+
+# `missing_docs` as a mechanism, not a slogan: every crate denies the lint, the only `allow` in the tree
+# sits on a module that includes bindgen output, and a fixture with an undocumented item is compiled to
+# prove the lint still fires. The measurement behind it is 0 undocumented items across 33 crates
+# (`--measure`, 2026-11-27); the six crates that carried 74 hand-written undocumented items before this
+# existed are named in `docs/04-reference/MISSING-DOCS-2026-11-27.md`.
+if python3 scripts/check-missing-docs.py >/tmp/gate-missing-docs.log 2>&1; then
+  line=$(sed -n 's/^  PASS  //p' /tmp/gate-missing-docs.log | tail -1)
+  # A PASS line this gate cannot read is a passing check nobody can see; the first run of this step
+  # produced exactly that (`  PASS  ` with nothing after it) because the script was printing at
+  # column 0. Refuse it rather than report an empty pass.
+  if [ -n "$line" ]; then pass "$line"; else fail "missing_docs: the check passed and printed no PASS line"; fi
+else
+  # `grep ... | while` calls nothing when the grep matches nothing, and the gate would then report
+  # PASS on a check that just failed. Said out loud instead.
+  detail=$(grep -E '^  FAIL|^        ' /tmp/gate-missing-docs.log | head -12)
+  if [ -n "$detail" ]; then
+    printf '%s\n' "$detail" | while IFS= read -r line; do fail "${line#  FAIL  }"; done
+  else
+    fail "missing_docs: the check failed and printed nothing this gate can read"
+  fi
 fi
 
 # The product itself, which now lives in `apps/dosimeter-ble` -- outside the workspace, because it depends on
@@ -545,6 +575,8 @@ echo "not gated on purpose:"
 echo "  cmsis-stubs              -- a build-support crate: C only, no Rust API, no examples"
 echo "  efr32mg24-radio/ble_gatt -- needs the PSA crypto blobs; documented in docs/04-reference/RADIO-NOTES.md"
 echo
+# The marker is the verdict's memory of a `fail` raised inside a subshell.
+if [ -s "$FAILMARK" ]; then FAILED=1; fi
 if [ "$FAILED" -eq 0 ]; then
   echo "VERDICT: PASS"
 else

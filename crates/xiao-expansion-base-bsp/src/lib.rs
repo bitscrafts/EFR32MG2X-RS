@@ -35,7 +35,7 @@
 //! oled.text(0, 0, b"hello");
 //! oled.flush();
 //! ```
-
+#![deny(missing_docs)]
 #![no_std]
 
 pub mod expansion_base;

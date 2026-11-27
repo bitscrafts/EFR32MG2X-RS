@@ -26,6 +26,7 @@
 //! word |= 9 << PORTNEG_SHIFT; // a negative port, which this crate does not model
 //! assert_eq!(parse(word), Err(AdcError::Differential));
 //! ```
+#![deny(missing_docs)]
 
 //! Host-test harness for the adc logic.
 //!

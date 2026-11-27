@@ -76,16 +76,13 @@ use crate::ffi as bt;
 #[allow(clippy::large_enum_variant)]
 pub enum BleEvent {
     /// A security-manager event: pairing started, a bond was stored, or pairing failed.
-    ///
-    /// # Fields
-    ///
-    /// * `event` — 0 passkey display, 1 passkey request, 2 confirm passkey, 3 bonded, 4 bonding failed,
-    ///   (`confirm bonding` has its own variant, `ConfirmBonding`, because its layout differs)
-    /// * `connection` — the connection handle
-    /// * `reason` — the security manager's error code, meaningful for `event == 4`
     Security {
+        /// 0 passkey display, 1 passkey request, 2 confirm passkey, 3 bonded, 4 bonding failed
+        /// (`confirm bonding` has its own variant, `ConfirmBonding`, because its layout differs).
         event: u8,
+        /// The connection handle.
         connection: u8,
+        /// The security manager's error code, meaningful for `event == 4`.
         reason: u16,
     },
 
@@ -94,7 +91,12 @@ pub enum BleEvent {
     /// Its payload is `(connection: u8, bonding_handle: u8)` (`sl_bt_api.h`, `sl_bt_evt_sm_confirm_bonding_s`). It used
     /// to be decoded through the `bonding_failed` layout, which reads a `u16` reason out of what is a `u8` handle, so
     /// the field it reported was the handle byte plus whatever followed it in the buffer.
-    ConfirmBonding { connection: u8, bonding_handle: u8 },
+    ConfirmBonding {
+        /// The connection handle.
+        connection: u8,
+        /// The handle the stack will store the bond under if the answer is 1; 0xFF when it has none to give.
+        bonding_handle: u8,
+    },
 
     /// The link's parameters or security level changed (`sl_bt_evt_connection_parameters`).
     ///
@@ -102,45 +104,48 @@ pub enum BleEvent {
     /// (what Just Works gives), 2 authenticated, 3 authenticated Secure Connections. `Bonded: yes` on a host is the
     /// host's own storage and says nothing about this link.
     ConnectionParameters {
+        /// The connection handle.
         connection: u8,
         /// Units of 1.25 ms.
         interval: u16,
+        /// Slave latency: how many connection events the peripheral may skip.
         latency: u16,
         /// Units of 10 ms.
         timeout: u16,
+        /// 0 none, 1 unauthenticated encryption, 2 authenticated, 3 authenticated Secure Connections.
         security_mode: u8,
+        /// The maximum PDU payload the controller will send on this link, in bytes.
         txsize: u16,
     },
 
     /// The ATT MTU was negotiated (`sl_bt_evt_gatt_mtu_exchanged`). The default is 23 until this fires.
-    Mtu { connection: u8, mtu: u16 },
+    Mtu {
+        /// The connection handle.
+        connection: u8,
+        /// The negotiated MTU, in bytes.
+        mtu: u16,
+    },
 
-    /// Remote device connected
-    ///
-    /// # Fields
-    /// - `connection`: Connection handle (0-255)
-    /// - `address`: 6-byte Bluetooth address [u8; 6]
-    /// - `address_type`: 0 = Public, 1 = Random
-    /// - `is_master`: True if local device is central role
-    /// - `bonding`: Bonding handle (0xFF = no bonding)
+    /// Remote device connected.
     ///
     /// # Automatic Actions
     /// - Connection state set to true
     /// - Connection handle saved
     /// - Advertising stopped (by stack)
     Connected {
+        /// Connection handle (0-255).
         connection: u8,
+        /// 6-byte Bluetooth address.
         address: [u8; 6],
+        /// 0 = Public, 1 = Random.
         address_type: u8,
+        /// True if the local device is the central.
         is_master: bool,
+        /// Bonding handle (0xFF = no bonding).
         bonding: u8,
     },
 
-    /// Remote device disconnected
-    ///
-    /// # Fields
-    /// - `connection`: Connection handle that was closed
-    /// - `reason`: Disconnect reason code (BLE spec)
+    /// Remote device disconnected.
     ///
     /// # Common Reason Codes
     /// - `0x0213`: Connection timeout
@@ -150,35 +155,32 @@ pub enum BleEvent {
     /// # Automatic Actions
     /// - Connection state set to false
     /// - Connection handle cleared
-    Disconnected { connection: u8, reason: u16 },
+    Disconnected {
+        /// Connection handle that was closed.
+        connection: u8,
+        /// Disconnect reason code (BLE spec).
+        reason: u16,
+    },
 
     /// A remote client changed its subscription to one of this device's characteristics.
     ///
     /// This is the only observable trace a client leaves when it starts listening: a plain *read* is answered inside
     /// the stack from the attribute table and produces no event at all, which is why "the phone read the
     /// characteristic" cannot be proven from the device side -- only from the client side. A subscription can.
-    ///
-    /// # Fields
-    /// - `connection`: Connection handle
-    /// - `characteristic`: GATT characteristic handle
-    /// - `notifications`: Whether the client turned notifications (or indications) on
     Subscribed {
+        /// Connection handle.
         connection: u8,
+        /// GATT characteristic handle.
         characteristic: u16,
         /// Which part of the client configuration changed (`sl_bt_gatt_server_client_config` / `..._client_config`).
         status_flags: u8,
         /// The value the client wrote: 0 none, 1 notification, 2 indication.
         client_config: u16,
+        /// Whether the client turned notifications (or indications) on.
         notifications: bool,
     },
 
-    /// GATT characteristic written by remote client
-    ///
-    /// # Fields
-    /// - `connection`: Connection handle
-    /// - `attribute`: GATT characteristic handle
-    /// - `offset`: Write offset (usually 0)
-    /// - `value`: Written data (max 512 bytes)
+    /// GATT characteristic written by remote client.
     ///
     /// # Example
     /// ```no_run
@@ -193,70 +195,73 @@ pub enum BleEvent {
     /// }
     /// ```
     GattWrite {
+        /// Connection handle.
         connection: u8,
+        /// GATT characteristic handle.
         attribute: u16,
+        /// Write offset (usually 0).
         offset: u16,
+        /// Written data (max 512 bytes).
         value: heapless::Vec<u8, 512>,
     },
 
-    /// GATT characteristic read by remote client (user read request)
-    ///
-    /// # Fields
-    /// - `connection`: Connection handle
-    /// - `attribute`: GATT characteristic handle
-    /// - `offset`: Read offset (usually 0)
+    /// GATT characteristic read by remote client (user read request).
     ///
     /// # Response Required
     /// Must respond with `gatt_server_send_user_read_response()` (future API)
     GattRead {
+        /// Connection handle.
         connection: u8,
+        /// GATT characteristic handle.
         attribute: u16,
+        /// Read offset (usually 0).
         offset: u16,
     },
 
-    /// GATT notification/indication transmission completed
-    ///
-    /// # Fields
-    /// - `connection`: Connection handle
+    /// GATT notification/indication transmission completed.
     ///
     /// Triggered after `notify()` succeeds. Can be used for flow control
     /// when sending multiple notifications.
-    GattNotificationComplete { connection: u8 },
+    GattNotificationComplete {
+        /// Connection handle.
+        connection: u8,
+    },
 
-    /// Advertising timeout
-    ///
-    /// # Fields
-    /// - `advertising_set`: Advertising set handle
+    /// Advertising timeout.
     ///
     /// Triggered when:
     /// - Max advertising events reached (set via `set_timing`)
     /// - Advertising duration expired
-    AdvertisingTimeout { advertising_set: u8 },
+    AdvertisingTimeout {
+        /// Advertising set handle.
+        advertising_set: u8,
+    },
 
     /// An advertisement was received while scanning (central role).
-    ///
-    /// # Fields
-    /// - `address`: 6-byte advertiser address, in the controller's reverse byte order
-    /// - `address_type`: 0 = public, 1 = random
-    /// - `rssi`: received signal strength in dBm (a negative number; -40 is close, -90 is far)
-    /// - `data`: the raw advertising payload, at most 31 bytes for legacy PDUs
     ///
     /// The payload is the *raw* AD structure list — the same bytes a phone parses — so an
     /// application that wants the name has to walk it: `[len][type][value...]` repeated. It is kept
     /// raw on purpose: decoding belongs to whoever knows what they are looking for, and a
     /// half-decoder here would lose manufacturer data and service UUIDs.
     Advertisement {
+        /// 6-byte advertiser address, in the controller's reverse byte order.
         address: [u8; 6],
+        /// 0 = public, 1 = random.
         address_type: u8,
+        /// Received signal strength in dBm (a negative number; -40 is close, -90 is far).
         rssi: i8,
+        /// The raw advertising payload, at most 31 bytes for legacy PDUs.
         data: heapless::Vec<u8, 31>,
     },
 
-    /// Unknown event
+    /// An event this crate does not decode yet, carrying the stack's own event ID.
     ///
-    /// Events not yet implemented are returned as Unknown with the event ID.
-    /// This prevents panics when new events are added by Silicon Labs.
-    Unknown { event_id: u32 },
+    /// Returned rather than dropped so a new vendor event cannot panic the application between two
+    /// stack releases.
+    Unknown {
+        /// The BGAPI event ID, as `sl_bt_pop_event` reported it.
+        event_id: u32,
+    },
 }
 
 impl BleEvent {

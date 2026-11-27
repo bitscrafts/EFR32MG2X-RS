@@ -11,7 +11,7 @@
 //!
 //! This crate decides the whole plan from one number, and the tests check the invariants over **every** frequency from
 //! 1 to 80 MHz rather than over the four bands this project happens to use.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// The peripheral bus must stay at or below this (`em_cmu.c:99`).

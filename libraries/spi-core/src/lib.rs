@@ -14,6 +14,7 @@
 //! assert_eq!(rx.store(0x22), Err(SlaveError::Overrun));
 //! assert_eq!(rx.take(), Some(0x11));
 //! ```
+#![deny(missing_docs)]
 
 //! Host-test harness for the SPI logic.
 //!

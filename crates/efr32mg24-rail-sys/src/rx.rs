@@ -26,7 +26,9 @@ use crate::{
 /// A received packet, as far as this crate is concerned: bytes and where they came from.
 #[derive(Debug, PartialEq, Eq)]
 pub struct Packet<'a> {
+    /// The packet's bytes, copied out of RAIL's circular buffer.
     pub payload: &'a [u8],
+    /// RAIL's own verdict on the packet (CRC, sync word, ...); `RAIL_RX_PACKET_READY_SUCCESS` for a good frame.
     pub status: RAIL_RxPacketStatus_t,
 }
 

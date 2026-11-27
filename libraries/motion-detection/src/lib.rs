@@ -28,7 +28,7 @@
 //!
 //! With that change both drops are detected and the handling recording produces no
 //! fall, which is what the tests encode.
-
+#![deny(missing_docs)]
 #![no_std]
 
 /// Below this magnitude the device is falling, not resting.
@@ -109,7 +109,10 @@ pub enum Event {
     /// makes it a fall. A caller that logs this can tell a missed detection from an
     /// event that never happened — the difference between tuning a threshold and
     /// guessing at one.
-    FreeFall { ms: u32 },
+    FreeFall {
+        /// How long the device was in the air, in milliseconds.
+        ms: u32,
+    },
     /// An impact without a preceding free fall — knocked, tapped, or set down hard.
     /// Reported separately so a caller can log it without alarming.
     Impact {
