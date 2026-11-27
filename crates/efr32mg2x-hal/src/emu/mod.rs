@@ -12,13 +12,14 @@
 //! - **EM4 IO Retention**: Preserve GPIO states through hibernate
 //! - **Thread-Safe**: Critical sections for RTOS environments
 //!
-//! # Current Implementation (C3-EMU Stage 1)
+//! # Current implementation (C3-EMU Stage 1)
 //!
-//! - ✅ EM1 (Sleep Mode)
-//! - ✅ EM2 (Deep Sleep Mode)
-//! - ✅ Voltage scaling for EM0/EM1 and EM2/EM3
-//! - ⏳ EM3 (Stop Mode) - Planned for Stage 2
-//! - ⏳ EM4 (Hibernate) - Planned for Stage 2
+//! - EM1 (sleep): `enter_em1`.
+//! - EM2 (deep sleep): `enter_em2` with an `Em2Config`, and `em2_entered` to read back where the part actually is.
+//! - Voltage scaling for EM0/EM1 and EM2/EM3: `set_em01_voltage_scale` and `voltage_scale`.
+//! - EM3 and EM4 are **not offered**: no door in this module reaches them, so there is nothing here to measure. The
+//!   register work for them exists in the PAC; the sequence that returns from each without losing the debug session is
+//!   what is missing, and until it is measured a method that claims it would be a claim.
 //!
 //! # Energy Modes
 //!

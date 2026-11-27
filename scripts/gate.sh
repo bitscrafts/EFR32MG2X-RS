@@ -197,6 +197,16 @@ else
   grep -E '^  FAIL|^        ' /tmp/gate-paths.log | while IFS= read -r line; do fail "${line#  FAIL  }"; done
 fi
 
+# One README per public module, and each one still describing the module. The rule is in CLAUDE.md since the beginning
+# and nothing checked it: 35 public modules carried zero per-module READMEs while the gate was green, because the only
+# generator in the tree writes one README per CRATE. The checker fails on a missing README, on a surviving
+# `TODO(measured)` marker, on a public item with no API row, and on inspecting zero modules.
+if python3 scripts/check-module-readmes.py --hal crates/efr32mg2x-hal >/tmp/gate-module-readmes.log 2>&1; then
+  pass "$(sed -n 's/^  PASS  //p' /tmp/gate-module-readmes.log | head -1)"
+else
+  grep -E '^  FAIL|^        ' /tmp/gate-module-readmes.log | head -8 | while IFS= read -r line; do fail "${line#  FAIL  }"; done
+fi
+
 # The product itself, which now lives in `apps/dosimeter-ble` -- outside the workspace, because it depends on
 # `dosimeter-mg24` and that crate is outside the repository by its own project's rule. A path dependency pointing outside
 # the checkout is resolved when the workspace loads, so keeping the firmware as a workspace member made every CI job
