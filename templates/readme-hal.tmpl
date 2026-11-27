@@ -45,7 +45,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-31 public modules (`pub mod` in `src/lib.rs`) and 32 examples. A date next to an example means a record was
+31 public modules (`pub mod` in `src/lib.rs`) and 33 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -123,7 +123,7 @@ peripheral families and re-checked family by family, is
 | `EUSART0` | SPI **master**, 8-bit, blocking | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it) |
 | `I2C0`, `I2C1` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
 | `IADC0` | single-ended conversion, microphone path | `hal_adc_read`, `hal_mic_level` |
-| `LDMA` | channel ownership, transfers, `stop()` | `hal_dma_stop` |
+| `LDMA` | channel ownership, transfers, `stop()`, chained descriptors | `hal_dma_stop`, `hal_dma_link` |
 | `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
 | `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |

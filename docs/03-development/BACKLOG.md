@@ -65,7 +65,8 @@ measured, because "it compiles" has never been the bar here.
   [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md). What is still open is a pad
   driven by a wire, a button or another peripheral, which is the case a product has and the pull resistor is not, and
   the fastest rate the converter can follow such a producer.
-- **DMA stages 3 and 4**: linked descriptors and interrupt-driven async. Deferred, not broken.
+- **DMA stage 4**: interrupt-driven async. Deferred, not broken. Stage 3 closed 2026-11-27 -- see the closed list
+  below and [`DMA-LINKED-2026-11-27.md`](../04-reference/DMA-LINKED-2026-11-27.md).
 - **The families nobody has written a driver for**: `pcnt0`, `burtc`, `acmp0`/`acmp1`, `vdac0`/`vdac1`, `keyscan`,
   `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco`, `hfrcoem23`. What each would cost is in
   [`COVERAGE-BOUNDARY-2026-11-25.md`](../04-reference/COVERAGE-BOUNDARY-2026-11-25.md).
@@ -78,6 +79,11 @@ measured, because "it compiles" has never been the bar here.
   change is one interrupt on both vectors (`gpioirq: n=8 if=0x00000008 cnt=8 off=0 dis=0 msk=0 odd=8 even=0 pin0=8
   p0odd=0 p0even=8`), with `IEN` measured as the per-pin gate in front of the vector and the flag proven to latch with
   the vector masked -- [`GPIO-INTERRUPT-2026-11-27.md`](../04-reference/GPIO-INTERRUPT-2026-11-27.md).
+- DMA linked descriptors (C2-DMA.3): `transfer_chain` and `Segment` in `src/dma/linked.rs`. Two legs chained through
+  `LINK` (`dmalink: ok=1 d1=8 d2=8 s2=1 lk=0x0 cto=1 c1=8 c2=0 c1r=1`), with the control where the link bit is clear
+  moving only the first leg. The fact worth carrying: the second descriptor must live in **RAM** and carry
+  `STRUCTREQ`, because a channel's `CTRL` will not store that bit -- a descriptor held in channel registers is fetched
+  and never runs -- [`DMA-LINKED-2026-11-27.md`](../04-reference/DMA-LINKED-2026-11-27.md).
 
 ---
 

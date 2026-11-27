@@ -110,7 +110,9 @@
 //! - What invariants are maintained
 //! - What preconditions must hold
 
+mod linked;
 mod types;
+pub use linked::*;
 pub use types::*;
 
 use crate::pac;
@@ -687,9 +689,9 @@ impl<const N: u8> Channel<N> {
         }
 
         // Done, and the channel is still enabled with a spent descriptor. Disable it: an armed channel still owns
-        // the descriptor, and a later request -- a stray `trigger`, a peripheral event routed to this channel --
-        // can run it again over a buffer the caller believes it owns. Measured with `hal_dma_stop`: a blocking
-        // transfer returned with this channel's `CHSTATUS` bit still set, i.e. armed after the borrow ended.
+        // the descriptor, and a later request -- a stray `trigger`, a peripheral event routed to this channel -- can
+        // run it again over a buffer the caller believes it owns. Measured with `hal_dma_stop`: a blocking transfer
+        // returned with this channel's `CHSTATUS` bit still set, i.e. armed after the borrow ended.
         self.stop();
 
         Ok(())

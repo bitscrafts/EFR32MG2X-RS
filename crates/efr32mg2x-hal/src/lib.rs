@@ -23,12 +23,12 @@
 //! is `docs/04-reference/HAL-MATURITY-2026-11-25.md` in the repository.
 //!
 //! - **Proven on the part**: GPIO and routing, GPIO external interrupts on both vectors, delays, the bit-banged bus,
-//!   I2C master (blocking and async), LDMA, TIMER and the SYSRTC compare channel, WDOG, EMU voltage scaling, the IADC
+//!   I2C master (blocking and async), LDMA (including chained descriptors), TIMER and the SYSRTC compare channel, WDOG, EMU voltage scaling, the IADC
 //!   with the analogue microphone, the IMU over I2C, and the HFXO (39 MHz, with a 1000 ms delay measured at 1006 ms by
 //!   an independent clock).
 //! - **Compiled, and waiting for a measured example**: SPI and USART. Both drivers exist and build; neither has been
 //!   watched moving a byte on the board yet, and this crate does not claim otherwise.
-//! - **Not implemented**: I2C slave mode, SPI slave mode, DMA linked descriptors.
+//! - **Not implemented**: I2C slave mode, SPI slave mode.
 //!
 //! Two notes that belong with the status rather than in a bug tracker: the `dwt` module is an **instrument**, not a
 //! time source — its counter only runs while a debug session is attached, and [`dwt::start`] returns an error when it

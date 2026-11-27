@@ -39,7 +39,7 @@ Read from the source, so it cannot drift:
 | `I2c1S` | `src/i2c/mod.rs` |
 | `Iadc0S` | `src/adc/mod.rs`, `src/board.rs`, `src/microphone.rs` |
 | `Interrupt` | `src/extint.rs`, `src/sysrtc.rs` |
-| `LdmaS` | `src/dma/mod.rs` |
+| `LdmaS` | `src/dma/linked.rs`, `src/dma/mod.rs` |
 | `LdmaxbarS` | `src/dma/mod.rs` |
 | `Letimer0Ns` | `src/board.rs`, `src/letimer.rs` |
 | `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
@@ -86,7 +86,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-31 public modules (`pub mod` in `src/lib.rs`) and 32 examples. A date next to an example means a record was
+31 public modules (`pub mod` in `src/lib.rs`) and 33 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -164,7 +164,7 @@ peripheral families and re-checked family by family, is
 | `EUSART0` | SPI **master**, 8-bit, blocking | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it) |
 | `I2C0`, `I2C1` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
 | `IADC0` | single-ended conversion, microphone path | `hal_adc_read`, `hal_mic_level` |
-| `LDMA` | channel ownership, transfers, `stop()` | `hal_dma_stop` |
+| `LDMA` | channel ownership, transfers, `stop()`, chained descriptors | `hal_dma_stop`, `hal_dma_link` |
 | `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
 | `WDOG0` | windowed watchdog with a feed budget | `hal_wdog_feed` |
 | `GPCRC` | CRC-32 (reflected, the caller adds the final xor) | `hal_gpcrc` |
@@ -268,7 +268,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-32 examples, **22 of them watched on the part**. A `--` in the last column means nobody
+33 examples, **23 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -278,6 +278,7 @@ mean it works.
 | `hal_adc_prs_timer.rs` | The PRS trigger measured on 2026-11-26 was driven by `ASYNC_SWPULSE` — a CPU write. That proves the converter's | 2026-11-26 |
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | 2026-11-25 |
+| `hal_dma_link.rs` | Do the LDMA's linked descriptors actually chain, and does the second leg move only because of the link? | 2026-11-27 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | 2026-11-24 |

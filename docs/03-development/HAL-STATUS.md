@@ -87,7 +87,9 @@ block, and per-module README documentation.
 **DMA (LDMA)** - C2
 - Stage 1 (C2-DMA.1): Memory-to-memory transfers (blocking, type-safe channels)
 - Stage 2 (C2-DMA.2): Peripheral-to-memory transfers with circular buffer mode
-- Deferred: Stage 3 (linked descriptors), Stage 4 (interrupt-driven async)
+- Stage 3 (C2-DMA.3): Linked descriptors -- `transfer_chain`, two legs chained through `LINK`, measured 2026-11-27
+  ([record](../04-reference/DMA-LINKED-2026-11-27.md))
+- Deferred: Stage 4 (interrupt-driven async)
 
 **EMU (Energy Management Unit)** - C3
 - EM0-EM4 energy mode transitions

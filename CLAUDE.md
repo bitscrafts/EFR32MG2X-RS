@@ -19,7 +19,7 @@ This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silic
 
 **Status**: the radio works on hardware and a phone can use it -- advertising, scanning, connections, GATT
 read/write/notify, and the BME680 published as the standard Environmental Sensing service (`base_ble_env_gatt`,
-verified with nRF Connect). all 117 example targets compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
+verified with nRF Connect). all 118 example targets compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
 `VERDICT: PASS`. Open inside Phase D2: **D2f pairing** (the PSA layer is written and verified; the security manager
 fails before the key exchange, so it stays out of the product build) and **D2g BME680 gas resistance**. Next phases:
 D3 (Zigbee) / Phase E (Application Development). The Gantt and the phase table are in `README.md`; the open items with
@@ -200,7 +200,8 @@ EFR32MG24/
 9. **DMA (C2)** - Complete (LDMA)
    - C2-DMA.1: Memory-to-memory transfers (blocking, type-safe channels)
    - C2-DMA.2: Peripheral-to-memory transfers with circular buffer mode
-   - Deferred: C2-DMA.3 (linked descriptors), C2-DMA.4 (interrupt-driven async)
+   - C2-DMA.3: Linked descriptors -- a chain of two legs, fetched and run by the controller, measured
+   - Deferred: C2-DMA.4 (interrupt-driven async)
 
 10. **EMU (C3)** - Complete
     - EM0-EM4 energy mode transitions, type-safe states, builder config
@@ -232,7 +233,7 @@ EFR32MG24/
 ### Build Statistics
 - Total HAL code: 12,003 lines (16 modules plus 11 top-level modules). The README is one per **crate**, generated
   by `scripts/gen-crate-readme.py` and checked by the gate -- not one per module.
-- HAL examples: 32, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
+- HAL examples: 33, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
   numbered `00_recovery`..`12_wdog` set is gone; the files were renamed when each one started proving something.
 - BLE examples: 4 (bluetooth-sys) + 6 (BSP integration)
 - BSP examples: 9 (blink variants + BLE + microphone streaming)
@@ -487,7 +488,11 @@ cargo doc --no-deps --features rt --open
 2. **USART**: Only USART0 supported (EUSART0/1 for async in future)
 3. **I2C**: Only master mode (slave mode not implemented)
 4. **SPI**: Only master mode, blocking operations only
-5. **DMA**: Stages 1-2 complete; linked descriptors (Stage 3) and interrupt-driven async (Stage 4) deferred
+5. **DMA**: Stages 1-3 complete; interrupt-driven async (Stage 4) deferred. Linked descriptors are measured: the
+   head descriptor's link word names a second descriptor in RAM, and that descriptor needs `STRUCTREQ` (bit 3) -- the
+   channel's own `CTRL` will not store the bit, so a descriptor held in channel registers is fetched and never runs.
+   The record is `dmalink: ok=1 d1=8 d2=8 s2=1 lk=0x0 cto=1 c1=8 c2=0 c1r=1 clk=0x0`
+   (`docs/04-reference/DMA-LINKED-2026-11-27.md`)
 6. **Async**: `embedded_hal_async::i2c::I2c` is implemented and measured on the board (`WHO_AM_I = 0x6a` with no
    help from the blocking path); an Embassy time driver and executor on the SYSRTC are proven (B9). The wait does
    not use the peripheral interrupt: it returns `Pending` and self-wakes, so the core does not sleep during a
@@ -535,9 +540,9 @@ cargo doc --no-deps --features rt --open
 - [x] All modules have comprehensive README documentation
 
 **Phase C - Advanced Peripherals** (Complete - Stage 1):
-- [x] ADC, DMA (Stages 1-2), EMU, RTC, WDOG all production-ready
-- [x] 14 HAL examples (all build successfully)
-- [ ] DMA Stages 3-4 (linked descriptors, interrupt-driven async) deferred
+- [x] ADC, DMA (Stages 1-3), EMU, RTC, WDOG all production-ready
+- [x] HAL examples (all build successfully)
+- [ ] DMA Stage 4 (interrupt-driven async) deferred
 
 **Phase D0-D2 - Radio + Bluetooth** (Complete):
 - [x] RAIL FFI bindings (efr32mg24-rail-sys)
