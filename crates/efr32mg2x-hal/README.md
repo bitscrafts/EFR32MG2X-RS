@@ -25,9 +25,10 @@ Read from the source, so it cannot drift:
 
 | what it takes | where it is used |
 |---|---|
+| `Acmp0S` | `src/acmp/mod.rs`, `src/board.rs` |
 | `BurtcNs` | `src/board.rs`, `src/burtc/mod.rs` |
 | `CmuNs` | `src/mvp/mod.rs` |
-| `CmuS` | `src/adc/mod.rs`, `src/burtc/mod.rs`, `src/clock/clocks.rs` (+6 more) |
+| `CmuS` | `src/acmp/mod.rs`, `src/adc/mod.rs`, `src/burtc/mod.rs` (+7 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
 | `Eusart0S` | `src/board.rs`, `src/eusart/mod.rs`, `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
@@ -53,6 +54,7 @@ Read from the source, so it cannot drift:
 | `Usart0S` | `src/board.rs`, `src/spi/mod.rs`, `src/usart/mod.rs` |
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `X` | `src/cores/slots.rs` |
+| `acmp0_s` | `src/acmp/mod.rs` |
 | `cmu_s` | `src/board.rs`, `src/pcnt.rs` |
 | `emu_ns` | `src/sleep.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
@@ -72,11 +74,13 @@ Read from the source, so it cannot drift:
 
 ## What is in the tree
 
-Twenty-two modules, each one a peripheral, a bus or a driver:
+Every peripheral family the crate drives, one module each -- a peripheral, a bus or a driver (plus `prelude`, which
+only re-exports):
 
 ```
-adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
-i2c  letimer  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
+acmp  adc  board  burtc  bus  buzzer  clock  delay  display  dma  dwt  emu  eusart
+extint  gpcrc  i2c  letimer  microphone  mvp  pcnt  pin  prs  pwm  record  route
+rtc  sensors  sleep  spi  sysrtc  timer  usart  wdog
 ```
 
 The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
@@ -88,7 +92,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-33 public modules (`pub mod` in `src/lib.rs`) and 37 examples. A date next to an example means a record was
+34 public modules (`pub mod` in `src/lib.rs`) and 38 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -274,12 +278,13 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-37 examples, **27 of them watched on the part**. A `--` in the last column means nobody
+38 examples, **28 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
 | example | what it shows | watched on hardware |
 |---|---|---|
+| `hal_acmp_ladder.rs` | `ACMP0` as a ruler: the internal ladder swept against a fixed internal source, read three times. | 2026-11-27 |
 | `hal_adc_prs_gpio.rs` | `Source::GpioPin(n)` was an encoding nothing drove: the two producers measured before it were the CPU's own pulse | 2026-11-26 |
 | `hal_adc_prs_timer.rs` | The PRS trigger measured on 2026-11-26 was driven by `ASYNC_SWPULSE` — a CPU write. That proves the converter's | 2026-11-26 |
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |

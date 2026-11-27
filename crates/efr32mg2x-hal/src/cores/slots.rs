@@ -51,10 +51,12 @@ pub enum Slot {
     Pcnt,
     /// `BURTC` — one backup counter, one clock mux.
     Burtc,
+    /// `ACMP0` — one comparator, one input mux and one ladder tap.
+    Acmp0,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 15;
+pub const SLOT_COUNT: usize = 16;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -75,6 +77,7 @@ impl Slot {
             Slot::Prs => 12,
             Slot::Pcnt => 13,
             Slot::Burtc => 14,
+            Slot::Acmp0 => 15,
         }
     }
 }

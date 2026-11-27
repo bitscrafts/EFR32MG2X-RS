@@ -29,11 +29,13 @@ efr32mg2x-xiao-bsp     the board: which pin the LED is on, which pins power the 
 
 ## What is in the tree
 
-Twenty-two modules, each one a peripheral, a bus or a driver:
+Every peripheral family the crate drives, one module each -- a peripheral, a bus or a driver (plus `prelude`, which
+only re-exports):
 
 ```
-adc  board  bus  buzzer  clock  delay  display  dma  dwt  emu
-i2c  letimer  microphone  pin  pwm  rtc  sensors  spi  sysrtc  timer  usart  wdog
+acmp  adc  board  burtc  bus  buzzer  clock  delay  display  dma  dwt  emu  eusart
+extint  gpcrc  i2c  letimer  microphone  mvp  pcnt  pin  prs  pwm  record  route
+rtc  sensors  sleep  spi  sysrtc  timer  usart  wdog
 ```
 
 The previous version of this file said "USART complete, I2C/SPI/Timers next". That was wrong in both directions: I2C,
@@ -45,7 +47,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-33 public modules (`pub mod` in `src/lib.rs`) and 37 examples. A date next to an example means a record was
+34 public modules (`pub mod` in `src/lib.rs`) and 38 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**

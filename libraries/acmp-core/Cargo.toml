@@ -1,0 +1,6 @@
+[package]
+name = "efr32mg2x-acmp-core"
+version = "0.1.0"
+edition = "2021"
+description = "The ACMP reference ladder as arithmetic: the tap-to-millivolt table the comparator is read against"
+license = "MIT OR Apache-2.0"

@@ -102,6 +102,7 @@
 pub use efr32mg2x_pac as pac;
 
 // HAL modules
+pub mod acmp;
 pub mod adc;
 mod alias;
 #[cfg(feature = "rt")]

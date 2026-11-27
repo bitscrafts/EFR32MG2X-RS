@@ -489,6 +489,19 @@ impl Board {
             .map_err(Handout::Driver)
     }
 
+    /// The analogue comparator, with its bus gate already set.
+    ///
+    /// `ACMP0` is not in `CMU_CLKEN0` with the other analogue blocks: its gate is `CLKEN1.ACMP0`, and with it clear the
+    /// first register access is a precise bus fault (`ACMP0_S + 0x04`, measured 2026-11-27). The driver sets it, and the
+    /// hand-out exists so the claim table can refuse a second owner of the same input mux.
+    pub fn acmp(&self) -> Result<crate::acmp::Acmp0, Handout<crate::acmp::Error>> {
+        self.claim(crate::cores::slots::Slot::Acmp0)
+            .map_err(Handout::Taken)?;
+        // SAFETY: `Board` holds the PAC singletons for the whole program; this hands ACMP0 out through the claim table,
+        // so no second driver can reach the same registers.
+        crate::acmp::Acmp0::new(unsafe { pac::Acmp0S::steal() }).map_err(Handout::Driver)
+    }
+
     /// Entry and exit of EM2, carrying the `EMU` it drives.
     ///
     /// Handed out here for the same reason the timer is: EM2 is where the core stops running from the
