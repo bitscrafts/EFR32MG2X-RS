@@ -79,11 +79,30 @@ def main() -> int:
             return None
         return int(m.group(1))
 
+    # The `Examples` line may state the number or name the script that prints it. Both are honest; only the first can go
+    # stale, and it did four times in one day. When the README delegates, the claim being checked is that the script it
+    # names exists -- and the count is still computed here, so a PASS prints the real number either way.
+    # Careful: a line that both states a number *and* names the script must still be checked. The first version of this
+    # branch skipped any line containing the script's name, and a control that put `999 example targets` next to that
+    # name passed -- a false green, found by running the control instead of trusting the change.
+    delegates = re.search(r"^\*\*Examples\*\*: .*scripts/check-examples-build\.sh", text, re.M) is not None
+    numbers = re.search(r"^\*\*Examples\*\*: (\d+) example targets", text, re.M)
+    if numbers is not None:
+        stated_examples = int(numbers.group(1))
+    elif delegates:
+        stated_examples = None
+        if not (ROOT / "scripts/check-examples-build.sh").exists():
+            problems.append(
+                "README points at scripts/check-examples-build.sh for the example count, and there is no such file"
+            )
+    else:
+        stated_examples = stated(r"^\*\*Examples\*\*: (\d+) example targets", "Examples")
+
     checks = [
         (stated(r"^\*\*Workspace\*\*: (\d+) crates", "Workspace"), len(unique), "workspace crates"),
         (stated(r"^- `libraries/`: (\d+) --", "libraries/"), len(libraries), "libraries"),
         (stated(r"^\*\*HAL modules\*\*: (\d+) public modules", "HAL modules"), modules, "HAL public modules"),
-        (stated(r"^\*\*Examples\*\*: (\d+) example targets", "Examples"), examples, "example targets"),
+        (stated_examples, examples, "example targets"),
     ]
     for said, real, label in checks:
         if said is not None and said != real:

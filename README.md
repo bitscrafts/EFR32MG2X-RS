@@ -146,7 +146,9 @@ built over a hundred example targets.
 `clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `eusart`, `extint`, `gpcrc`, `i2c`, `letimer`, `microphone`, `mvp`, `pcnt`, `pin`, `prs`, `pwm`,
 `record`, `route`, `rtc`, `sensors`, `sleep`, `spi`, `sysrtc`, `timer`, `usart`, `wdog` and `prelude`.
 
-**Examples**: 127 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
+**Examples**: every example of every crate compiles, and `scripts/check-examples-build.sh` prints the count in its
+verdict (`N example(s) build, across M crate(s)`). The number is not repeated here on purpose: it was written out in
+this file and in `templates/readme-hal.tmpl` until 2026-11-27, and went stale four times in one day
 line, which this page quotes rather than fixes by hand. That script builds every example with the features it declares
 and fails if one does not compile; the Bluetooth and BSP examples declare `required-features`, so a plain
 `cargo build --examples` skips them silently. The other 15 `.rs` files under `crates/*/examples/` are shared modules

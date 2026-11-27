@@ -414,6 +414,13 @@ def render(crate, check):
 
     tpl = tpl.replace("{{package}}", name).replace("{{crate_dir}}", crate.name)
 
+    # Counts the template must not spell out. Every number here was hand-written in two places until 2026-11-27, and
+    # went stale four times in one day (115->116, 124->125, 125->126, 126->127) -- each time caught by the gate after a
+    # full run and fixed by hand in the template *and* the root README. A count that is derived cannot be forgotten.
+    modules = len(re.findall(r"^\s*pub mod ", (crate / "src/lib.rs").read_text(), re.M))
+    examples = len(list((crate / "examples").glob("*.rs"))) if (crate / "examples").is_dir() else 0
+    tpl = tpl.replace("{{modules}}", str(modules)).replace("{{examples}}", str(examples))
+
     readme = crate / "README.md"
     if check:
         if readme.read_text() != tpl:
