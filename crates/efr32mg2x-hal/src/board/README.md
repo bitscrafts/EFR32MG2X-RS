@@ -54,10 +54,14 @@ and the defaults that the hardware demands (gate first, then configure).
 | `route_eusart0_async` | fn | Route EUSART0's transmitter and receiver to two pads, for the asynchronous mode. |
 | `route_eusart0_spi` | fn | Route EUSART0 in synchronous mode: MOSI, MISO and the clock. |
 | `route_eusart1_async` | fn | Route EUSART1's transmitter and receiver to two pads. |
+| `route_eusart1_spi` | fn | Route `EUSART1`'s three SPI signals to the pads the caller names. |
 | `route_i2c0` | fn | Points I2C0's SCL and SDA at real pins, and puts those pins in open-drain. |
 | `route_usart0` | fn | Route USART0's transmitter and receiver to two pins. |
+| `route_usart0_spi` | fn | Route `USART0`'s three SPI signals to the pads the caller names. |
 | `select_hfxo` | fn | Run the core from the crystal and report the frequency in force. |
 | `sleep` | fn | Entry and exit of EM2, carrying the `EMU` it drives. |
+| `spi0_on` | fn | `USART0` in synchronous mode, on three routed pins. |
+| `spi2_on` | fn | `EUSART1` in synchronous mode, on three routed pins. |
 | `spi_on` | fn | EUSART0 as an SPI master on three routed pins: the board's own SPI pads. |
 | `sysrtc` | fn | The tick timer, shared by every protocol stack that may run on this radio. |
 | `take` | fn | Take the peripherals and enable the bus clocks this HAL drives. |
@@ -87,9 +91,10 @@ Controls and the full story: [BLE-STATUS.md](../../../../docs/04-reference/BLE-S
 
 ## What is not proven
 
+- `usart0` as `spi::Spi0`, and `eusart1` as `spi::Spi2` | a **record** for those two SPI instances | reachable since 2026-11-27 — both carry `new_at`, and `Board::spi0_on`/`spi2_on` hand them out with their own claims (`SLOT_COUNT` 24). (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
 - ~~H28~~ | EM2 entry and exit sequence | **CLOSED 2026-11-21** (`B3`): ten ~1 s naps in EM2 woken by the SYSRTC comparator, intervals 0.92-1.03 s, mean 0.99, total 9.92 s, eleven interrupts. (HAL-GAP-ANALYSIS-2026-11-18.md (`../../../../docs/04-reference/HAL-GAP-ANALYSIS-2026-11-18`))
 - Plan to close the coverage gaps (`03-development/PLAN-COVERAGE-2026-11-25`) - what each missing item needs to be *proven*, in phases: no hardware needed, board on the desk, meter-class hardware, and the radio's vendor blobs. (../../../../docs/INDEX.md (`../../../../docs/INDEX`))
 
 ## Using it
 
-See `examples/hal_acmp_ladder.rs`, `examples/hal_adc_prs_gpio.rs`, `examples/hal_adc_prs_timer.rs`, `examples/hal_adc_prs_trigger.rs`, `examples/hal_adc_read.rs`, `examples/hal_aes_kat.rs`, `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_delay_clock.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_emu_voltage.rs`, `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_gpcrc.rs`, `examples/hal_gpio_interrupt.rs`, `examples/hal_hfxo.rs`, `examples/hal_i2c_async.rs`, `examples/hal_i2c_bitbang.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_imu_read.rs`, `examples/hal_led_blink.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_mic_level.rs`, `examples/hal_mvp_bench.rs`, `examples/hal_one_of_each.rs`, `examples/hal_pcnt_gpio.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer0_pwm.rs`, `examples/hal_timer0_repacing.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`, `examples/hal_timer_ticks.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`, `examples/hal_wdog_feed.rs`
+See `examples/hal_acmp_ladder.rs`, `examples/hal_adc_prs_gpio.rs`, `examples/hal_adc_prs_timer.rs`, `examples/hal_adc_prs_trigger.rs`, `examples/hal_adc_read.rs`, `examples/hal_aes_kat.rs`, `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_delay_clock.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_emu_voltage.rs`, `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_gpcrc.rs`, `examples/hal_gpio_interrupt.rs`, `examples/hal_hfxo.rs`, `examples/hal_i2c_async.rs`, `examples/hal_i2c_bitbang.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_imu_read.rs`, `examples/hal_led_blink.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_mic_level.rs`, `examples/hal_mvp_bench.rs`, `examples/hal_one_of_each.rs`, `examples/hal_pcnt_gpio.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_spi_masters.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer0_pwm.rs`, `examples/hal_timer0_repacing.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`, `examples/hal_timer_ticks.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`, `examples/hal_wdog_feed.rs`

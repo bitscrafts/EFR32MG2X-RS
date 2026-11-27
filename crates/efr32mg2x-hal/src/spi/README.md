@@ -74,7 +74,7 @@ spi.transfer(&mut rx_data, &tx_data).unwrap();
 | `Spi2` | struct | SPI2 using EUSART1 in SPI master mode. |
 | `fn` | const | Create new SPI configuration # Arguments * `mode` - SPI mode (CPOL/CPHA) * `frequency` - SPI clock frequency in Hz # Example ```no_run let config = Config::new(Mode::Mode0, 1_000_000); // 1 MHz, Mode 0 ```. |
 | `new` | fn | Creates a new SPI0 instance using USART0 # Arguments * `usart` - USART0_S peripheral instance * `config` - SPI configuration (mode, frequency, bit order) * `clocks` - Frozen clock configuration # Example ```no_run let spi = Spi0::new(dp.usart0_s, Config::new(Mode::Mode0, 1_000_000), &clocks); ```. |
-| `new_at` | fn | The same driver, built from the HFCLK in hertz instead of a `FrozenClocks`. |
+| `new_at` | fn | The same driver, built from HFCLK in hertz instead of a `FrozenClocks`. |
 | `read` | fn | Read data (half-duplex, send zeros) # Arguments * `words` - Buffer to store read data # Returns `Ok(())` on success, `Err(Error)` on failure. |
 | `transfer` | fn | Transfer data (full-duplex) Simultaneously sends and receives data. |
 | `write` | fn | Write data (half-duplex, discard received data) # Arguments * `words` - Data to write # Returns `Ok(())` on success, `Err(Error)` on failure. |
@@ -94,8 +94,9 @@ Controls and the full story: [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/0
 
 ## What is not proven
 
+- `usart0` as `spi::Spi0`, and `eusart1` as `spi::Spi2` | a **record** for those two SPI instances | reachable since 2026-11-27 — both carry `new_at`, and `Board::spi0_on`/`spi2_on` hand them out with their own claims (`SLOT_COUNT` 24). (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
 - documentation | **B** | `deny(missing_docs)` now holds on all 27 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). (HAL-MATURITY-2026-11-25.md (`../../../../docs/04-reference/HAL-MATURITY-2026-11-25`))
 
 ## Using it
 
-See `examples/hal_spi_loopback.rs`
+See `examples/hal_spi_loopback.rs`, `examples/hal_spi_masters.rs`

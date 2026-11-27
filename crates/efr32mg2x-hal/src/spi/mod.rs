@@ -95,7 +95,15 @@ impl Spi0 {
         clocks.enable_peripheral_clock(|cmu| {
             cmu.clken0().modify(|_, w| w.usart0().set_bit());
         });
+        Self::new_at(usart, config, clocks.hfclk().into())
+    }
 
+    /// The same driver, built from HFCLK in hertz instead of a `FrozenClocks`.
+    ///
+    /// `FrozenClocks` owns the CMU and the `Board` owns the CMU, so a caller that took the board could never build
+    /// this one: `Spi0` was public, documented and unbuildable until 2026-11-27, the same defect `timer`, `eusart` and
+    /// `Spi2` had. The caller must have enabled `CMU_CLKEN0.USART0`; `Board::spi0_on` does.
+    pub fn new_at(usart: pac::Usart0S, config: Config, hfclk_hz: u32) -> Self {
         // Configure first, enable after: this family faults when a peripheral is configured while it is enabled (the
         // project measured exactly that on the TIMER, `board.rs:244`).
         usart.ctrl().write(|w| {
@@ -118,7 +126,7 @@ impl Spi0 {
         });
 
         // Calculate and set clock divider for SPI frequency
-        let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.frequency);
+        let clkdiv = Self::calculate_clkdiv(hfclk_hz, config.frequency);
         // SAFETY: `CLKDIV` is the whole divider word; `clkdiv` comes from `efr32mg2x-usart-core`, which is measured on the
         // host and refuses a rate this clock cannot produce, so the value is in range by construction.
         usart.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
@@ -388,7 +396,15 @@ impl Spi2 {
         clocks.enable_peripheral_clock(|cmu| {
             cmu.clken1().modify(|_, w| w.eusart1().set_bit());
         });
+        Self::new_at(eusart, config, clocks.hfclk().into())
+    }
 
+    /// The same driver, built from HFCLK in hertz instead of a `FrozenClocks`.
+    ///
+    /// This is the constructor `spi::Spi2` was missing: with only the `FrozenClocks` form it was public, documented and
+    /// unbuildable from a `Board`, exactly like `timer`, `eusart` and `Spi0` before it. The caller must have enabled
+    /// `CMU_CLKEN1.EUSART1`; `Board::spi2_on` does.
+    pub fn new_at(eusart: pac::Eusart1S, config: Config, hfclk_hz: u32) -> Self {
         // Same order and the same divider register as `Spi1`: configure, then enable, with the rate in `CFG2.SDIV`.
         eusart.cfg0().write(|w| {
             w.sync()
@@ -397,7 +413,7 @@ impl Spi2 {
                 .bit(config.bit_order == BitOrder::MsbFirst)
         });
 
-        let sdiv = match crate::cores::spi::sdiv(clocks.hfclk().into(), config.frequency) {
+        let sdiv = match crate::cores::spi::sdiv(hfclk_hz, config.frequency) {
             Ok(value) => value as u8,
             Err(_) => 0xFF,
         };

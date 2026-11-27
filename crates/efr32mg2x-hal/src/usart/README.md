@@ -89,6 +89,7 @@ Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-re
 
 ## What is not proven
 
+- `usart0` as `spi::Spi0`, and `eusart1` as `spi::Spi2` | a **record** for those two SPI instances | reachable since 2026-11-27 — both carry `new_at`, and `Board::spi0_on`/`spi2_on` hand them out with their own claims (`SLOT_COUNT` 24). (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
 - `EUSART1` was the last row of the coverage boundary that read "compiled, not measured". (EUSART1-2026-11-27.md (`../../../../docs/04-reference/EUSART1-2026-11-27`))
 - documentation | **B** | `deny(missing_docs)` now holds on all 27 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). (HAL-MATURITY-2026-11-25.md (`../../../../docs/04-reference/HAL-MATURITY-2026-11-25`))
 

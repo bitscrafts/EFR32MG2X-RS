@@ -65,10 +65,15 @@ pub enum Slot {
     Aes,
     /// `EUSART1` — the second asynchronous block: same driver, its own `CLKEN1` bit.
     Eusart1,
+    /// `USART0` in synchronous mode (`spi::Spi0`) — the same block as `Usart0`, a different mode, and a second owner
+    /// would reconfigure the frame under the first.
+    Spi0,
+    /// `EUSART1` in synchronous mode (`spi::Spi2`) — as `Spi0`: same block as `Eusart1`, different mode.
+    Spi2,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 22;
+pub const SLOT_COUNT: usize = 24;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -96,6 +101,8 @@ impl Slot {
             Slot::Timer3 => 19,
             Slot::Timer4 => 20,
             Slot::Eusart1 => 21,
+            Slot::Spi0 => 22,
+            Slot::Spi2 => 23,
         }
     }
 }
@@ -215,6 +222,8 @@ mod tests {
             Slot::Timer3,
             Slot::Timer4,
             Slot::Eusart1,
+            Slot::Spi0,
+            Slot::Spi2,
         ] {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(

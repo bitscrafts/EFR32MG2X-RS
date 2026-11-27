@@ -96,7 +96,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-35 public modules (`pub mod` in `src/lib.rs`) and 42 examples. A date next to an example means a record was
+35 public modules (`pub mod` in `src/lib.rs`) and 43 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -292,7 +292,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-42 examples, **32 of them watched on the part**. A `--` in the last column means nobody
+43 examples, **32 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -330,6 +330,7 @@ mean it works.
 | `hal_pcnt_gpio.rs` | The PRS producer measured on 2026-11-26 carries a pad's level, and the IADC converts once per rising edge of it. | 2026-11-26 |
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
+| `hal_spi_masters.rs` | All three SPI masters on the same pads, one after the other, and each with its own control. | -- |
 | `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
 | `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |

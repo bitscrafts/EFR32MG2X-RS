@@ -228,6 +228,153 @@ impl Board {
         true
     }
 
+    /// `USART0` in synchronous mode, on three routed pins.
+    ///
+    /// `spi::Spi0` existed with a constructor that took a `&FrozenClocks`, which this board keeps private behind the
+    /// CMU it owns — so the type was public, documented and unbuildable until 2026-11-27. This is the hand-out that
+    /// makes it reachable, with a claim of its own because `Spi0` and `Usart0` are the same block in two modes.
+    pub fn spi0_on(
+        &self,
+        mosi: (crate::pin::Port, u8),
+        miso: (crate::pin::Port, u8),
+        sclk: (crate::pin::Port, u8),
+        config: crate::spi::Config,
+    ) -> Result<crate::spi::Spi0, Handout<crate::route::RouteError>> {
+        self.claim(crate::cores::slots::Slot::Spi0)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.usart0().set_bit());
+        self.route_usart0_spi(mosi, miso, sclk)
+            .map_err(Handout::Driver)?;
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of USART0 in synchronous mode.
+        Ok(crate::spi::Spi0::new_at(
+            unsafe { pac::Usart0S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
+    /// Route `USART0`'s three SPI signals to the pads the caller names.
+    ///
+    /// Same order as `route_eusart0_spi`: pin mode, route value, enable. MOSI is `USART0_TX`, MISO is `USART0_RX`, and
+    /// SCLK is `USART0_CLK`; there is no chip-select because the driver does not use one.
+    pub fn route_usart0_spi(
+        &self,
+        mosi: (crate::pin::Port, u8),
+        miso: (crate::pin::Port, u8),
+        sclk: (crate::pin::Port, u8),
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::route::{port_number, route_value};
+        let mosi_valor = route_value(port_number(mosi.0), mosi.1)?;
+        let miso_valor = route_value(port_number(miso.0), miso.1)?;
+        let sclk_valor = route_value(port_number(sclk.0), sclk.1)?;
+
+        crate::pin::set_mode(&self.dp.gpio_s, mosi.0, mosi.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(
+            &self.dp.gpio_s,
+            miso.0,
+            miso.1,
+            crate::pin::mode::INPUT_PULL,
+        );
+        crate::pin::set_mode(&self.dp.gpio_s, sclk.0, sclk.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::write_dout(
+            &self.dp.gpio_s,
+            miso.0,
+            crate::pin::read_dout(&self.dp.gpio_s, miso.0) | (1 << miso.1),
+        );
+
+        self.dp
+            .gpio_ns
+            // SAFETY: `route_value` bounds-checks the pair, so each field holds exactly the pad the caller named.
+            .usart0_txroute()
+            .write(|w| unsafe { w.bits(mosi_valor) });
+        self.dp
+            .gpio_ns
+            // SAFETY: as above, for RX.
+            .usart0_rxroute()
+            .write(|w| unsafe { w.bits(miso_valor) });
+        self.dp
+            .gpio_ns
+            // SAFETY: as above, for CLK.
+            .usart0_clkroute()
+            .write(|w| unsafe { w.bits(sclk_valor) });
+        self.dp
+            .gpio_ns
+            .usart0_routeen()
+            .modify(|_, w| w.txpen().set_bit().rxpen().set_bit().clkpen().set_bit());
+        Ok(())
+    }
+
+    /// `EUSART1` in synchronous mode, on three routed pins.
+    ///
+    /// The other half of the same defect: `spi::Spi2` had no reachable constructor either.
+    pub fn spi2_on(
+        &self,
+        mosi: (crate::pin::Port, u8),
+        miso: (crate::pin::Port, u8),
+        sclk: (crate::pin::Port, u8),
+        config: crate::spi::Config,
+    ) -> Result<crate::spi::Spi2, Handout<crate::route::RouteError>> {
+        self.claim(crate::cores::slots::Slot::Spi2)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken1().modify(|_, w| w.eusart1().set_bit());
+        self.route_eusart1_spi(mosi, miso, sclk)
+            .map_err(Handout::Driver)?;
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of EUSART1 in synchronous mode.
+        Ok(crate::spi::Spi2::new_at(
+            unsafe { pac::Eusart1S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        ))
+    }
+
+    /// Route `EUSART1`'s three SPI signals to the pads the caller names.
+    pub fn route_eusart1_spi(
+        &self,
+        mosi: (crate::pin::Port, u8),
+        miso: (crate::pin::Port, u8),
+        sclk: (crate::pin::Port, u8),
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::route::{port_number, route_value};
+        let mosi_valor = route_value(port_number(mosi.0), mosi.1)?;
+        let miso_valor = route_value(port_number(miso.0), miso.1)?;
+        let sclk_valor = route_value(port_number(sclk.0), sclk.1)?;
+
+        crate::pin::set_mode(&self.dp.gpio_s, mosi.0, mosi.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(
+            &self.dp.gpio_s,
+            miso.0,
+            miso.1,
+            crate::pin::mode::INPUT_PULL,
+        );
+        crate::pin::set_mode(&self.dp.gpio_s, sclk.0, sclk.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::write_dout(
+            &self.dp.gpio_s,
+            miso.0,
+            crate::pin::read_dout(&self.dp.gpio_s, miso.0) | (1 << miso.1),
+        );
+
+        self.dp
+            .gpio_ns
+            // SAFETY: `route_value` bounds-checks the pair, so each field holds exactly the pad the caller named.
+            .eusart1_txroute()
+            .write(|w| unsafe { w.bits(mosi_valor) });
+        self.dp
+            .gpio_ns
+            // SAFETY: as above, for RX.
+            .eusart1_rxroute()
+            .write(|w| unsafe { w.bits(miso_valor) });
+        self.dp
+            .gpio_ns
+            // SAFETY: as above, for CLK.
+            .eusart1_sclkroute()
+            .write(|w| unsafe { w.bits(sclk_valor) });
+        self.dp
+            .gpio_ns
+            .eusart1_routeen()
+            .modify(|_, w| w.txpen().set_bit().rxpen().set_bit().sclkpen().set_bit());
+        Ok(())
+    }
+
     /// `TIMER1`, handed out with its own claim so two owners cannot pace the same counter.
     ///
     /// This is the first instance `timer::TimerN` can be built for at all. Until now every `Board` hand-out built its
