@@ -45,10 +45,9 @@ None directly: this module composes other drivers and reaches no `pac::` periphe
 ```
     probe: t=1865376137 c=29605      SYSRTC and DWT at the first read
     probe: t=1865722228 c=29605      same DWT value 10.8 s later
-    dwt: demcr=0x01100000 ctrl=0x40000001                                  probe  the counter runs only under a debug session
 ```
 
-Controls and the full story: [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
+Controls and the full story: [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md)
 
 ## What is not proven
 

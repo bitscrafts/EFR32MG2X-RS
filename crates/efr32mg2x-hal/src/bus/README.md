@@ -45,7 +45,7 @@ No mailbox record in `docs/` names this module, so treat its API as unmeasured o
 
 ## What is not proven
 
-- documentation | **B** | `deny(missing_docs)` now holds on all 27 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). (HAL-MATURITY-2026-11-25.md (`../../../../docs/04-reference/HAL-MATURITY-2026-11-25`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

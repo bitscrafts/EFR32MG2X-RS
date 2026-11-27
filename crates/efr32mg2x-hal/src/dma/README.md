@@ -99,8 +99,6 @@ Controls and the full story: [DMA-IRQ-2026-11-27.md](../../../../docs/04-referen
 
 ## What is not proven
 
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
-- ⏳ Continuous conversion and multi-channel scan (deferred; the microphone path uses LDMA instead). (PLAN.md (`../../../../docs/03-development/PLAN`))
 - Do NOT delete the deferred design: Zigbee and Thread stay on the roadmap, and this item exists so. (QUEUE-ITEM-B10-ieee802154-sys.md (`../../../../docs/05-operations/QUEUE-ITEM-B10-ieee802154-sys`))
 
 ## Using it

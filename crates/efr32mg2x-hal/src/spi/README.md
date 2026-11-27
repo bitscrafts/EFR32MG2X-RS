@@ -85,17 +85,11 @@ spi.transfer(&mut rx_data, &tx_data).unwrap();
 
 ## What was measured
 
-```
-    spi: n=8 ok=8 err=0 out=a5..34 in=a5..34                               PASS   SPI on a D10-D9 jumper
-    spi: n=8 ok=1 err=0 out=a5..34 in=ff..ff                               FAIL   …the same firmware with MISO moved off the jumper
-```
-
-Controls and the full story: [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
+No mailbox record in `docs/` names this module, so treat its API as unmeasured on hardware. The first measurement belongs here, with the line the board produced and the controls around it.
 
 ## What is not proven
 
-- `usart0` as `spi::Spi0`, and `eusart1` as `spi::Spi2` | a **record** for those two SPI instances | reachable since 2026-11-27 — both carry `new_at`, and `Board::spi0_on`/`spi2_on` hand them out with their own claims (`SLOT_COUNT` 24). (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
-- documentation | **B** | `deny(missing_docs)` now holds on all 27 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). (HAL-MATURITY-2026-11-25.md (`../../../../docs/04-reference/HAL-MATURITY-2026-11-25`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

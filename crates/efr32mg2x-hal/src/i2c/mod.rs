@@ -58,7 +58,6 @@ mod types;
 pub use crate::cores::i2c as proto;
 pub use types::{Config, Error, Speed};
 
-use crate::clock::FrozenClocks;
 use crate::pac;
 
 /// Polls a handshake may take before the driver reports `Timeout`.
@@ -393,11 +392,11 @@ impl I2c0 {
 
 impl I2c1 {
     /// Creates a new I2C1 instance
-    pub fn new(i2c: pac::I2c1S, config: Config, clocks: &FrozenClocks) -> Self {
-        // Enable I2C1 clock in CMU using safe accessor
-        clocks.enable_peripheral_clock(|cmu| {
-            cmu.clken0().modify(|_, w| w.i2c1().set_bit());
-        });
+    pub fn new(i2c: pac::I2c1S, config: Config, hfclk: crate::clock::Hertz) -> Self {
+        // The clock itself was enabled by whoever owns the CMU -- `Board::i2c1` for a consumer -- because this driver
+        // only needs the number, to divide it down to the bus rate. Taking `&FrozenClocks` here is the same defect
+        // `I2c0::new` was fixed for and this one was not: the board keeps the CMU, so no `Board` could build an
+        // `I2c1`, and the driver was public, documented and unreachable.
 
         // Enable I2C peripheral
         i2c.en().write(|w| w.en().set_bit());
@@ -413,7 +412,7 @@ impl I2c1 {
         });
 
         // Calculate and set clock divider
-        let clkdiv = Self::calculate_clkdiv(clocks.hfclk().into(), config.speed);
+        let clkdiv = Self::calculate_clkdiv(hfclk.into(), config.speed);
         // SAFETY: as above -- the same host-tested divider, for the other bus instance.
         i2c.clkdiv().write(|w| unsafe { w.bits(clkdiv) });
 

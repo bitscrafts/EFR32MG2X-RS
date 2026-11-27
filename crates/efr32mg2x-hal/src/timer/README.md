@@ -102,9 +102,9 @@ Controls and the full story: [APP-LOOP-BUDGET.md](../../../../docs/04-reference/
 
 ## What is not proven
 
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
 - `EUSART1` was the last row of the coverage boundary that read "compiled, not measured". (EUSART1-2026-11-27.md (`../../../../docs/04-reference/EUSART1-2026-11-27`))
 - Wake latency:** if the MCU timer paces each sample, every sample costs an EM2→EM0 wake and an I2C transfer. (HAL-OPUS-ANALYSIS-2026-11-22.md (`../../../../docs/04-reference/HAL-OPUS-ANALYSIS-2026-11-22`))
+- A compare event** (`SIGSEL = TIMER0CC0`) is encoded and not measured; only the overflow is. (PRS-TIMER-PRODUCER-2026-11-26.md (`../../../../docs/04-reference/PRS-TIMER-PRODUCER-2026-11-26`))
 
 ## Using it
 

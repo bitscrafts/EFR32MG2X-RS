@@ -113,14 +113,13 @@ lfxo: Some(LfxoConfig::default()),  // Enable LFXO for RTC
     burtc: ok=1 run=1 pre=0 d0=32901 s0=32901 r0=1000 pd=3 d1=4113 s1=32901 r1=125 ctl=0 cs=32902 bk=16448 bs=16451 rb=999 if=0x00000000 st=0x00000001 sb=0x00000000 ck=0x00000101
     burtc: ok=1 run=1 pre=0 d0=32900 s0=32900 r0=1000 pd=3 d1=4112 s1=32899 r1=124 ctl=0 cs=32899 bk=16446 bs=16450 rb=999 if=0x00000000 st=0x00000001 sb=0x00000000 ck=0x00000101
     probe: t=1865376137 c=29605      SYSRTC and DWT at the first read
-    cmp: start=…57 deadline=…77 reached=…78 late=1 fired=1 en=1 run=1      PASS   SYSRTC compare fires once, late=1
+    letimer: clk=00000401 want=500 rb=500 fired1=0 rtc1=1600 fired2=0 rtc2=1600 cnt_start=65525 cnt=62315
 ```
 
-Controls and the full story: [BURTC-2026-11-27.md](../../../../docs/04-reference/BURTC-2026-11-27.md), [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md)
+Controls and the full story: [BURTC-2026-11-27.md](../../../../docs/04-reference/BURTC-2026-11-27.md), [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-reference/DWT-NEEDS-A-DEBUG-SESSION.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md), [SYSRTC-FOR-THREE-PROTOCOLS.md](../../../../docs/04-reference/SYSRTC-FOR-THREE-PROTOCOLS.md)
 
 ## What is not proven
 
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
 - ~~H28~~ | EM2 entry and exit sequence | **CLOSED 2026-11-21** (`B3`): ten ~1 s naps in EM2 woken by the SYSRTC comparator, intervals 0.92-1.03 s, mean 0.99, total 9.92 s, eleven interrupts. (HAL-GAP-ANALYSIS-2026-11-18.md (`../../../../docs/04-reference/HAL-GAP-ANALYSIS-2026-11-18`))
 
 ## Using it

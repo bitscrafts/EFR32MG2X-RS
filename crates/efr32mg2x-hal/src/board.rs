@@ -106,6 +106,34 @@ impl Board {
         ))
     }
 
+    /// Hands out `I2C1` — the second bus, with its own clock-enable bit and its own pins.
+    ///
+    /// ## Why this exists
+    ///
+    /// `i2c::I2c1` was public and documented with a constructor that took a `&FrozenClocks`, which this board keeps
+    /// private because it owns the CMU: the driver was reachable by nobody. A review found it on 2026-11-27; it is the
+    /// same defect `I2c0::new` had, and the third of its class.
+    ///
+    /// It is **unmeasured**: no record exists of a transaction on this bus, because the board's I2C sensor sits on
+    /// I2C0 and nothing has been wired to I2C1. It compiles, it claims its slot, and it is listed as unmeasured in
+    /// `docs/04-reference/COVERAGE-BOUNDARY-2026-11-25.md` rather than implied to work.
+    pub fn i2c1(
+        &self,
+        config: crate::i2c::Config,
+        hfclk: crate::clock::Hertz,
+    ) -> Result<crate::i2c::I2c1, Handout<()>> {
+        self.claim(crate::cores::slots::Slot::I2c1)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| w.i2c1().set_bit());
+        // SAFETY: `Board` took `Peripherals` once and holds every singleton for the life of the program. This is the
+        // only path a caller has to I2C1, and the slot above makes a second one a refusal rather than an aliased bus.
+        Ok(crate::i2c::I2c1::new(
+            unsafe { pac::I2c1S::steal() },
+            config,
+            hfclk,
+        ))
+    }
+
     /// Points I2C0's SCL and SDA at real pins, and puts those pins in open-drain.
     ///
     /// ## Why the Board does this and not the caller

@@ -39,6 +39,8 @@ pub enum Slot {
     Converter,
     /// `I2C0`.
     I2c,
+    /// `I2C1` -- the second bus. Its own slot, because a caller that takes I2C0 must not thereby exclude I2C1.
+    I2c1,
     /// `TIMER0` — the counter behind every PWM and buzzer path.
     Timer0,
     /// `TIMER1` — the same block, its own clock-enable bit and its own interrupt line.
@@ -73,7 +75,7 @@ pub enum Slot {
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 24;
+pub const SLOT_COUNT: usize = 25;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -103,6 +105,7 @@ impl Slot {
             Slot::Eusart1 => 21,
             Slot::Spi0 => 22,
             Slot::Spi2 => 23,
+            Slot::I2c1 => 24,
         }
     }
 }

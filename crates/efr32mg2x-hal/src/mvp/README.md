@@ -55,7 +55,6 @@ No mailbox record in `docs/` names this module, so treat its API as unmeasured o
 ## What is not proven
 
 - not measured    MAC with accumulation (needs encodings from sl_mvp.h that the repository does not have). (MEASURED-2026-11-17.md (`../../../../docs/03-development/MEASURED-2026-11-17`))
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
 
 ## Using it
 

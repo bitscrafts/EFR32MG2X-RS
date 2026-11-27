@@ -65,7 +65,7 @@ No mailbox record in `docs/` names this module, so treat its API as unmeasured o
 
 ## What is not proven
 
-- ⏳ Continuous conversion and multi-channel scan (deferred; the microphone path uses LDMA instead). (PLAN.md (`../../../../docs/03-development/PLAN`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

@@ -85,7 +85,7 @@ Controls and the full story: [LETIMER-COMPARE-2026-11-26.md](../../../../docs/04
 
 ## What is not proven
 
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

@@ -51,10 +51,9 @@ No mailbox record in `docs/` names this module, so treat its API as unmeasured o
 
 ## What is not proven
 
-- `i2c0`, `i2c1` | **I2C slave** (address match) | absent as a driver. (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
-- documentation | **B** | `deny(missing_docs)` now holds on all 27 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). (HAL-MATURITY-2026-11-25.md (`../../../../docs/04-reference/HAL-MATURITY-2026-11-25`))
 - Wake latency:** if the MCU timer paces each sample, every sample costs an EM2→EM0 wake and an I2C transfer. (HAL-OPUS-ANALYSIS-2026-11-22.md (`../../../../docs/04-reference/HAL-OPUS-ANALYSIS-2026-11-22`))
+- The 2026-11-22 review's item 2 was "no hardware I2C path sends STOP or ABORT after an error, so one NACK can leave the. (I2C-RECOVERY-STATE.md (`../../../../docs/04-reference/I2C-RECOVERY-STATE`))
 
 ## Using it
 
-See `examples/hal_i2c_async.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`
+See `examples/hal_i2c_async.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_one_of_each.rs`

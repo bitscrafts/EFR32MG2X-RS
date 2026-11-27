@@ -45,10 +45,9 @@ delay.delay_us(100);
 ```
     delayclk: ok=1 hfxo=1 hz0=19000000 d0=200279 u0=99125 hz1=39000000 pw=10003 r1=38988303 em=200 d1=201124 e1=5 u1=100010 eu=0 x=401171 ex=2
     delayclk: ok=1 hfxo=1 hz0=19000000 d0=200279 u0=99125 hz1=39000000 pw=10003 r1=38988303 em=199 d1=201150 e1=5 u1=100010 eu=0 x=401145 ex=2
-    hfxo: sel=1 before=19M after=39M tick=32974 err=206                    PASS   crystal, and a 1000 ms delay = 1006 ms
 ```
 
-Controls and the full story: [DELAY-MEASURED-2026-11-27.md](../../../../docs/04-reference/DELAY-MEASURED-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md)
+Controls and the full story: [DELAY-MEASURED-2026-11-27.md](../../../../docs/04-reference/DELAY-MEASURED-2026-11-27.md)
 
 ## What is not proven
 

@@ -52,8 +52,7 @@ Controls and the full story: [IADC-PRS-TRIGGER-2026-11-26.md](../../../../docs/0
 
 ## What is not proven
 
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
-- PRS routing | No hardware trigger path between timers, the IADC and the radio; needed for 802.15.4 timing. (HAL-RADIO-BLE-REVIEW-2026-11-17.md (`../../../../docs/04-reference/HAL-RADIO-BLE-REVIEW-2026-11-17`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

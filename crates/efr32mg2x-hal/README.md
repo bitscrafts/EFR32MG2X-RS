@@ -39,7 +39,7 @@ Read from the source, so it cannot drift:
 | `Hfxo0Ns` | `src/clock/clocks.rs` |
 | `I2c0Ns` | `src/board.rs`, `src/i2c/async_impl.rs`, `src/i2c/mod.rs` |
 | `I2c0S` | `src/i2c/async_impl.rs`, `src/i2c/mod.rs` |
-| `I2c1S` | `src/i2c/mod.rs` |
+| `I2c1S` | `src/board.rs`, `src/i2c/mod.rs` |
 | `Iadc0S` | `src/adc/mod.rs`, `src/board.rs`, `src/microphone.rs` |
 | `Interrupt` | `src/dma/irq.rs`, `src/extint.rs`, `src/i2c/async_impl.rs` (+1 more) |
 | `LdmaS` | `src/dma/irq.rs`, `src/dma/linked.rs`, `src/dma/mod.rs` |

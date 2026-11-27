@@ -40,6 +40,7 @@ and the defaults that the hardware demands (gate first, then configure).
 | `eusart1_async` | fn | EUSART1 as an asynchronous serial port, the second of the two blocks. |
 | `gpcrc` | fn | The CRC accelerator, for checking an image, a configuration blob or a frame. |
 | `i2c0` | fn | The hardware I2C0, with its clock enabled and its two lines still unrouted. |
+| `i2c1` | fn | Hands out `I2C1` — the second bus, with its own clock-enable bit and its own pins. |
 | `i2c_on` | fn | A bit-banged I2C master on the two pins the caller names. |
 | `i2c_static` | fn | — |
 | `input_on` | fn | An input with the internal pull-up on the pin the caller names. |
@@ -79,7 +80,7 @@ and the defaults that the hardware demands (gate first, then configure).
 
 ## Registers it touches
 
-`Acmp0S`, `BurtcNs`, `EmuS`, `Eusart0S`, `Eusart1S`, `GpcrcNs`, `GpioNs`, `GpioS`, `I2c0Ns`, `Iadc0S`, `Letimer0Ns`, `MvpNs`, `Pcnt0Ns`, `Peripherals`, `PrsS`, `RadioaesS`, `Timer1S`, `Timer2S`, `Timer3S`, `Timer4S`, `Usart0S`, `Wdog0Ns`
+`Acmp0S`, `BurtcNs`, `EmuS`, `Eusart0S`, `Eusart1S`, `GpcrcNs`, `GpioNs`, `GpioS`, `I2c0Ns`, `I2c1S`, `Iadc0S`, `Letimer0Ns`, `MvpNs`, `Pcnt0Ns`, `Peripherals`, `PrsS`, `RadioaesS`, `Timer1S`, `Timer2S`, `Timer3S`, `Timer4S`, `Usart0S`, `Wdog0Ns`
 
 ## What was measured
 
@@ -91,7 +92,6 @@ Controls and the full story: [BLE-STATUS.md](../../../../docs/04-reference/BLE-S
 
 ## What is not proven
 
-- `usart0` as `spi::Spi0`, and `eusart1` as `spi::Spi2` | a **record** for those two SPI instances | reachable since 2026-11-27 — both carry `new_at`, and `Board::spi0_on`/`spi2_on` hand them out with their own claims (`SLOT_COUNT` 24). (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
 - ~~H28~~ | EM2 entry and exit sequence | **CLOSED 2026-11-21** (`B3`): ten ~1 s naps in EM2 woken by the SYSRTC comparator, intervals 0.92-1.03 s, mean 0.99, total 9.92 s, eleven interrupts. (HAL-GAP-ANALYSIS-2026-11-18.md (`../../../../docs/04-reference/HAL-GAP-ANALYSIS-2026-11-18`))
 - Plan to close the coverage gaps (`03-development/PLAN-COVERAGE-2026-11-25`) - what each missing item needs to be *proven*, in phases: no hardware needed, board on the desk, meter-class hardware, and the radio's vendor blobs. (../../../../docs/INDEX.md (`../../../../docs/INDEX`))
 

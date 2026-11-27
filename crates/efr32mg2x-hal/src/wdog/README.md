@@ -103,7 +103,7 @@ No mailbox record in `docs/` names this module, so treat its API as unmeasured o
 
 ## What is not proven
 
-- C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 

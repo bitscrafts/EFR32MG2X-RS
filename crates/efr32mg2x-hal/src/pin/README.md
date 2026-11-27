@@ -56,7 +56,6 @@ Controls and the full story: [GPIO-INTERRUPT-2026-11-27.md](../../../../docs/04-
 ## What is not proven
 
 - So the MCU side is configured; what is not proven is that the *pin* moves and. (EXPANSION-BOARD-STATUS-2026-11-11.md (`../../../../docs/03-development/EXPANSION-BOARD-STATUS-2026-11-11`))
-- ⏳ `GpioPin` encoded and never driven (open item); synchronous channels and other consumers untouched. (PLAN.md (`../../../../docs/03-development/PLAN`))
 
 ## Using it
 

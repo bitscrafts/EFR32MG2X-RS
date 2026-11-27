@@ -47,6 +47,15 @@ fn main() -> ! {
     let primeiro_adc = board.adc(efr32mg2x_hal::adc::Config::default());
     let adc_ok = primeiro_adc.is_ok();
     let segundo_adc = board.adc(efr32mg2x_hal::adc::Config::default());
+
+    // `i2c::I2c1` was public, documented and unreachable: its constructor wanted a `&FrozenClocks` the board keeps
+    // private because it owns the CMU. This line is the proof it is reachable now -- it compiles or the crate does not,
+    // which is the only claim made here. The bus itself is unmeasured: nothing is wired to I2C1 on this board.
+    let i2c1 = board.i2c1(
+        efr32mg2x_hal::i2c::Config::new(efr32mg2x_hal::i2c::Speed::Standard100kHz),
+        board.clock_hz(),
+    );
+    let _ = &i2c1;
     let adc_recusado = matches!(segundo_adc, Err(Handout::Taken(_)));
 
     // And a third, untouched slot is still free, so the table is not simply full.

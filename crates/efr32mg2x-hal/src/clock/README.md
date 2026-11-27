@@ -59,7 +59,7 @@ Controls and the full story: [RAIL-BLE-ON-XIAO.md](../../../../docs/04-reference
 
 ## What is not proven
 
-- ⏳ Peripheral clock individual enable/disable (deferred). (PLAN.md (`../../../../docs/03-development/PLAN`))
+Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 
