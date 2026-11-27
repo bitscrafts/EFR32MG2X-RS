@@ -38,7 +38,7 @@ This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silic
 
 **Status**: the radio works on hardware and a phone can use it -- advertising, scanning, connections, GATT
 read/write/notify, and the BME680 published as the standard Environmental Sensing service (`base_ble_env_gatt`,
-verified with nRF Connect). all 124 example targets compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
+verified with nRF Connect). all 125 example targets compile under `scripts/check-examples-build.sh` (every example of every workspace crate) and `scripts/gate.sh` reports
 `VERDICT: PASS`. Open inside Phase D2: **D2f pairing** (the PSA layer is written and verified; the security manager
 fails before the key exchange, so it stays out of the product build) and **D2g BME680 gas resistance**. Next phases:
 D3 (Zigbee) / Phase E (Application Development). The Gantt and the phase table are in `README.md`; the open items with
@@ -119,7 +119,7 @@ EFR32MG24/
 │   │   ├── usart/                  # USART0 serial communication
 │   │   ├── wdog/                   # WDOG0 watchdog with lock mechanism
 │   │   └── prelude.rs
-│   ├── examples/                   # 14 HAL examples (00_recovery through 12_wdog)
+│   ├── examples/                   # 41 HAL examples, one per instrument (hal_i2c_recovery, ...)
 │   ├── docs/                       # HAL-specific documentation
 │   ├── memory.x                    # Linker memory layout
 │   ├── device.x                    # Interrupt vector table
@@ -250,9 +250,9 @@ EFR32MG24/
 - **Examples**: 4 BLE FFI examples + 6 BSP BLE/sensor examples + microphone streaming
 
 ### Build Statistics
-- Total HAL code: 12,003 lines (16 modules plus 11 top-level modules). The README is one per **crate**, generated
+- Total HAL code: 35 public modules (`pub mod` in `src/lib.rs`). The README is one per **crate**, generated
   by `scripts/gen-crate-readme.py` and checked by the gate -- not one per module.
-- HAL examples: 40, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
+- HAL examples: 41, named after the peripheral they demonstrate (`hal_i2c_recovery`, `hal_dma_stop`, ...). The
   numbered `00_recovery`..`12_wdog` set is gone; the files were renamed when each one started proving something.
 - BLE examples: 4 (bluetooth-sys) + 6 (BSP integration)
 - BSP examples: 9 (blink variants + BLE + microphone streaming)
@@ -488,10 +488,10 @@ cargo doc --no-deps --features rt --open
    - 16 kHz audio streaming via LDMA
 
 **Key Achievements**:
-- All 12 HAL modules have comprehensive READMEs and embedded-hal v1.0 traits
+- All 35 HAL modules have a generated README (checked by the gate)
 - All modules follow the multi-file pattern (mod.rs, types.rs, traits.rs, README.md)
 - Zero compilation warnings or errors
-- 14 HAL examples + 4 BLE FFI examples + 9 BSP examples
+- 41 HAL examples + 4 BLE FFI examples + 9 BSP examples
 - Production-grade: SAFETY comments, critical sections, timeout protection
 - Radio foundation enables BLE, Zigbee, Thread, Matter
 
@@ -504,7 +504,9 @@ cargo doc --no-deps --features rt --open
    *ahead* of the vector (arming `EXTIRISE`/`EXTIFALL` and unmasking the NVIC is not enough), the flag latches but
    nothing counts without a handler, the odd/even vector split is by pin parity, and a handler must clear every flag of
    its parity or the vector re-enters for ever (`docs/04-reference/GPIO-INTERRUPT-2026-11-27.md`)
-2. **USART**: Only USART0 supported (EUSART0/1 for async in future)
+2. **USART/EUSART**: `USART0` and `EUSART0` asynchronous are driven and measured (`hal_usart_link`,
+   `hal_eusart_loopback`); `EUSART1` is the one instance that compiles with no record, because `eusart` is a
+   single concrete driver rather than a macro over both instances -- the same defect `timer` had until 2026-11-27.
 3. **I2C**: Only master mode (slave mode not implemented)
 4. **SPI**: Only master mode, blocking operations only
 5. **DMA**: Stages 1-3 complete; interrupt-driven async (Stage 4) deferred. Linked descriptors are measured: the
@@ -609,7 +611,7 @@ does not exist. Read the README and the `docs/` that ship inside the package, th
 
 ---
 
-**Last Updated**: 2026-11-14
+**Last Updated**: 2026-11-27
 **Current Phase**: Phase D2 on hardware -- radio and GATT verified, BME680 on a phone; D2f pairing and D2g gas open
-**Current Status**: 12 HAL modules + RAIL FFI + Bluetooth stack + XiaoBle BSP + microphone driver
+**Current Status**: 35 HAL modules + RAIL FFI + Bluetooth stack + XiaoBle BSP + microphone driver
 **Next Milestone**: Phase D3 (Zigbee 3.0) or Phase E (Application Development)
