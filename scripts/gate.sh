@@ -570,6 +570,24 @@ for dir in libraries/*/; do
   fi
 done
 
+# The HAL's own pure-logic modules. This was missing until 2026-11-27 and it was not cosmetic: the crate carries 102
+# `#[test]`s (route.rs 10, alias.rs 1, rtc/pcf8563.rs 2, and the cores/) and the loop above walks `libraries/*/` only,
+# so no gate ran a single one of them. A review found it; running the command by hand showed
+# `102 passed; 0 failed; 0.00 s`, which is the point -- the tests were not dead, the gate was blind to them.
+#
+# `--lib`, not the bare `cargo test`, because `--doc` cannot work for this crate: its doc comments carry inline asm
+# (`isb 0xf`, sysrtc.rs:331) that the host assembler rejects, and a doc-test needs a test harness, which `thumbv8m`
+# does not have. That is a separate debt recorded in the module READMEs, not something this step can close.
+if [ -f crates/efr32mg2x-hal/Cargo.toml ]; then
+  if cargo test -p efr32mg2x-hal --lib --target "${HOST}" >/tmp/gate-hal-host.log 2>&1; then
+    n=$(grep -oE '[0-9]+ passed' /tmp/gate-hal-host.log | head -1)
+    pass "efr32mg2x-hal: host tests (${n:-passed})"
+  else
+    fail "efr32mg2x-hal: host tests"
+    grep -E '^(error|test .* FAILED)' /tmp/gate-hal-host.log | head -5
+  fi
+fi
+
 echo
 echo "not gated on purpose:"
 echo "  cmsis-stubs              -- a build-support crate: C only, no Rust API, no examples"
