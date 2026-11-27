@@ -12,6 +12,31 @@
 //! is the property that lets a tool which only knows one check the other.
 //!
 //! Both are `no_std` and table-free: eight iterations per byte, short enough to read and audit against the polynomial.
+//!
+//! # The two conventions, and the relation that checks one against the other
+//!
+//! ```
+//! use efr32mg2x_gpcrc_core::{crc32, crc32_msb, reflected_via_msb, CRCPoly, INIT};
+//!
+//! // Measured on the part on 2026-11-25: the accelerator returns this for "123456789" seeded with 0xFFFFFFFF, and its
+//! // complement is the published reflected check value. That is how the engine was identified as reflected -- the
+//! // reference manual describes it as MSB-first, which is a different number.
+//! let measured_raw = 0x340B_C6D9u32;
+//! assert_eq!(!measured_raw, 0xCBF4_3926);
+//!
+//! // The reflected convention, which is what zlib, PNG and Ethernet mean, and the MSB-first one pinned to its own
+//! // published vector so a typo in the polynomial cannot pass as a measurement.
+//! assert_eq!(crc32(b"123456789"), !measured_raw);
+//! assert_eq!(crc32_msb(b"123456789", INIT), 0x0376_E6E7);
+//!
+//! // The relation between them is input and output bit reversal, so a tool that only knows zlib can check an engine
+//! // that only answers MSB-first -- here as a function rather than as a sentence to be believed.
+//! assert_eq!(reflected_via_msb(b"123456789"), crc32(b"123456789"));
+//!
+//! // Both polynomials are named, because "CRC-32" without saying which one is the claim this crate exists to avoid.
+//! assert_eq!(CRCPoly::Crc32.value(), 0x04C1_1DB7);
+//! assert_eq!(CRCPoly::Crc16.width(), 16);
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]

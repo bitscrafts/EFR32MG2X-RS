@@ -28,6 +28,54 @@
 //!
 //! With that change both drops are detected and the handling recording produces no
 //! fall, which is what the tests encode.
+//!
+//! # One drop, at the rate the board is sampled
+//!
+//! ```
+//! use motion_detection::{Event, FallDetector};
+//!
+//! // 400 Hz: one sample every 2500 us. The detector keeps its timers in microseconds because a
+//! // whole-millisecond clock would round each sample by 20 % at this rate.
+//! let mut detector = FallDetector::new();
+//! let mut seen = Vec::new();
+//!
+//! // 20 samples below 400 mg is 50 ms in the air, and it is the length that qualifies, not the single
+//! // sample: the handling recording dips but never for 40 ms.
+//! for _ in 0..20 {
+//!     if let Some(event) = detector.update_us([0, 0, 0], 2_500) {
+//!         seen.push(event);
+//!     }
+//! }
+//! // The landing sample: 2.5 g, well over the 2 g impact threshold.
+//! if let Some(event) = detector.update_us([2_500, 0, 0], 2_500) {
+//!     seen.push(event);
+//! }
+//! // Then 600 ms at 300 mg -- the board sits still after it lands, and stillness is what turns a free
+//! // fall into a fall rather than a catch.
+//! for _ in 0..240 {
+//!     if let Some(event) = detector.update_us([300, 0, 0], 2_500) {
+//!         seen.push(event);
+//!     }
+//! }
+//!
+//! assert_eq!(
+//!     seen,
+//!     vec![
+//!         Event::FreeFall { ms: 50 },
+//!         Event::Fall { peak_mg: 2_500, freefall_ms: 50 },
+//!     ],
+//!     "the free fall is reported when it ends, the fall only once the device has settled"
+//! );
+//!
+//! // A knock is not a fall. The same impact with no free fall in front of it is a separate event, so a
+//! // caller can log it without alarming.
+//! let mut knocked = FallDetector::new();
+//! assert_eq!(knocked.update_us([2_500, 0, 0], 2_500), None);
+//! assert_eq!(
+//!     knocked.update_us([500, 0, 0], 2_500),
+//!     Some(Event::Impact { peak_mg: 2_500 })
+//! );
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

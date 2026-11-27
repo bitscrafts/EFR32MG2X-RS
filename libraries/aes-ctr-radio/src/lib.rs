@@ -10,6 +10,42 @@
 //! session key for -- a longer key is refused rather than silently truncated.
 //!
 //! Verified against the FIPS-197 example vector, which is the only way a hand-written AES earns belief.
+//!
+//! # One block, then a counter step
+//!
+//! ```
+//! use aes_ctr_radio::{ctr_step, encrypt_block, increment_be};
+//!
+//! // FIPS-197 appendix C.1, and the zero-key result beside it: two vectors, because a key-schedule mistake can cancel
+//! // out in one of them and not in the other.
+//! let fips_key: [u8; 16] = [
+//!     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f,
+//! ];
+//! let plain: [u8; 16] = [
+//!     0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88, 0x99, 0xaa, 0xbb, 0xcc, 0xdd, 0xee, 0xff,
+//! ];
+//! assert_eq!(
+//!     encrypt_block(&fips_key, &plain),
+//!     [0x69, 0xc4, 0xe0, 0xd8, 0x6a, 0x7b, 0x04, 0x30, 0xd8, 0xcd, 0xb7, 0x80, 0x70, 0xb4, 0xc5, 0x5a]
+//! );
+//!
+//! // Counter mode: the caller keeps the counter, so the same step decrypts by being applied to the ciphertext with the
+//! // same starting counter -- which is what makes one function enough for both directions on the link.
+//! let key = [0x2bu8; 16];
+//! let counter = [0u8; 16];
+//! let block = *b"0123456789abcdef";
+//! let (cipher, next) = ctr_step(&key, &counter, &block);
+//! assert_ne!(cipher, block, "the keystream has to change the block");
+//! assert_eq!(next[15], 1, "the counter advances as a 128-bit big-endian integer");
+//! let (back, _) = ctr_step(&key, &counter, &cipher);
+//! assert_eq!(back, block);
+//!
+//! // And the carry crosses bytes: 0x00..ff + 1 is 0x01..00.
+//! let mut carry = [0u8; 16];
+//! carry[15] = 0xff;
+//! let rolled = increment_be(carry);
+//! assert_eq!((rolled[14], rolled[15]), (1, 0));
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

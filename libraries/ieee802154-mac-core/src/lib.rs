@@ -34,6 +34,49 @@
 //!
 //! It also does not claim the frame is received. A transmitter reporting its own send is the strongest
 //! evidence a bench with one radio can produce, and that evidence says nothing about the other end.
+//!
+//! # A frame for the transmit FIFO, and the acknowledgement that answers it
+//!
+//! ```
+//! use efr32mg2x_ieee802154_mac_core::{
+//!     build_data_frame, is_ack_for, Address, BuildError, Next, RetryPolicy,
+//! };
+//!
+//! let source = Address::Short { pan: 0x1234, address: 0x0001 };
+//! let destination = Address::Short { pan: 0x1234, address: 0x0002 };
+//! let mut fifo = [0u8; 32];
+//! let written = build_data_frame(7, source, destination, &[0xde, 0xad], &mut fifo)
+//!     .expect("a two-byte payload fits, and so does the buffer");
+//! assert_eq!(written, 12, "one PHY byte, nine MAC bytes, two of payload");
+//!
+//! // The first byte the radio reads is the length, not the frame control field. Handing it the MAC frame alone made it
+//! // read 0x41 as a length of 65, ask the FIFO for bytes that were not there and raise TX_UNDERFLOW -- with every call
+//! // returning NO_ERROR and the air empty.
+//! assert_eq!(fifo[0], 11, "the MAC frame that follows: 2 + 1 + 2 + 2 + 2 addresses, then the payload");
+//! assert_eq!(&fifo[1..3], &[0x41, 0x88], "FCF little-endian: data frame, PAN ID compression, short addresses");
+//! assert_eq!(fifo[3], 7, "the sequence number");
+//!
+//! // An acknowledgement arrives with the radio's two-byte frame check sequence, which the length byte does not count:
+//! // three MAC bytes and five on the wire. Requiring the two to be equal rejects every real acknowledgement.
+//! let ack = [3u8, 0x02, 0x00, 7, 0xaa, 0xbb];
+//! assert!(is_ack_for(&ack, 7));
+//! assert!(!is_ack_for(&ack, 8), "another frame's acknowledgement is not this one's");
+//!
+//! // No acknowledgement: retry with a backoff from the caller's random value, and report the loss when attempts run out
+//! // rather than treating silence as success.
+//! assert_eq!(
+//!     RetryPolicy::DEFAULT.after(0, false, 5),
+//!     Next::Retry { backoff_symbols: 5, attempt: 1 }
+//! );
+//! assert_eq!(RetryPolicy::DEFAULT.after(3, false, 0), Next::Exhausted);
+//! assert_eq!(RetryPolicy::DEFAULT.after(0, true, 0), Next::Done);
+//!
+//! // A payload the one-byte PHY length cannot describe is refused before anything is written.
+//! assert_eq!(
+//!     build_data_frame(0, source, destination, &[0u8; 120], &mut fifo),
+//!     Err(BuildError::PayloadTooLong)
+//! );
+//! ```
 
 #![no_std]
 #![deny(missing_docs)]

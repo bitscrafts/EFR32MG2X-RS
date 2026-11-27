@@ -7,6 +7,31 @@
 //! The other half is the arithmetic. A watchdog period is `(prescaler * (top + 1)) / clock`, with the same fields as any
 //! timer, and the point of a watchdog is that the number it was given is the number it uses -- a period that silently
 //! truncates is a reset nobody can explain.
+//!
+//! # A timeout, and the state its lock may be taken in
+//!
+//! ```
+//! use efr32mg2x_wdog_core::{may_lock, period_for_ms, State, WatchdogError};
+//!
+//! // One second from the 32.768 kHz LFRCO is 32768 clocks: prescaler 1 with top 32767, and the period the registers
+//! // will actually produce is returned beside what was asked for, so a truncated value cannot pass as a timeout.
+//! let (period, off_per_thousand) = period_for_ms(32_768, 1_000).expect("a second is expressible");
+//! assert_eq!((period.prescaler, period.top), (1, 32_767));
+//! assert_eq!(period.period_ms(32_768), 1_000);
+//! assert_eq!(off_per_thousand, 0);
+//!
+//! // H27 as a function. `LOCK` is write-once on this family, so taking it while the watchdog is disabled leaves the
+//! // peripheral locked with no timeout programmed and no way back but a reset. The rule is therefore not "never": a
+//! // watchdog that is already running with the product's timeout is the one to lock.
+//! assert_eq!(may_lock(State::Running), Ok(()));
+//! assert!(matches!(
+//!     may_lock(State::Disabled),
+//!     Err(WatchdogError::CannotLock(_))
+//! ));
+//!
+//! // A zero period is a caller mistake, not a watchdog that fires immediately.
+//! assert_eq!(period_for_ms(32_768, 0), Err(WatchdogError::Zero));
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

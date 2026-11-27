@@ -36,6 +36,38 @@
 //! Whether the failure came from the *right* attacker. A device bonded to one phone that is being probed by another
 //! sees `0x1205` too. The window that limits when a new bond may be created is the defence for that, and it lives in
 //! the firmware beside this rule -- not here, where there is no clock.
+//!
+//! # A run of failures, counted the way the firmware counts it
+//!
+//! ```
+//! use efr32mg2x_ble_bond_heal_core::{
+//!     after_failure, continues_streak, Decision, SMP_PIN_OR_KEY_MISSING,
+//! };
+//!
+//! // The phone has forgotten its side, so every attempt reports 0x1006 with the record still in the store.
+//! let mut streak = 0u8;
+//! let mut verdicts = [Decision::Keep; 3];
+//! for slot in verdicts.iter_mut() {
+//!     streak = if continues_streak(SMP_PIN_OR_KEY_MISSING) {
+//!         streak + 1
+//!     } else {
+//!         0
+//!     };
+//!     *slot = after_failure(streak, true);
+//! }
+//! assert_eq!(
+//!     verdicts,
+//!     [Decision::Keep, Decision::DropBond, Decision::DropBond],
+//!     "one failure may be a timing artefact; the second consecutive one is a record the peer cannot use"
+//! );
+//!
+//! // A real refusal is not this signature, so it breaks the run instead of destroying a working bond -- dropping it
+//! // would hand the link to whoever asked.
+//! assert!(!continues_streak(0x0503));
+//!
+//! // With nothing in the store there is nothing to drop, whatever the count says.
+//! assert_eq!(after_failure(2, false), Decision::Keep);
+//! ```
 
 #![no_std]
 #![deny(missing_docs)]

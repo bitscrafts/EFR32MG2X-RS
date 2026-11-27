@@ -10,6 +10,34 @@
 //! **H12's shape, on the timer side.** `TOP` is a 16-bit field and the prescaler can only be a power of two from 1 to 1024,
 //! so not every period is expressible. The crate returns the closest expressible rate and says how far off it is, instead
 //! of silently truncating a value into a 16-bit field.
+//!
+//! # A period, its error, and the ordering the peripheral needs
+//!
+//! ```
+//! use efr32mg2x_timer_core::{may_configure, period_for, TimerError};
+//!
+//! // 16 kHz from the 19 MHz band is 1187.5 timer clocks, which no 16-bit top expresses, so the answer is the closest
+//! // pair the fields can hold: prescaler 1 with top 1186, giving 16 006 Hz -- 375 ppm fast, and the number is returned
+//! // rather than left for the caller to measure.
+//! let (period, ppm) = period_for(19_000_000, 16_000).expect("16 kHz is expressible");
+//! assert_eq!((period.prescaler, period.top), (1, 1186));
+//! assert_eq!(period.frequency(19_000_000), 16_006);
+//! assert_eq!(ppm, 375);
+//!
+//! // A slow period needs the prescaler, not a top that does not fit: 1 Hz from the same clock is prescaler 512 and top
+//! // 37108, which is exact.
+//! let (slow, ppm) = period_for(19_000_000, 1).expect("1 Hz is expressible with a prescaler");
+//! assert_eq!(slow.frequency(19_000_000), 1);
+//! assert_eq!(ppm, 0);
+//!
+//! // H6 as a function: writing CFG into a timer that is already running faults on this family, so configuring one is
+//! // refused and the caller has to stop it first.
+//! assert_eq!(may_configure(false), Ok(()));
+//! assert_eq!(may_configure(true), Err(TimerError::Enabled));
+//!
+//! // And a rate faster than the timer clock has no prescaler that reaches it: refused, not clamped to prescaler 1.
+//! assert_eq!(period_for(32_768, 1_000_000), Err(TimerError::TooFast));
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

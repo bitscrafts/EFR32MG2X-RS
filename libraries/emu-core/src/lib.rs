@@ -7,6 +7,35 @@
 //!
 //! The list below is the one the reference manual gives for entering EM2 and it is modelled as an enum, so a caller has to
 //! say *which* condition it cleared rather than assert a single boolean.
+//!
+//! # What refuses the sleep, and in which order it is reported
+//!
+//! ```
+//! use efr32mg2x_emu_core::{may_enter_em2, Blocker, SleepError, VoltageScale};
+//!
+//! // A quiet core on the low-power scale: EM2 is allowed.
+//! assert_eq!(may_enter_em2(VoltageScale::LowPower, &[]), Ok(()));
+//!
+//! // A DMA channel that is still transferring refuses, and the blocker is carried out so the log names it instead of
+//! // reporting "the sleep failed".
+//! let busy = [Blocker::PendingInterrupt, Blocker::DmaActive];
+//! assert_eq!(
+//!     may_enter_em2(VoltageScale::LowPower, &busy),
+//!     Err(SleepError::Blocked(Blocker::DmaActive)),
+//!     "the reported blocker is the first in the documented order, not the first the caller listed"
+//! );
+//! assert_eq!(
+//!     Blocker::DmaActive.reason(),
+//!     "a DMA channel is transferring and needs the bus clock"
+//! );
+//!
+//! // The voltage scale is checked before any blocker: entering EM2 from the performance scale is not a scheduling
+//! // question, so a pending interrupt must not be what the caller is told about.
+//! assert_eq!(
+//!     may_enter_em2(VoltageScale::Performance, &busy),
+//!     Err(SleepError::WrongVoltageScale)
+//! );
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

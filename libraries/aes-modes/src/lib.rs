@@ -19,6 +19,39 @@
 //!
 //! This module had that bug before the vectors existed: the tag was masked with the block after the last data
 //! block instead of block zero. The round trip could not see it.
+//!
+//! # One link-layer packet, encrypted and then refused
+//!
+//! ```
+//! use aes_modes::{decrypt, encrypt, TagMismatch, BLE_NONCE_LEN};
+//!
+//! // What the controller hands the security manager for one packet: a session key, a 13-byte nonce, the header as
+//! // additional data, and the payload in place.
+//! let key = [0x11u8; 16];
+//! let nonce = [0x22u8; BLE_NONCE_LEN];
+//! let header = [0x01u8, 0x02, 0x03];
+//! let mut payload = *b"temp=21.5";
+//! let plain = payload;
+//!
+//! let tag = encrypt(&key, &nonce, &header, &mut payload);
+//! assert_ne!(payload, plain, "the payload goes out encrypted");
+//!
+//! // The receiver runs the same four inputs and gets the plaintext back.
+//! let mut received = payload;
+//! decrypt(&key, &nonce, &header, &mut received, &tag).expect("the tag authenticates");
+//! assert_eq!(received, plain);
+//!
+//! // A tag that does not match is refused, and the buffer comes back byte-identical to how it arrived: CCM's CBC-MAC
+//! // covers the plaintext, so the decrypt has to happen before the check, and the keystream is re-applied to undo it.
+//! let mut tampered = payload;
+//! let mut wrong = tag;
+//! wrong[0] ^= 0x01;
+//! assert_eq!(
+//!     decrypt(&key, &nonce, &header, &mut tampered, &wrong),
+//!     Err(TagMismatch)
+//! );
+//! assert_eq!(tampered, payload, "nothing reaches the caller on a refusal");
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 #![forbid(unsafe_code)]

@@ -27,6 +27,39 @@
 //! The size in bits is checked for the AES path only. `128` was measured in all three of the stack's callers; no
 //! measurement exists for what the stack declares for an ECC public key. A check written without that measurement
 //! would refuse real pairings to protect a hypothesis.
+//!
+//! # What a declaration is checked against
+//!
+//! ```
+//! use efr32mg2x_psa_shape_core::{shape_agrees, Declared, ShapeError};
+//!
+//! // What the stack's own callers declare for a MAC key, measured in all three of them: type 0x2400, 128 bits, 16 bytes.
+//! let aes = Declared { key_type: 0x2400, bits: 128 };
+//! assert_eq!(shape_agrees(16, aes), Ok(()));
+//!
+//! // A caller declaring 256-bit AES and handing over 16 bytes was stored as AES-128 without a word until this check
+//! // existed; a raw-data key handed 16 bytes was stored as AES, because the type field was never read.
+//! assert_eq!(
+//!     shape_agrees(16, Declared { key_type: 0x2400, bits: 256 }),
+//!     Err(ShapeError::WrongSize)
+//! );
+//! assert_eq!(
+//!     shape_agrees(16, Declared { key_type: 0x1000, bits: 0 }),
+//!     Err(ShapeError::WrongType)
+//! );
+//!
+//! // A freshly reset attributes blob declares nothing, and the stack does that in places: zero means unspecified, so
+//! // the length still decides and a pairing is not refused for a field the caller never wrote.
+//! assert_eq!(shape_agrees(16, Declared::unspecified()), Ok(()));
+//! assert_eq!(shape_agrees(65, Declared::unspecified()), Ok(()));
+//!
+//! // The peer's P-256 public key, 0x04 || X || Y: 65 bytes is the type the caller declared, so it agrees. Its bit size
+//! // is not checked, because no measurement of what the stack declares there exists.
+//! assert_eq!(
+//!     shape_agrees(65, Declared { key_type: 0x4112, bits: 256 }),
+//!     Ok(())
+//! );
+//! ```
 
 #![no_std]
 #![deny(missing_docs)]

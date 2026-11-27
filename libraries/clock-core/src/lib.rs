@@ -11,6 +11,31 @@
 //!
 //! This crate decides the whole plan from one number, and the tests check the invariants over **every** frequency from
 //! 1 to 80 MHz rather than over the four bands this project happens to use.
+//!
+//! # The plan for a frequency, including the bus ceilings
+//!
+//! ```
+//! use efr32mg2x_clock_core::{plan, ClockError, Divider, MAX_PCLK_HZ, MAX_RHCLK_HZ};
+//!
+//! // 19 MHz is the reset band: no DEVINFO calibration word is read, and both buses run undivided.
+//! let slow = plan(19_000_000).expect("a band this project has measured");
+//! assert_eq!(slow.devinfo_index, 0);
+//! assert_eq!(slow.pclk, Divider::Div1);
+//! assert_eq!(slow.rhclk_hz(), 19_000_000);
+//!
+//! // 80 MHz is over both ceilings undivided, so both dividers are set -- the change H10 made by hand and forgot twice.
+//! let fast = plan(80_000_000).expect("the top band");
+//! assert_eq!(fast.devinfo_index, 16);
+//! assert_eq!(fast.wait_states, 3);
+//! assert_eq!(fast.pclk_hz(), 40_000_000);
+//! assert_eq!(fast.rhclk_hz(), 40_000_000);
+//! assert!(fast.pclk_hz() <= MAX_PCLK_HZ && fast.rhclk_hz() <= MAX_RHCLK_HZ);
+//!
+//! // A frequency without a calibrated band is refused instead of being written into the oscillator, and zero is not a
+//! // frequency at all -- the two refusals are different and a caller can tell them apart.
+//! assert_eq!(plan(39_000_000), Err(ClockError::NoBand));
+//! assert_eq!(plan(0), Err(ClockError::OutOfRange));
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

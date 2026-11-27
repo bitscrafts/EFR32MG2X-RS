@@ -9,6 +9,38 @@
 //! Two things make it testable here: the fields are four bits wide at a known position (`MODEL n` occupies bits
 //! `4n..4n+3`), and the route encoding is `port << 4 | pin` (`efr32mg24_gpio.h`). Both are arithmetic, and arithmetic
 //! with a mask is exactly what a host test can enumerate: every pin, every mode, and a check that no other pin moved.
+//!
+//! # One pin, and the fifteen that must not move
+//!
+//! ```
+//! use efr32mg2x_gpio_core::{dout_of, model, route, with_dout, Models, PinError, Port};
+//!
+//! // A port whose every pin is already in model 0xA. Setting pin 0 must leave the other fifteen fields alone -- that
+//! // masked read-modify-write is the whole of H17, as a type rather than as a comment at the call site.
+//! let background = Models::new(0xAAAA_AAAA, 0xAAAA_AAAA);
+//! let set = background.with(0, model::PUSHPULL).expect("4 fits the four-bit field");
+//! assert_eq!(set.model_of(0), Ok(model::PUSHPULL));
+//! assert_eq!(set.model_of(15), Ok(0xA), "pin 15 keeps the field it had");
+//!
+//! // Pins 8..15 live in the second register: a write that lands in MODEL instead of MODELH aliases onto pin 0, which is
+//! // the same defect in different clothes, so the register and the shift come back together and cannot be mixed up.
+//! assert_eq!(background.model_of(8), Ok(0xA));
+//! assert_eq!(
+//!     Models::new(0, 0).with(8, model::WIREDAND).map(|m| (m.low, m.high)),
+//!     Ok((0, 0x8))
+//! );
+//!
+//! // A sixteen-pin port has no pin 16, and a model wider than four bits is refused rather than truncated into the field.
+//! assert_eq!(route(Port::B, 16), Err(PinError::NoSuchPin));
+//! assert_eq!(Models::default().with(0, 0x10), Err(PinError::ModelTooWide));
+//!
+//! // The route word is `port << 4 | pin`, so port C pin 3 is 0x23, and DOUT is one bit per pin.
+//! assert_eq!(route(Port::C, 3), Ok(0x23));
+//! let dout = with_dout(0, 5, true).expect("5 is a pin on this port");
+//! assert_eq!(dout, 0x20);
+//! assert_eq!(dout_of(dout, 4), Ok(false), "driving pin 5 does not drive pin 4");
+//! assert_eq!(with_dout(dout, 5, false), Ok(0));
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 

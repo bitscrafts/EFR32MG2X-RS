@@ -26,6 +26,35 @@
 //! - **The free list lives in the payload area** of free blocks, so a 4 KiB arena is mostly available to the
 //!   stack.
 //! - **`ALIGN` is 8**: the stack's structures hold 64-bit counters, and an unaligned `u64` faults on this core.
+//!
+//! # An allocate/free cycle over a 4 KiB arena
+//!
+//! ```
+//! use bt_heap::Heap;
+//!
+//! let mut arena = [0u8; 4096];
+//! let mut heap = Heap::new(&mut arena);
+//!
+//! let first = heap.alloc(64);
+//! let second = heap.alloc(64);
+//! assert!(!first.is_null() && !second.is_null(), "the arena is 4 KiB and the requests are 64 bytes");
+//! assert_ne!(first, second, "two live allocations cannot be the same bytes");
+//! let both = heap.in_use();
+//! assert!(both > 128, "the count includes each block's eight-byte header");
+//!
+//! // Freeing one block puts it back on the list, and freeing the other returns the arena to a single block: the
+//! // coalescing is what keeps an allocate/free cycle from shattering it into pieces too small to reuse.
+//! heap.dealloc(second);
+//! assert!(heap.in_use() < both);
+//! heap.dealloc(first);
+//! assert_eq!(heap.in_use(), 0);
+//!
+//! // Both walks then have to agree the arena is intact: the free list is sane, and every block's canary -- free ones
+//! // included -- still holds the value mixed with that block's offset.
+//! assert_eq!(heap.check(), 0, "no block in the free list failed the sanity check");
+//! assert_eq!(heap.audit().0, 0, "no block was written past its payload");
+//! assert_eq!(heap.failures(), 0);
+//! ```
 #![deny(missing_docs)]
 #![no_std]
 
