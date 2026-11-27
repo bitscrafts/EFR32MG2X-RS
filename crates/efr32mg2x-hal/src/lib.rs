@@ -120,6 +120,7 @@ pub mod display;
 pub mod dma;
 pub mod dwt;
 pub mod emu;
+pub mod eusart;
 pub mod extint;
 pub mod gpcrc;
 pub mod i2c;

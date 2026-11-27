@@ -308,6 +308,83 @@ impl Board {
         Ok(())
     }
 
+    /// EUSART0 as an **asynchronous** serial port, with its clock branch and its two pads.
+    ///
+    /// The EUSART is the same block `spi_on` hands out, in the other mode, so it takes the same slot: a program cannot
+    /// have it as SPI and as UART at once, and the claim table is what says so.
+    ///
+    /// Three things happen here that a caller cannot do for itself without naming the PAC:
+    ///
+    /// 1. `CMU_CLKEN1.EUSART0`, the bus gate.
+    /// 2. `CMU_EUSART0CLKCTRL.CLKSEL = EM01GRPCCLK`, written rather than inherited. The reset value is already this
+    ///    branch, but a value nobody set is a value a later change can move without the driver noticing; the baud
+    ///    divider is computed against this branch and nothing else.
+    /// 3. Nothing about the pads: [`route_eusart0_async`](Self::route_eusart0_async) does that, and it is a separate
+    ///    call for the same reason `route_usart0` is -- a driver built before its pins are routed looks alive and drives
+    ///    nothing, so the order is the caller's to get right and the doc says which one it is: route first, then build.
+    ///
+    /// The clock passed to the driver is the board's own `sysclk_hz`: on this part `EM01GRPCCLK` resets to
+    /// `HFRCODPLL`, which is the core clock, and `boost` moves the two together.
+    pub fn eusart0_async(
+        &self,
+        config: crate::usart::Config,
+    ) -> Result<crate::eusart::Eusart0, Handout<crate::usart::Error>> {
+        self.claim(crate::cores::slots::Slot::Spi)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken1().modify(|_, w| w.eusart0().set_bit());
+        self.dp
+            .cmu_s
+            .eusart0clkctrl()
+            .modify(|_, w| w.clksel().em01grpcclk());
+        // SAFETY: the board owns the PAC tree and this is the single hand-out of EUSART0, through the claim table.
+        crate::eusart::Eusart0::new_at(
+            unsafe { pac::Eusart0S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        )
+        .map_err(Handout::Driver)
+    }
+
+    /// Route EUSART0's transmitter and receiver to two pads, for the asynchronous mode.
+    ///
+    /// Same order as every other route in this file: pin mode, then route value, then enable. TX is a push-pull
+    /// output; RX is an input with the internal pull-up selected (`INPUT_PULL` plus `DOUT = 1`), so an idle line is a
+    /// real high level rather than whatever the pad's capacitance last held.
+    pub fn route_eusart0_async(
+        &self,
+        tx: (crate::pin::Port, u8),
+        rx: (crate::pin::Port, u8),
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::route::{port_number, route_value};
+        let tx_valor = route_value(port_number(tx.0), tx.1)?;
+        let rx_valor = route_value(port_number(rx.0), rx.1)?;
+
+        crate::pin::set_mode(&self.dp.gpio_s, tx.0, tx.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(&self.dp.gpio_s, rx.0, rx.1, crate::pin::mode::INPUT_PULL);
+        // The pull-up is selected by the output latch, not by the mode alone.
+        crate::pin::write_dout(
+            &self.dp.gpio_s,
+            rx.0,
+            crate::pin::read_dout(&self.dp.gpio_s, rx.0) | (1 << rx.1),
+        );
+
+        self.dp
+            .gpio_ns
+            // SAFETY: `route_value` bounds-checks the pair, so each field holds exactly the pad the caller named.
+            .eusart0_txroute()
+            .write(|w| unsafe { w.bits(tx_valor) });
+        self.dp
+            .gpio_ns
+            // SAFETY: as above, for RX.
+            .eusart0_rxroute()
+            .write(|w| unsafe { w.bits(rx_valor) });
+        self.dp
+            .gpio_ns
+            .eusart0_routeen()
+            .modify(|_, w| w.txpen().set_bit().rxpen().set_bit());
+        Ok(())
+    }
+
     /// Gate the SYSRTC's clocks without starting it. The state the Bluetooth stack needs before it configures the
     /// radio; see `sysrtc::Sysrtc::enable_clocks` for the two faults that bracket this state.
     pub fn prepare_sysrtc_clocks(&self) {

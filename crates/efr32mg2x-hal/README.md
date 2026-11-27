@@ -28,7 +28,7 @@ Read from the source, so it cannot drift:
 | `CmuNs` | `src/mvp/mod.rs` |
 | `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+4 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
-| `Eusart0S` | `src/board.rs`, `src/spi/mod.rs` |
+| `Eusart0S` | `src/board.rs`, `src/eusart/mod.rs`, `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
 | `GpcrcNs` | `src/board.rs`, `src/gpcrc.rs` |
 | `GpioNs` | `src/board.rs` |
@@ -86,7 +86,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-31 public modules (`pub mod` in `src/lib.rs`) and 34 examples. A date next to an example means a record was
+32 public modules (`pub mod` in `src/lib.rs`) and 35 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -161,7 +161,7 @@ peripheral families and re-checked family by family, is
 | `SYSRTC0` | 32.768 kHz counter, compare, 64-bit extension | `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_timer_ticks` |
 | `TIMER0` | count, compare, PWM | `hal_timer_compare`, `hal_timer0_pwm` |
 | `USART0` | asynchronous serial, echo, a receiver that refuses a broken frame | `hal_usart_link` |
-| `EUSART0` | SPI **master**, 8-bit, blocking | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it) |
+| `EUSART0` | SPI **master**, 8-bit, blocking; asynchronous serial with the block's own divider | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it), `hal_eusart_loopback` (internal loopback and a control with it off) |
 | `I2C0`, `I2C1` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
 | `IADC0` | single-ended conversion, microphone path | `hal_adc_read`, `hal_mic_level` |
 | `LDMA` | channel ownership, transfers, `stop()`, chained descriptors | `hal_dma_stop`, `hal_dma_link` |
@@ -268,7 +268,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-34 examples, **24 of them watched on the part**. A `--` in the last column means nobody
+35 examples, **25 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -283,6 +283,7 @@ mean it works.
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | 2026-11-24 |
+| `hal_eusart_loopback.rs` | EUSART0 in asynchronous mode: eight distinct bytes out and back through `CFG0.LOOPBK`, and a control that reads | 2026-11-27 |
 | `hal_gpcrc.rs` | Is the CRC accelerator right? Check it against a number computed elsewhere. | -- |
 | `hal_gpio_interrupt.rs` | The pad moved by its own pull resistor, `IEN` and the NVIC armed, and a counter only the handler increments. | 2026-11-27 |
 | `hal_hfxo.rs` | HFXO: run from the crystal, and prove the rest of the system followed it. | 2026-11-25 |

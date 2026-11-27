@@ -65,6 +65,58 @@ pub fn actual_baud(pclk_hz: u32, div: u32, oversample: u32) -> u32 {
     ((pclk_hz as u64 * 256) / denominator) as u32
 }
 
+/// The EUSART's fractional divider step: the field's low five bits are the fraction.
+///
+/// ## Why the EUSART needs its own arithmetic, measured
+///
+/// The USART's `CLKDIV` splits the field into eight fraction bits (`1 + DIV/256`). The EUSART's does not: feeding the
+/// USART's divider into an EUSART0 async port produced frames at **15 650 baud** where 115 200 was asked for
+/// (`hal_eusart_loopback`, 2026-11-27: 80 bit times in 167 SYSRTC ticks, with the same instrument calibrated at 3290
+/// ticks per 100 ms). At 19 MHz the EUSART's rate is `f / (OVS * (1 + DIV/32))` — the same shape, five fraction bits
+/// instead of eight — and with that divisor the same request lands on 115 152.
+pub const EUSART_FRACTION: u32 = 32;
+
+/// The `CLKDIV` value an **EUSART** needs for `baud`, with the multiplication done in 64 bits.
+///
+/// `DIV = 32 * (f / (OVS * baud) - 1)`, the EUSART's five-fraction-bit form of the USART formula. Same refusals as
+/// [`clkdiv`]: a rate the clock cannot produce is an error, never a wrapped number.
+///
+/// ```
+/// use efr32mg2x_usart_core::{eusart_actual_baud, eusart_clkdiv};
+///
+/// let div = eusart_clkdiv(19_000_000, 115_200, 16).expect("reachable");
+/// assert_eq!(div, 297);
+/// assert!((eusart_actual_baud(19_000_000, div, 16) as i64 - 115_200).abs() < 600);
+/// ```
+pub fn eusart_clkdiv(clock_hz: u32, baud: u32, oversample: u32) -> Result<u32, DividerError> {
+    if baud == 0 || oversample == 0 || clock_hz == 0 {
+        return Err(DividerError::Zero);
+    }
+    // 64-bit for the same reason as `clkdiv`: 32 * 19 000 000 is 608 000 000 and would already be uncomfortable in a
+    // `u32` once the clock rises.
+    let numerator = EUSART_FRACTION as u64 * clock_hz as u64;
+    let denominator = oversample as u64 * baud as u64;
+    let quotient = numerator / denominator;
+    if quotient <= EUSART_FRACTION as u64 {
+        return Err(DividerError::TooFast);
+    }
+    let div = quotient - EUSART_FRACTION as u64;
+    if div > MAX_DIV as u64 {
+        return Err(DividerError::TooSlow);
+    }
+    Ok(div as u32)
+}
+
+/// The rate an EUSART divider actually produces: `f / (OVS * (1 + DIV/32))`.
+#[must_use]
+pub fn eusart_actual_baud(clock_hz: u32, div: u32, oversample: u32) -> u32 {
+    let denominator = 32u64 * oversample as u64 + oversample as u64 * div as u64;
+    if denominator == 0 {
+        return 0;
+    }
+    ((clock_hz as u64 * 32) / denominator) as u32
+}
+
 /// `IF.RXOF` — the receiver ran out of room and a byte was lost.
 pub const IF_RXOF: u32 = 1 << 4;
 
