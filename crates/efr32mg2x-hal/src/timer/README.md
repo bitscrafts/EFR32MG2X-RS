@@ -103,8 +103,8 @@ Controls and the full story: [APP-LOOP-BUDGET.md](../../../../docs/04-reference/
 ## What is not proven
 
 - C -- advanced | complete to stage 2 | `adc`, `dma`, `emu`, `rtc`/`sysrtc`, `wdog`, `gpcrc`, `mvp`, `letimer`, `prs`; DMA stages 3 and 4 deferred |. (PLAN.md (`../../../../docs/03-development/PLAN`))
+- `EUSART1` was the last row of the coverage boundary that read "compiled, not measured". (EUSART1-2026-11-27.md (`../../../../docs/04-reference/EUSART1-2026-11-27`))
 - Wake latency:** if the MCU timer paces each sample, every sample costs an EM2→EM0 wake and an I2C transfer. (HAL-OPUS-ANALYSIS-2026-11-22.md (`../../../../docs/04-reference/HAL-OPUS-ANALYSIS-2026-11-22`))
-- PRS routing | No hardware trigger path between timers, the IADC and the radio; needed for 802.15.4 timing. (HAL-RADIO-BLE-REVIEW-2026-11-17.md (`../../../../docs/04-reference/HAL-RADIO-BLE-REVIEW-2026-11-17`))
 
 ## Using it
 

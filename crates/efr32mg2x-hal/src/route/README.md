@@ -45,11 +45,14 @@ None directly: this module composes other drivers and reaches no `pac::` periphe
 
 ## What was measured
 
-No mailbox record in `docs/` names this module, so treat its API as unmeasured on hardware. The first measurement belongs here, with the line the board produced and the controls around it.
+```
+    eusart1: n=8 matched=8 seen=8 cfg0=0x00000002 st=0x00003063 control=0 div=297 want=115200 err=0x00000000 routed=1 refused=1
+```
+
+Controls and the full story: [EUSART1-2026-11-27.md](../../../../docs/04-reference/EUSART1-2026-11-27.md)
 
 ## What is not proven
 
-- `eusart1` | `usart` | the same driver, second instance | compiled, **not measured** — no example routes it |. (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
 - routed through the crossbar with the interrupt ending the wait is not measured. (DMA-IRQ-2026-11-27.md (`../../../../docs/04-reference/DMA-IRQ-2026-11-27`))
 
 ## Using it

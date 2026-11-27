@@ -63,10 +63,12 @@ pub enum Slot {
     Acmp0,
     /// `RADIOAES` — one crypto engine, one descriptor chain in flight.
     Aes,
+    /// `EUSART1` — the second asynchronous block: same driver, its own `CLKEN1` bit.
+    Eusart1,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 21;
+pub const SLOT_COUNT: usize = 22;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -93,6 +95,7 @@ impl Slot {
             Slot::Timer2 => 18,
             Slot::Timer3 => 19,
             Slot::Timer4 => 20,
+            Slot::Eusart1 => 21,
         }
     }
 }
@@ -211,6 +214,7 @@ mod tests {
             Slot::Timer2,
             Slot::Timer3,
             Slot::Timer4,
+            Slot::Eusart1,
         ] {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(

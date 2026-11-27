@@ -461,6 +461,71 @@ impl Board {
         .map_err(Handout::Driver)
     }
 
+    /// EUSART1 as an asynchronous serial port, the second of the two blocks.
+    ///
+    /// There is no `CMU_EUSART1CLKCTRL` on this part — `EUSART1` is clocked from `EM01GRPCCLK` with no per-peripheral
+    /// selector, so the only clock work is the bus gate. That asymmetry with `EUSART0` is why the driver was a concrete
+    /// `Eusart0` for so long: the two blocks looked more different than they are.
+    ///
+    /// No pin is routed. The internal loopback (`CFG0.LOOPBK`) does not need one, and routing a pad the caller did not
+    /// ask for is how a driver ends up owning a pin nobody meant to give it. `route_eusart1_async` is deliberately
+    /// absent until something needs it.
+    pub fn eusart1_async(
+        &self,
+        config: crate::usart::Config,
+    ) -> Result<crate::eusart::Eusart1, Handout<crate::usart::Error>> {
+        self.claim(crate::cores::slots::Slot::Eusart1)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken1().modify(|_, w| w.eusart1().set_bit());
+        // SAFETY: the board owns the PAC tree, and this is the single hand-out of EUSART1.
+        crate::eusart::Eusart1::new_at(
+            unsafe { pac::Eusart1S::steal() },
+            config,
+            self.sysclk_hz.get(),
+        )
+        .map_err(Handout::Driver)
+    }
+
+    /// Route EUSART1's transmitter and receiver to two pads.
+    ///
+    /// Needed for the internal loopback on this block, and that is measured rather than assumed: with `CFG0.LOOPBK`
+    /// read back as set (`cfg0=0x00000002`) and both enables read back on (`st=0x00003063`, `RXENS|TXENS`), the receiver
+    /// stayed empty until the pads were routed — the loop closes through the pad input path, not inside the shifter.
+    /// Both pads have to exist; neither needs anything wired to it.
+    pub fn route_eusart1_async(
+        &self,
+        tx: (crate::pin::Port, u8),
+        rx: (crate::pin::Port, u8),
+    ) -> Result<(), crate::route::RouteError> {
+        use crate::route::{port_number, route_value};
+        let tx_valor = route_value(port_number(tx.0), tx.1)?;
+        let rx_valor = route_value(port_number(rx.0), rx.1)?;
+
+        crate::pin::set_mode(&self.dp.gpio_s, tx.0, tx.1, crate::pin::mode::PUSH_PULL);
+        crate::pin::set_mode(&self.dp.gpio_s, rx.0, rx.1, crate::pin::mode::INPUT_PULL);
+        crate::pin::write_dout(
+            &self.dp.gpio_s,
+            rx.0,
+            crate::pin::read_dout(&self.dp.gpio_s, rx.0) | (1 << rx.1),
+        );
+
+        self.dp
+            .gpio_ns
+            // SAFETY: `route_value` bounds-checks the pair, so each field holds exactly the pad the caller named.
+            .eusart1_txroute()
+            .write(|w| unsafe { w.bits(tx_valor) });
+        self.dp
+            .gpio_ns
+            // SAFETY: as above, for RX.
+            .eusart1_rxroute()
+            .write(|w| unsafe { w.bits(rx_valor) });
+        self.dp
+            .gpio_ns
+            .eusart1_routeen()
+            .modify(|_, w| w.txpen().set_bit().rxpen().set_bit());
+        Ok(())
+    }
+
     /// Route EUSART0's transmitter and receiver to two pads, for the asynchronous mode.
     ///
     /// Same order as every other route in this file: pin mode, then route value, then enable. TX is a push-pull

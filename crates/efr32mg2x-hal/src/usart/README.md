@@ -80,18 +80,18 @@ if let Some(data) = usart.read_byte() {
 
 ```
     eusart: ok=1 n=8 am=8 wr=8 err=0 ctl=0 div=297 cal=3290 ct=23 tt=23 bd=113975 if=0x000c2007 ft=0x000c2007 fc=0x000c2007 cf=0x00000002
+    eusart1: n=8 matched=8 seen=8 cfg0=0x00000002 st=0x00003063 control=0 div=297 want=115200 err=0x00000000 routed=1 refused=1
     usart: baud=115200 out=6 in=6 ok=6 45 46 52 33 32 21                   PASS   USART on a D6-D7 jumper
     usart: selftest n=6 ok=0 bad=6 rxerr=7 pre=1f cleared=1f post=1f
-    usart: echo n=0 rxerr=524 why=ferr
 ```
 
-Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [USART-RX-REFUSAL-2026-11-25.md](../../../../docs/04-reference/USART-RX-REFUSAL-2026-11-25.md)
+Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md), [EUSART1-2026-11-27.md](../../../../docs/04-reference/EUSART1-2026-11-27.md), [HAL-REVIEW-BRIEF-2026-11-25.md](../../../../docs/04-reference/HAL-REVIEW-BRIEF-2026-11-25.md), [USART-RX-REFUSAL-2026-11-25.md](../../../../docs/04-reference/USART-RX-REFUSAL-2026-11-25.md)
 
 ## What is not proven
 
-- `eusart1` | `usart` | the same driver, second instance | compiled, **not measured** — no example routes it |. (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
+- `EUSART1` was the last row of the coverage boundary that read "compiled, not measured". (EUSART1-2026-11-27.md (`../../../../docs/04-reference/EUSART1-2026-11-27`))
 - documentation | **B** | `deny(missing_docs)` now holds on all 27 modules (the five exemptions are gone, and the module that needed them -- `cores::i2c::sim` -- is test-only). (HAL-MATURITY-2026-11-25.md (`../../../../docs/04-reference/HAL-MATURITY-2026-11-25`))
 
 ## Using it
 
-See `examples/hal_eusart_loopback.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`
+See `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`

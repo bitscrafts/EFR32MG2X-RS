@@ -504,9 +504,10 @@ cargo doc --no-deps --features rt --open
    *ahead* of the vector (arming `EXTIRISE`/`EXTIFALL` and unmasking the NVIC is not enough), the flag latches but
    nothing counts without a handler, the odd/even vector split is by pin parity, and a handler must clear every flag of
    its parity or the vector re-enters for ever (`docs/04-reference/GPIO-INTERRUPT-2026-11-27.md`)
-2. **USART/EUSART**: `USART0` and `EUSART0` asynchronous are driven and measured (`hal_usart_link`,
-   `hal_eusart_loopback`); `EUSART1` is the one instance that compiles with no record, because `eusart` is a
-   single concrete driver rather than a macro over both instances -- the same defect `timer` had until 2026-11-27.
+2. **USART/EUSART**: `USART0`, `EUSART0` and `EUSART1` are all driven and measured (`hal_usart_link`,
+   `hal_eusart_loopback`, `hal_eusart1_loopback`). `EUSART1` needed the driver turned into a macro over both
+   instances, and it taught that `CFG0.LOOPBK` closes through the receiver's pad path: an unrouted block sends its
+   bytes into nothing.
 3. **I2C**: Only master mode (slave mode not implemented)
 4. **SPI**: Only master mode, blocking operations only
 5. **DMA**: Stages 1-3 complete; interrupt-driven async (Stage 4) deferred. Linked descriptors are measured: the

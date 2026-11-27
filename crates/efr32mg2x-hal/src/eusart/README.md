@@ -37,11 +37,11 @@ what the wrap that once wrote `52` where `2382` belonged was about.
 
 | item | kind | what it does |
 |---|---|---|
-| `Eusart0` | struct | EUSART0 as an asynchronous serial port. |
 | `IF_FERR` | const | `IF.FERR` — a frame had no stop bit where one belonged. |
 | `IF_PERR` | const | `IF.PERR` — a byte arrived with a parity error. |
 | `IF_RXOF` | const | `IF.RXOF` — the receiver ran out of room and at least one byte is gone. |
 | `actual_baud` | fn | — |
+| `cfg0` | fn | — |
 | `clear_error_flags` | fn | Write one to each error flag and report what it read before and after. |
 | `divider` | fn | — |
 | `flush` | fn | Wait until the last frame has left the shifter. |
@@ -52,25 +52,27 @@ what the wrap that once wrote `52` where `2382` belonged was about.
 | `rx_errors` | fn | — |
 | `rx_flags` | fn | — |
 | `set_internal_loopback` | fn | Connect the receiver to this peripheral's own transmitter, inside the part. |
+| `status` | fn | — |
 | `write` | fn | Write every byte in order. |
 | `write_byte` | fn | Write one byte, waiting until the transmitter has room for it. |
 
 ## Registers it touches
 
-`Eusart0S`
+None directly: this module composes other drivers and reaches no `pac::` peripheral of its own.
 
 ## What was measured
 
 ```
     eusart: ok=1 n=8 am=8 wr=8 err=0 ctl=0 div=297 cal=3290 ct=23 tt=23 bd=113975 if=0x000c2007 ft=0x000c2007 fc=0x000c2007 cf=0x00000002
+    eusart1: n=8 matched=8 seen=8 cfg0=0x00000002 st=0x00003063 control=0 div=297 want=115200 err=0x00000000 routed=1 refused=1
 ```
 
-Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md)
+Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md), [EUSART1-2026-11-27.md](../../../../docs/04-reference/EUSART1-2026-11-27.md)
 
 ## What is not proven
 
-- `eusart1` | `usart` | the same driver, second instance | compiled, **not measured** — no example routes it |. (COVERAGE-BOUNDARY-2026-11-25.md (`../../../../docs/04-reference/COVERAGE-BOUNDARY-2026-11-25`))
+- `EUSART1` was the last row of the coverage boundary that read "compiled, not measured". (EUSART1-2026-11-27.md (`../../../../docs/04-reference/EUSART1-2026-11-27`))
 
 ## Using it
 
-See `examples/hal_eusart_loopback.rs`
+See `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`

@@ -37,6 +37,7 @@ and the defaults that the hardware demands (gate first, then configure).
 | `delay` | fn | A millisecond delay on SysTick. |
 | `emu` | fn | The energy management unit, handed out through the board like every other peripheral: an example outside this crate must not name a PAC type, and the gate enforces that. |
 | `eusart0_async` | fn | EUSART0 as an **asynchronous** serial port, with its clock branch and its two pads. |
+| `eusart1_async` | fn | EUSART1 as an asynchronous serial port, the second of the two blocks. |
 | `gpcrc` | fn | The CRC accelerator, for checking an image, a configuration blob or a frame. |
 | `i2c0` | fn | The hardware I2C0, with its clock enabled and its two lines still unrouted. |
 | `i2c_on` | fn | A bit-banged I2C master on the two pins the caller names. |
@@ -52,6 +53,7 @@ and the defaults that the hardware demands (gate first, then configure).
 | `pwm_on` | fn | A PWM channel on the pin the caller names, at `freq_hz`, dark. |
 | `route_eusart0_async` | fn | Route EUSART0's transmitter and receiver to two pads, for the asynchronous mode. |
 | `route_eusart0_spi` | fn | Route EUSART0 in synchronous mode: MOSI, MISO and the clock. |
+| `route_eusart1_async` | fn | Route EUSART1's transmitter and receiver to two pads. |
 | `route_i2c0` | fn | Points I2C0's SCL and SDA at real pins, and puts those pins in open-drain. |
 | `route_usart0` | fn | Route USART0's transmitter and receiver to two pins. |
 | `select_hfxo` | fn | Run the core from the crystal and report the frequency in force. |
@@ -73,7 +75,7 @@ and the defaults that the hardware demands (gate first, then configure).
 
 ## Registers it touches
 
-`Acmp0S`, `BurtcNs`, `EmuS`, `Eusart0S`, `GpcrcNs`, `GpioNs`, `GpioS`, `I2c0Ns`, `Iadc0S`, `Letimer0Ns`, `MvpNs`, `Pcnt0Ns`, `Peripherals`, `PrsS`, `RadioaesS`, `Timer1S`, `Timer2S`, `Timer3S`, `Timer4S`, `Usart0S`, `Wdog0Ns`
+`Acmp0S`, `BurtcNs`, `EmuS`, `Eusart0S`, `Eusart1S`, `GpcrcNs`, `GpioNs`, `GpioS`, `I2c0Ns`, `Iadc0S`, `Letimer0Ns`, `MvpNs`, `Pcnt0Ns`, `Peripherals`, `PrsS`, `RadioaesS`, `Timer1S`, `Timer2S`, `Timer3S`, `Timer4S`, `Usart0S`, `Wdog0Ns`
 
 ## What was measured
 
@@ -90,4 +92,4 @@ Controls and the full story: [BLE-STATUS.md](../../../../docs/04-reference/BLE-S
 
 ## Using it
 
-See `examples/hal_acmp_ladder.rs`, `examples/hal_adc_prs_gpio.rs`, `examples/hal_adc_prs_timer.rs`, `examples/hal_adc_prs_trigger.rs`, `examples/hal_adc_read.rs`, `examples/hal_aes_kat.rs`, `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_delay_clock.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_emu_voltage.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_gpcrc.rs`, `examples/hal_gpio_interrupt.rs`, `examples/hal_hfxo.rs`, `examples/hal_i2c_async.rs`, `examples/hal_i2c_bitbang.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_imu_read.rs`, `examples/hal_led_blink.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_mic_level.rs`, `examples/hal_mvp_bench.rs`, `examples/hal_one_of_each.rs`, `examples/hal_pcnt_gpio.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer0_pwm.rs`, `examples/hal_timer0_repacing.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`, `examples/hal_timer_ticks.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`, `examples/hal_wdog_feed.rs`
+See `examples/hal_acmp_ladder.rs`, `examples/hal_adc_prs_gpio.rs`, `examples/hal_adc_prs_timer.rs`, `examples/hal_adc_prs_trigger.rs`, `examples/hal_adc_read.rs`, `examples/hal_aes_kat.rs`, `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_delay_clock.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_emu_voltage.rs`, `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_gpcrc.rs`, `examples/hal_gpio_interrupt.rs`, `examples/hal_hfxo.rs`, `examples/hal_i2c_async.rs`, `examples/hal_i2c_bitbang.rs`, `examples/hal_i2c_hardware_imu.rs`, `examples/hal_i2c_recovery.rs`, `examples/hal_imu_read.rs`, `examples/hal_led_blink.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_mic_level.rs`, `examples/hal_mvp_bench.rs`, `examples/hal_one_of_each.rs`, `examples/hal_pcnt_gpio.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer0_pwm.rs`, `examples/hal_timer0_repacing.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`, `examples/hal_timer_ticks.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`, `examples/hal_wdog_feed.rs`

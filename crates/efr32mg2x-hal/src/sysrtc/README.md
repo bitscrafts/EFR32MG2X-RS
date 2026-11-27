@@ -100,4 +100,4 @@ Controls and the full story: [DWT-NEEDS-A-DEBUG-SESSION.md](../../../../docs/04-
 
 ## Using it
 
-See `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`
+See `examples/hal_burtc_backup.rs`, `examples/hal_cmu_sources.rs`, `examples/hal_em2_sleep.rs`, `examples/hal_eusart1_loopback.rs`, `examples/hal_letimer_compare.rs`, `examples/hal_sysrtc_wide.rs`, `examples/hal_sysrtc_wrap.rs`, `examples/hal_timer_compare.rs`, `examples/hal_timer_instances.rs`
