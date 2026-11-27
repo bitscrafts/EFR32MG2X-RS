@@ -251,11 +251,12 @@ delivered as one channel with named producers. Still absent, and named as such r
    - ⏳ Continuous conversion and multi-channel scan (deferred; the microphone path uses LDMA instead)
    - ✅ Examples: `hal_adc_read`, `hal_adc_prs_trigger`, `hal_adc_prs_timer`
 
-8. **LDMA** (DMA Controller) - ✅ STAGES 1-2
+8. **LDMA** (DMA Controller) - ✅ STAGES 1-4
    - ✅ Memory-to-memory transfers
    - ✅ Peripheral-to-memory transfers with a circular buffer
-   - ⏳ Linked descriptors and interrupt-driven async (stages 3-4, deferred)
-   - ✅ Example: `hal_dma_stop`
+   - ✅ Linked descriptors (stage 3) and the done interrupt with the core asleep in `WFI` (stage 4)
+   - ⏳ Peripheral-triggered async, per-descriptor callbacks, EM2 sleep on that path
+   - ✅ Examples: `hal_dma_stop`, `hal_dma_link`, `hal_dma_irq`
 
 9. **PRS** (Peripheral Reflex System) - ✅ ONE CHANNEL, MEASURED
    - ✅ `Prs::connect` writes `ASYNC_CHn_CTRL` whole; `Prs::channel_ctrl` reads it back

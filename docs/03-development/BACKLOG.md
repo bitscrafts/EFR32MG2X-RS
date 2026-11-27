@@ -65,8 +65,10 @@ measured, because "it compiles" has never been the bar here.
   [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md). What is still open is a pad
   driven by a wire, a button or another peripheral, which is the case a product has and the pull resistor is not, and
   the fastest rate the converter can follow such a producer.
-- **DMA stage 4**: interrupt-driven async. Deferred, not broken. Stage 3 closed 2026-11-27 -- see the closed list
-  below and [`DMA-LINKED-2026-11-27.md`](../04-reference/DMA-LINKED-2026-11-27.md).
+- **DMA async beyond one leg and one mode**: stage 4 closed 2026-11-27 for a single-leg memory-to-memory transfer
+  whose wait sleeps in `WFI` ([`DMA-IRQ-2026-11-27.md`](../04-reference/DMA-IRQ-2026-11-27.md)). Still open: a
+  peripheral request through the crossbar ending the same wait, a per-descriptor callback, channels 1-7 in the typed
+  API, and a wait that sleeps in EM2 rather than EM0.
 - **The families nobody has written a driver for**: `pcnt0`, `burtc`, `acmp0`/`acmp1`, `vdac0`/`vdac1`, `keyscan`,
   `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco`, `hfrcoem23`. What each would cost is in
   [`COVERAGE-BOUNDARY-2026-11-25.md`](../04-reference/COVERAGE-BOUNDARY-2026-11-25.md).
@@ -84,6 +86,11 @@ measured, because "it compiles" has never been the bar here.
   moving only the first leg. The fact worth carrying: the second descriptor must live in **RAM** and carry
   `STRUCTREQ`, because a channel's `CTRL` will not store that bit -- a descriptor held in channel registers is fetched
   and never runs -- [`DMA-LINKED-2026-11-27.md`](../04-reference/DMA-LINKED-2026-11-27.md).
+- DMA done interrupt (C2-DMA.4): `dma::irq` (`Gate`, `Pending`, `Wait`, `service`, `wait`, `start_interrupt`). A
+  2047-word transfer ends on the LDMA vector with the core asleep -- one `WFI`, one handler entry, the deadline clock
+  still at zero (`dmairq: ok=1 n=2047 am=2047 irq=1 sp=1 tk=0 g=1 ad=1 af=0 ...`). The control clears `IEN.CHDONE` and
+  changes nothing else: the data still arrives, the `DONE` flag still latches, no handler runs and the deadline is what
+  ends the wait -- [`DMA-IRQ-2026-11-27.md`](../04-reference/DMA-IRQ-2026-11-27.md).
 
 ---
 

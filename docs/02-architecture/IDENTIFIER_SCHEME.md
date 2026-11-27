@@ -102,9 +102,9 @@ C2-DMA.3  = Phase C, Stage 2, DMA, Sub-stage 3 (interrupt-driven)
 | **C1-ADC** | IADC | 12-bit ADC | ✅ Complete |
 | **C2-DMA** | LDMA | DMA controller | ✅ C2-DMA.1 Complete |
 | **C2-DMA.1** | LDMA | Memory-to-memory | ✅ Complete |
-| **C2-DMA.2** | LDMA | Peripheral transfers | ⏳ Planned |
-| **C2-DMA.3** | LDMA | Linked descriptors | ⏳ Planned |
-| **C2-DMA.4** | LDMA | Interrupt-driven | ⏳ Planned |
+| **C2-DMA.2** | LDMA | Peripheral transfers | ✅ Complete |
+| **C2-DMA.3** | LDMA | Linked descriptors | ✅ Complete (2026-11-27) |
+| **C2-DMA.4** | LDMA | Done interrupt | ✅ Complete (2026-11-27) |
 | **C3-EMU** | EMU | Energy management | ⏳ Pending |
 | **C4-RTC** | RTCC | Real-time clock | ⏳ Pending |
 | **C5-WDOG** | WDOG | Watchdog timer | ⏳ Pending |
@@ -369,11 +369,10 @@ C5-WDOG
 - ✅ C1-ADC, C2-DMA.1 (Phase C: 40%)
 
 ## In Progress
-- ⏳ C2-DMA.2 (Peripheral DMA transfers)
+- ⏳ C3-EMU, C4-RTC, C5-WDOG (Phase C remaining)
 
 ## Planned
-- 📋 C2-DMA.3, C2-DMA.4 (DMA enhancements)
-- 📋 C3-EMU, C4-RTC, C5-WDOG (Phase C remaining)
+- 📋 Peripheral-triggered DMA async, callbacks per descriptor, DMA wait in EM2
 ```
 
 ### By Phase

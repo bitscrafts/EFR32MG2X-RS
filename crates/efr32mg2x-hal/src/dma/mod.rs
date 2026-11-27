@@ -28,12 +28,16 @@
 //! - ✅ LDMAXBAR configuration (peripheral routing)
 //! - ✅ IADC, USART peripheral support
 //!
-//! # Future Extensions (Phase 3)
+//! # Stages (C2-DMA.1 - C2-DMA.4)
 //!
-//! - ⏳ Interrupt-driven transfers with callbacks
-//! - ⏳ All 8 channels (CH1-CH7)
-//! - ⏳ Memory-to-peripheral transfers
-//! - ⏳ Scatter-gather DMA
+//! - `transfer` / `transfer_chain`: blocking memory-to-memory, per channel and chained through `LINK`
+//! - [`irq`]: a single-leg transfer that ends on the `LDMA_IRQ` vector while the core sleeps in `WFI`
+//!
+//! # Still open
+//!
+//! - Peripheral-triggered async (a crossbar request ending the same wait)
+//! - A callback per descriptor, rather than one bit per channel
+//! - Channels 1-7 in the typed API (only channel 0 is programmed today)
 //!
 //! # Architecture
 //!
@@ -110,6 +114,7 @@
 //! - What invariants are maintained
 //! - What preconditions must hold
 
+pub mod irq;
 mod linked;
 mod types;
 pub use linked::*;

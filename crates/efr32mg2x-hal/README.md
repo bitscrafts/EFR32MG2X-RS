@@ -38,8 +38,8 @@ Read from the source, so it cannot drift:
 | `I2c0S` | `src/i2c/async_impl.rs`, `src/i2c/mod.rs` |
 | `I2c1S` | `src/i2c/mod.rs` |
 | `Iadc0S` | `src/adc/mod.rs`, `src/board.rs`, `src/microphone.rs` |
-| `Interrupt` | `src/extint.rs`, `src/sysrtc.rs` |
-| `LdmaS` | `src/dma/linked.rs`, `src/dma/mod.rs` |
+| `Interrupt` | `src/dma/irq.rs`, `src/extint.rs`, `src/sysrtc.rs` |
+| `LdmaS` | `src/dma/irq.rs`, `src/dma/linked.rs`, `src/dma/mod.rs` |
 | `LdmaxbarS` | `src/dma/mod.rs` |
 | `Letimer0Ns` | `src/board.rs`, `src/letimer.rs` |
 | `MvpNs` | `src/board.rs`, `src/mvp/mod.rs` |
@@ -86,7 +86,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-31 public modules (`pub mod` in `src/lib.rs`) and 33 examples. A date next to an example means a record was
+31 public modules (`pub mod` in `src/lib.rs`) and 34 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -268,7 +268,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-33 examples, **23 of them watched on the part**. A `--` in the last column means nobody
+34 examples, **24 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -278,6 +278,7 @@ mean it works.
 | `hal_adc_prs_timer.rs` | The PRS trigger measured on 2026-11-26 was driven by `ASYNC_SWPULSE` — a CPU write. That proves the converter's | 2026-11-26 |
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | 2026-11-25 |
+| `hal_dma_irq.rs` | Does the LDMA end a transfer with an interrupt, with the core asleep, and does `IEN` gate it? | 2026-11-27 |
 | `hal_dma_link.rs` | Do the LDMA's linked descriptors actually chain, and does the second leg move only because of the link? | 2026-11-27 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |

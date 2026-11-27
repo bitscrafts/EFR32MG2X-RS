@@ -146,7 +146,7 @@ built over a hundred example targets.
 `clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `extint`, `gpcrc`, `i2c`, `letimer`, `microphone`, `mvp`, `pcnt`, `pin`, `prs`, `pwm`,
 `record`, `route`, `rtc`, `sensors`, `sleep`, `spi`, `sysrtc`, `timer`, `usart`, `wdog` and `prelude`.
 
-**Examples**: 118 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
+**Examples**: 119 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
 line, which this page quotes rather than fixes by hand. That script builds every example with the features it declares
 and fails if one does not compile; the Bluetooth and BSP examples declare `required-features`, so a plain
 `cargo build --examples` skips them silently. The other 15 `.rs` files under `crates/*/examples/` are shared modules
@@ -179,7 +179,7 @@ and fails if one does not compile; the Bluetooth and BSP examples declare `requi
 - [ ] **D3**: Zigbee 3.0 protocol stack integration
 - [ ] **D4**: Thread/Matter support
 - [ ] **Phase E**: Security features (AES, SHA, Secure Vault)
-- [ ] **C2-DMA.3/4**: Linked descriptors and interrupt-driven async DMA
+- [ ] **C2-DMA async beyond one leg**: peripheral-triggered waits, per-descriptor callbacks, EM2 sleep
 - [ ] **C6-Test**: Hardware validation on XIAO MG24 Sense
 
 ### What runs on the board today (measured, 2026-11-14)

@@ -89,7 +89,9 @@ block, and per-module README documentation.
 - Stage 2 (C2-DMA.2): Peripheral-to-memory transfers with circular buffer mode
 - Stage 3 (C2-DMA.3): Linked descriptors -- `transfer_chain`, two legs chained through `LINK`, measured 2026-11-27
   ([record](../04-reference/DMA-LINKED-2026-11-27.md))
-- Deferred: Stage 4 (interrupt-driven async)
+- Stage 4 (C2-DMA.4): Done interrupt -- `irq::start_interrupt`, `Gate`, `Pending`, `Wait`; the caller sleeps in `WFI`
+  and the vector ends the wait, `IEN.CHDONE` being the gate, measured 2026-11-27
+  ([record](../04-reference/DMA-IRQ-2026-11-27.md))
 
 **EMU (Energy Management Unit)** - C3
 - EM0-EM4 energy mode transitions
