@@ -115,12 +115,11 @@ fn main() -> ! {
     // loop leaves it emitting about two packets and then going quiet, because the stack answers the second start
     // without resuming the first.
     loop {
-        // **Cycles, not seconds.** This used to divide by 19 MHz and call the result seconds. The core clock on this
-        // part is an open defect in this tree (`DELAY-CLOCK-DEFECT.md`: the device configures 19 MHz, SysTick implies
-        // about 44 MHz, and a debugger-attached measurement read about 78 MHz), so any divisor here would be a guess
-        // printed with a unit -- and a number with a wrong unit is worse than a raw count. The counter therefore stays
-        // in cycles, which are exact, and the frame carries them as they are. A u32 of cycles wraps every ~55 s at
-        // 78 MHz and every ~226 s at 19 MHz, which is the price of not naming a clock this tree cannot yet measure.
+        // **Cycles, not seconds.** This used to divide by 19 MHz and call the result seconds. The delay was measured
+        // against the crystal on 2026-11-27 and it is right (`docs/04-reference/DELAY-MEASURED-2026-11-27.md`), so
+        // 19 MHz is a defensible divisor; the counter stays in cycles anyway, because a raw count is exact and a
+        // divisor is a claim about a clock that no instrument in this image reads. A u32 of cycles wraps every ~110 s
+        // at 19 MHz, which is the price.
         let uptime_cycles = dwt::since(boot);
         // The refresh gate, not a published value: 19 M cycles is roughly a second at any of the three candidate
         // clocks, and the frame carries the cycle count itself.

@@ -1,5 +1,17 @@
 # The delay bug that three clocks found
 
+> **CLOSED 2026-11-27, measured.** The delay is not short. A `delay_ms(200)` took 200.279 ms on the reset clock and
+> 201.124 ms with the core on the crystal, timed by TIMER0 against the 39 MHz crystal itself; `delay_us(100_000)` took
+> 100.010 ms, and the delay's own algorithm re-run in the same image took 199..200 ms. SysTick counts the core clock
+> undivided (390 000 ticks in 10.003 ms) and the wrap-based arming this page twice blamed works on this part. What the
+> 4.35 ms below actually measured was DWT cycles divided by a clock read from `emlib`, and DWT is only clocked while a
+> debug session is attached ([`DWT-NEEDS-A-DEBUG-SESSION.md`](DWT-NEEDS-A-DEBUG-SESSION.md)). Record, controls and the
+> instrument's own first failure: [`DELAY-MEASURED-2026-11-27.md`](DELAY-MEASURED-2026-11-27.md).
+>
+> The rest of this page is kept as it was written, because the reasoning that went wrong is worth reading: a
+> measurement whose input comes from the thing being measured always passes, and an inference from a count is not a
+> measurement. It is history now, not a state.
+
 `emlib_clock` was written to be a check, and the first thing it caught was ours.
 
 ## The measurement

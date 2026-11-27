@@ -46,9 +46,11 @@ project hits.
   or the follower keeps driving and the master never closes the reception; and the `IF` flags are only cleared through
   the `IF_CLR` alias at `+0x2000`, so writing 1 to the plain register leaves a NACK that refuses the next transaction.
   Both measured: [`docs/04-reference/I2C-RECOVERY-STATE.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/I2C-RECOVERY-STATE.md) and [`docs/04-reference/I2C0-READ-DEFECT.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/I2C0-READ-DEFECT.md).
-- **The default clock makes every delay 2.3x short.** The counter is right; the clock is wrong. Fixed by bringing the
-  HFXO up before counting, and documented in [`docs/04-reference/DELAY-CLOCK-DEFECT.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DELAY-CLOCK-DEFECT.md) so that the next person reads a
-  cause instead of a symptom.
+- **SysTick counts the core clock, undivided -- measured.** 390 000 ticks took 10.003 ms against the 39 MHz
+  crystal (38.99 MHz), and a `delay_ms(200)` takes 201.1 ms there and 200.3 ms on the reset clock, so the delays are
+  what they say. The "2.3x short" this line used to carry came from DWT cycles divided by a clock read from `emlib`,
+  and DWT is only clocked under a debug session; it does not reproduce. See
+  [`docs/04-reference/DELAY-MEASURED-2026-11-27.md`](https://github.com/bitscrafts/EFR32MG2X-RS/blob/master/docs/04-reference/DELAY-MEASURED-2026-11-27.md).
 
 ## Testing
 

@@ -45,7 +45,6 @@ carries the record that closed it.
   measure `sizeof` -- the weakest claim in the PSA layer.
 - **Pure Rust, no externs**: emlib, the PA tables, channel configuration, NVM3 and the SE manager still bind to vendor
   code; the MSLA blobs remain at the ABI boundary. Ordered after Bluetooth is closed.
-- **The delay clock runs 2.3x short** (`docs/04-reference/DELAY-CLOCK-DEFECT.md`).
 
 ---
 
@@ -91,6 +90,12 @@ measured, because "it compiles" has never been the bar here.
   still at zero (`dmairq: ok=1 n=2047 am=2047 irq=1 sp=1 tk=0 g=1 ad=1 af=0 ...`). The control clears `IEN.CHDONE` and
   changes nothing else: the data still arrives, the `DONE` flag still latches, no handler runs and the deadline is what
   ends the wait -- [`DMA-IRQ-2026-11-27.md`](../04-reference/DMA-IRQ-2026-11-27.md).
+- The delay, measured instead of inferred: `delay_ms(200)` takes 200.279 ms on the reset clock and 201.124 ms on the
+  crystal, `delay_us(100_000)` takes 100.010 ms, and SysTick counts the core clock undivided -- 390 000 ticks in
+  10.003 ms against the crystal. The 2.3x-short claim that stood in this file was DWT cycles divided by a clock read
+  from `emlib`, and DWT is only clocked under a debug session; it does not reproduce. Instrument `hal_delay_clock`
+  (`delayclk: ok=1 ... pw=10003 r1=38988303 em=200 d1=201124 e1=5 u1=100010 eu=0 x=401171 ex=2`), three boots --
+  [`DELAY-MEASURED-2026-11-27.md`](../04-reference/DELAY-MEASURED-2026-11-27.md).
 
 ---
 

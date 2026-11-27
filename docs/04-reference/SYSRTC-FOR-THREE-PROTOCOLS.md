@@ -183,3 +183,11 @@ not the control register or its enable is not bit 0 — the blob only proves whe
 live. **This does not block the stack from booting**: `sl_sleeptimer` is currently implemented as a polled
 scheduler (`crates/efr32mg24-bluetooth-sys/src/sleeptimer.rs`) with the ten functions the stack imports, driven
 by `poll()` from the application loop. It blocks only interrupt-driven timers and low-power sleep.
+
+## Correction 2026-11-27: the "second instance of the same family" was the same mistake
+
+The two references above to `DELAY-CLOCK-DEFECT.md` are withdrawn. The delay was measured directly against the 39 MHz
+crystal with TIMER0 (`crates/efr32mg2x-hal/examples/hal_delay_clock.rs`): a `delay_ms(200)` takes 200.279 ms on the
+reset clock and 201.124 ms on the crystal, and one SysTick period of 390 000 ticks is 10.003 ms -- the delay was never
+short. The ~44 MHz that the older page derived was another division by an assumed clock through the DWT, exactly the
+error this section describes for the SYSRTC ratio. Record: [`DELAY-MEASURED-2026-11-27.md`](DELAY-MEASURED-2026-11-27.md).

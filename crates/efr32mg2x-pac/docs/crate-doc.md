@@ -43,8 +43,10 @@ because a register access crate that hides them sends the reader to a wrong data
   zero for it. Writing 1 to the plain register clears nothing, and a flag left set -- a NACK, say -- changes what the
   next transaction does before it touches the bus. Measured, with the recovery sequence, in
   `docs/04-reference/I2C-RECOVERY-STATE.md`.
-- **The delay is 2.3x short** if you count cycles from `CMU`'s default clock. The clock is what is wrong, not the
-  counter (`docs/04-reference/DELAY-CLOCK-DEFECT.md`).
+- **SysTick runs at the core clock, measured.** 390 000 ticks take 10.003 ms against the crystal, i.e. 38.99 MHz with
+  the core on the crystal; a delay count is a core-cycle count and nothing else
+  (`docs/04-reference/DELAY-MEASURED-2026-11-27.md`). The "2.3x short" this line used to carry was an inference from
+  DWT cycles over a clock read from `emlib`, and DWT is only clocked under a debug session.
 
 ## Using it through the layers above
 

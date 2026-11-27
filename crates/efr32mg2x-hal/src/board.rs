@@ -857,6 +857,39 @@ impl Board {
     ///
     /// [`Handout::Taken`] when another owner already has TIMER0 (`pwm_on`, `buzzer_on`, `pace_microphone`).
     pub fn timer0_free_running(&self, top: u16) -> Result<bool, Handout<()>> {
+        self.timer0_free_running_prescaled(top, 0)
+    }
+
+    /// The same counter with its prescaler chosen by the caller, `divide_log2` being the number of halvings.
+    ///
+    /// `0` is the counter undivided, which wraps every 1.7 ms at the crystal and is therefore useless for timing
+    /// anything a blocking call does: the caller cannot poll while it is blocked, and a 200 ms delay is 116 wraps it
+    /// would have to count. `10` divides the 39 MHz crystal by 1024, which puts one count at 26.3 us and a full
+    /// 16-bit wrap at 1.72 s -- one reading, no ambiguity. Values above 10 are clamped to `DIV1024`, the largest the
+    /// register has.
+    ///
+    /// # Errors
+    ///
+    /// [`Handout::Taken`] when another owner already has TIMER0, exactly as [`Board::timer0_free_running`].
+    pub fn timer0_free_running_prescaled(
+        &self,
+        top: u16,
+        divide_log2: u8,
+    ) -> Result<bool, Handout<()>> {
+        use efr32mg2x_pac::timer0_s::cfg::Presc;
+        let presc = match divide_log2 {
+            0 => Presc::Div1,
+            1 => Presc::Div2,
+            2 => Presc::Div4,
+            3 => Presc::Div8,
+            4 => Presc::Div16,
+            5 => Presc::Div32,
+            6 => Presc::Div64,
+            7 => Presc::Div128,
+            8 => Presc::Div256,
+            9 => Presc::Div512,
+            _ => Presc::Div1024,
+        };
         self.claim(crate::cores::slots::Slot::Timer0)
             .map_err(Handout::Taken)?;
         self.dp.cmu_s.clken0().modify(|_r, w| w.timer0().set_bit());
@@ -877,10 +910,14 @@ impl Board {
                 break;
             }
         }
-        self.dp
-            .timer0_s
-            .cfg()
-            .write(|w| w.mode().up().clksel().prescem01grpaclk().presc().div1());
+        self.dp.timer0_s.cfg().write(|w| {
+            w.mode()
+                .up()
+                .clksel()
+                .prescem01grpaclk()
+                .presc()
+                .variant(presc)
+        });
         self.dp.timer0_s.en().write(|w| w.en().set_bit());
         self.dp
             .timer0_s

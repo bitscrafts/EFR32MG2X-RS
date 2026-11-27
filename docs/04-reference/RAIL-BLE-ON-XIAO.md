@@ -184,6 +184,9 @@ point of the exercise.
    wrong, and switching SYSCLK to the 39 MHz crystal changes the tick rate under it. A beacon whose
    interval is off by a factor is still a beacon, but it is not a 100 ms advertiser and the number should
    not be claimed.
+   *Corrected 2026-11-27*: the delay explanation in this item is withdrawn. The delay was measured against the crystal
+   and it is right (`DELAY-MEASURED-2026-11-27.md`), so the three-second gap is in this advertising loop and not in the
+   clock; it stays open and unexplained.
 3. **One advertisement in the air, not a stream.** The FIFO is consumed per transmission, so the frame is
    now rewritten every iteration; whether the radio keeps the same advertiser address across transmissions
    has not been verified on air.

@@ -1,9 +1,10 @@
 //! What is this board's core actually running at? Measured, not assumed.
 //!
 //! The HAL carries `DEFAULT_SYSCLK_HZ = 19_000_000` with an honest comment — it is a statement about the
-//! configuration, not a measurement — while `docs/04-reference/DELAY-CLOCK-DEFECT.md` derives ~44 MHz from a
-//! delay that came out 2.3x short. Two of our own numbers disagree, and every budget in the dosimeter spec
-//! (window length, GMM cost, MVP gain, 1 Hz notifications) was estimated on one of them.
+//! configuration, not a measurement — and this example measures the core clock so the number stops being a
+//! statement. (The old note here said `DELAY-CLOCK-DEFECT.md` derived ~44 MHz from a delay 2.3x short. That is
+//! withdrawn: the delay was measured against the crystal on 2026-11-27 and it is right, so the ~44 MHz was another
+//! division by an assumed clock -- see `docs/04-reference/DELAY-MEASURED-2026-11-27.md`.)
 //!
 //! So this measures it across two independent clock domains:
 //!
