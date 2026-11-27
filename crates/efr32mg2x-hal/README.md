@@ -218,7 +218,7 @@ them has a driver of its own. The radio is a different crate: [`efr32mg24-radio`
 | `USART0`, `EUSART1` | 9-bit / multiprocessor address mode; IrDA; ISO7816 |
 | `EUSART0` | **I2S** — the audio mode of the same peripheral |
 | `IADC0` | differential input — refused with an error rather than read as single-ended; and scan (several channels per trigger) |
-| `TIMER0`–`TIMER4` | input **capture** (compare and PWM are here) |
+| `TIMER1`–`TIMER4` | **PWM**, and input **capture** on any of the five | compare and counting are driven and measured on all five (`hal_timer_instances`); **PWM is `TIMER0` only** — `pwm::Timer0` is the crate's single PWM path, so a reader who needs a second PWM channel gets TIMER0's three and not a fourth timer. Named here rather than left to be discovered |
 | `EUSART0` | a real device on the pads — the loopback proof uses a jumper, never a second chip |
 
 ## Quick Start

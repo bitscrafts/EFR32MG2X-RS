@@ -83,7 +83,9 @@ This is the list that matters most for honesty, because a reader sees "SPI suppo
 | `iadc0` | differential input | deliberately absent, and refused rather than misread: `cores::adc::parse` returns an error for a differential word instead of reading it as single-ended |
 | `iadc0` | scan / multiple channels per trigger | absent; one conversion at a time |
 | `iadc0` | trigger modes other than software and `PRSPOS` | absent and measured nowhere: `PRSCLKGRP`, `PRSNEG` and `SINGLETRIGACTION = CONTINUOUS` are not written by this crate. Two timer-paced paths do exist and are distinct: `SINGLETRIGSEL = Timer` (the ADC clock group's own timer) is driven by `microphone::Converter`, and a timer routed through PRS to `PRSPOS` is measured in [`PRS-TIMER-PRODUCER-2026-11-26.md`](PRS-TIMER-PRODUCER-2026-11-26.md) |
+| `timer1`–`timer4` | **PWM** | absent as a driver. `pwm::Timer0` is the crate's only PWM path: the counting and compare paths of all five timers are measured (`hal_timer_instances`), PWM exists on `TIMER0` alone. A second PWM-capable timer would need the `TIMERn_CC0ROUTE` wiring `pwm` has for `TIMER0` and nothing else |
 | `timer0`–`timer4` | input capture | absent as a driver; the decision layer is host-tested (`cores::timer::CaptureSlot` and the wrapping interval arithmetic). Compare and PWM are driven and proven |
+| `usart0` as `spi::Spi0`, and `eusart1` as `spi::Spi2` | those two SPI instances at all | **unreachable, and named as such**: both constructors take a `&FrozenClocks`, which the `Board` keeps private behind the CMU it owns, so no hand-out can build one — the defect `timer` and `eusart` each had until 2026-11-27, found here by the same sweep and not yet fixed. `spi::Spi1` (EUSART0) carries `new_at` and is the one `Board::spi_on` hands out |
 | `eusart0` | SPI with a device on the pads | the loopback proof has a jumper on D9–D10; a real device has never spoken on that bus |
 
 ## 4. Not this crate
