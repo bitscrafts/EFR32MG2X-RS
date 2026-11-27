@@ -155,3 +155,27 @@ cargo package -p efr32mg2x-hal                         # builds from the tarball
 ```
 
 A published version cannot be edited, only superseded — and this crate has already been withdrawn once.
+## Update 2026-11-27 — the documentation row's stated ground is gone
+
+This file is a snapshot of 2026-11-25, and the numbers in it are the ones that were true that day (27 modules, 23
+examples, 108 example targets). Two of its rows quoted a reason that no longer holds, and a register that keeps a stale
+reason is the defect this project keeps re-finding, so here is the correction with what was measured.
+
+**`documentation`, which read B because "fifteen crates are still honest zeros"** — there are no zeros left. Measured,
+from the gate's own output on 2026-11-27: **0 crates at `doc-tests (0 passed)`, 23 carrying at least one**, each verified
+with `cargo test -p <crate> --doc --target x86_64-unknown-linux-gnu` (0 failed, 1 passed apiece). Behind that, in the
+same tree:
+
+- `deny(missing_docs)` at the root of **33 crates**, with `scripts/check-missing-docs.py` in the gate proving both that
+  the lint is installed and that it still fires (a fixture with an undocumented item must be refused).
+- **34 module READEs generated from the code** and a checker in the gate that fails on a stale, empty or placeholder
+  one — so a module that gains an item without its README following turns the gate red.
+- The crate README generated from `templates/readme-hal.tmpl` and checked, with the module and example counts asserted
+  rather than remembered.
+- The prose references turned into repository URLs, because 41 `../../../../docs/...` links were valid in the checkout
+  and dead inside the package (`cargo package --list` ships 167 files, none under `docs/`).
+
+What keeps this from a clean **A** is named in the same breath: the lint grades that a doc comment *exists*, not that it
+is any good, and the two bindgen modules stay undocumented by design because their documentation is the vendor header.
+The grade this file should now carry is **A−** on evidence, and the remaining gap is review, not a check anybody can
+install.
