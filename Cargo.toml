@@ -38,6 +38,10 @@ members = [
 exclude = [
     "crates/efr32mg24-bootloader",
     "crates/bootloader-test-app",
+    # Depends on `dosimeter-mg24`, which lives outside this repository by that project's own rule. A path dependency
+    # pointing outside the checkout breaks the workspace load on any machine that does not have it (measured on CI,
+    # 2026-11-27), so the product firmware is quarantined here instead of in the HAL's workspace.
+    "apps/dosimeter-ble",
 ]
 
 [workspace.package]

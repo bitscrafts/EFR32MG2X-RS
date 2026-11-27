@@ -188,11 +188,19 @@ else
   fail "flash: $(grep -m1 '^  ' /tmp/gate-flash-addr.log | sed 's/^  //')"
 fi
 
-# The product itself. Its example declares `required-features`, and cargo **skips** such a target silently when they
-# are not enabled -- so the loop above compiles no dosimeter at all, and a change to the firmware would be gated by
-# nothing. Built here once, with the feature set it really ships with.
-if PATH="/usr/local/cargo/bin:$PATH" cargo build --release -p efr32mg2x-xiao-bsp --target "$TARGET" \
-    --features "stack sense external-bonding" --example module_ble_dosimeter >/tmp/gate-dosimeter.log 2>&1; then
+# The product itself, which now lives in `apps/dosimeter-ble` -- outside the workspace, because it depends on
+# `dosimeter-mg24` and that crate is outside the repository by its own project's rule. A path dependency pointing outside
+# the checkout is resolved when the workspace loads, so keeping the firmware as a workspace member made every CI job
+# fail with `failed to read /projects/dosimeter-mg24/Cargo.toml` (measured 2026-11-27). Quarantined there, the repository
+# builds anywhere and the firmware builds where the model lives.
+#
+# The skip is named, never silent: on a machine without the model there is nothing to build, and saying so is the honest
+# result. A skip that hid a broken product build would be worse than no check -- so where the model *is* present, a
+# failure is a failure.
+if [ ! -f /projects/dosimeter-mg24/Cargo.toml ]; then
+  echo "  SKIP  product: /projects/dosimeter-mg24 is not on this machine, so the firmware cannot be built here"
+elif PATH="/usr/local/cargo/bin:$PATH" cargo build --release --manifest-path apps/dosimeter-ble/Cargo.toml \
+    --target "$TARGET" >/tmp/gate-dosimeter.log 2>&1; then
   pass "product: the dosimeter firmware builds with the features it ships with"
 else
   fail "product: $(grep -m1 '^error' /tmp/gate-dosimeter.log | sed 's/^error[^:]*: *//')"

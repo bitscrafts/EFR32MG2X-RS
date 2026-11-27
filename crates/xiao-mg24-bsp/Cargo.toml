@@ -30,10 +30,6 @@ critical-section = { workspace = true }
 # No-heap data structures
 heapless = "0.8"
 
-# O modelo do dosímetro (P1 e P2) vive no crate do projecto, fora deste repositório, e é chamado
-# por path: aqui só se compila e se publica o resultado. Escolha deliberada — o modelo muda com o
-# treino, o BSP muda com a placa, e misturar os dois põe dados num repositório de hardware.
-dosimeter-mg24 = { path = "/projects/dosimeter-mg24" }
 
 # Radio protocol implementations
 efr32mg24-bluetooth-sys = { package = "efr32mg2x-bluetooth-sys", path = "../efr32mg24-bluetooth-sys", optional = true }  # Phase D2 complete
@@ -104,14 +100,6 @@ required-features = ["sense", "stack"]
 [[example]]
 name = "module_ble_beacon"
 required-features = ["stack"]
-
-# The dosimeter service needs the link-layer handler, like the other BLE examples, and it needs the external bonding
-# database: with the stack's built-in one the bond is stored and then not found after a reset (vendor defect, measured
-# 2026-11-17 -- `rsn=0x1006` on a key that is present in flash). Declaring the feature here means a plain
-# `cargo build --example module_ble_dosimeter` refuses instead of silently producing a device that forgets the phone.
-[[example]]
-name = "module_ble_dosimeter"
-required-features = ["stack", "sense", "external-bonding"]
 
 [[example]]
 name = "module_heap_probe"

@@ -1,0 +1,40 @@
+[package]
+name = "dosimeter-ble"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+# The BLE dosimeter, built OUTSIDE the workspace on purpose.
+#
+# It depends on `dosimeter-mg24`, which lives in `/projects/dosimeter-mg24` -- outside this repository, by the decision
+# recorded in that project's AGENTS.md (the model is data, the BSP is hardware, and mixing them puts training data in a
+# hardware repository). A `path` dependency is resolved when the workspace loads, so a member crate cannot carry one
+# that points outside the checkout: measured 2026-11-27, GitHub's runners failed every job with
+# `failed to read /projects/dosimeter-mg24/Cargo.toml` and `cargo metadata` refused to load the whole workspace.
+#
+# Making the dependency optional does not help: Cargo resolves the manifest of an optional path dependency too (measured
+# with a two-file probe). So the dependency is quarantined here, in a crate the workspace excludes, and the repository
+# stays buildable on a machine that has never heard of the dosimeter.
+
+[dependencies]
+xiao-mg24-bsp = { package = "efr32mg2x-xiao-bsp", path = "../../crates/xiao-mg24-bsp", features = [
+    "stack",
+    "sense",
+    "external-bonding",
+] }
+efr32mg24-radio = { package = "efr32mg2x-radio", path = "../../crates/efr32mg24-radio", features = ["stack", "external-bonding"] }
+efr32mg2x-ble-bond-heal-core = { path = "../../libraries/ble-bond-heal-core" }
+
+# Machine-local, by design. See the note above.
+dosimeter-mg24 = { path = "/projects/dosimeter-mg24" }
+
+cortex-m = "0.7"
+cortex-m-rt = "0.7"
+panic-halt = "0.2"
+defmt-rtt = "0.4"
+
+[profile.release]
+opt-level = "s"
+lto = true
+codegen-units = 1
+debug = true

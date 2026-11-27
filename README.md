@@ -146,7 +146,7 @@ built over a hundred example targets.
 `clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `eusart`, `extint`, `gpcrc`, `i2c`, `letimer`, `microphone`, `mvp`, `pcnt`, `pin`, `prs`, `pwm`,
 `record`, `route`, `rtc`, `sensors`, `sleep`, `spi`, `sysrtc`, `timer`, `usart`, `wdog` and `prelude`.
 
-**Examples**: 121 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
+**Examples**: 120 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
 line, which this page quotes rather than fixes by hand. That script builds every example with the features it declares
 and fails if one does not compile; the Bluetooth and BSP examples declare `required-features`, so a plain
 `cargo build --examples` skips them silently. The other 15 `.rs` files under `crates/*/examples/` are shared modules

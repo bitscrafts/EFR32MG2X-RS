@@ -36,7 +36,6 @@ use xiao_mg24_bsp::hal::dwt;
 use xiao_mg24_bsp::prelude::*;
 use xiao_mg24_bsp::Module;
 
-#[path = "common/mailbox.rs"]
 mod mailbox;
 
 const TARGET_HZ: u32 = 16_000;
