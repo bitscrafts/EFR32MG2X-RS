@@ -53,6 +53,20 @@ carries the record that closed it.
 These are the items that need the part, in the order the night queue takes them. Each one names what would count as
 measured, because "it compiles" has never been the bar here.
 
+- **SHA on the crypto engine: blocked on the instruction encoding, not on the board.** The AES driver drives the
+  BA411E core through descriptor chains and its tags come from the vendor's own RADIOAES driver, which is vendored in
+  `crates/efr32mg24-bluetooth-sys/vendor/support/sli_protocol_crypto_radioaes.c`. That file has **no SHA path** -- the
+  BLE stack computes SHA elsewhere -- and the PAC exposes only the engine's `BA413_HW_CFG`/`BA418`/`BA419` identity
+  registers, not the command format. Writing the instruction words from guesswork would be a driver that looks right
+  and returns rubbish, so this waits for the reference manual's crypto chapter (or a vendor source that shows the
+  words). The AES KAT (`docs/04-reference/AES-KAT-2026-11-27.md`) is the template for the work once the encoding is
+  known.
+- **DPLL0 / HFRCODPLL: blocked on the lock sequence.** `DPLL0` gives `CFG` (mode, edge, recovery), `CFG1` (`M` bits
+  0:11, `N` bits 16:27), `STATUS` (ready, enabled, locked) and a keyed `LOCK`, and `CMU_DPLLREFCLKCTRL` names the
+  reference -- but the order that gets it locked without stalling the part is not written down anywhere in this
+  repository, and no vendor `em_cmu.c` is vendored to read it from. A wrong order here hangs the chip, so the family
+  stays absent until the manual's CMU chapter is available. What it would buy: an exact 78 MHz from the 39 MHz crystal,
+  and a frequency measurable by counting a timer against the SYSRTC -- the same instrument the clock work used.
 - **PCNT0's ceiling: parked on external hardware.** The item asked for the ceiling between 25 and 50 kHz with a
   producer whose rate does not come from `delay_us`. Two such producers were built and neither reached the counter:
   TIMER0's overflow is one clock wide (53 ns) and the block samples S0IN at 32.768 kHz, so 13 edges at 1 kHz produced
