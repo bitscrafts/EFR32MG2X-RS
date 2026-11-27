@@ -45,7 +45,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-30 public modules (`pub mod` in `src/lib.rs`) and 31 examples. A date next to an example means a record was
+31 public modules (`pub mod` in `src/lib.rs`) and 32 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -115,7 +115,7 @@ peripheral families and re-checked family by family, is
 
 | Peripheral | What is here | Proven by |
 |---|---|---|
-| `GPIO` | output, input, interrupt, peripheral routing | `hal_led_blink` |
+| `GPIO` | output, input, external interrupt on both vectors, peripheral routing | `hal_led_blink`, `hal_gpio_interrupt` |
 | `CMU`, `EMU`, `HFXO`, `LFXO`, `LFRCO` | clock tree, energy modes, oscillator start | `hal_hfxo`, `hal_emu_voltage`, `hal_em2_sleep` |
 | `SYSRTC0` | 32.768 kHz counter, compare, 64-bit extension | `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_timer_ticks` |
 | `TIMER0` | count, compare, PWM | `hal_timer_compare`, `hal_timer0_pwm` |

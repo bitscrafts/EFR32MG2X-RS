@@ -345,6 +345,25 @@ impl<'a> EdgeWatch<'a> {
         self.channel
     }
 
+    /// Arm or disarm the two edge masks, leaving the channel's binding and its flag alone.
+    ///
+    /// [`Self::bind`] picks the edges once and a caller that wants the other polarity builds a second watch. This
+    /// rewrites the same two bits in place, which is what a measurement needs: with both masks off the detector
+    /// produces no flag at all, and the binding is still the one under test.
+    pub fn set_edges(&self, rising: bool, falling: bool) {
+        let bit = 1u32 << self.channel;
+        let rise = if rising { bit } else { 0 };
+        let fall = if falling { bit } else { 0 };
+        // SAFETY: each write replaces this channel's own bit and keeps every other channel's, the same mask argument
+        // `bind` makes above.
+        self.gpio
+            .extirise()
+            .modify(|r, w| unsafe { w.bits((r.bits() & !bit) | rise) });
+        self.gpio
+            .extifall()
+            .modify(|r, w| unsafe { w.bits((r.bits() & !bit) | fall) });
+    }
+
     /// The whole `IF` word, for a probe that reports what the hardware latched rather than what it expected.
     pub fn flags(&self) -> u32 {
         self.gpio.if_().read().bits()

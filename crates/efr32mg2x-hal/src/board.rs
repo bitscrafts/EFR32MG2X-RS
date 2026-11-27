@@ -807,6 +807,27 @@ impl Board {
         crate::pin::EdgeWatch::bind(&self.dp.gpio_s, port, pin, rising, falling)
     }
 
+    /// The same channel as [`Self::watch_edges`], with its edges counted in the GPIO interrupt handler.
+    ///
+    /// The caller installs `GPIO_ODD_IRQHandler` and `GPIO_EVEN_IRQHandler`, each one calling
+    /// [`crate::extint::service`] with its parity, and arms the returned counter. Nothing polls the flag: the count is
+    /// what the vector delivered. See [`crate::extint`] for the two-handler contract.
+    pub fn count_edges(
+        &self,
+        port: crate::pin::Port,
+        pin: u8,
+        rising: bool,
+        falling: bool,
+    ) -> crate::extint::EdgeCounter<'_> {
+        crate::extint::EdgeCounter::new(crate::pin::EdgeWatch::bind(
+            &self.dp.gpio_s,
+            port,
+            pin,
+            rising,
+            falling,
+        ))
+    }
+
     /// TIMER0 on the pin the caller names, calibrated but undecided about what it means.
     ///
     /// `None` when the counter does not move — a clock that is not running.

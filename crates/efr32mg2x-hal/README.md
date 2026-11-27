@@ -38,7 +38,7 @@ Read from the source, so it cannot drift:
 | `I2c0S` | `src/i2c/async_impl.rs`, `src/i2c/mod.rs` |
 | `I2c1S` | `src/i2c/mod.rs` |
 | `Iadc0S` | `src/adc/mod.rs`, `src/board.rs`, `src/microphone.rs` |
-| `Interrupt` | `src/sysrtc.rs` |
+| `Interrupt` | `src/extint.rs`, `src/sysrtc.rs` |
 | `LdmaS` | `src/dma/mod.rs` |
 | `LdmaxbarS` | `src/dma/mod.rs` |
 | `Letimer0Ns` | `src/board.rs`, `src/letimer.rs` |
@@ -86,7 +86,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-30 public modules (`pub mod` in `src/lib.rs`) and 31 examples. A date next to an example means a record was
+31 public modules (`pub mod` in `src/lib.rs`) and 32 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -156,7 +156,7 @@ peripheral families and re-checked family by family, is
 
 | Peripheral | What is here | Proven by |
 |---|---|---|
-| `GPIO` | output, input, interrupt, peripheral routing | `hal_led_blink` |
+| `GPIO` | output, input, external interrupt on both vectors, peripheral routing | `hal_led_blink`, `hal_gpio_interrupt` |
 | `CMU`, `EMU`, `HFXO`, `LFXO`, `LFRCO` | clock tree, energy modes, oscillator start | `hal_hfxo`, `hal_emu_voltage`, `hal_em2_sleep` |
 | `SYSRTC0` | 32.768 kHz counter, compare, 64-bit extension | `hal_sysrtc_wrap`, `hal_sysrtc_wide`, `hal_timer_ticks` |
 | `TIMER0` | count, compare, PWM | `hal_timer_compare`, `hal_timer0_pwm` |
@@ -268,7 +268,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-31 examples, **21 of them watched on the part**. A `--` in the last column means nobody
+32 examples, **22 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -282,6 +282,7 @@ mean it works.
 | `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | 2026-11-24 |
 | `hal_gpcrc.rs` | Is the CRC accelerator right? Check it against a number computed elsewhere. | -- |
+| `hal_gpio_interrupt.rs` | The pad moved by its own pull resistor, `IEN` and the NVIC armed, and a counter only the handler increments. | 2026-11-27 |
 | `hal_hfxo.rs` | HFXO: run from the crystal, and prove the rest of the system followed it. | 2026-11-25 |
 | `hal_i2c_async.rs` | O IMU lido pelo caminho **assíncrono** do I2C, num executor mínimo. | -- |
 | `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |

@@ -72,6 +72,15 @@ measured, because "it compiles" has never been the bar here.
 
 ---
 
+## Closed in the HAL, 2026-11-27
+
+- GPIO external interrupts: `extint` (`Parity`, `service`, `entries`), `EdgeCounter` and `Board::count_edges`. One pad
+  change is one interrupt on both vectors (`gpioirq: n=8 if=0x00000008 cnt=8 off=0 dis=0 msk=0 odd=8 even=0 pin0=8
+  p0odd=0 p0even=8`), with `IEN` measured as the per-pin gate in front of the vector and the flag proven to latch with
+  the vector masked -- [`GPIO-INTERRUPT-2026-11-27.md`](../04-reference/GPIO-INTERRUPT-2026-11-27.md).
+
+---
+
 ## Closed in the HAL, 2026-11-25 and 2026-11-26
 
 Each of these has a record read back off the part; the record string is in the document named.

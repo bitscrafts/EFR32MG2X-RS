@@ -16,7 +16,7 @@ record. What has no hardware proof says so.
 | crate | what it is | counted here |
 |---|---|---|
 | `efr32mg2x-pac` | register access, generated from the B220 SVD with svd2rust | 2,633 files, 103 peripheral instances in 46 families |
-| `efr32mg2x-hal` | peripherals, buses and drivers, no board facts | 29 `pub mod`, 29 examples, 14,712 lines under `src/` |
+| `efr32mg2x-hal` | peripherals, buses and drivers, no board facts | 31 `pub mod`, 32 examples, 15,353 lines under `src/` |
 | `efr32mg24-rail-sys` | RAIL FFI bindings | 7 examples, needs the vendor blobs at build time |
 | `efr32mg24-bluetooth-sys` | BGAPI FFI bindings plus a safe blocking API | 1 example |
 | `efr32mg24-radio` | Bluetooth API, RAIL setup, diagnostics | 7 examples |
@@ -39,7 +39,7 @@ far as one channel with a named producer, and that producer has been a timer's o
 `pcnt0`, `burtc`, `acmp0`/`acmp1`, `vdac0`/`vdac1`, `keyscan`, `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco` and
 `hfrcoem23` are not touched at all.
 
-## Measured on the part (2026-11-26)
+## Measured on the part (2026-11-26 and 2026-11-27)
 
 | what | record, read back off the board | document |
 |---|---|---|
@@ -49,6 +49,7 @@ far as one channel with a named producer, and that producer has been a timer's o
 | a timer's overflow converted once per overflow, with no CPU write in the loop | `trig=prs0 hz=500 period=38000 src=0x000c2101 off=0 idle=0 noarm=0 ev=8 quiet=0 v0=0x0000026d vl=0x00000238 ovf=8 ch0=0x000c0000` | [`PRS-TIMER-PRODUCER-2026-11-26.md`](../04-reference/PRS-TIMER-PRODUCER-2026-11-26.md) |
 | a GPIO pad pacing conversions through the PRS, with a quiet-pad, an `Off`-channel and a wrong-pin control | `ch=3 sel=0x00002000 isel=0x00003000 din=1 a=0 b=4 c=4 mv=8 up=4 off=0 other=0 pin0=4 up0=4 long=8 upg=8 fall=4 ifb=0x00000009 ifc=0x00000001` | [`PRS-GPIO-PRODUCER-2026-11-26.md`](../04-reference/PRS-GPIO-PRODUCER-2026-11-26.md) |
 | `PCNT0` counting the GPIO PRS producer, with `Off`-channel, stopped-counter, quiet-pad and wrong-consumer controls | `pcnt: ch=3 cfg=0x00000100 ctrl=0x00000010 st=0x00000000 a=4 lv=4 b=2 c=3 off=0 stop=0 q=0 mm=0 p0=4 ok=25000 bad=50000 g=77 e=200 of=0 ar=4 br=2 cf=2 cm=4 hr=4 em=8 if=0x00000000` | [`PCNT-GPIO-2026-11-26.md`](../04-reference/PCNT-GPIO-2026-11-26.md) |
+| a GPIO edge delivered as an interrupt on both vectors, with masks, `IEN`, vector and quiet-pad controls | `gpioirq: n=8 if=0x00000008 cnt=8 off=0 dis=0 msk=0 odd=8 even=0 pin0=8 p0odd=0 p0even=8 a=0 up=4 sel=0x00002000 isel=0x00003000` | [`GPIO-INTERRUPT-2026-11-27.md`](../04-reference/GPIO-INTERRUPT-2026-11-27.md) |
 
 The rest of the hardware records -- I2C read and recovery, the USART receiver refusing a broken frame, SPI loopback with
 a jumper and a control without it, the WDOG, the CRC, the MVP benchmark, the microphone, the IMU -- are in the HAL
@@ -62,7 +63,7 @@ README's measured section and in `docs/04-reference/`, one document per measurem
 | D2g BME680 gas resistance | the heater, `res_heat` and the `par_g*` curves are not implemented, so the reading that separates a 680 from a 688 is missing | `BACKLOG.md` |
 | the delay runs 2.3x short | measured against two clocks and an independent DWT count: a "10 ms" delay produced 82 680 core cycles at 19 MHz | [`DELAY-CLOCK-DEFECT.md`](../04-reference/DELAY-CLOCK-DEFECT.md) |
 | DMA stages 3 and 4 | linked descriptors and interrupt-driven async are deferred, not broken | `BACKLOG.md` |
-| the root README's project metrics | checked now: the page quotes the 115 example targets `scripts/check-examples-build.sh` prints, and `scripts/check-root-readme.py` recomputes the workspace, library, module and example counts from the tree on every gate run | `README.md`, `scripts/gate.sh` |
+| the root README's project metrics | checked now: the page quotes the 117 example targets `scripts/check-examples-build.sh` prints, and `scripts/check-root-readme.py` recomputes the workspace, library, module and example counts from the tree on every gate run | `README.md`, `scripts/gate.sh` |
 | absent families | `pcnt0`, `burtc`, `acmp`, `vdac`, `keyscan`, `radioaes`, `dcdc`, `dpll0`, `ulfrco`, `fsrco`, `hfrcoem23` | `COVERAGE-BOUNDARY-2026-11-25.md` |
 
 ## Where the state lives
