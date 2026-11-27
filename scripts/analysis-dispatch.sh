@@ -15,6 +15,13 @@ RESUME=""
 
 MODEL="${MODEL:-claude-fable-5-2}"      # or claude-opus-5-5; never the `opusplan` alias for analysis -- it resolves to sonnet
 MAX_TURNS="${MAX_TURNS:-80}"            # an analysis that wanders is not improved by more turns
+# ALLOW_WRITE=<file>: the reviewer may write exactly this one file, and nothing else. Measured 2026-11-27:
+#   * `--allowedTools "Write(/path)"` is refused -- the CLI says only Edit(path) rules are matched by file checks;
+#   * a single-slash path is read as relative to the project root, so `Edit(/projects/_tmp/x)` matches nothing;
+#   * `Edit(//projects/_tmp/x/**)` -- double slash, absolute -- is the form that works (probe: PLACEHOLDER -> wrote);
+#   * plan mode refuses every write, so asking for a file means giving up `--permission-mode plan`.
+# The file is created here with a header, because Edit rules authorise editing a file, not creating one.
+ALLOW_WRITE="${ALLOW_WRITE:-}"
 EXPECTED_SUBJECT="${EXPECTED_SUBJECT:-#}"   # the first line of the brief must start with this
 LOG="${LOG:-$(dirname "${SID_FILE}")/dispatch-$(date -u +%Y%m%dT%H%M%SZ).log}"
 
@@ -24,6 +31,19 @@ CLAUDE="${CLAUDE:-/root/.local/bin/claude}"
 
 [ -x "${CLAUDE}" ]  || { echo "REFUSE: no claude at ${CLAUDE}"; exit 1; }
 [ -f "${BRIEF}" ]   || { echo "REFUSE: no brief at ${BRIEF}"; exit 1; }
+
+# 0a. Where the reviewer may write. Checked before the probe, so a doomed dispatch refuses in one second.
+PERM_ARGS=(--permission-mode plan)
+if [ -n "${ALLOW_WRITE}" ]; then
+  case "$(readlink -f "${ALLOW_WRITE}")" in
+    "${PWD}"/*) echo "refusing: ALLOW_WRITE is inside the repository being reviewed (${ALLOW_WRITE})" >&2; exit 2 ;;
+  esac
+  mkdir -p "$(dirname "${ALLOW_WRITE}")"
+  [ -e "${ALLOW_WRITE}" ] || printf '# findings -- %s, written by the reviewer as it establishes each one\n\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "${ALLOW_WRITE}"
+  PERM_ARGS=(--permission-mode default --allowedTools "Edit(//$(readlink -f "${ALLOW_WRITE}")/**)")
+fi
+echo "turns:  ${MAX_TURNS}"
+echo "write:  ${ALLOW_WRITE:-none (plan mode: reads and reports, writes nothing)}"
 
 # 0. The model must be RECOGNISED. An unknown id answers anyway, with another model, and the log looks fine.
 PROBE="$("${CLAUDE}" --model "${MODEL}" -p "PONG" 2>&1 | tail -3)"
@@ -53,9 +73,10 @@ echo "${SID}" > "${SID_FILE}"
 echo "brief:  ${BRIEF} ($(wc -c < "${BRIEF}") bytes)"
 echo "log:    ${LOG}"
 echo "turns:  ${MAX_TURNS}"
+echo "write:  ${ALLOW_WRITE:-none (plan mode: reads and reports, writes nothing)}"
 
 # 3. Run. plan mode: read and report, never edit.
-"${CLAUDE}" "${SID_ARGS[@]}" --model "${MODEL}" --permission-mode plan --max-turns "${MAX_TURNS}" \
+"${CLAUDE}" "${SID_ARGS[@]}" --model "${MODEL}" "${PERM_ARGS[@]}" --max-turns "${MAX_TURNS}" \
     -p "$(cat "${BRIEF}")" > "${LOG}" 2>&1
 RC=$?
 
