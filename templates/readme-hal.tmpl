@@ -125,7 +125,8 @@ peripheral families and re-checked family by family, is
 | `USART0` | asynchronous serial, echo, a receiver that refuses a broken frame | `hal_usart_link` |
 | `EUSART1` | the same asynchronous driver on the second block, with the loopback closing through the pad | `hal_eusart1_loopback` — `eusart1: n=8 matched=8 seen=8 cfg0=0x00000002 st=0x00003063 control=0 div=297 routed=1 refused=1`, three boots identical; the control run (loopback off) reads zero, and an unrouted block reads zero too |
 | `EUSART0` | SPI **master**, 8-bit, blocking; asynchronous serial with the block's own divider | `hal_spi_loopback` (jumper on D9–D10, plus the control that reads `ff..ff` without it), `hal_eusart_loopback` (internal loopback and a control with it off) |
-| `I2C0`, `I2C1` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
+| `I2C0` | I2C **master**: blocking, async, repeated start, NACK, recovery | `hal_i2c_hardware_imu`, `hal_i2c_async`, `hal_i2c_recovery` |
+| `I2C1` | the second bus: same driver, **compiled and reachable through `Board::i2c1`, never exercised** -- nothing is wired to it on this board | -- |
 | `IADC0` | single-ended conversion, microphone path | `hal_adc_read`, `hal_mic_level` |
 | `LDMA` | channel ownership, transfers, `stop()`, chained descriptors | `hal_dma_stop`, `hal_dma_link` |
 | `MVP` | matrix/vector co-processor on `binary16` | `hal_mvp_bench` |
@@ -141,7 +142,7 @@ peripheral families and re-checked family by family, is
 
 ### Compiled, not measured
 
-Nothing. Every instance the crate hands out has a record on the part; the modes that are absent are named in section 3
+Nothing **except `I2C1`**, which is handed out by `Board::i2c1` and has no record of a single transaction: nothing is wired to that bus on this board. Every other instance the crate hands out has a record on the part; the modes that are absent are named in section 3
 of `docs/04-reference/COVERAGE-BOUNDARY-2026-11-25.md` instead of living here as a maybe.
 
 

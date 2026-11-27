@@ -624,7 +624,6 @@ fi
 echo
 echo "not gated on purpose:"
 echo "  cmsis-stubs              -- a build-support crate: C only, no Rust API, no examples"
-echo "  efr32mg24-radio/ble_gatt -- needs the PSA crypto blobs; documented in docs/04-reference/RADIO-NOTES.md"
 echo
 # The marker is the verdict's memory of a `fail` raised inside a subshell.
 if [ -s "$FAILMARK" ]; then FAILED=1; fi

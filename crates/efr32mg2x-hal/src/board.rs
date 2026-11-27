@@ -112,7 +112,7 @@ impl Board {
     ///
     /// `i2c::I2c1` was public and documented with a constructor that took a `&FrozenClocks`, which this board keeps
     /// private because it owns the CMU: the driver was reachable by nobody. A review found it on 2026-11-27; it is the
-    /// same defect `I2c0::new` had, and the third of its class.
+    /// same defect `I2c0::new` had, and the fourth of its class.
     ///
     /// It is **unmeasured**: no record exists of a transaction on this bus, because the board's I2C sensor sits on
     /// I2C0 and nothing has been wired to I2C1. It compiles, it claims its slot, and it is listed as unmeasured in
@@ -1344,8 +1344,6 @@ impl Board {
         )
     }
 
-    /// The GPIO register block this board's pins live on.
-    #[must_use]
     /// A bit-banged I2C master on the two pins the caller names.
     ///
     /// Bit-banged on purpose: the on-chip I2C0 master on this die cannot complete a read

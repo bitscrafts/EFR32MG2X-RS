@@ -37,14 +37,35 @@ pub mod mode {
     pub const WIRED_AND: u32 = 8;
 }
 
+/// The bit offset of one pin's 4-bit `MODE` field, refusing an index no port on this part has.
+///
+/// Split out of [`set_mode`] so the part that decides *which* pin is touched can run on the host: the register write
+/// cannot, and the arithmetic is where the silent corruption lived. `20 % 8` is 4, so an unchecked index 20 lands on
+/// half-port offset 16 -- PA12's field -- and rewrites a pin nobody named. A test that pins this is a test that fails
+/// if anyone reintroduces the `% 8` without the range check.
+pub(crate) fn mode_shift(pin: u8) -> u32 {
+    assert!(pin < 16, "pin index {pin} is outside 0..=15 for any port on this part");
+    4 * u32::from(pin % 8)
+}
+
 /// Set the mode of one pin without disturbing the other seven on the same half-port.
 ///
 /// Pins 0..7 live in `MODEL`, pins 8..15 in `MODEH`, four bits each. A blind write to those
 /// registers reconfigures every other pin that shares them, which is how a bus silently
 /// breaks whatever else is on the port — so the read-modify-write below is not tidiness.
+/// # A pin index outside the port is a panic, not a debug assertion
+///
+/// `debug_assert!` here was a silent corruption in every release build: `output_on(Port::A, 20, ..)` computed a shift of
+/// 16 and rewrote **PA12**'s mode field, because `20 % 8` is 4 and the mask moves to the next half-port. Every gate and
+/// example build in this workspace is `--release`, so the assertion this file relied on had never been compiled in. A
+/// panic on a programming error is a halt one can see; a pin silently reconfigured is a bus that fails later, somewhere
+/// else. (Found by an outside review, 2026-11-27, B4.)
 pub(crate) fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, value: u32) {
-    debug_assert!(pin < 16, "pin index out of range");
-    let shift = 4 * u32::from(pin % 8);
+    assert!(pin < 16, "pin index {pin} is outside 0..=15 for any port on this part");
+    if matches!(port, Port::B | Port::D) {
+        assert!(pin < 8, "port {port:?} exposes pins 0..=7 only; {pin} is a wiring error");
+    }
+    let shift = mode_shift(pin);
     let clear = !(0xF << shift);
     let set = (value & 0xF) << shift;
 
@@ -68,7 +89,9 @@ pub(crate) fn set_mode(gpio: &pac::gpio_s::RegisterBlock, port: Port, pin: u8, v
         // PORTB and PORTD have no MODEH in this package's SVD because those ports expose
         // only pins 0..7 here; a pin index above 7 on them is a wiring error, not a register
         // to invent.
-        (Port::B | Port::D, false) => debug_assert!(false, "port has no pins above 7"),
+        // Unreachable: the assertion above has already refused a port with no MODEH. Kept as a total match rather than a
+        // `_` arm, so that adding a port to the enum is a compile error and not a silent no-op.
+        (Port::B | Port::D, false) => unreachable!("port has no pins above 7, refused above"),
     };
 }
 
@@ -399,5 +422,25 @@ impl<'a> EdgeWatch<'a> {
         // SAFETY: the alias window maps the same `IF` word with write-one-to-clear semantics, and the mask is this
         // channel's own bit, so no other channel's flag is touched.
         unsafe { core::ptr::write_volatile(address as *mut u32, 1u32 << self.channel) }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::mode_shift;
+
+    #[test]
+    fn the_shift_stays_inside_its_half_port() {
+        assert_eq!(mode_shift(0), 0);
+        assert_eq!(mode_shift(7), 28);
+        assert_eq!(mode_shift(8), 0, "pin 8 starts the upper half-port");
+        assert_eq!(mode_shift(15), 28);
+    }
+
+    #[test]
+    #[should_panic(expected = "outside 0..=15")]
+    fn pin_20_is_refused_instead_of_landing_on_pa12() {
+        // The defect this pins: 20 % 8 == 4, so the old unchecked arithmetic wrote PA12's field.
+        mode_shift(20);
     }
 }
