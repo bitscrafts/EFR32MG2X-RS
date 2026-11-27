@@ -25,8 +25,9 @@ Read from the source, so it cannot drift:
 
 | what it takes | where it is used |
 |---|---|
+| `BurtcNs` | `src/board.rs`, `src/burtc/mod.rs` |
 | `CmuNs` | `src/mvp/mod.rs` |
-| `CmuS` | `src/adc/mod.rs`, `src/clock/clocks.rs`, `src/clock/frozen.rs` (+4 more) |
+| `CmuS` | `src/adc/mod.rs`, `src/burtc/mod.rs`, `src/clock/clocks.rs` (+5 more) |
 | `EmuS` | `src/board.rs`, `src/emu/mod.rs` |
 | `Eusart0S` | `src/board.rs`, `src/eusart/mod.rs`, `src/spi/mod.rs` |
 | `Eusart1S` | `src/spi/mod.rs` |
@@ -86,7 +87,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-32 public modules (`pub mod` in `src/lib.rs`) and 35 examples. A date next to an example means a record was
+33 public modules (`pub mod` in `src/lib.rs`) and 36 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -268,7 +269,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-35 examples, **25 of them watched on the part**. A `--` in the last column means nobody
+36 examples, **26 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -278,6 +279,7 @@ mean it works.
 | `hal_adc_prs_timer.rs` | The PRS trigger measured on 2026-11-26 was driven by `ASYNC_SWPULSE` — a CPU write. That proves the converter's | 2026-11-26 |
 | `hal_adc_prs_trigger.rs` | An ADC that only converts when the CPU asks it to is an ADC the CPU has to babysit. This part can start a single | 2026-11-26 |
 | `hal_adc_read.rs` | The IADC on this part converts one channel at a time into a 12-bit code. The hard part of an ADC | 2026-11-25 |
+| `hal_burtc_backup.rs` | `BURTC` against `SYSRTC` over a known window: two counters on the same 32.768 kHz branch, and a control that takes the | 2026-11-27 |
 | `hal_dma_irq.rs` | Does the LDMA end a transfer with an interrupt, with the core asleep, and does `IEN` gate it? | 2026-11-27 |
 | `hal_dma_link.rs` | Do the LDMA's linked descriptors actually chain, and does the second leg move only because of the link? | 2026-11-27 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |

@@ -49,10 +49,12 @@ pub enum Slot {
     Prs,
     /// `PCNT0` — one counter, one pair of input routes.
     Pcnt,
+    /// `BURTC` — one backup counter, one clock mux.
+    Burtc,
 }
 
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 14;
+pub const SLOT_COUNT: usize = 15;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -72,6 +74,7 @@ impl Slot {
             Slot::Letimer => 11,
             Slot::Prs => 12,
             Slot::Pcnt => 13,
+            Slot::Burtc => 14,
         }
     }
 }
@@ -180,6 +183,7 @@ mod tests {
             Slot::Letimer,
             Slot::Prs,
             Slot::Pcnt,
+            Slot::Burtc,
         ] {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(

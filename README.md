@@ -142,11 +142,11 @@ built over a hundred example targets.
 - `libraries/`: 21 -- domain policy with no hardware, built and tested on the host
 - outside the workspace, built by their own scripts: `efr32mg2x-bootloader`, `efr32mg2x-bootloader-test-app`
 
-**HAL modules**: 32 public modules (`pub mod` in `crates/efr32mg2x-hal/src/lib.rs`): `adc`, `board`, `bus`, `buzzer`,
+**HAL modules**: 33 public modules (`pub mod` in `crates/efr32mg2x-hal/src/lib.rs`): `adc`, `board`, `bus`, `burtc`, `buzzer`,
 `clock`, `delay`, `display`, `dma`, `dwt`, `emu`, `eusart`, `extint`, `gpcrc`, `i2c`, `letimer`, `microphone`, `mvp`, `pcnt`, `pin`, `prs`, `pwm`,
 `record`, `route`, `rtc`, `sensors`, `sleep`, `spi`, `sysrtc`, `timer`, `usart`, `wdog` and `prelude`.
 
-**Examples**: 120 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
+**Examples**: 121 example targets across 9 crates -- the count `scripts/check-examples-build.sh` prints in its verdict
 line, which this page quotes rather than fixes by hand. That script builds every example with the features it declares
 and fails if one does not compile; the Bluetooth and BSP examples declare `required-features`, so a plain
 `cargo build --examples` skips them silently. The other 15 `.rs` files under `crates/*/examples/` are shared modules

@@ -108,6 +108,7 @@ mod alias;
 pub use cortex_m_rt::entry;
 
 pub mod board;
+pub mod burtc;
 pub mod bus;
 pub mod buzzer;
 pub mod clock;

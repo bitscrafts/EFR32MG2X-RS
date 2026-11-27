@@ -461,6 +461,34 @@ impl Board {
         Ok(unsafe { crate::letimer::Letimer::new(pac::Letimer0Ns::steal()) })
     }
 
+    /// The backup counter, on the LFRCO branch and counting from the first tick after this call.
+    ///
+    /// Three clocks are part of the hand-out because all three are needed and none of them is on at reset: the bus gate
+    /// (`CLKEN0.BURTC`), the source of `LFRCO`'s own gate, and `EM4GRPACLK`'s select. A module with the gate and no
+    /// source answers on the bus and never counts -- see `burtc::remove_source`, which is that state on purpose.
+    ///
+    /// `prescaler` is the power of two the counting clock is divided by: `0` counts at 32768 Hz, `3` at 4096 Hz.
+    pub fn burtc(
+        &self,
+        prescaler: u8,
+    ) -> Result<crate::burtc::Burtc, Handout<crate::burtc::Error>> {
+        self.claim(crate::cores::slots::Slot::Burtc)
+            .map_err(Handout::Taken)?;
+        self.dp.cmu_s.clken0().modify(|_, w| {
+            w.burtc()
+                .set_bit()
+                // LFRCO's own gate, the same one SYSRTC's take sets: selecting a source that is not running gives a
+                // mux that points nowhere.
+                .lfrco()
+                .set_bit()
+        });
+        crate::burtc::select_lfrco();
+        // SAFETY: `Board` holds the PAC singletons for the whole program; this hands BURTC out through the claim table,
+        // so no second driver can reach the same registers.
+        unsafe { crate::burtc::Burtc::new(pac::BurtcNs::steal(), prescaler) }
+            .map_err(Handout::Driver)
+    }
+
     /// Entry and exit of EM2, carrying the `EMU` it drives.
     ///
     /// Handed out here for the same reason the timer is: EM2 is where the core stops running from the
