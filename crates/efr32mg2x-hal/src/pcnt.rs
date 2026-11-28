@@ -87,6 +87,32 @@ impl<'a> Pcnt<'a> {
         Self { regs, cmu }
     }
 
+    /// The block itself, for an instrument that has to watch a handshake the driver hides.
+    ///
+    /// # Safety
+    ///
+    /// The caller gets the register block while this driver still owns it. Any write can leave the driver's view of
+    /// the hardware behind, and two live handles to one block is the aliasing this crate exists to prevent -- worse
+    /// here than elsewhere: the module's own documentation records that two accesses inside one synchroniser period
+    /// raise a precise bus error that halts the core. Call it while the driver is idle, keep the borrow short, and
+    /// never from a product path.
+    #[must_use]
+    pub unsafe fn raw_block(&mut self) -> &pac::pcnt0_ns::RegisterBlock {
+        &self.regs
+    }
+
+    /// The CMU as this driver sees it, for an instrument that has to say whether the block has a clock.
+    ///
+    /// # Safety
+    ///
+    /// Same contract as [`Pcnt::raw_block`]: the caller may write clock selects the driver set, and a wrong one leaves
+    /// the counter running from a branch nobody chose. Read-only use is what an instrument needs; writing is what the
+    /// driver does, and only here.
+    #[must_use]
+    pub unsafe fn raw_cmu(&self) -> &pac::cmu_s::RegisterBlock {
+        self.cmu
+    }
+
     /// Bring the block up clean: a core reset, and the module left **disabled**.
     ///
     /// Disabled on purpose: `CFG` is refused with `EN` set (see the module documentation), so the block takes its

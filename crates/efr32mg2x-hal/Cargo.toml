@@ -81,4 +81,8 @@ required-features = ["rt"]
 [[example]]
 name = "hal_fault_record"
 required-features = ["rt"]
+
+[[example]]
+name = "hal_pcnt_request"
+required-features = ["rt"]
 # `doc` is not a key for an example target: the description lives in the file's own header.
