@@ -347,36 +347,22 @@ impl Usart0 {
         }
         Ok(())
     }
-    /// **Test hook.** Clears `CTRL.TXEN`: the block stays configured, clocked and receiving, with a transmitter that was
-    /// never enabled -- the defect as it actually happens when someone wires a block by hand and forgets one bit.
+    /// The block itself, for an instrument that has to break this crate's rules on purpose.
     ///
-    /// `flush` then waits for `STATUS.TXC`, which a disabled transmitter never asserts, so it must return
-    /// [`Error::Timeout`]. This is the only reachable provocation of the bound: `write_byte` cannot be made to block,
-    /// because with the transmitter disabled the FIFO accepts every byte and discards it, leaving `TXFL` -- "there is
-    /// room" -- set. Measured at 32 and at 1024 bytes, same answer.
+    /// This crate's job is to make a second handle impossible. This hands one out anyway, so an instrument can reach a
+    /// state the public API cannot -- a transmitter that was never enabled -- without the crate carrying a Cargo
+    /// feature whose only purpose is to break itself: a feature merges across the whole dependency tree and nothing can
+    /// keep it out of a product build.
     ///
-    /// `test-hooks` is off by default and must never be enabled in a product build. See
-    /// `docs/04-reference/F20-TX-TIMEOUT-INSTRUMENT-2026-11-28.md`.
-    #[cfg(feature = "test-hooks")]
-    pub fn disable_transmitter_for_test(&mut self) {
-        // `CMD` acts only on bits written as **1**: `txen().clear_bit()` writes a zero there and does nothing at all.
-        // Disabling is its own bit, `TXDIS` (bit 3) -- found by an outside review after four instruments had measured
-        // a transmitter that was still running. The two earlier versions of this line were also wrong: `CTRL.TXEN`
-        // does not exist on this block, and `SYNCBUSY` is an EUSART register the synchronous USART does not have.
-        self.usart
-            .cmd()
-            .write(|w| w.txdis().set_bit().rxen().set_bit());
-    }
-
-    /// Whether the block currently reports its transmitter enabled, for an instrument to record.
+    /// # Safety
     ///
-    /// `STATUS.TXENS` is the bit that tells "disabled" from "enabled", and no record taken before 2026-11-28 carried
-    /// it -- which is how four measurements came to be described as taken on a disabled transmitter while it was
-    /// running. A record that cannot show this bit cannot settle the question, so the instrument asks for it.
-    #[cfg(feature = "test-hooks")]
+    /// The caller gets the register block while this driver still owns it. Any write can leave the driver's own state
+    /// (`tx_pending`, the configuration the constructor wrote) disagreeing with the hardware, and two live handles to
+    /// one block is the aliasing this crate exists to prevent. Call it while the driver is idle, keep the borrow
+    /// short enough that no driver method runs inside it, and never from a product path.
     #[must_use]
-    pub fn transmitter_enabled_for_test(&self) -> bool {
-        self.usart.status().read().txens().bit_is_set()
+    pub unsafe fn raw_block(&mut self) -> &pac::usart0_s::RegisterBlock {
+        &self.usart
     }
 
     /// Flush the TX buffer (blocking)

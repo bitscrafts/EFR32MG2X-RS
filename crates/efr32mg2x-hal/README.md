@@ -68,6 +68,7 @@ Read from the source, so it cannot drift:
 | `pcnt0_ns` | `src/pcnt.rs` |
 | `prs_s` | `src/adc/mod.rs`, `src/pcnt.rs` |
 | `timer0_s` | `src/board.rs`, `src/pwm.rs` |
+| `usart0_s` | `src/usart/mod.rs` |
 
 
 **Target Hardware**: Seeed Studio XIAO MG24 Sense (EFR32MG24B220F1536IM48-B)

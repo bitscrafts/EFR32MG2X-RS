@@ -201,27 +201,6 @@ macro_rules! impl_eusart {
                 }
             }
 
-            /// **Test hook.** Clears `CMD.TXEN`, leaving the block configured, clocked and receiving, with a transmitter
-            /// that was never enabled -- the defect as it actually happens, and the only provocation of
-            /// [`crate::usart::Error::Timeout`] reachable without a fault handler. See
-            /// `docs/04-reference/F20-TX-TIMEOUT-INSTRUMENT-2026-11-28.md`.
-            ///
-            /// `test-hooks` is off by default and must never be enabled in a product build.
-            #[cfg(feature = "test-hooks")]
-            pub fn disable_transmitter_for_test(&mut self) {
-                while self.eusart.syncbusy().read().txdis().bit_is_set() {
-                    core::hint::spin_loop();
-                }
-                // `txen().clear_bit()` writes a zero into `CMD`, which acts only on ones and therefore does nothing.
-                // `TXDIS` is the bit that disables the transmitter.
-                self.eusart
-                    .cmd()
-                    .write(|w| w.txdis().set_bit().rxen().set_bit());
-                while self.eusart.syncbusy().read().txen().bit_is_set() {
-                    core::hint::spin_loop();
-                }
-            }
-
             /// `STATUS` as the block has it: `RXENS`, `TXENS`, `RXFL`, `TXIDLE` and the rest, for an instrument that has to say
             /// whether the receiver was enabled rather than whether it was asked to be.
             #[must_use]

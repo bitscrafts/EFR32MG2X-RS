@@ -45,7 +45,6 @@ rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
 # transmit timeout, which needs a block whose clock is off. Never enable this in a product: it defeats the guard that
 # says a caller cannot name a peripheral the board has not handed out. Every item behind it is documented as a test
 # hook, and the gate builds the examples that use it with the feature on purpose.
-test-hooks = []
 
 [dev-dependencies]
 # Examples are applications: they may compose the HAL with an algorithm crate.
@@ -71,12 +70,13 @@ panic-probe = { version = "1.0", features = ["print-defmt"] }
 targets = ["thumbv8m.main-none-eabihf"]
 rustdoc-args = ["--cfg", "docsrs"]
 
-# The timeout instrument needs the hook, which only exists with `test-hooks`; declaring it here means a
-# plain `cargo build --examples` skips the example instead of failing, and the gate's group builder
-# (`scripts/example-groups.py`) builds it with exactly these features.
+# The timeout instrument disables the transmitter itself, with a PAC write and a safety comment, so it needs
+# nothing but `rt` -- no feature of the crate's. That is the review's eighth finding applied: a Cargo feature
+# merges across the whole dependency tree and cannot be kept out of a product build, so it must not be the
+# mechanism an instrument uses to reach an error path.
 [[example]]
 name = "hal_tx_timeout"
-required-features = ["rt", "test-hooks"]
+required-features = ["rt"]
 
 [[example]]
 name = "hal_fault_record"

@@ -10,8 +10,10 @@
 //!
 //! The first attempt used the loopback (`CFG0.LOOPBK`) and no draining, on the theory that two full FIFOs would stall
 //! the transmitter. Measured against the board: `written=240 refused_at=240` -- this part's loopback does not
-//! back-pressure, it overruns. The path is therefore reached with `Board::eusart0_unclocked_for_test`, behind the
-//! `test-hooks` feature: a block whose `CLKEN1` bit is clear reads zero in every status register, so `TXFL` never sets
+//! back-pressure, it overruns. So the path is reached by disabling the transmitter from here: this file takes a second
+//! handle on the block with `pac::Usart0S::steal()`, writes `CMD.TXDIS`, and reads `STATUS.TXENS` on both sides of the
+//! switch so the record shows it happened. The injection lives in the instrument, not behind a feature of the crate:
+//! a Cargo feature merges across the whole dependency tree, and nothing can keep it out of a product build.
 //! and the write must be refused.
 //!
 //! ## Bench state, 2026-11-28: measured, two boots, identical
@@ -78,10 +80,22 @@ fn main() -> ! {
     // `TXENS` is recorded on both sides of the switch. Without it, four earlier attempts described themselves as taken
     // on a disabled transmitter while `CMD.TXDIS` had never been written -- `txen().clear_bit()` writes a zero, and
     // `CMD` acts only on ones. A record that cannot tell the two states apart settles nothing.
-    let enabled_before = u32::from(usart.transmitter_enabled_for_test());
-    mailbox::info(b"stage 4: disabling the transmitter");
-    usart.disable_transmitter_for_test();
-    let enabled_after = u32::from(usart.transmitter_enabled_for_test());
+    // The injection is done here, in the instrument, and not through a feature of the crate: a Cargo feature merges
+    // across the whole dependency tree, so nothing can stop a product build from turning one on. The HAL hands the
+    // block out as an `unsafe` escape instead, which is opt-in by the call and not by a build flag.
+    //
+    // SAFETY: the driver is idle here -- the control's write and flush have both returned -- and nothing inside this
+    // block calls a driver method, so there is no moment where two live handles disagree about the hardware.
+    let (enabled_before, enabled_after) = unsafe {
+        let block = usart.raw_block();
+        let before = u32::from(block.status().read().txens().bit_is_set());
+        mailbox::info(b"stage 4: disabling the transmitter");
+        // `CMD` acts only on bits written as one: `TXDIS` is the bit that disables, and `txen().clear_bit()` writes a
+        // zero that does nothing -- which is how four earlier instruments measured a transmitter still running.
+        block.cmd().write(|w| w.txdis().set_bit().rxen().set_bit());
+        let after = u32::from(block.status().read().txens().bit_is_set());
+        (before, after)
+    };
     // A write clears `TXC`; without one, `flush` would see the flag the control left behind and return `Ok` on a
     // disabled transmitter -- measured, `flush_timeout=0`. With the transmitter disabled the write is accepted and
     // discarded, `TXC` never sets again, and the flush has to time out.

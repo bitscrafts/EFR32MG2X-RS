@@ -40,7 +40,7 @@ Common setup unless stated:
 ```sh
 cd /projects/efr32mg24-rs
 export TMPDIR=/projects/_tmp/tmp CARGO_TARGET_DIR=/projects/_tmp/tmp/target-cold
-cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg2x-hal --features rt,test-hooks \
+cargo build --release --target thumbv8m.main-none-eabihf -p efr32mg2x-hal --features rt \
       --example hal_tx_timeout
 FLASH_HOST=lnx FLASH_USER=mvcorrea bash scripts/flash.sh \
       $CARGO_TARGET_DIR/thumbv8m.main-none-eabihf/release/examples/hal_tx_timeout --confirm --run
@@ -127,8 +127,12 @@ which half refused.
 
 ## 6. Constraints that still hold
 
-* The `test-hooks` feature is off by default and must never be enabled in a product build; the hook's doc comment says
-  why. `hal_tx_timeout` declares `required-features = ["rt", "test-hooks"]`, so a plain examples build skips it and the
+* ~~The `test-hooks` feature is off by default and must never be enabled in a product build.~~ **Removed, 2026-11-28.**
+  A Cargo feature merges across the whole dependency tree, so "never enable this in a product" was advice, not a
+  property. The instrument now does the injection itself -- `pac::Usart0S::steal()`, one `CMD.TXDIS` write, one
+  `STATUS.TXENS` read on each side -- under a safety comment, and needs no feature of the crate's. The record is
+  unchanged, `tx-timeout: control_flush=1 flush_timeout=1 txens=2`, so the move cost nothing. `hal_tx_timeout` declares
+  `required-features = ["rt"]`, and the
   gate's group builder (`scripts/example-groups.py`) compiles it with those features.
 * Nothing in this file justifies removing or weakening a gate check. If a check disagrees with a measurement, the file
   to change is this one, and the disagreement gets written down.
