@@ -540,3 +540,28 @@ production-ready, publicação, próximos periféricos).
 **Continua aberto:** f5/B5/f6 (posse por papel, pin sem tipo), f20 (TX sem limite), f3/f7 (DMA e `rtc::Rtc`
 inalcançáveis), f2 (~33 blocos de doc não compilados), B4 já fechado mas o tipo de pin continua a ser a solução de
 fundo, e os 6 avisos do firmware do produto.
+
+### f6, opção B — plano decidido, não começado (2026-11-28)
+
+Decisão do operador: **B**. O `Delay` deixa de ser dono do countdown; o board configura **um** SysTick e `delay_ms`
+espera nele. Nenhuma assinatura pública muda, e o hazard morre na raiz em vez de ser proibido à porta.
+
+Porque não foi feito nesta sessão: é uma reescrita de `crates/efr32mg2x-hal/src/delay/mod.rs` (210 linhas, três
+caminhos — `delay_ns`, `delay_us`, `delay_ms`) e ainda carrega um defeito conhecido e documentado (`with_sysclk`
+diz, medido 2026-11-12, que os delays saem ~2,3× mais curtos; o experimento que o resolveria está escrito em
+`docs/04-reference/DELAY-CLOCK-DEFECT.md`). Fazer as duas coisas ao mesmo tempo, no fim de uma sessão longa, é como se
+deixam drivers a meio — e o repositório já pagou por isso.
+
+O plano, para a próxima sessão:
+
+1. `delay::init(syst, hz)` — configura o SysTick **uma vez** (fonte = core, reload de 1 ms; a 19 MHz são 19 000 ticks,
+   a 39 MHz 39 000, ambos dentro dos 24 bits) e marca-o com um `AtomicBool` para que um segundo `init` seja um no-op
+   verificado, não uma reconfiguração silenciosa.
+2. `Board::take()` chama `delay::init` uma vez. `Board::delay()` passa a devolver um `Delay` **sem** `SYST`: só o
+   `Hertz`. `with_sysclk` fica como caminho de quem não usa o `Board`, com a mesma garantia de idempotência.
+3. `delay_us`/`delay_ms` passam a esperar em ticks de 1 ms (`COUNTFLAG`), em vez de recarregarem o `LOAD` por chamada.
+   `delay_ns` continua no `cortex_m::asm::delay` para < 1 ms.
+4. Instrumento: um exemplo que crie **dois** `Delay` e meça o mesmo intervalo pelos dois, contra o SYSRTC como
+   testemunha; antes do B, o segundo volta cedo; depois do B, os dois medem o mesmo. Controlo: o mesmo exemplo com um
+   só handle.
+5. Gate verde, e o cabeçalho do exemplo com o registo de dois boots.
