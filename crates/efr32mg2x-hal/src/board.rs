@@ -1329,9 +1329,20 @@ impl Board {
     /// `cortex_m::Peripherals::steal()` to get a delay — which is the same defect as stealing the
     /// PAC, one layer down.
     pub fn delay(&self) -> crate::delay::Delay {
-        // SAFETY: the core peripherals were taken by `take()` and are held in `_cp`, so this is
-        // not a second owner -- it is the same SysTick, borrowed back. `Delay` only programs the
-        // SysTick registers and nothing else in this crate touches them.
+        // SAFETY: the core peripherals were taken by `take()` and are held in `_cp`, so no caller reaches for
+        // `Peripherals::steal()` -- every `Delay` here is the same SysTick, borrowed back, and nothing else in this
+        // crate programs those registers.
+        //
+        // What that SAFETY note used to claim, and did not hold: "this is not a second owner". It is a second *handle*
+        // over one counter. Every `delay_ms` reloads SysTick and polls its own countdown, so two `Delay` values used in
+        // the same interval -- from two threads, or from a handler that delays -- reset each other's countdown and one
+        // of them returns early. Nothing in the type system refuses that, and an earlier version of this comment said
+        // it could not happen. (Outside review, 2026-11-27, f6.)
+        //
+        // Making it impossible is a design choice, not a comment fix: either `delay()` claims a slot and returns
+        // `Result<Delay, Handout<()>>` -- one handle per program, 43 call sites to touch -- or `Delay` stops owning the
+        // countdown and the board keeps one configured SysTick that `delay_ms` waits on. Until one of those lands, the
+        // hazard is real and stated here rather than implied away.
         // The clock in force, not the one the part resets to. It was `DEFAULT_SYSCLK_HZ`, which made the delay
         // wrong by exactly the ratio of any boost or crystal change -- and silent, because a delay that returns
         // early looks the same as a delay that was right. Measured 2026-11-21 with the crystal running: five
