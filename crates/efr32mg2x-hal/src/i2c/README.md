@@ -1,27 +1,26 @@
 # i2c
 
-`embedded-hal-async` I2C: a mesma máquina de estados por byte, à espera da interrupção em vez de girar.
+`embedded-hal-async` I2C: the same byte-by-byte state machine, waiting on the interrupt instead of spinning.
 
 ## What it is
 
-`embedded-hal-async` I2C: a mesma máquina de estados por byte, à espera da interrupção em vez de girar.
+`embedded-hal-async` I2C: the same byte-by-byte state machine, waiting on the interrupt instead of spinning.
 
-## Porque é que isto não é só `async` à volta do código que já existia
+## Why this is not just `async` wrapped around the code that already existed
 
-O `I2c0::write` bloqueante faz `while status().pstart() { polls += 1 }` até um limite. Embrulhar isso num
-`async fn` daria uma função que se chama `async`, devolve um futuro, e **bloqueia o executor inteiro** quando
-corre — todas as outras tarefas ficavam paradas durante a transferência. É a mentira que este ficheiro existe
-para não contar.
+The blocking `I2c0::write` does `while status().pstart() { polls += 1 }` up to a bound. Wrapping that in an `async
+fn` gives a function called `async` that returns a future and **blocks the whole executor** while it runs -- every
+other task stops for the duration of the transfer. That is the lie this file exists to avoid telling.
 
-O que aqui se faz é esperar de verdade: quando a condição ainda não está satisfeita, a tarefa **regista o seu
-waker e devolve `Pending`**, e a interrupção do I2C acorda-a quando o periférico muda de estado. Entre uma
-espera e a seguinte o executor corre o que quiser.
+What happens here is real waiting: when the condition is not yet satisfied the task **records its waker and
+returns `Pending`**, and the I2C interrupt wakes it when the peripheral changes state. Between one wait and the
+next the executor runs whatever it likes.
 
-## Quem serve a interrupção
+## Who serves the interrupt
 
-O vector é da aplicação, como todos os outros nesta HAL: ela define `I2C0_IRQHandler` e chama
-[`on_interrupt`]. A HAL não instala handlers em crates de biblioteca — um handler instalado aqui correria mesmo
-num firmware que nunca usasse I2C assíncrono.
+The vector belongs to the application, like every other one in this HAL: it defines `I2C0_IRQHandler` and calls
+[`on_interrupt`]. The HAL does not install handlers in library crates -- a handler installed here would run in a
+firmware that never used asynchronous I2C at all.
 
 ## API at a glance
 
@@ -33,11 +32,11 @@ num firmware que nunca usasse I2C assíncrono.
 | `I2c1` | struct | I2C1 peripheral instance. |
 | `Speed` | enum | — |
 | `fn` | const | Create new I2C configuration with specified speed. |
-| `last_state` | fn | O `(STATUS, IF)` da última espera falhada -- a leitura que diz em que estado o barramento ficou. |
+| `last_state` | fn | The `(STATUS, IF)` of the last failed wait -- the reading that says what state the bus was left in. |
 | `new` | fn | Creates a new I2C0 instance # Arguments * `i2c` - I2C0_S peripheral instance * `config` - I2C configuration * `hfclk` - the HFCLK frequency the divider is computed from # Example ```no_run let i2c = I2c0::new(dp.i2c0_ns, Config::new(Speed::Standard100kHz), clocks.hfclk()); ```. |
 | `on_interrupt` | fn | — |
 | `read` | fn | Read data from I2C device # Arguments * `addr` - 7-bit device address * `buffer` - Buffer to store read data # Returns `Ok(())` on success, `Err(Error)` on failure. |
-| `waits` | fn | Os contadores, para quem os quiser ler sem `nm`. |
+| `waits` | fn | The counters, for a caller who wants them without `nm`. |
 | `write` | fn | Write data to I2C device # Arguments * `addr` - 7-bit device address * `bytes` - Data to write # Returns `Ok(())` on success, `Err(Error)` on failure. |
 | `write_read` | fn | Write register then read from I2C device # Arguments * `addr` - 7-bit device address * `register` - Register address to read from * `buffer` - Buffer to store read data # Returns `Ok(())` on success, `Err(Error)` on failure. |
 

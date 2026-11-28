@@ -66,7 +66,7 @@ pub struct Bluetooth {
     ///
     /// Cached to allow incremental updates (add name, add UUID, etc.)
     adv_data: GapAdBuilder,
-    /// Nome para a resposta de scan (pacote separado do anúncio). Vazio = não se envia resposta.
+    /// Name for the scan response (a packet separate from the advertisement). Empty = no response is sent.
     scan_response: [u8; 31],
     scan_response_len: usize,
 }
