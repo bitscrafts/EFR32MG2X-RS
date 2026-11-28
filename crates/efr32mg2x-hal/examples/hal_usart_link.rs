@@ -110,6 +110,10 @@ fn main() -> ! {
         }
     };
 
+    // `ROLE` is a compile-time constant, so in the Echo build everything below is unreachable by construction --
+    // the arm diverges. Allowed here rather than restructured, because splitting the file per role would duplicate
+    // the setup that both roles prove is correct.
+    #[allow(unreachable_code)]
     if ROLE == Role::Echo {
         return echo(&mut usart);
     }

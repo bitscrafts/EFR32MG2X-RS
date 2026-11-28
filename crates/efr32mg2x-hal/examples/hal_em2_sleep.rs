@@ -63,7 +63,7 @@ const TICKS_1S: u32 = 32_768;
 #[entry]
 fn main() -> ! {
     let board = Board::take().unwrap();
-    let mut led = board.output_on(Port::A, 7, false);
+    let led = board.output_on(Port::A, 7, false);
     let rtc = board.sysrtc().expect("SYSRTC is handed out once");
     let sleep = board.sleep();
 

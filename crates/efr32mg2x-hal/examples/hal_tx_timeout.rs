@@ -42,8 +42,6 @@ mod mailbox;
 use defmt_rtt as _;
 
 const BAUD: u32 = 115_200;
-/// More than the transmitter and receiver FIFOs can hold together, so a stalled transmitter must be reported.
-const BURST: u32 = 1024;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {

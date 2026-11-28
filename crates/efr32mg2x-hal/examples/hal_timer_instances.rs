@@ -44,7 +44,6 @@ use defmt_rtt as _;
 use efr32mg2x_hal as _;
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::record::Record;
-use efr32mg2x_hal::sysrtc::Sysrtc;
 use efr32mg2x_hal::timer::Config;
 use panic_probe as _;
 

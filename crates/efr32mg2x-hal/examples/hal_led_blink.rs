@@ -35,7 +35,7 @@ use defmt_rtt as _;
 #[entry]
 fn main() -> ! {
     mailbox::invalidate();
-    let mut board = Board::take().expect("peripherals taken twice");
+    let board = Board::take().expect("peripherals taken twice");
     let mut delay = board.delay();
 
     // PA7, active low: the same two facts `module_led_blink` hides behind the facade.

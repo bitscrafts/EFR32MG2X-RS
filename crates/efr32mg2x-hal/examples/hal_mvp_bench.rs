@@ -94,8 +94,8 @@ fn main() -> ! {
         }
     };
 
-    let mut a = [ONE_FP16; N];
-    let mut b = [ONE_FP16; N];
+    let a = [ONE_FP16; N];
+    let b = [ONE_FP16; N];
     let mut out_mvp = [0u16; N];
     let mut out_cpu = [0u16; N];
 
@@ -123,9 +123,11 @@ fn main() -> ! {
     }
     let cpu_ticks = rtc.now_wide().wrapping_sub(t1);
 
-    // Touch the inputs so the compiler cannot fold them away as constants.
-    a[0] = a[0].wrapping_add((mvp_ticks & 1) as u16);
-    b[0] = b[0].wrapping_add((cpu_ticks & 1) as u16);
+    // Keep the inputs alive past the measurement so the compiler cannot treat them as constants and fold the work
+    // away. Writing into them would be a dead store (measured: rustc says so), and a dead store does not keep
+    // anything alive; `black_box` is the hint that does.
+    core::hint::black_box((&a, &b));
+    core::hint::black_box((mvp_ticks, cpu_ticks));
 
     let mut correct = true;
     for v in &out_mvp {

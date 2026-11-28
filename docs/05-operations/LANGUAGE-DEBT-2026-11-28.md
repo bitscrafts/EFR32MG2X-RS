@@ -41,6 +41,13 @@ Counting comment lines that contain **two or more Portuguese function words** (`
 A heuristic, not a detector: it will miss a short Portuguese line and it could catch an English line with two
 unlucky words. It is labelled as a heuristic because the number it replaces was presented as a fact.
 
+## And a third blind spot: the identifiers
+
+Both counts read comments. The code has Portuguese in it too -- `hal_usart_link.rs` counts with `volta`,
+`recebidos`, `iguais` and `esperado`, and `hal_timer_instances.rs` does the same with `o1`/`want` in English beside
+them. Neither count sees any of it, because neither looks at names. Anything that claims this debt is measured
+should say which of the three it measured.
+
 ## Translated in this pass
 
 | File | What it held |

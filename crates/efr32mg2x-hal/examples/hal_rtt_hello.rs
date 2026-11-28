@@ -19,7 +19,7 @@
 #![no_main]
 
 use cortex_m_rt::entry;
-use defmt::{info, warn};
+use defmt::info;
 use defmt_rtt as _;
 // Linking the HAL is what brings the PAC's interrupt vectors; without it cortex-m-rt refuses to link.
 use efr32mg2x_hal as _;

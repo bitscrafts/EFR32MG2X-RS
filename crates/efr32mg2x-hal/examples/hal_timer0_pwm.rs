@@ -20,7 +20,6 @@
 #![no_main]
 
 use efr32mg2x_hal::board::Board;
-use efr32mg2x_hal::bus::Bus;
 use efr32mg2x_hal::buzzer::DEFAULT_TONE_HZ;
 use efr32mg2x_hal::entry;
 use efr32mg2x_hal::pin::Port;
