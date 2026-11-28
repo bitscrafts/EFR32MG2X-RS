@@ -39,8 +39,9 @@ until another one is on the bench. The board left running `hal_wdog_feed`, its r
 
 **Open**
 
-- `clock/clocks.rs` still carries its reasoning in Portuguese, against the project's rule. The LFXO block has been
-  rewritten in English; the rest of the file needs the same, as a separate job.
+- Portuguese in the code is down to two files: `i2c/async_impl.rs` (68 lines) and `sleep.rs` (19), counted in
+  `docs/05-operations/LANGUAGE-DEBT-2026-11-28.md` with the command that re-measures it. `clock/clocks.rs`,
+  `cores/sysrtc.rs`, `sysrtc.rs` and `embassy-efr32/src/alarm.rs` are translated.
 - LFXO for real: start the gate, settle for a time from the crystal's specification, then **prove the rate** against
   an independent base (SYSRTC on the LFRCO). A measurement, not a register.
 - The parity audit's rows are all read, but "read" is not "exhausted": `usart`/`eusart`, `spi` and `i2c` were compared
@@ -48,6 +49,9 @@ until another one is on the bench. The board left running `hal_wdog_feed`, its r
   driver. The next pass, if it happens, starts with `em_usart.c`'s timeout and auto-baud paths, which this crate does
   not implement at all.
 - `apps/dosimeter-ble`: 6 warnings; the gate does not run `deny(warnings)` under `apps/`.
+- One history wart from tonight: the language translation landed under the handoff commit's message because two
+  commits were launched on the same index. The tree is correct and pushed; only the message is wrong, and rewriting
+  it would cost more than it buys. The rule is now written in `DO-NOT-REPEAT` §11.
 
 **The lesson of the night, beyond §11:** a hypothesis dies against the vendor's own code, not on the bench. The PCNT's
 `CMD` cost four experiments; `em_pcnt.c` says it on its first page.
