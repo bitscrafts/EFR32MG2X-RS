@@ -92,6 +92,19 @@ So the hypothesis is answered *and* displaced: the write does not sit unacknowle
 unclocked block faults. `SYNCBUSY.CMD` reading back set was the symptom of a write that never landed, not of a command
 in flight.
 
+## The two words that remain, now read
+
+The instrument was extended to read both and the record now closes with them, identical on two boots:
+
+    pcnt-req: en0=00000000 sync0=00000000 en1=00000000 sync1=00000002 en2=00000000 sync2=00000002
+              spins=0 clk=00000001 clken0=05000000 clken1=00200000 em23=00000003 sync_ulfrco=00000002
+
+`clken1 = 0x00200000` is bit 21, which the PAC names `pcnt0`: **the bus gate is open**. `clken0 = 0x05000000` carries
+GPIO and ULFRCO; `em23 = 3` is ULFRCO selected; and `sync_ulfrco = 0x2` says `SYNCBUSY.CMD` still does not clear.
+
+So, with the bus gate open and the branch on an oscillator that has no enable bit, a `CMD` write with `EN` low neither
+faults nor completes: it is dropped. That is now the whole of what is established.
+
 ## The next question, narrowed to one bit
 
 The branch oscillator is excluded (ULFRCO, same result). What has never been read is `CLKEN1.PCNT0` -- the block's own

@@ -63,7 +63,7 @@ fn main() -> ! {
         let sync0 = block.syncbusy().read().bits();
 
         // The same word `Pcnt::init` writes, written here so the three moments can be read around it.
-        block.cmd().write(|w| unsafe { w.bits(CORERST) });
+        block.cmd().write(|w| w.bits(CORERST));
         let en1 = block.en().read().bits();
         let sync1 = block.syncbusy().read().bits();
 
@@ -91,7 +91,7 @@ fn main() -> ! {
         cmu.clken0().modify(|_r, w| w.ulfrco().set_bit());
         cmu.em23grpaclkctrl().modify(|_r, w| w.clksel().ulfrco());
         let block = pcnt.raw_block();
-        block.cmd().write(|w| unsafe { w.bits(CORERST) });
+        block.cmd().write(|w| w.bits(CORERST));
         let mut spins = 0u32;
         while block.syncbusy().read().cmd().bit_is_set() {
             spins += 1;
@@ -103,22 +103,18 @@ fn main() -> ! {
         block.syncbusy().read().bits()
     };
 
-    // ---- third experiment: does the command only complete while the counter is enabled? ------------------------
-    // `EN` read 0 at every moment of the first experiment, and every command this driver writes before enabling the
-    // block sat in that state. One boot answers it: the same command with `EN` high, then with `EN` low again.
-    let (sync_en_on, sync_en_off) = unsafe {
-        let block = pcnt.raw_block();
-        block.cmd().write(|w| unsafe { w.bits(CORERST) });
-        block.en().write(|w| w.en().set_bit());
-        wait_with_bound!(block.syncbusy().read().cmd().bit_is_set());
-        let after_on = block.syncbusy().read().bits();
-        block.en().write(|w| w.en().clear_bit());
-        cortex_m::asm::delay(4_000);
-        block.cmd().write(|w| unsafe { w.bits(CORERST) });
-        wait_with_bound!(block.syncbusy().read().cmd().bit_is_set());
-        let after_off = block.syncbusy().read().bits();
-        (after_on, after_off)
-    };
+    // ---- third experiment: answered the hard way, twice ------------------------------------------------------
+    // The hypothesis was that `CMD` only completes while the counter is enabled, since `EN` read 0 at every moment of
+    // the first experiment. Two boots wrote `CMD` with `EN` set and both took a precise bus error at `PCNT0 + 0x14`:
+    //
+    //     fault: cfsr=00008200 hfsr=40000000 bfar=59030014 mmfar=59030014 pc=08006576
+    //
+    // What the two boots establish is narrower than that, and it is worth writing narrowly: a `CMD` write inside the
+    // enable/disable sequence takes a precise bus error at `PCNT0 + 0x14`. They do not establish *which* write did it --
+    // the sequence writes with `EN` low, raises `EN`, times out, lowers `EN`, delays 4 ms and writes again, and either
+    // of two writes could be the one that faulted. The experiment is therefore recorded and not interpreted, and is not
+    // repeated here: a fault destroys the record that would explain it. The module already says configuration is
+    // refused with `EN` set; whether `CMD` shares that rule is still open.
 
     // The clock the block runs from, read from CMU: a block with no clock reads like a handshake that never finishes,
     // and those two must not be confused.
@@ -160,29 +156,10 @@ fn main() -> ! {
     l.h32(em23);
     l.s(b" sync_ulfrco=");
     l.h32(sync3);
-    l.s(b" sync_en_on=");
-    l.h32(sync_en_on);
-    l.s(b" sync_en_off=");
-    l.h32(sync_en_off);
 
     // `FAIL` is right whatever the numbers say: this is an instrument that reports, not a claim that the block is well.
     mailbox::fail(l.bytes());
     halt()
-}
-
-/// The driver's own bound, applied to whatever the caller polls.
-macro_rules! wait_with_bound {
-    ($condition:expr) => {{
-        let mut spins = 0u32;
-        while $condition {
-            spins += 1;
-            if spins > BOUND {
-                break;
-            }
-            cortex_m::asm::delay(64);
-        }
-        spins
-    }};
 }
 
 fn fail(message: &[u8]) -> ! {
