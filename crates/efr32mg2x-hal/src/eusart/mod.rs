@@ -56,6 +56,10 @@ macro_rules! impl_eusart {
             eusart: pac::$Regs,
             divider: u32,
             clock_hz: u32,
+            /// Whether a frame was written since the last completed flush. See `flush`.
+            tx_pending: bool,
+            /// This instance's transmit bound, from `cores::usart::tx_spins`.
+            tx_spins: u32,
             rx_errors: u32,
             last_rx_problem: Option<RxProblem>,
         }
@@ -113,6 +117,8 @@ macro_rules! impl_eusart {
                     eusart,
                     divider,
                     clock_hz,
+                    tx_pending: false,
+                    tx_spins: crate::cores::usart::tx_spins(clock_hz, config.baudrate, 16),
                     rx_errors: 0,
                     last_rx_problem: None,
                 })
@@ -195,6 +201,27 @@ macro_rules! impl_eusart {
                 }
             }
 
+            /// **Test hook.** Clears `CMD.TXEN`, leaving the block configured, clocked and receiving, with a transmitter
+            /// that was never enabled -- the defect as it actually happens, and the only provocation of
+            /// [`crate::usart::Error::Timeout`] reachable without a fault handler. See
+            /// `docs/04-reference/F20-TX-TIMEOUT-INSTRUMENT-2026-11-28.md`.
+            ///
+            /// `test-hooks` is off by default and must never be enabled in a product build.
+            #[cfg(feature = "test-hooks")]
+            pub fn disable_transmitter_for_test(&mut self) {
+                while self.eusart.syncbusy().read().txdis().bit_is_set() {
+                    core::hint::spin_loop();
+                }
+                // `txen().clear_bit()` writes a zero into `CMD`, which acts only on ones and therefore does nothing.
+                // `TXDIS` is the bit that disables the transmitter.
+                self.eusart
+                    .cmd()
+                    .write(|w| w.txdis().set_bit().rxen().set_bit());
+                while self.eusart.syncbusy().read().txen().bit_is_set() {
+                    core::hint::spin_loop();
+                }
+            }
+
             /// `STATUS` as the block has it: `RXENS`, `TXENS`, `RXFL`, `TXIDLE` and the rest, for an instrument that has to say
             /// whether the receiver was enabled rather than whether it was asked to be.
             #[must_use]
@@ -208,7 +235,7 @@ macro_rules! impl_eusart {
                 // can handle, not a program that never comes back.
                 let mut spins = 0u32;
                 while !self.eusart.status().read().txfl().bit_is_set() {
-                    if spins >= crate::usart::TX_SPINS {
+                    if spins >= self.tx_spins {
                         return Err(crate::usart::Error::Timeout);
                     }
                     spins += 1;
@@ -219,6 +246,7 @@ macro_rules! impl_eusart {
                 self.eusart
                     .txdata()
                     .write(|w| unsafe { w.txdata().bits(u16::from(byte)) });
+                self.tx_pending = true;
                 Ok(())
             }
 
@@ -281,10 +309,26 @@ macro_rules! impl_eusart {
             }
 
             /// Wait until the last frame has left the shifter.
-            pub fn flush(&mut self) {
+            /// Wait until the last frame has left the shifter, with a bound.
+            ///
+            /// Two defects had to be fixed together here. The wait had no limit, so a transmitter that never finishes
+            /// stopped the program; and `STATUS.TXC` is clear after reset, so asking only that flag would report
+            /// `Timeout` on a port that has sent nothing -- the same regression the USART had. `tx_pending` is the
+            /// question that distinguishes the two, and the bound is computed for this instance's clock and rate.
+            pub fn flush(&mut self) -> Result<(), crate::usart::Error> {
+                if !self.tx_pending {
+                    return Ok(());
+                }
+                let mut spins = 0u32;
                 while !self.eusart.status().read().txc().bit_is_set() {
+                    if spins >= self.tx_spins {
+                        return Err(crate::usart::Error::Timeout);
+                    }
+                    spins += 1;
                     core::hint::spin_loop();
                 }
+                self.tx_pending = false;
+                Ok(())
             }
 
             /// How many received bytes were refused because an error flag was set.

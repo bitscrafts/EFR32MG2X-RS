@@ -58,6 +58,7 @@ if let Some(data) = usart.read_byte() {
 | `Parity` | enum | — |
 | `StopBits` | enum | — |
 | `Usart0` | struct | USART0 peripheral. |
+| `disable_transmitter_for_test` | fn | — |
 | `flush` | fn | Flush the TX buffer (blocking) Waits until all transmitted data has been sent (TX complete). |
 | `flush_receiver` | fn | Flush the receiver with `CMD.CLEARRX`, which the manual gives as the way to clear its state. |
 | `fn` | const | Create a new USART configuration with common settings Default: 8 data bits, no parity, 1 stop bit. |

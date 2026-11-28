@@ -37,7 +37,6 @@ and the defaults that the hardware demands (gate first, then configure).
 | `delay` | fn | A millisecond delay on SysTick. |
 | `emu` | fn | The energy management unit, handed out through the board like every other peripheral: an example outside this crate must not name a PAC type, and the gate enforces that. |
 | `eusart0_async` | fn | EUSART0 as an **asynchronous** serial port, with its clock branch and its two pads. |
-| `eusart0_tx_disabled_for_test` | fn | — |
 | `eusart1_async` | fn | EUSART1 as an asynchronous serial port, the second of the two blocks. |
 | `gpcrc` | fn | The CRC accelerator, for checking an image, a configuration blob or a frame. |
 | `i2c0` | fn | The hardware I2C0, with its clock enabled and its two lines still unrouted. |

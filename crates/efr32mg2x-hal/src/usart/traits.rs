@@ -41,8 +41,14 @@ impl embedded_hal_nb::serial::Write<u8> for Usart0 {
     }
 
     fn flush(&mut self) -> nb::Result<(), Self::Error> {
-        // Check if transmission is complete
+        // `TXC` is clear after reset, so a port that has sent nothing reads as "not finished" and this returned
+        // `WouldBlock` for ever: `nb::block!` on a fresh port hung. Ask the driver whether anything is pending -- the
+        // same question the blocking `flush` asks -- and only then look at the flag.
+        if !self.tx_pending {
+            return Ok(());
+        }
         if self.usart.status().read().txc().bit_is_set() {
+            self.tx_pending = false;
             Ok(())
         } else {
             Err(nb::Error::WouldBlock)

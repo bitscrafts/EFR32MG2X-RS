@@ -45,65 +45,63 @@ use defmt_rtt as _;
 
 const BAUD: u32 = 115_200;
 /// More than the transmitter and receiver FIFOs can hold together, so a stalled transmitter must be reported.
-const BURST: u32 = 32;
+const BURST: u32 = 1024;
 
 #[cortex_m_rt::entry]
 fn main() -> ! {
     mailbox::invalidate();
+    // Every stage writes the record, so the last one present is the line where the program stops. Without this the
+    // failure is a `magic 0` and four blind iterations -- which is exactly what happened on 2026-11-28.
+    mailbox::info(b"stage 1: board taken");
     let board = match Board::take() {
         Some(board) => board,
         None => halt(),
     };
 
-    // ---- the measurement: a block whose clock is off must refuse the first byte --------------------------------
-    let mut stalled = match board.eusart0_tx_disabled_for_test(Config::new(BAUD)) {
-        Ok(uart) => uart,
+    // USART0 is the block whose `flush` waits for `STATUS.TXC`, the transmitter's own "I have finished". A transmitter
+    // that was never enabled never says it -- that is the defect, and that is the wait whose bound has to be shown.
+    mailbox::info(b"stage 2: building USART0");
+    let mut usart = match board.usart0(Config::new(BAUD)) {
+        Ok(usart) => usart,
         Err(_) => {
-            mailbox::fail(b"tx-timeout: the test hook refused");
+            mailbox::fail(b"tx-timeout: USART0 refused");
             halt();
         }
     };
-    let mut refused_at = BURST;
-    let mut written = 0u32;
-    let mut timeout_err = false;
-    for index in 0..BURST {
-        match stalled.write_byte((index & 0xFF) as u8) {
-            Ok(()) => written += 1,
-            Err(e) => {
-                refused_at = index;
-                timeout_err = e == efr32mg2x_hal::usart::Error::Timeout;
-                break;
-            }
-        }
-    }
 
-    // ---- the control: the same burst on a block whose clock is on, which must all be accepted -------------------
-    // `EUSART0` is already claimed by the hook above, so the control takes the USART0 -- the other block with a bounded
-    // write, and the one a product actually uses.
-    let mut control_ok = 0u32;
-    if let Ok(mut usart) = board.usart0(Config::new(BAUD)) {
-        for index in 0..BURST {
-            if usart.write_byte((index & 0xFF) as u8).is_ok() {
-                control_ok += 1;
-            }
-        }
-    }
+    // ---- control: eight bytes out of an enabled transmitter, then flush, which must return Ok --------------------
+    // `flush` right after construction is not a control at all: `TXC` is "the transmission finished", and a block that
+    // never transmitted never set it -- measured, `control_flush=0` on the first attempt at this.
+    mailbox::info(b"stage 3: control write and flush, transmitter enabled");
+    let control_flush = usart
+        .write(&[0xA5, 0x5A, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06])
+        .and_then(|()| usart.flush())
+        .is_ok();
 
+    // ---- the measurement: the same call on a transmitter that was never enabled ----------------------------------
+    mailbox::info(b"stage 4: clearing TXEN");
+    usart.disable_transmitter_for_test();
+    // A write clears `TXC`; without one, `flush` would see the flag the control left behind and return `Ok` on a
+    // disabled transmitter -- measured, `flush_timeout=0`. With the transmitter disabled the write is accepted and
+    // discarded, `TXC` never sets again, and the flush has to time out.
+    mailbox::info(b"stage 5: write and flush on the disabled transmitter");
+    let _ = usart.write(&[0xA5, 0x5A, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C]);
+    let flush_err = match usart.flush() {
+        Ok(()) => 0u32,
+        Err(e) => u32::from(e == efr32mg2x_hal::usart::Error::Timeout),
+    };
+
+    mailbox::info(b"stage 6: flush returned");
     let mut l = Record::<128>::new();
-    l.s(b"tx-timeout: control=");
-    l.u(control_ok);
-    l.s(b" written=");
-    l.u(written);
-    l.s(b" refused_at=");
-    l.u(refused_at);
-    l.s(b" of=");
-    l.u(BURST);
-    l.s(b" timeout=");
-    l.u(u32::from(timeout_err));
+    l.s(b"tx-timeout: ");
+    l.s(b" control_flush=");
+    l.u(u32::from(control_flush));
+    l.s(b" flush_timeout=");
+    l.u(flush_err);
 
-    // The control must accept every byte; the stalled run must be refused before the burst ends, and not at zero --
-    // a refusal on the first byte would mean the loopback never worked and nothing was measured.
-    if control_ok == BURST && refused_at > 0 && refused_at <= BURST && timeout_err {
+    // The control must return `Ok` on a live transmitter, and the same call on a disabled one must be a `Timeout`. Both
+    // halves are needed: without the first, a `Timeout` would prove only that something failed.
+    if control_flush && flush_err == 1 {
         mailbox::pass(l.bytes());
     } else {
         mailbox::fail(l.bytes());

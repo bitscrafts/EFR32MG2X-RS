@@ -61,6 +61,13 @@ pub struct Usart0 {
     /// and an instrument prints the count next to the byte count. A link that reports bytes and refuses some of them is a
     /// link with a problem, and the two numbers together say so; either alone can look like a working link.
     rx_errors: u32,
+    /// Whether a byte has been written since the last completed flush.
+    ///
+    /// `STATUS.TXC` means "the transmission finished", and it is **clear after reset** (`STATUS` reads `0x2040`). A
+    /// `flush` that only looked at `TXC` therefore reported `Timeout` on a port that had never transmitted anything --
+    /// a defect introduced with the bound on 2026-11-28 and found by an outside review the same evening. Asking
+    /// "is there anything pending" first is the correct question; `TXC` alone answers a different one.
+    tx_pending: bool,
     /// Why the last one was refused, so a record can say `ferr` instead of leaving a reader to guess.
     last_rx_problem: Option<RxProblem>,
 }
@@ -169,6 +176,7 @@ impl Usart0 {
 
         Ok(Self {
             usart,
+            tx_pending: false,
             rx_errors: 0,
             last_rx_problem: None,
         })
@@ -205,6 +213,7 @@ impl Usart0 {
             .txdata()
             // SAFETY: `TXDATA` holds the frame; `byte` is a `u8` and the frame is 8 or 9 bits wide, so the value fits.
             .write(|w| unsafe { w.txdata().bits(byte) });
+        self.tx_pending = true;
         Ok(())
     }
 
@@ -338,6 +347,26 @@ impl Usart0 {
         }
         Ok(())
     }
+    /// **Test hook.** Clears `CTRL.TXEN`: the block stays configured, clocked and receiving, with a transmitter that was
+    /// never enabled -- the defect as it actually happens when someone wires a block by hand and forgets one bit.
+    ///
+    /// `flush` then waits for `STATUS.TXC`, which a disabled transmitter never asserts, so it must return
+    /// [`Error::Timeout`]. This is the only reachable provocation of the bound: `write_byte` cannot be made to block,
+    /// because with the transmitter disabled the FIFO accepts every byte and discards it, leaving `TXFL` -- "there is
+    /// room" -- set. Measured at 32 and at 1024 bytes, same answer.
+    ///
+    /// `test-hooks` is off by default and must never be enabled in a product build. See
+    /// `docs/04-reference/F20-TX-TIMEOUT-INSTRUMENT-2026-11-28.md`.
+    #[cfg(feature = "test-hooks")]
+    pub fn disable_transmitter_for_test(&mut self) {
+        // `CMD` acts only on bits written as **1**: `txen().clear_bit()` writes a zero there and does nothing at all.
+        // Disabling is its own bit, `TXDIS` (bit 3) -- found by an outside review after four instruments had measured
+        // a transmitter that was still running. The two earlier versions of this line were also wrong: `CTRL.TXEN`
+        // does not exist on this block, and `SYNCBUSY` is an EUSART register the synchronous USART does not have.
+        self.usart
+            .cmd()
+            .write(|w| w.txdis().set_bit().rxen().set_bit());
+    }
 
     /// Flush the TX buffer (blocking)
     ///
@@ -347,6 +376,11 @@ impl Usart0 {
     ///
     /// Polls STATUS.TXC (TX complete) until set.
     pub fn flush(&mut self) -> Result<(), Error> {
+        // Nothing written since the last completed flush: there is no transmission to wait for, and `TXC` is 0 on a
+        // fresh port, so looking only at the flag would report a `Timeout` on a healthy bus.
+        if !self.tx_pending {
+            return Ok(());
+        }
         let mut spins = 0u32;
         while !self.usart.status().read().txc().bit_is_set() {
             if spins >= TX_SPINS {

@@ -106,47 +106,6 @@ impl Board {
         ))
     }
 
-    /// **Test hook.** EUSART0, configured and running, with the transmitter's own enable (`CMD.TXEN`) never asserted.
-    ///
-    /// ## What it is for
-    ///
-    /// The transmit paths (`write_byte`, `write`, `flush`) became bounded on 2026-11-28: a transmitter that never makes
-    /// room now returns [`crate::usart::Error::Timeout`] instead of spinning for ever. No public path can provoke that,
-    /// and an error path nobody has entered is a guess.
-    ///
-    /// Three instruments were tried against the board and all three measured nothing:
-    ///
-    /// * the loopback (`CFG0.LOOPBK`, receiver never drained) -- this part overruns instead of back-pressuring:
-    ///   `written=240 refused_at=240`;
-    /// * the block handed out **before** its clock was enabled -- `Eusart0::new_at` waits on the block it configures, so
-    ///   the constructor never returned (twelve reads, `magic 0`);
-    /// * the clock cleared **after** configuring -- the constructor returned, and the program still wrote nothing,
-    ///   which smells like a barred access to `TXDATA` faulting the core (no fault handler writes the mailbox).
-    ///
-    /// The fourth, this one, is the defect as it actually happens: a transmitter that was never enabled. The clock stays
-    /// on, the block stays configured, and `CMD.TXEN` is simply not asserted -- so the FIFO fills and `TXFL` stops
-    /// clearing, exactly what a caller would see after wiring the block by hand and forgetting one command bit.
-    ///
-    /// ## Why it is behind a feature
-    ///
-    /// A driver that cannot transmit is not something a product wants. `test-hooks` is off by default and must never be
-    /// enabled in a product build.
-    #[cfg(feature = "test-hooks")]
-    pub fn eusart0_tx_disabled_for_test(
-        &self,
-        config: crate::usart::Config,
-    ) -> Result<crate::eusart::Eusart0, Handout<crate::usart::Error>> {
-        let driver = self.eusart0_async(config)?;
-        // `CMD.TXEN` is a command, not configuration: clearing it here is what an integrator gets by leaving that one
-        // line out. The receiver stays enabled, so the block is alive and only the transmitter is mute.
-        // SAFETY: the board owns the PAC tree and has already handed this block out through the claim table.
-        let eusart = unsafe { pac::Eusart0S::steal() };
-        eusart
-            .cmd()
-            .write(|w| w.txen().clear_bit().rxen().set_bit());
-        Ok(driver)
-    }
-
     /// Hands out `I2C1` — the second bus, with its own clock-enable bit and its own pins.
     ///
     /// ## Why this exists

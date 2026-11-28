@@ -27,6 +27,36 @@ pub enum DividerError {
     TooSlow,
 }
 
+/// How many `spin_loop` iterations a transmit wait may take before it is a `Timeout`, for one instance.
+///
+/// A fixed number cannot serve both ends of the range. The wait is for a transmission to finish, and a full 16-frame
+/// FIFO at 1200 baud takes about 140 ms to drain at 19 MHz, while one frame at 115 200 takes 87 us -- a factor of 1600.
+/// A bound chosen for the fast end reports `Timeout` on a healthy slow link, which is the false positive that makes an
+/// error path worthless.
+///
+/// So it is computed from the two numbers the driver already has: the clock the block runs from and the rate it was
+/// configured for. The margin is generous (four times the nominal drain of a full FIFO) because this exists to turn a
+/// hang into an error, not to police the link, and the floor keeps a very fast link from having a bound so tight that
+/// scheduling noise trips it.
+#[must_use]
+pub fn tx_spins(pclk_hz: u32, baud: u32, fifo_frames: u32) -> u32 {
+    const BITS_PER_FRAME: u32 = 10; // start + 8 data + stop, the slowest of the frames this crate can configure
+    const MARGIN: u32 = 4;
+    const FLOOR: u32 = 2_000_000;
+    if baud == 0 {
+        return FLOOR;
+    }
+    // `u64` because pclk_hz * frames * bits overflows `u32` at 39 MHz with a 16-frame FIFO.
+    let drain =
+        (u64::from(pclk_hz) * u64::from(BITS_PER_FRAME) * u64::from(fifo_frames)) / u64::from(baud);
+    let bounded = drain.saturating_mul(u64::from(MARGIN));
+    if bounded > u64::from(u32::MAX) {
+        u32::MAX
+    } else {
+        (bounded as u32).max(FLOOR)
+    }
+}
+
 /// The `CLKDIV` value for `pclk_hz` and `baud`, with the multiplication done in 64 bits.
 ///
 /// Returns the value to write into the register's `DIV` field, or why it cannot be produced. `oversample` is 16 for

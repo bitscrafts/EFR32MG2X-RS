@@ -43,6 +43,7 @@ what the wrap that once wrote `52` where `2382` belonged was about.
 | `actual_baud` | fn | — |
 | `cfg0` | fn | — |
 | `clear_error_flags` | fn | Write one to each error flag and report what it read before and after. |
+| `disable_transmitter_for_test` | fn | — |
 | `divider` | fn | — |
 | `flush` | fn | Wait until the last frame has left the shifter. |
 | `last_rx_problem` | fn | — |

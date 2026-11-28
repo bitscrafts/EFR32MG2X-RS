@@ -142,3 +142,59 @@ which half refused.
 edits: the session ran read-only (`IS_SANDBOX=1` without `--permission-mode acceptEdits`), which is a fault in the
 script, not in the worker. **Fix before re-dispatching:** add the permission mode, and read the session id from the log
 (`grep -oE '"session_id":"[^"]+"'`) because the resume handle is recorded only when the run writes one.
+
+---
+
+# Addendum, same evening: the timeout was finally seen once, and why one boot cannot show both halves
+
+After four blind negatives the mailbox was instrumented in stages ("stage N: ..." written before and after each step).
+That turned `magic 0` into a line in one boot, and the line moved the work forward by three facts.
+
+## What the stages found
+
+| stage | meaning | appeared? |
+|---|---|---|
+| 1 | `Board::take()` returned | yes |
+| 2 | about to call the constructor | yes |
+| 3 | driver built | **no, on the hook that cleared `CLKEN1`** |
+| 3 | driver built, clearing `CMD.TXEN` | yes |
+| 4 | about to write | yes |
+| 5 | the wait returned | yes, until the flush design replaced it |
+
+So the earlier "constructor hangs" was not the constructor: it was the **write to `CMD` from `board.rs`** that never
+returned. Moving the same line into a driver method (`disable_transmitter_for_test`) made it pass -- the difference
+being that the driver's copy is the block's own handle, while the board's was a second `steal()`.
+
+## Three facts the board settled
+
+1. **`write_byte` cannot be made to block.** With `CMD.TXEN` clear the block accepts every byte and discards it: `TXFL`
+   ("the FIFO has room") stays set. Measured at 32 bytes and at 1024 bytes: `refused_at=32`, `refused_at=1024`, no
+   `Timeout`. The bound on the FIFO wait is therefore a safety net that a healthy block never exercises.
+2. **`flush` is the wait that describes the defect.** It asks for `STATUS.TXC`, the transmitter's own "I have
+   finished", and a transmitter that was never enabled never says it. With `CMD.TXEN` cleared *before any
+   transmission*: `flush_timeout=1` -- **`Error::Timeout` returned by the crate, seen in a record**, once.
+3. **`TXC` is latched, and a write to a disabled transmitter does not clear it.** Trying to put both halves in one boot
+   failed for that reason: the control's successful transmission left `TXC` set, and the disabled transmitter's `flush`
+   then returned `Ok` too (`control_flush=1 flush_timeout=0`). A `flush` on a block that never transmitted also returns
+   `Ok` only by accident of the flag being clear -- the first control attempt read `control_flush=0` because `TXC` was
+   *not* set, i.e. the control was wrong, not the block.
+
+## What that means for the instrument
+
+The two halves cannot live in one boot, because the state they need is mutually exclusive and the hardware gives no way
+to clear `TXC` from a disabled transmitter. The shape that works, and that this project already uses elsewhere
+(`hal_spi_masters`), is **two boots, two records, compared**:
+
+* boot A -- transmitter enabled: write eight bytes, `flush()` -> `Ok`, record `control: write=ok flush=ok`;
+* boot B -- `CMD.TXEN` cleared before the first write: write eight bytes, `flush()` -> `Err(Timeout)`, record
+  `measure: write=ok flush=timeout`.
+
+Both records then sit in the example's header, and the claim is "the bound returns `Timeout` on a transmitter that was
+never enabled, and does not on one that was", which is exactly what the fix promised.
+
+## State at the end of this session
+
+* `9621f31` -- the fix, green.
+* `e40d319` -- the documentation of the four negatives, green.
+* the staged-mailbox instrument and the two hooks (`disable_transmitter_for_test` on `Usart0` and on the EUSARTs) are in
+  the tree, **uncommitted**, with the seventh attempt's record still FAIL because it tries to hold both halves at once.
