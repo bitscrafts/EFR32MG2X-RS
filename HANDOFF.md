@@ -565,3 +565,29 @@ O plano, para a próxima sessão:
    testemunha; antes do B, o segundo volta cedo; depois do B, os dois medem o mesmo. Controlo: o mesmo exemplo com um
    só handle.
 5. Gate verde, e o cabeçalho do exemplo com o registo de dois boots.
+
+### f20 — os quatro sítios exactos, e o desenho que precisa (2026-11-28)
+
+Levantado, não corrigido. São quatro esperas sem limite, todas no caminho de transmissão:
+
+    crates/efr32mg2x-hal/src/eusart/mod.rs:207   write_byte  `while !status.txfl()`      -- o FIFO de TX não esvazia
+    crates/efr32mg2x-hal/src/usart/mod.rs:185    write_byte  `while !status.txbl()`      -- idem, USART0
+    crates/efr32mg2x-hal/src/usart/mod.rs:334    flush       `while !status.txc()`       -- o último bit nunca sai
+    crates/efr32mg2x-hal/src/usart/mod.rs:289    flush_receiver                              -- mesma forma, do lado da RX
+
+Um periférico com o clock desligado, um pino mal encaminhado ou um `TXENS` que ninguém ligou deixa aí o programa para
+sempre, e o chamador não tem como saber: `write_byte` devolve `()`, `write` devolve `()`.
+
+O desenho que isto pede, e porque não é uma linha:
+
+1. `Error` ganha `Timeout` (o enum da USART já existe; o da EUSART precisa do mesmo);
+2. `write_byte`/`write`/`flush` passam a devolver `Result<(), Error>`, com o limite derivado do baud: ciclos por frame
+   vezes o tamanho do FIFO, com uma folga declarada, contada em `spin_loop` -- não em tempo, para não depender do
+   SysTick que o `delay` agora segura;
+3. os exemplos que escrevem passam a tratar o erro (a maioria pode usar `let _ =`, mas os instrumentos têm de o pôr no
+   registo -- um timeout silencioso é o defeito outra vez);
+4. instrumento: limpar `CLKEN0.USART0`, escrever 8 bytes, exigir `Err(Timeout)` com os ciclos gastos no mailbox; o
+   controlo é a mesma escrita com o clock ligado, que tem de devolver `Ok` e os 8 bytes no fio.
+
+Passo 2 muda API pública em dois módulos e mexe em todos os exemplos que escrevem -- é do mesmo tamanho do `f5`, e por
+isso não se faz a seguir ao `f6` na mesma sessão.
