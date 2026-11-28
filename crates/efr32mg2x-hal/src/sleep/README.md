@@ -1,40 +1,39 @@
 # sleep
 
-Entrar em EM2 — e sair.
+Entering EM2 -- and leaving it.
 
 ## What it is
 
-Entrar em EM2 — e sair.
+Entering EM2 -- and leaving it.
 
-## Porque é que isto é uma API e não um `wfi` no exemplo
+## Why this is an API and not a `wfi` in an example
 
-Entrar em EM2 não é dormir: é desligar o relógio de alta frequência e ficar dependente de uma
-interrupção que já esteja armada. Um `wfi` solto com o `SLEEPDEEP` posto e sem fonte de acordar
-deixa o aparelho a dormir até alguém lhe tocar no reset — e o sintoma, visto de fora, é uma placa
-que morreu.
+Entering EM2 is not sleeping: it turns the high-frequency clock off and leaves the part dependent on an interrupt
+that is already armed. A loose `wfi` with `SLEEPDEEP` set and no wake-up source leaves the device asleep until
+someone touches its reset -- and the symptom, seen from outside, is a board that died.
 
-Nesta série, o `EMU` tem `CTRL.EM2DBGEN` e **não** tem bloqueio de EM2: quem impede a entrada são
-as condições do resto do sistema, não um bit. As duas que este módulo trata:
+On this series the `EMU` has `CTRL.EM2DBGEN` and does **not** have an EM2 lock: what prevents entry is the state of
+the rest of the system, not a bit. The two this module deals with:
 
-- **o debugger**: com `EM2DBGEN = 0`, a ligação de debug morre em EM2 e não volta com a placa a
-correr — [`Sleep::keep_debugger`] liga-o antes de dormir;
-- **o `SLEEPDEEP`**: fica posto durante o `wfi` e é limpo a seguir, para que o próximo `wfi` que
-alguém escreva à mão não entre em EM2 sem saber.
+- **the debugger**: with `EM2DBGEN = 0` the debug connection dies in EM2 and does not come back with the board
+running -- [`Sleep::keep_debugger`] sets it before sleeping;
+- **`SLEEPDEEP`**: it is left set during the `wfi` and cleared afterwards, so that the next `wfi` someone writes by
+hand does not enter EM2 without knowing it.
 
-## O que este módulo não faz
+## What this module does not do
 
-Não arma fontes de acordar. Quem chama tem de ter a interrupção ligada no periférico **e** no
-`NVIC` antes de entrar, senão o `wfi` não regressa. É de propósito: escolher a fonte de acordar é
-decisão do produto, e um `sleep_ms` que decidisse por nós seria a mesma classe de suposição que o
-`19_000_000` escondia no driver do timer.
+It does not arm wake-up sources. The caller has to have the interrupt enabled in the peripheral **and** in the
+`NVIC` before entering, or the `wfi` does not return. That is deliberate: choosing the wake-up source is the
+product's decision, and a `sleep_ms` that decided for us would be the same class of assumption the `19_000_000`
+was hiding in the timer driver.
 
 ## API at a glance
 
 | item | kind | what it does |
 |---|---|---|
-| `Sleep` | struct | A entrada e a saída de EM2. |
-| `enter` | fn | Dorme em EM2 até uma interrupção armada acordar o núcleo. |
-| `keep_debugger` | fn | Mantém a ligação de debug viva enquanto o núcleo está em EM2. |
+| `Sleep` | struct | Entering EM2 and leaving it. |
+| `enter` | fn | Sleeps in EM2 until an armed interrupt wakes the core. |
+| `keep_debugger` | fn | Keeps the debug connection alive while the core is in EM2. |
 
 ## Registers it touches
 

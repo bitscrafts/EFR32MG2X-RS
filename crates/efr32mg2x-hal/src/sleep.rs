@@ -1,30 +1,29 @@
-//! Entrar em EM2 — e sair.
+//! Entering EM2 -- and leaving it.
 //!
-//! ## Porque é que isto é uma API e não um `wfi` no exemplo
+//! ## Why this is an API and not a `wfi` in an example
 //!
-//! Entrar em EM2 não é dormir: é desligar o relógio de alta frequência e ficar dependente de uma
-//! interrupção que já esteja armada. Um `wfi` solto com o `SLEEPDEEP` posto e sem fonte de acordar
-//! deixa o aparelho a dormir até alguém lhe tocar no reset — e o sintoma, visto de fora, é uma placa
-//! que morreu.
+//! Entering EM2 is not sleeping: it turns the high-frequency clock off and leaves the part dependent on an interrupt
+//! that is already armed. A loose `wfi` with `SLEEPDEEP` set and no wake-up source leaves the device asleep until
+//! someone touches its reset -- and the symptom, seen from outside, is a board that died.
 //!
-//! Nesta série, o `EMU` tem `CTRL.EM2DBGEN` e **não** tem bloqueio de EM2: quem impede a entrada são
-//! as condições do resto do sistema, não um bit. As duas que este módulo trata:
+//! On this series the `EMU` has `CTRL.EM2DBGEN` and does **not** have an EM2 lock: what prevents entry is the state of
+//! the rest of the system, not a bit. The two this module deals with:
 //!
-//! - **o debugger**: com `EM2DBGEN = 0`, a ligação de debug morre em EM2 e não volta com a placa a
-//!   correr — [`Sleep::keep_debugger`] liga-o antes de dormir;
-//! - **o `SLEEPDEEP`**: fica posto durante o `wfi` e é limpo a seguir, para que o próximo `wfi` que
-//!   alguém escreva à mão não entre em EM2 sem saber.
+//! - **the debugger**: with `EM2DBGEN = 0` the debug connection dies in EM2 and does not come back with the board
+//!   running -- [`Sleep::keep_debugger`] sets it before sleeping;
+//! - **`SLEEPDEEP`**: it is left set during the `wfi` and cleared afterwards, so that the next `wfi` someone writes by
+//!   hand does not enter EM2 without knowing it.
 //!
-//! ## O que este módulo não faz
+//! ## What this module does not do
 //!
-//! Não arma fontes de acordar. Quem chama tem de ter a interrupção ligada no periférico **e** no
-//! `NVIC` antes de entrar, senão o `wfi` não regressa. É de propósito: escolher a fonte de acordar é
-//! decisão do produto, e um `sleep_ms` que decidisse por nós seria a mesma classe de suposição que o
-//! `19_000_000` escondia no driver do timer.
+//! It does not arm wake-up sources. The caller has to have the interrupt enabled in the peripheral **and** in the
+//! `NVIC` before entering, or the `wfi` does not return. That is deliberate: choosing the wake-up source is the
+//! product's decision, and a `sleep_ms` that decided for us would be the same class of assumption the `19_000_000`
+//! was hiding in the timer driver.
 
 use crate::pac;
 
-/// A entrada e a saída de EM2.
+/// Entering EM2 and leaving it.
 pub struct Sleep<'a> {
     emu: &'a pac::emu_ns::RegisterBlock,
 }
@@ -34,26 +33,27 @@ impl<'a> Sleep<'a> {
         Self { emu }
     }
 
-    /// Mantém a ligação de debug viva enquanto o núcleo está em EM2.
+    /// Keeps the debug connection alive while the core is in EM2.
     ///
-    /// Sem isto, `probe-rs` perde o alvo no primeiro sono e o que se observa é uma placa muda — que é
-    /// indistinguível de uma placa avariada. Ligar custa microamperes e compra a possibilidade de ver.
+    /// Without it `probe-rs` loses the target on the first sleep and what you observe is a silent board -- which is
+    /// indistinguishable from a broken one. Keeping it costs microamps and buys the ability to look.
     pub fn keep_debugger(&self) {
         self.emu.ctrl().modify(|_, w| w.em2dbgen().set_bit());
     }
 
-    /// Dorme em EM2 até uma interrupção armada acordar o núcleo.
+    /// Sleeps in EM2 until an armed interrupt wakes the core.
     ///
-    /// Não regressa sem uma interrupção: quem chamar tem de a ter ligada no periférico e no `NVIC`.
+    /// It does not return without an interrupt: the caller has to have one enabled in the peripheral and in the
+    /// `NVIC`.
     pub fn enter(&self) {
-        // `cortex_m::Peripherals::steal` já é o que o `pwm` faz para o DWT: o `SCB` não vem no PAC do
-        // chip, e passar um `&mut SCB` por toda a cadeia só para pôr um bit não melhora a segurança.
+        // `cortex_m::Peripherals::steal` is what `pwm` already does for the DWT: the `SCB` does not come in this chip's
+        // PAC, and threading a `&mut SCB` through the whole call chain to set one bit does not make it safer.
         // SAFETY: `Board` took `cortex_m::Peripherals` once and keeps it; the `SCB` is not part of this chip's PAC, so
         // it is borrowed here and only `SCR.SLEEPDEEP` is touched -- the one bit this crate writes on that block.
         let mut scb = unsafe { cortex_m::Peripherals::steal() }.SCB;
         scb.set_sleepdeep();
         cortex_m::asm::wfi();
-        // Limpo a seguir: uma entrada acidental em EM2 mais tarde seria um defeito silencioso.
+        // Cleared afterwards: an accidental entry into EM2 later would be a silent defect.
         scb.clear_sleepdeep();
     }
 }
