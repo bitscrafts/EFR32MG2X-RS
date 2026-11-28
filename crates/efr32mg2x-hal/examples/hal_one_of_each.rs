@@ -14,6 +14,17 @@
 //! peripheral. Proves too that it is per slot, not a global stop — a second, *different* peripheral is still handed out
 //! and then refused in its turn.
 //!
+//! ## Record, 2026-11-27 (two boots, identical)
+//!
+//! ```text
+//! one-of-each: sysrtc=1 sysrtc2=1 adc=1 adc2=1 iadc-cross=1 usart0=1 usart0-cross=1 wdog=1      PASS
+//! ```
+//!
+//! `iadc-cross` and `usart0-cross` are the pairs that were legal until the table stopped being keyed by role: the
+//! microphone's converter asked for IADC0 while `adc()` held it, and `spi0_on` asked for USART0 while `usart0()` held
+//! it. Both are refused and named. `wdog=1` is the near-miss that keeps those refusals honest -- a slot nobody touched
+//! is still handed out, so this example would not pass if the table simply refused everything.
+//!
 //! Does not prove anything at compile time. The type system still cannot distinguish two handles; making it able to
 //! would mean the board owning each peripheral and moving it into the driver, which is a redesign of every `Board::x`
 //! signature. A runtime refusal is what is achievable without that, and it is enforced rather than documented.
@@ -58,12 +69,30 @@ fn main() -> ! {
     let _ = &i2c1;
     let adc_recusado = matches!(segundo_adc, Err(Handout::Taken(_)));
 
+    // --- The cross-role pairs: one block, two roles, and the second role must be refused ----------
+    //
+    // The table used to be keyed by role, so each of these was two slots over one piece of silicon and a caller
+    // could hold both. `adc()` is already taken above; the microphone's converter is the same IADC0.
+    let converter_depois_do_adc = board.converter();
+    let iadc_cruzado = matches!(converter_depois_do_adc, Err(Handout::Taken(_)));
+
+    // USART0 as a UART first, then as a SPI master.
+    let usart0 = board.usart0(efr32mg2x_hal::usart::Config::default());
+    let usart0_ok = usart0.is_ok();
+    let spi0_depois_do_usart0 = board.spi0_on(
+        (efr32mg2x_hal::pin::Port::A, 5), // D10, MOSI
+        (efr32mg2x_hal::pin::Port::A, 4), // D9, MISO
+        (efr32mg2x_hal::pin::Port::A, 3), // D8, SCLK
+        efr32mg2x_hal::spi::Config::new(efr32mg2x_hal::spi::Mode::Mode0, 1_000_000),
+    );
+    let usart0_cruzado = matches!(spi0_depois_do_usart0, Err(Handout::Taken(_)));
+
     // And a third, untouched slot is still free, so the table is not simply full.
     let wdog_livre = board
         .wdog(efr32mg2x_hal::wdog::WdogConfig::default())
         .is_ok();
 
-    let mut l = Record::<96>::new();
+    let mut l = Record::<160>::new();
     l.s(b"one-of-each: sysrtc=");
     l.bit(sysrtc_ok);
     l.s(b" sysrtc2=");
@@ -72,10 +101,26 @@ fn main() -> ! {
     l.bit(adc_ok);
     l.s(b" adc2=");
     l.bit(adc_recusado);
+    l.s(b" iadc-cross=");
+    l.bit(iadc_cruzado);
+    l.s(b" usart0=");
+    l.bit(usart0_ok);
+    l.s(b" usart0-cross=");
+    l.bit(usart0_cruzado);
     l.s(b" wdog=");
     l.bit(wdog_livre);
 
-    if sysrtc_ok && sysrtc_recusado && adc_ok && adc_recusado && wdog_livre {
+    // The near-miss that keeps the three refusals honest: a slot nobody touched is still handed out. Without it this
+    // example would pass just as well if the table refused everything.
+    if sysrtc_ok
+        && sysrtc_recusado
+        && adc_ok
+        && adc_recusado
+        && iadc_cruzado
+        && usart0_ok
+        && usart0_cruzado
+        && wdog_livre
+    {
         mailbox::pass(l.bytes());
     } else {
         mailbox::fail(l.bytes());

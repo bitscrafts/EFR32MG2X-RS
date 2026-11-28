@@ -97,4 +97,4 @@ Nothing in `docs/` records an unproven path for this module.
 
 ## Using it
 
-See `examples/hal_spi_loopback.rs`, `examples/hal_spi_masters.rs`
+See `examples/hal_one_of_each.rs`, `examples/hal_spi_loopback.rs`, `examples/hal_spi_masters.rs`
