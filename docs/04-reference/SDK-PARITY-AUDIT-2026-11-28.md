@@ -35,16 +35,16 @@ Status: `not started` · `read` · `differs` · `parity` · `parity measured` (a
 | `adc` | `src/adc/` | `em_iadc.c` | `series2/iadc/*` | **read**: vendor `EN_CLR`/`EN_SET` (`em_iadc.c:138`, `:147`) and `MASKREQ_SET/CLR` for masking DMA requests (`:777`); we write `EN` plain (accepted, `hal_adc_read` measured) and never touch `MASKREQ`, so that pair is the form to use the day a scan masks requests |
 | `acmp` | `src/acmp/` | `em_acmp.c` | `series2/acmp/*` | **read**: we write `SWRST` plain and wait `RESETTING` (`src/acmp/mod.rs:162`); measured working, so this block accepts it |
 | `dma` | `src/dma/` | `em_ldma.c` | `series2/ldma/*` | **read**: `IF_CLR` and `REQDIS_SET` (`em_ldma.c:185`, `:272`); we write `IF` plain, which is the same write-1-to-clear |
-| `emu` | `src/emu/` | `em_emu.c` | `series2/emu/*` | not started |
-| `cmu` (`clock/`) | `src/clock/` | `em_cmu.c` | — | not started |
+| `emu` | `src/emu/` | `em_emu.c` | `series2/emu/*` | **read**: the vendor's aliases here belong to the DCDC/boost/power-switch surface (`PWRCTRL_SET`, `BOOSTCTRL_SET/CLR`, `DCDC->CTRL_CLR`, `em_emu.c:2876`, `:3443`), which this crate does not configure; our only write is a `CTRL` modify for the fields we do set, and EM2/EM4 entry is measured (`hal_em2_sleep`, `hal_emu_voltage`) |
+| `cmu` (`clock/`) | `src/clock/` | `em_cmu.c` | — | **read, one statement corrected**: the module said the crystal could not be started at all. `CMU_CLKEN0.LFXO` (bit 23, `efr32mg24_cmu.h:545`) is the gate that starts it, exactly as bit 22 does for the LFRCO; what is genuinely absent is `STATUS.LFXORDY` -- the header exposes only `CALRDY` -- so the driver cannot know when it has stabilised. The refusal to select LFXO stands, with a narrower and truer reason |
 | `gpio` | `src/gpio/`, `src/pin.rs` | `em_gpio.c` | `series2/gpio/*` | **read**: the vendor's aliases here serve `EXTILEVEL_CLR/SET`, `EM4WUEN_SET`, `EM4WUPOL_SET/CLR` -- the EM4 wake-up polarity surface, which this crate does not implement. Nothing to compare until it does; when it does, those four aliases are the form |
 | `extint` | `src/extint.rs` | `em_gpio.c` (interrupt part) | `series2/gpio/gpio_int*` | **read**: our routing writes `EXTIPSEL`/`EXTIPINSELL`/`EXTIRISE`/`EXTIFALL` plain and is measured (`gpioirq: n=8 ...`); the vendor writes the same registers plain, so the surface we do drive is at parity |
 | `rtc` (`sysrtc`) | `src/rtc/`, `src/sysrtc.rs` | `em_sysrtc.c` | `series2/sysrtc/*` | **read**: `em_sysrtc.c` uses **no alias at all**; ours likewise -- the simplest row in the matrix |
 | `burtc` | `src/burtc/` | `em_burtc.c` | `series2/burtc/*` | **read**: `EN_SET`/`EN_CLR`, `IF_CLR` (`em_burtc.c`); ours writes `EN` plain and is measured |
 | `wdog` | `src/wdog/` | `em_wdog.c` | `series2/wdog/*` | **read**: `EN_SET`/`EN_CLR` only; ours writes `EN` plain, measured `hal_wdog_feed` |
-| `aes` | `src/aes/` | `em_aes.c` (Series-1 API) | `series2/crypto/*` | not started |
+| `aes` | `src/aes/` | `em_aes.c` (Series-1 API) | `series2/crypto/*` | **not comparable**: `em_aes.c` drives the *legacy* AES block (`AES->CTRL`, `AES_CTRL_KEYBUFEN`) and uses no alias; this part's AES is RADIOAES with a descriptor engine, which the SDK exposes through its crypto firmware rather than emlib. Our driver is validated against FIPS-197 C.1 and NIST SP 800-38A F.1.1 instead -- a stronger oracle than a code comparison |
 | `gpcrc` | `src/gpcrc.rs` | `em_gpcrc.c` | `series2/gpcrc/*` | **read**: `EN_SET`/`EN_CLR` only; ours plain, measured `hal_gpcrc` |
-| `radio` / BLE | `crates/efr32mg24-radio` | RAIL/Bluetooth (vendor blobs) | `series2/rail/*` | not started |
+| `radio` / BLE | `crates/efr32mg24-radio` | RAIL/Bluetooth (vendor blobs) | `series2/rail/*` | **not comparable at register level**: the vendor ships RAIL and the Bluetooth stack as binary blobs, not as an emlib-style driver. The comparison for this surface is the vendor's published API documentation, not `.c` |
 
 ## First finding: the alias question is **per block**, not per family
 
@@ -172,6 +172,23 @@ These came out of PCNT and are cheap to test elsewhere:
 4. **Commands the vendor never issues** for this family are commands to distrust.
 5. **Bounds.** Where we bound a wait the vendor leaves unbounded, the unit and value must match the datasheet's worst
    case, and giving up must not be silent.
+
+## Hygiene found while reading
+
+* `src/clock/clocks.rs` carried its reasoning in Portuguese, against the project's rule that code is written in
+  English. The block about LFXO has been rewritten in English as part of this audit (its content was also corrected,
+  see the `cmu` row); the rest of the file's comments still need the same treatment, and that is a separate job.
+* The same file and `src/letimer.rs` both carried hand-rolled alias arithmetic (`base + 0x2000`). Both now use
+  `pac::aliases`, which is where that knowledge belongs.
+
+## Where this pass stands
+
+Every row now carries a verdict. One defect (`pcnt`), two measured parities (`pcnt`, `letimer`), one
+statement corrected (`cmu`), and the rest read and found at parity or outside what this crate drives.
+
+The pass answered the question it was built for: *is our HAL doing anything the vendor's code says not to?* Once --
+the PCNT's command register and its enable state -- and that one had cost four bench experiments before the
+comparison was made.
 
 ## Next
 

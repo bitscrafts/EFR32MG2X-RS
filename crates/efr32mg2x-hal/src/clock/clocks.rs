@@ -150,24 +150,27 @@ impl Clocks {
             Hertz(Self::HFRCO_FREQ)
         };
 
-        // ## O LFXO: recusado por falta do registo que o liga, nao por falta do selector
-
-        // A razao escrita aqui antes -- "o selector do relogio lento nao esta' mapeado neste PAC" -- estava
-        // errada, e mandava quem lesse procurar no sitio errado. Medido 2026-11-21 neste SVD e neste PAC:
+        // ## LFXO: refused because its readiness cannot be read, not because its selector is missing
         //
-        //   em23grpaclkctrl    TEM a variante `Lfxo`  -> o selector existe e e' utilizavel
-        //   CMU_OSCENCMD       0 ocorrencias no SVD    -> falta o registo que LIGA o oscilador
-        //   LFXOEN             0 ocorrencias no SVD    -> falta o bit que o liga
-        //   STATUS.LFXORDY     0 ocorrencias no PAC    -> falta a flag de "esta' pronto"
+        // An earlier version of this comment said the slow-clock selector was not mapped in this PAC. That was wrong and
+        // sent a reader to the wrong place. Measured 2026-11-21 in this SVD and this PAC, and re-checked against the
+        // vendor header on 2026-11-28:
         //
-        // Ou seja: nao ha como pedir ao silicio que arranque o cristal, nem como saber quando arrancou. O
-        // selector sozinho nao serve de nada -- escolher LFXO num selector com o oscilador desligado da' um
-        // relogio parado, e um relogio parado num contador e' pior do que o LFRCO que temos.
+        //   em23grpaclkctrl    has the `Lfxo` variant      -- the selector exists and is usable
+        //   CMU_OSCENCMD       0 occurrences in the SVD    -- there is no oscillator-enable command register
+        //   CMU_CLKEN0.LFXO    bit 23, `efr32mg24_cmu.h:545`
+        //                                                  -- the gate that starts the oscillator *does* exist
+        //   STATUS.LFXORDY     0 occurrences in the PAC    -- and the header exposes only `CALRDY`, so there is no
+        //                                                      "it is ready" bit to wait on
         //
-        // O desbloqueio e' a montante, e nao e' codigo desta crate: obter um SVD com o `CMU_OSCENCMD`
-        // (Silabs publica um por familia) e regenerar o PAC. O PAC esta' publicado em 0.1.1, portanto isso e'
-        // uma versao nova, com o que isso implica. O HFXO acima mostra a forma que falta: ligar, esperar
-        // `RDY`, seleccionar.
+        // So the crystal can be started -- `CMU_CLKEN0.LFXO`, exactly as bit 22 starts the LFRCO -- and the driver
+        // cannot know when it has stabilised. Selecting it blind gives a stopped clock, and a stopped clock driving a
+        // counter is worse than the LFRCO this crate uses today.
+        //
+        // What would unblock it is a decision, not a register: start the gate and settle for a time taken from the
+        // crystal's own specification, then prove the rate against an independent time base (the SYSRTC on the LFRCO,
+        // or a measurement against an external reference). That is a measurement this crate has not made, so the
+        // refusal stays -- but it is now narrow and honest: the enable exists, the readiness does not.
 
         assert!(
             config.lfxo.is_none(),
