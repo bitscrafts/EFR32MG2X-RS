@@ -27,7 +27,7 @@ Status: `not started` · `read` · `differs` · `parity` · `parity measured` (a
 | `usart` | `src/usart/` | `em_usart.c` | `series2/usart/*` | **read** (see below) |
 | `eusart` | `src/eusart/` | `em_eusart.c` | `series2/eusart/*` | **read** (see below) |
 | `spi` | `src/spi/` | `em_usart.c`, `em_eusart.c` (sync mode) | `series2/usart/*_spi*` | **read** (same blocks as usart/eusart) |
-| `i2c` | `src/i2c/` | `em_i2c.c` | `series2/i2c/*` | **read**: aliases only for `IEN_SET` (`em_i2c.c:933`); commands are written plain, as we do |
+| `i2c` | `src/i2c/` | `em_i2c.c` | `series2/i2c/*` | **parity**: clears its NACK through the `+0x2000` alias as `I2C_IntClear` does (`em_i2c.h:295`), and cites it; the base is the *secure* window, which is why the address is computed from there rather than from `pac::aliases` |
 | `timer` | `src/timer/` | `em_timer.c` | `series2/timer/*` | **read**: `EN_CLR`/`EN_SET` (`em_timer.c:185`, `:201`, `:273`, `:291`); we write `EN` plain and the timer is measured working |
 | `letimer` | `src/letimer.rs` | `em_letimer.c` | `series2/letimer/*` | **parity measured**, with one deliberate divergence |
 | `pwm` | `src/pwm.rs` | `em_timer.c` | `series2/timer/timer_pwm*` | not started |
@@ -37,8 +37,8 @@ Status: `not started` · `read` · `differs` · `parity` · `parity measured` (a
 | `dma` | `src/dma/` | `em_ldma.c` | `series2/ldma/*` | **read**: `IF_CLR` and `REQDIS_SET` (`em_ldma.c:185`, `:272`); we write `IF` plain, which is the same write-1-to-clear |
 | `emu` | `src/emu/` | `em_emu.c` | `series2/emu/*` | not started |
 | `cmu` (`clock/`) | `src/clock/` | `em_cmu.c` | — | not started |
-| `gpio` | `src/gpio/`, `src/pin.rs` | `em_gpio.c` | `series2/gpio/*` | not started |
-| `extint` | `src/extint.rs` | `em_gpio.c` (interrupt part) | `series2/gpio/gpio_int*` | not started |
+| `gpio` | `src/gpio/`, `src/pin.rs` | `em_gpio.c` | `series2/gpio/*` | **read**: the vendor's aliases here serve `EXTILEVEL_CLR/SET`, `EM4WUEN_SET`, `EM4WUPOL_SET/CLR` -- the EM4 wake-up polarity surface, which this crate does not implement. Nothing to compare until it does; when it does, those four aliases are the form |
+| `extint` | `src/extint.rs` | `em_gpio.c` (interrupt part) | `series2/gpio/gpio_int*` | **read**: our routing writes `EXTIPSEL`/`EXTIPINSELL`/`EXTIRISE`/`EXTIFALL` plain and is measured (`gpioirq: n=8 ...`); the vendor writes the same registers plain, so the surface we do drive is at parity |
 | `rtc` (`sysrtc`) | `src/rtc/`, `src/sysrtc.rs` | `em_sysrtc.c` | `series2/sysrtc/*` | not started |
 | `burtc` | `src/burtc/` | `em_burtc.c` | `series2/burtc/*` | not started |
 | `wdog` | `src/wdog/` | `em_wdog.c` | `series2/wdog/*` | not started |
