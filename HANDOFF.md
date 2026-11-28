@@ -31,7 +31,10 @@ until another one is on the bench. The board left running `hal_wdog_feed`, its r
    byte-identical: `want=1000 actual=1000 ppm=0 top=18999 measured=960` (`measured` is the polled witness reading 4%
    low because the loop costs about the period; both attempts to remove that bias are recorded in the example,
    including the counter read that returned `counts=235` because the counter wraps once per period).
-6. `scripts/check-core-split.py` now **runs in the gate**. It had existed since July, called by nothing, and the timer
+6. Five examples and the async I2C source are translated, and the three instruments among them were booted again
+   afterwards (`hal_i2c_async` `pending=23 irq=12 wfi=12`, `hal_sysrtc_wide` `spin_wall=997` against `spin_ms=1000`,
+   `hal_sysrtc_wrap` `delta=4096` across the wrap) -- a translation that changes a number is a defect.
+7. `scripts/check-core-split.py` now **runs in the gate**. It had existed since July, called by nothing, and the timer
    duplication is what that cost. Three of its five failures turned out to be its own line-counting (a `pub mod`, a
    wrapped `pub use`, a `#[cfg(test)]` harness), each now a case in its self-test; `gpcrc-core` declares itself a
    reference implementation in `libraries/gpcrc-core/REFERENCE_IMPLEMENTATION` and is reported by name rather than
@@ -39,9 +42,12 @@ until another one is on the bench. The board left running `hal_wdog_feed`, its r
 
 **Open**
 
-- Portuguese in the code is down to two files: `i2c/async_impl.rs` (68 lines) and `sleep.rs` (19), counted in
-  `docs/05-operations/LANGUAGE-DEBT-2026-11-28.md` with the command that re-measures it. `clock/clocks.rs`,
-  `cores/sysrtc.rs`, `sysrtc.rs` and `embassy-efr32/src/alarm.rs` are translated.
+- Portuguese in the code: **182 comment lines across 13 files** by the word-based count, not the 0 the accent count
+  first reported (that check certified a false green -- `clocks.rs:138-144` still holds an accent-free copy of the
+  HFXO reasoning). Worst offenders: `rail_ieee802154_tx.rs` (60), `apps/dosimeter-ble/src/main.rs` (42),
+  `embassy_driver_systrc.rs` (20), `hal_em2_sleep.rs` (13), `embassy_task_systrc.rs` (12), plus 3 in `i2c/mod.rs`.
+  Both counts and what each misses are in `docs/05-operations/LANGUAGE-DEBT-2026-11-28.md`; the lesson is
+  `DO-NOT-REPEAT` §12.
 - LFXO for real: start the gate, settle for a time from the crystal's specification, then **prove the rate** against
   an independent base (SYSRTC on the LFRCO). A measurement, not a register.
 - The parity audit's rows are all read, but "read" is not "exhausted": `usart`/`eusart`, `spi` and `i2c` were compared
