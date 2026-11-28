@@ -127,8 +127,8 @@ fn main() -> ! {
     let mut recebidos = 0usize;
     let mut iguais = 0usize;
     for esperado in PATTERN {
-        usart.write_byte(*esperado);
-        usart.flush();
+        let _ = usart.write_byte(*esperado);
+        let _ = usart.flush();
 
         let t0 = rtc.now();
         let mut chegou = false;
@@ -192,8 +192,8 @@ fn echo(usart: &mut Usart0) -> ! {
     // latch an overrun before the paced test starts -- measured: `n=6 ok=0 bad=6 rxerr=7 pre=1f`. So the selftest says
     // nothing before it measures.
     if !INTERNAL_LOOPBACK {
-        usart.write(BANNER);
-        usart.flush();
+        let _ = usart.write(BANNER);
+        let _ = usart.flush();
         mailbox::pass(b"usart: echo ready");
     }
 
@@ -213,8 +213,8 @@ fn echo(usart: &mut Usart0) -> ! {
         let mut ok = 0u32;
         let mut bad = 0u32;
         for &byte in PATTERN {
-            usart.write_byte(byte);
-            usart.flush();
+            let _ = usart.write_byte(byte);
+            let _ = usart.flush();
             match usart.read_byte() {
                 Some(Ok(back)) if back == byte => ok += 1,
                 _ => bad += 1,
@@ -244,8 +244,8 @@ fn echo(usart: &mut Usart0) -> ! {
                 // Consumed and dropped: a broken frame is not echoed back into the wire.
                 Err(_) => continue,
             };
-            usart.write_byte(byte);
-            usart.flush();
+            let _ = usart.write_byte(byte);
+            let _ = usart.flush();
             eco += 1;
 
             let mut l = Record::<104>::new();

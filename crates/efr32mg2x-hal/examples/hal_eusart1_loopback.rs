@@ -132,8 +132,8 @@ fn main() -> ! {
 
     // Run 1, the control: loopback off, the same bytes written, nothing may come back.
     uart.set_internal_loopback(false);
-    uart.write(&PATTERN);
-    uart.flush();
+    let _ = uart.write(&PATTERN);
+    let _ = uart.flush();
     let control = drain(&mut uart, RX_POLLS / 2);
 
     // Run 2: loopback on, one byte at a time in each direction, because the receiver's FIFO is two deep.
@@ -147,7 +147,7 @@ fn main() -> ! {
     // enables: a loopback written and used in the same microsecond is a loopback nobody has switched on yet.
     settle(&rtc, MS_TICKS);
     for &byte in PATTERN.iter() {
-        uart.write_byte(byte);
+        let _ = uart.write_byte(byte);
         let mut got = None;
         // Ten milliseconds is a hundred bit times at 115 200: far more than one frame, and short enough that a
         // receiver which never fills ends the test instead of hanging it.
@@ -170,7 +170,7 @@ fn main() -> ! {
             matched += 1;
         }
     }
-    uart.flush();
+    let _ = uart.flush();
     // Whatever is still in the FIFO is drained and counted: a receiver that filled late is a different finding from one
     // that never filled, and the record has to be able to tell them apart.
     seen += drain(&mut uart, RX_POLLS / 4);

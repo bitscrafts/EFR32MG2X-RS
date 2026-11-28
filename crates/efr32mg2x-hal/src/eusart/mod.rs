@@ -203,8 +203,15 @@ macro_rules! impl_eusart {
             }
 
             /// Write one byte, waiting until the transmitter has room for it.
-            pub fn write_byte(&mut self, byte: u8) {
+            pub fn write_byte(&mut self, byte: u8) -> Result<(), crate::usart::Error> {
+                // Bounded, like the USART's: a clock nobody enabled or a pad nobody routed must be an error the caller
+                // can handle, not a program that never comes back.
+                let mut spins = 0u32;
                 while !self.eusart.status().read().txfl().bit_is_set() {
+                    if spins >= crate::usart::TX_SPINS {
+                        return Err(crate::usart::Error::Timeout);
+                    }
+                    spins += 1;
                     core::hint::spin_loop();
                 }
                 // SAFETY: `TXDATA` holds the frame in its low bits and `byte` is a `u8`, so the value fits whatever width the
@@ -212,13 +219,15 @@ macro_rules! impl_eusart {
                 self.eusart
                     .txdata()
                     .write(|w| unsafe { w.txdata().bits(u16::from(byte)) });
+                Ok(())
             }
 
             /// Write every byte in order.
-            pub fn write(&mut self, bytes: &[u8]) {
+            pub fn write(&mut self, bytes: &[u8]) -> Result<(), crate::usart::Error> {
                 for &byte in bytes {
-                    self.write_byte(byte);
+                    self.write_byte(byte)?;
                 }
+                Ok(())
             }
 
             /// Read one 8-bit frame, or `None` when the receiver holds nothing.

@@ -215,8 +215,8 @@ fn main() -> ! {
 
     let (flags_before_control, _) = uart.clear_error_flags();
     let c0 = rtc.now();
-    uart.write(&PATTERN);
-    uart.flush();
+    let _ = uart.write(&PATTERN);
+    let _ = uart.flush();
     let c1 = rtc.now();
     let control_ticks = c1.wrapping_sub(c0);
     let ctl = drain(&mut uart, DRAIN_POLLS);
@@ -227,7 +227,7 @@ fn main() -> ! {
     let mut matched = 0u32;
     let mut written = 0u32;
     for &byte in PATTERN.iter() {
-        uart.write_byte(byte);
+        let _ = uart.write_byte(byte);
         written += 1;
         etapa(0, 1 + written);
         match receive_one(&mut uart) {
@@ -236,15 +236,15 @@ fn main() -> ! {
             None => {}
         }
     }
-    uart.flush();
+    let _ = uart.flush();
     let refused = uart.rx_errors();
     let loop_flags = uart.rx_flags();
     etapa(4, 1 + matched + 10 * refused);
 
     // ---- run 3: timing, loopback still on, nobody draining ------------------------------------------------------
     let t0 = rtc.now();
-    uart.write(&PATTERN);
-    uart.flush();
+    let _ = uart.write(&PATTERN);
+    let _ = uart.flush();
     let t1 = rtc.now();
     let ticks = t1.wrapping_sub(t0);
     etapa(5, 1);

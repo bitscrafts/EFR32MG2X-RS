@@ -65,6 +65,14 @@ pub struct Usart0 {
     last_rx_problem: Option<RxProblem>,
 }
 
+/// How many spin iterations a transmitting wait may take before it is a `Timeout`.
+///
+/// At the clocks this crate offers (19 or 39 MHz) two million iterations is roughly 50 to 100 ms, and one byte at
+/// 115 200 baud takes 87 us -- a margin of some six hundred. The number is deliberately generous: it exists to turn a
+/// hang into an error, not to police the baud rate. It is counted rather than timed because timing would need the
+/// SysTick, and the delay driver now holds the only one in the program.
+pub(crate) const TX_SPINS: u32 = 2_000_000;
+
 impl Usart0 {
     /// Create a new USART0 instance
     ///
@@ -180,9 +188,15 @@ impl Usart0 {
     /// ```no_run
     /// usart.write_byte(b'A');
     /// ```
-    pub fn write_byte(&mut self, byte: u8) {
-        // Wait for TX buffer to be ready
+    pub fn write_byte(&mut self, byte: u8) -> Result<(), Error> {
+        // Wait for TX buffer to be ready, with a limit. `spin` is counted, not timed: a timeout measured in time would
+        // depend on the SysTick, and the delay driver now holds the only tick in the program.
+        let mut spins = 0u32;
         while !self.usart.status().read().txbl().bit_is_set() {
+            if spins >= TX_SPINS {
+                return Err(Error::Timeout);
+            }
+            spins += 1;
             core::hint::spin_loop();
         }
 
@@ -191,6 +205,7 @@ impl Usart0 {
             .txdata()
             // SAFETY: `TXDATA` holds the frame; `byte` is a `u8` and the frame is 8 or 9 bits wide, so the value fits.
             .write(|w| unsafe { w.txdata().bits(byte) });
+        Ok(())
     }
 
     /// Read a single byte (non-blocking)
@@ -317,10 +332,11 @@ impl Usart0 {
     /// ```no_run
     /// usart.write(b"Hello, world!\r\n");
     /// ```
-    pub fn write(&mut self, bytes: &[u8]) {
+    pub fn write(&mut self, bytes: &[u8]) -> Result<(), Error> {
         for &byte in bytes {
-            self.write_byte(byte);
+            self.write_byte(byte)?;
         }
+        Ok(())
     }
 
     /// Flush the TX buffer (blocking)
@@ -330,9 +346,15 @@ impl Usart0 {
     /// # Hardware Operation
     ///
     /// Polls STATUS.TXC (TX complete) until set.
-    pub fn flush(&mut self) {
+    pub fn flush(&mut self) -> Result<(), Error> {
+        let mut spins = 0u32;
         while !self.usart.status().read().txc().bit_is_set() {
+            if spins >= TX_SPINS {
+                return Err(Error::Timeout);
+            }
+            spins += 1;
             core::hint::spin_loop();
         }
+        Ok(())
     }
 }

@@ -97,6 +97,12 @@ pub enum Error {
     /// Added 2026-11-17 with the divider fix: the driver used to program a wrapped number instead of refusing, so a rate
     /// this clock cannot reach produced a console at the wrong speed and no error anywhere.
     InvalidBaudrate,
+    /// The transmitter never made room for the next byte, or never finished the last one.
+    ///
+    /// Added 2026-11-28 with the bounded waits: `write_byte`, `write`, `flush` and `flush_receiver` used to spin
+    /// without a limit, so a clock nobody enabled, a mis-routed pad or an unset `TXENS` left the program there for ever
+    /// and the caller could not tell -- `write` returned `()`. A hang is not an error a caller can handle.
+    Timeout,
 }
 
 impl embedded_hal_nb::serial::Error for Error {
@@ -106,7 +112,7 @@ impl embedded_hal_nb::serial::Error for Error {
             Error::Parity => embedded_hal_nb::serial::ErrorKind::Parity,
             Error::Overrun => embedded_hal_nb::serial::ErrorKind::Overrun,
             // `embedded-hal-nb` has no kind for "this rate is impossible"; the driver's `Display` says which one it is.
-            Error::InvalidBaudrate => embedded_hal_nb::serial::ErrorKind::Other,
+            Error::InvalidBaudrate | Error::Timeout => embedded_hal_nb::serial::ErrorKind::Other,
         }
     }
 }

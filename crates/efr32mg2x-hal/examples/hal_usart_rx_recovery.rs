@@ -67,8 +67,8 @@ fn main() -> ! {
 
     // Step 1: overrun on purpose. Write, never read.
     usart.set_internal_loopback(true);
-    usart.write(BANNER);
-    usart.flush();
+    let _ = usart.write(BANNER);
+    let _ = usart.flush();
     let overran = usart.overran();
     let errors_during = usart.rx_errors();
 
@@ -82,8 +82,8 @@ fn main() -> ! {
     let mut ok = 0u32;
     let mut bad = 0u32;
     for &byte in PATTERN {
-        usart.write_byte(byte);
-        usart.flush();
+        let _ = usart.write_byte(byte);
+        let _ = usart.flush();
         match usart.read_byte() {
             Some(Ok(back)) if back == byte => ok += 1,
             _ => bad += 1,

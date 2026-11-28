@@ -12,6 +12,7 @@ impl core::fmt::Display for Error {
             Error::Parity => write!(f, "Parity error"),
             Error::Overrun => write!(f, "Overrun error"),
             Error::InvalidBaudrate => write!(f, "Baud rate cannot be produced by this clock"),
+            Error::Timeout => write!(f, "The transmitter never made room or never finished"),
         }
     }
 }
