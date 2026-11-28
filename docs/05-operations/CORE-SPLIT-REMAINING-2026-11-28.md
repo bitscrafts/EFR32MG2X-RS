@@ -92,7 +92,17 @@ without a measurement would be the same mistake in the other direction.
 
 The same question is open, un-answered, for `gpcrc-core` (94 lines) and `record-core` (72).
 
-## Not in the gate
+## In the gate, from 2026-11-28
 
-`check-core-split.py` is not called by `scripts/gate.sh`, so a green gate says nothing about this. That is
-a decision to take, not an oversight to assume: a check that is not run is a check nobody has.
+`check-core-split.py` was written in July and called by nothing, so a green gate said nothing about it -- and
+the timer's second period planner was exactly the duplicate it would have caught. It now runs in
+`scripts/gate.sh`, with its `--self-test` in front of it: a check whose own verdict is untested is a check
+that can pass while broken.
+
+The check has one declared exception. A library that exists as an independent *reference implementation* --
+an oracle the hardware is compared against -- is not a moved core, and `libraries/gpcrc-core` is one: its
+software CRC-32 is what `hal_gpcrc` checks the accelerator against. Such a crate declares itself in a
+`REFERENCE_IMPLEMENTATION` file beside its manifest, the check reports it by name instead of skipping it
+silently, and deleting the file makes the check ask again. Three cases of that shape have now been found in
+this check, all the same mistake in different clothes: counting lines cannot tell a declaration, a test
+harness or a deliberate oracle from a second copy.

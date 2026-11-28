@@ -562,6 +562,19 @@ else
   fail "declares the PAC and never uses it:$pac_unused"
 fi
 
+echo "=== the moved cores: one copy each ==="
+# A core that was moved into the HAL must leave a shim, not a second copy, or the host tests prove a file the
+# firmware does not run. The check is here because it was written in July and never called: a green gate used to
+# say nothing about it, and the timer's period planner was the duplicate it would have caught (found 2026-11-28).
+# `--self-test` runs first: a check whose own verdict is untested is a check that can pass while broken.
+if python3 scripts/check-core-split.py --self-test >/tmp/gate-core-split-self.log 2>&1 \
+   && python3 scripts/check-core-split.py >/tmp/gate-core-split.log 2>&1; then
+  pass "core split: $(tail -1 /tmp/gate-core-split.log | cut -c5-)"
+else
+  fail "core split: $(grep -m1 -E 'FAIL|Error' /tmp/gate-core-split.log 2>/dev/null || echo 'see /tmp/gate-core-split.log')"
+  grep -E 'FAIL' /tmp/gate-core-split.log 2>/dev/null | head -5 | sed 's/^/      /'
+fi
+
 echo "=== host tests: domain crates ==="
 # Every crate under libraries/ must build and test on the host, and must not drag in
 # anything from the hardware stack. That second half is the rule that keeps them testable:
