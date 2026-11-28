@@ -1,0 +1,10 @@
+# The toolchain this workspace is built, gated and measured with.
+#
+# Pinned on purpose: `HAL-MATURITY-2026-11-25.md` claims the packaged crates build from their tarballs, and until
+# 2026-11-27 that claim could not be reproduced, because every job used `dtolnay/rust-toolchain@stable` and the
+# dependency versions floated. `rust-version` says what a consumer needs; this file says what was measured.
+[toolchain]
+channel = "1.95.0"
+components = ["rustfmt", "clippy", "llvm-tools"]
+targets = ["thumbv8m.main-none-eabihf"]
+profile = "minimal"

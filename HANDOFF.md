@@ -523,3 +523,20 @@ production-ready, publicação, próximos periféricos).
 
 **Pendente do operador:** o jumper **D9 (MISO, PA4) – D10 (MOSI, PA5)**, sem o qual os três masters SPI não se ouvem
 (`hal_spi_masters` fica sem registo e `hal_spi_loopback` mostra `in=00..00`).
+
+### 2026-11-27, madrugada — B1, B2, B3 e B13 fechados
+
+    ed3a61b  um só `memory.x`, no PAC, com 40 KB reservados ao NVM3 (antes: quatro fornecedores, e o do PAC a ganhar,
+             portanto a reserva ignorada em todas as imagens). Check novo no gate: `scripts/check-one-layout.py`.
+    0293cfc  `publish = false` em nove crates; 380b8a6  também no PAC e na HAL, e o check passou a exigi-lo em todas.
+             Ordem do operador: «nao ha publicação ate que eu diga». Tirar a linha é o acto de publicar.
+    187c75b  a HAL deixa de escolher o provider de `critical-section`; a escolha passou para as aplicações (dev-deps
+             dos exemplos e testes, dependency do firmware). O gate recusou três vezes e cada recusa nomeou quem vivia
+             da escolha alheia.
+    B13      `rust-version = "1.95"` em todos os pacotes (o que compila hoje, não uma suposição) e
+             `rust-toolchain.toml` a fixar 1.95.0 + rustfmt/clippy/llvm-tools + thumbv8m.main-none-eabihf.
+             `Cargo.lock` fica ignorado de propósito: é um workspace de bibliotecas, e o `cargo package` não o usa.
+
+**Continua aberto:** f5/B5/f6 (posse por papel, pin sem tipo), f20 (TX sem limite), f3/f7 (DMA e `rtc::Rtc`
+inalcançáveis), f2 (~33 blocos de doc não compilados), B4 já fechado mas o tipo de pin continua a ser a solução de
+fundo, e os 6 avisos do firmware do produto.

@@ -1,5 +1,8 @@
 [package]
 name = "dosimeter-ble"
+# The toolchain this workspace is built and measured with (rustc 1.95.0, 2026-04-14). Not a guess at the
+# oldest that might work: nothing below it has been compiled here, and an unproven MSRV is a promise.
+rust-version = "1.95"
 version = "0.0.0"
 edition = "2021"
 publish = false

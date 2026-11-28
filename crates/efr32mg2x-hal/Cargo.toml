@@ -1,5 +1,8 @@
 [package]
 name = "efr32mg2x-hal"
+# The toolchain this workspace is built and measured with (rustc 1.95.0, 2026-04-14). Not a guess at the
+# oldest that might work: nothing below it has been compiled here, and an unproven MSRV is a promise.
+rust-version = "1.95"
 # Not for the registry until the operator says so, in an express order in the conversation where it happens
 # (`CLAUDE.md`, HARD RULE "no publication without an express order"). Lifting this line is the visible act of
 # publishing; the gate fails while it is absent from any package.

@@ -49,6 +49,8 @@ exclude = [
 [workspace.package]
 version = "0.1.1"
 edition = "2021"
+# See the note in each crate: 1.95 is what builds this tree today; a lower bound would be a claim.
+rust-version = "1.95"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/bitscrafts/EFR32MG2X-RS"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]

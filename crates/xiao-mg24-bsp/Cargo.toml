@@ -1,5 +1,8 @@
 [package]
 name = "efr32mg2x-xiao-bsp"
+# The toolchain this workspace is built and measured with (rustc 1.95.0, 2026-04-14). Not a guess at the
+# oldest that might work: nothing below it has been compiled here, and an unproven MSRV is a promise.
+rust-version = "1.95"
 # Not for the registry: see `scripts/check-publishable.py` for the two crates that may ship.
 publish = false
 version = "0.1.0"
