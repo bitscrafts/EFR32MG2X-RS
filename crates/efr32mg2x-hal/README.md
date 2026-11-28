@@ -96,7 +96,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-35 public modules (`pub mod` in `src/lib.rs`) and 43 examples. A date next to an example means a record was
+35 public modules (`pub mod` in `src/lib.rs`) and 44 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -294,7 +294,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-43 examples, **32 of them watched on the part**. A `--` in the last column means nobody
+44 examples, **32 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -309,6 +309,7 @@ mean it works.
 | `hal_burtc_backup.rs` | `BURTC` against `SYSRTC` over a known window: two counters on the same 32.768 kHz branch, and a control that takes the | 2026-11-27 |
 | `hal_cmu_sources.rs` | The clocks nobody had measured: `FSRCO`, `HFRCOEM23`, `ULFRCO` -- and the crystal as the referee. | 2026-11-27 |
 | `hal_delay_clock.rs` | The delay, measured against a clock that is not the delay. | 2026-11-27 |
+| `hal_delay_handles.rs` | Two delay handles over one SysTick, with the counter's own configuration as the witness. | -- |
 | `hal_dma_irq.rs` | Does the LDMA end a transfer with an interrupt, with the core asleep, and does `IEN` gate it? | 2026-11-27 |
 | `hal_dma_link.rs` | Do the LDMA's linked descriptors actually chain, and does the second leg move only because of the link? | 2026-11-27 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |
