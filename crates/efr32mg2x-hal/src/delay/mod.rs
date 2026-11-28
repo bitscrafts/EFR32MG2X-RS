@@ -21,6 +21,7 @@
 //! delay.delay_us(100);
 //! ```
 
+use core::sync::atomic::{AtomicBool, Ordering};
 use cortex_m::peripheral::syst::SystClkSource;
 use cortex_m::peripheral::SYST;
 use embedded_hal::delay::DelayNs;
@@ -33,6 +34,35 @@ use crate::clock::{FrozenClocks, Hertz};
 pub struct Delay {
     syst: SYST,
     sysclk: Hertz,
+}
+
+/// Set once, by whoever builds the first `Delay`. A second `with_sysclk` is a verified no-op on the hardware side: it
+/// does **not** reprogram `LOAD`, `VAL` or `CTRL`.
+static CONFIGURED: AtomicBool = AtomicBool::new(false);
+
+/// The 24-bit reload the free-running tick uses: one millisecond, at the clock the caller states.
+fn ticks_per_ms(sysclk_hz: u32) -> u32 {
+    (sysclk_hz / 1000).clamp(1, 0x00FF_FFFF)
+}
+
+/// Configure the SysTick as a **free-running 1 ms tick**, once in the life of the program.
+///
+/// Why once: until 2026-11-28 every delay call reprogrammed `LOAD`, cleared `VAL`, enabled the counter and disabled it
+/// again. Two `Delay` values in the same interval -- two threads, or a handler that delays -- reset each other's
+/// countdown and switched the counter off under each other, so one of them returned early. A delay that returns early
+/// looks exactly like a delay that was right. (Outside review, f6.)
+///
+/// After this, a wait only *observes* the tick; nothing reprograms it. Two handles can then only make each other wait
+/// **longer** -- one may consume the wrap flag the other was waiting for -- and never shorter, which is the safe
+/// direction and the reason the hazard is closed rather than forbidden.
+fn configure_once(syst: &mut SYST, sysclk_hz: u32) {
+    if CONFIGURED.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    syst.set_clock_source(SystClkSource::Core);
+    syst.set_reload(ticks_per_ms(sysclk_hz));
+    syst.clear_current();
+    syst.enable_counter();
 }
 
 impl Delay {
@@ -66,7 +96,7 @@ impl Delay {
     /// For callers that own the board but not its `FrozenClocks` — the BSP facade is one:
     /// the HAL's `Board` keeps no clock handle, so it cannot hand one out.
     pub fn with_sysclk(mut syst: SYST, sysclk_hz: u32) -> Self {
-        syst.set_clock_source(SystClkSource::Core);
+        configure_once(&mut syst, sysclk_hz);
 
         // KNOWN DEFECT, measured 2026-11-12: delays come out about 2.3x shorter than requested.
         // `emlib_clock` compares `delay_ms(10)` against emlib's two clock readings and the DWT; it
@@ -81,6 +111,18 @@ impl Delay {
             syst,
             sysclk: Hertz(sysclk_hz),
         }
+    }
+
+    /// Wait for `ticks` core cycles on the free-running 1 ms counter, without touching its configuration.
+    fn spin_ticks(&mut self, ticks: u32) {
+        if ticks == 0 {
+            return;
+        }
+        // Reading the counter does not touch its configuration, which is the whole point: this wait observes the tick
+        // another handle configured.
+        let value = SYST::get_current;
+        let start = value() & 0x00FF_FFFF;
+        while (start.wrapping_sub(value()) & 0x00FF_FFFF) < ticks {}
     }
 
     /// Release the SysTick peripheral
@@ -108,10 +150,7 @@ impl DelayNs for Delay {
             return;
         }
 
-        // For longer delays, use SysTick
-        // SysTick is a 24-bit down counter
-        const MAX_RVR: u32 = 0x00FF_FFFF;
-
+        // One microsecond up to a millisecond: spin on the running tick, without reprogramming it.
         // Calculate ticks, being careful with overflow
         // ticks = (ns / 1_000_000_000) * sysclk_hz
         //       = (ns * sysclk_hz) / 1_000_000_000
@@ -130,81 +169,29 @@ impl DelayNs for Delay {
             return;
         }
 
-        // If the delay fits in one SysTick cycle
-        if ticks <= MAX_RVR {
-            self.syst.set_reload(ticks);
-            self.syst.clear_current();
-            self.syst.enable_counter();
-
-            while !self.syst.has_wrapped() {}
-
-            self.syst.disable_counter();
-        } else {
-            // Split into multiple cycles
-            let mut remaining = ticks;
-
-            while remaining > 0 {
-                let current = remaining.min(MAX_RVR);
-
-                self.syst.set_reload(current);
-                self.syst.clear_current();
-                self.syst.enable_counter();
-
-                while !self.syst.has_wrapped() {}
-
-                self.syst.disable_counter();
-
-                remaining -= current;
-            }
-        }
+        // One to a thousand microseconds: spin on the free-running tick instead of reprogramming it. The window is
+        // under one millisecond, so the 24-bit counter cannot wrap twice and the wrap-around comparison is exact.
+        self.spin_ticks(ticks);
     }
 
     fn delay_us(&mut self, us: u32) {
-        // Convert microseconds to ticks
-        // ticks = (us * sysclk_hz) / 1_000_000
-
         let sysclk_hz = self.sysclk.0;
-        const MAX_RVR: u32 = 0x00FF_FFFF;
-
-        // Calculate ticks
-        let ticks = ((us as u64) * (sysclk_hz as u64) / 1_000_000) as u32;
-
-        if ticks == 0 {
+        if us >= 1000 {
+            self.delay_ms(us / 1000);
+            let rest = us % 1000;
+            if rest > 0 {
+                self.spin_ticks(((rest as u64) * (sysclk_hz as u64) / 1_000_000) as u32);
+            }
             return;
         }
-
-        if ticks <= MAX_RVR {
-            self.syst.set_reload(ticks);
-            self.syst.clear_current();
-            self.syst.enable_counter();
-
-            while !self.syst.has_wrapped() {}
-
-            self.syst.disable_counter();
-        } else {
-            // Split into multiple cycles
-            let mut remaining = ticks;
-
-            while remaining > 0 {
-                let current = remaining.min(MAX_RVR);
-
-                self.syst.set_reload(current);
-                self.syst.clear_current();
-                self.syst.enable_counter();
-
-                while !self.syst.has_wrapped() {}
-
-                self.syst.disable_counter();
-
-                remaining -= current;
-            }
-        }
+        self.spin_ticks(((us as u64) * (sysclk_hz as u64) / 1_000_000) as u32);
     }
 
     fn delay_ms(&mut self, ms: u32) {
-        // For millisecond delays, call delay_us in chunks to avoid overflow
+        // Count wraps of a tick that is already running. Nothing here reprograms the counter, so a second `Delay`
+        // waiting at the same time can only make this one wait longer -- never shorter.
         for _ in 0..ms {
-            self.delay_us(1000);
+            while !self.syst.has_wrapped() {}
         }
     }
 }
