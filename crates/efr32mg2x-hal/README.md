@@ -314,7 +314,7 @@ mean it works.
 | `hal_dma_irq.rs` | Does the LDMA end a transfer with an interrupt, with the core asleep, and does `IEN` gate it? | 2026-11-27 |
 | `hal_dma_link.rs` | Do the LDMA's linked descriptors actually chain, and does the second leg move only because of the link? | 2026-11-27 |
 | `hal_dma_stop.rs` | Does `stop()` really disable the DMA channel? | 2026-11-23 |
-| `hal_em2_sleep.rs` | EM2: dez sonecas de um segundo, com o SYSRTC a acordar. | -- |
+| `hal_em2_sleep.rs` | EM2: ten one-second naps, with the SYSRTC doing the waking. | -- |
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | 2026-11-24 |
 | `hal_eusart1_loopback.rs` | EUSART1 in asynchronous mode: eight bytes out and back through `CFG0.LOOPBK`, and a control that reads none. | 2026-11-27 |
 | `hal_eusart_loopback.rs` | EUSART0 in asynchronous mode: eight distinct bytes out and back through `CFG0.LOOPBK`, and a control that reads | 2026-11-27 |
@@ -338,7 +338,7 @@ mean it works.
 | `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
 | `hal_spi_masters.rs` | All three SPI masters on the same pads, one after the other, and each with its own control. | -- |
 | `hal_sysrtc_wide.rs` | SYSRTC's 64-bit tick, the comparator waking the core, and an independent clock confirming it. | -- |
-| `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
+| `hal_sysrtc_wrap.rs` | The 32-bit counter's wrap, exercised in milliseconds instead of 36.4 hours. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
 | `hal_timer0_repacing.rs` | Pace TIMER0 twice, and a third time: does the second write to `CFG` still land? | -- |
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |

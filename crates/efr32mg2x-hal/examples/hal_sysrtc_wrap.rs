@@ -1,26 +1,26 @@
-//! A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas.
+//! The 32-bit counter's wrap, exercised in milliseconds instead of 36.4 hours.
 //!
-//! ## O que isto prova
+//! ## What this proves
 //!
-//! O contador do SYSRTC tem 32 bits a 32768 Hz: volta a zero a cada **36,4 horas**. O tick de 64 bits precisa de
-//! saber quantas voltas já houve, e havia duas maneiras de o saber:
+//! SYSRTC's counter is 32 bits at 32768 Hz: it returns to zero every **36.4 hours**. The 64-bit tick needs to know how
+//! many wraps there have been, and there were two ways to know:
 //!
-//! - **Por sondagem** (`WideTick`): compara cada leitura com a anterior e conta uma volta quando o valor desce.
-//!   Funciona, mas exige que alguém chame `now_wide` pelo menos uma vez a cada 36,4 h -- quem não chamar perde
-//!   exactamente 36,4 h do relógio, em silêncio.
-//! - **Por interrupção** (`GRP0_IF.OVF`): o periférico conta as voltas e o `now_wide` não precisa de ninguém.
+//! - **By polling** (`WideTick`): compare each reading with the previous one and count a wrap when the value falls.
+//!   It works, but it requires someone to call `now_wide` at least once every 36.4 h -- whoever does not loses exactly
+//!   36.4 h of the clock, silently.
+//! - **By interrupt** (`GRP0_IF.OVF`): the peripheral counts the wraps and `now_wide` needs nobody.
 //!
-//! Este exemplo arma a interrupção, **põe o contador 4096 ticks antes da volta** e verifica que o tick de 64 bits
-//! atravessa a volta a subir, não a descer. Se o bit alto viesse da sondagem, ou não existisse, o segundo valor
-//! seria *menor* que o primeiro.
+//! This example arms the interrupt, **puts the counter 4096 ticks before the wrap** and checks that the 64-bit tick
+//! crosses the wrap going up, not going down. If the high bit came from polling, or did not exist, the second value
+//! would be *smaller* than the first.
 //!
-//! ## Porque é que a sondagem tem de ficar desligada
+//! ## Why polling has to stay off
 //!
-//! As duas contariam a mesma volta: a sondagem veria o contador descer e somaria uma, e a interrupção somaria
-//! outra. O tick saltaria 36,4 h para a frente. Por isso `enable_overflow_interrupt` retira a sondagem do caminho
-//! -- é uma escolha, não uma soma.
+//! Both would count the same wrap: polling would see the counter fall and add one, and the interrupt would add another.
+//! The tick would jump 36.4 h forward. That is why `enable_overflow_interrupt` takes polling out of the path -- it is a
+//! choice, not a sum.
 //!
-//! Lê-se com `scripts/read-mailbox.sh`.
+//! Read it with `scripts/read-mailbox.sh`.
 
 #![no_std]
 #![no_main]
@@ -37,39 +37,39 @@ use efr32mg2x_hal::pin::Port;
 use efr32mg2x_hal::sysrtc::Sysrtc;
 use panic_probe as _;
 
-/// Quantas voltas o handler contou.
-static VOLTAS_NO_HANDLER: AtomicU32 = AtomicU32::new(0);
+/// How many wraps the handler counted.
+static WRAPS_IN_HANDLER: AtomicU32 = AtomicU32::new(0);
 
-/// Quantas vezes o handler correu, para distinguir "não voltou" de "voltou e não serviu o evento".
-static ENTRADAS_NO_HANDLER: AtomicU32 = AtomicU32::new(0);
+/// How many times the handler ran, to tell "it did not wrap" from "it wrapped and did not serve the event".
+static ENTRIES_IN_HANDLER: AtomicU32 = AtomicU32::new(0);
 
-/// O valor posto no contador: 4096 ticks antes da volta, ou seja 125 ms.
-const ANTES_DA_VOLTA: u32 = 0xFFFF_F000;
+/// The value put into the counter: 4096 ticks before the wrap, that is 125 ms.
+const BEFORE_THE_WRAP: u32 = 0xFFFF_F000;
 
-/// Ticks de 4096 a 32768 Hz.
-const TICKS_ATE_VOLTAR: u32 = 0x0000_1000;
+/// Ticks of 4096 at 32768 Hz.
+const TICKS_UNTIL_WRAP: u32 = 0x0000_1000;
 
-/// Um limite de voltas no ciclo, para um erro não ficar a girar para sempre.
-const LIMITE_VOLTAS: u32 = 40_000_000;
+/// An iteration bound in the loop, so an error does not spin for ever.
+const SPIN_LIMIT: u32 = 40_000_000;
 
-/// O PAC declara `PROVIDE(SYSRTC_APP_IRQHandler = DefaultHandler)` em `device.x`, portanto uma definição com este
-/// nome exacto toma o lugar do handler que não regressa.
+/// The PAC declares `PROVIDE(SYSRTC_APP_IRQHandler = DefaultHandler)` in `device.x`, so a definition with this exact
+/// name takes the place of the handler that does not return.
 #[no_mangle]
 pub extern "C" fn SYSRTC_APP_IRQHandler() {
-    ENTRADAS_NO_HANDLER.fetch_add(1, Ordering::Relaxed);
-    // Os dois eventos partilham um vector: servir só o comparador deixaria o flag da volta posto e o vector
-    // voltaria a entrar para sempre.
-    let (_, voltou) = Sysrtc::service_interrupts();
-    if voltou {
-        VOLTAS_NO_HANDLER.fetch_add(1, Ordering::Relaxed);
+    ENTRIES_IN_HANDLER.fetch_add(1, Ordering::Relaxed);
+    // The two events share one vector: serving only the comparator would leave the wrap's flag set and the vector
+    // would re-enter for ever.
+    let (_, wrapped) = Sysrtc::service_interrupts();
+    if wrapped {
+        WRAPS_IN_HANDLER.fetch_add(1, Ordering::Relaxed);
     }
 }
 
-fn report(ok: bool, wraps: u32, entradas: u32, antes: u32, depois: u32, delta: u32, ticks: u32) {
+fn report(ok: bool, wraps: u32, entries: u32, before: u32, after: u32, delta: u32, ticks: u32) {
     let mut m = [0u8; 140];
     let mut n = 0usize;
 
-    fn texto(m: &mut [u8], n: &mut usize, s: &[u8]) {
+    fn text(m: &mut [u8], n: &mut usize, s: &[u8]) {
         for b in s {
             if *n < m.len() {
                 m[*n] = *b;
@@ -77,7 +77,7 @@ fn report(ok: bool, wraps: u32, entradas: u32, antes: u32, depois: u32, delta: u
             }
         }
     }
-    fn numero(m: &mut [u8], n: &mut usize, v: u32) {
+    fn number(m: &mut [u8], n: &mut usize, v: u32) {
         let mut d = [0u8; 10];
         let mut k = 0usize;
         let mut v = v;
@@ -98,18 +98,18 @@ fn report(ok: bool, wraps: u32, entradas: u32, antes: u32, depois: u32, delta: u
         }
     }
 
-    texto(&mut m, &mut n, b"wrap: wraps=");
-    numero(&mut m, &mut n, wraps);
-    texto(&mut m, &mut n, b" irq=");
-    numero(&mut m, &mut n, entradas);
-    texto(&mut m, &mut n, b" before=");
-    numero(&mut m, &mut n, antes);
-    texto(&mut m, &mut n, b" after=");
-    numero(&mut m, &mut n, depois);
-    texto(&mut m, &mut n, b" delta=");
-    numero(&mut m, &mut n, delta);
-    texto(&mut m, &mut n, b" ticks=");
-    numero(&mut m, &mut n, ticks);
+    text(&mut m, &mut n, b"wrap: wraps=");
+    number(&mut m, &mut n, wraps);
+    text(&mut m, &mut n, b" irq=");
+    number(&mut m, &mut n, entries);
+    text(&mut m, &mut n, b" before=");
+    number(&mut m, &mut n, before);
+    text(&mut m, &mut n, b" after=");
+    number(&mut m, &mut n, after);
+    text(&mut m, &mut n, b" delta=");
+    number(&mut m, &mut n, delta);
+    text(&mut m, &mut n, b" ticks=");
+    number(&mut m, &mut n, ticks);
 
     if ok {
         mailbox::write(mailbox::Status::Pass, &m[..n]);
@@ -121,52 +121,44 @@ fn report(ok: bool, wraps: u32, entradas: u32, antes: u32, depois: u32, delta: u
 #[entry]
 fn main() -> ! {
     let board = Board::take().unwrap();
-    let mut led = board.output_on(Port::A, 7, false);
+    let led = board.output_on(Port::A, 7, false);
     let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
-    // Armar primeiro a interrupção, senão a volta acontece antes de alguém a contar.
+    // Arm the interrupt first, or the wrap happens before anyone is counting it.
     rtc.enable_overflow_interrupt();
     rtc.unmask_interrupt();
 
-    // 4096 ticks antes da volta. É o que torna um evento de 36,4 h num evento de 125 ms.
-    rtc.set_counter(ANTES_DA_VOLTA);
+    // 4096 ticks before the wrap. That is what turns a 36.4 h event into a 125 ms one.
+    rtc.set_counter(BEFORE_THE_WRAP);
 
-    let antes = rtc.now_wide();
-    let baixo_antes = antes as u32;
+    let before = rtc.now_wide();
+    let low_before = before as u32;
 
-    // Não se chama `now_wide` durante a volta de propósito: o valor tem de vir do handler, não de uma leitura.
-    let mut voltas_de_espera = 0u32;
-    while VOLTAS_NO_HANDLER.load(Ordering::Relaxed) == 0 {
+    // `now_wide` is deliberately not called during the wrap: the value has to come from the handler, not from a read.
+    let mut spins = 0u32;
+    while WRAPS_IN_HANDLER.load(Ordering::Relaxed) == 0 {
         cortex_m::asm::wfi();
-        voltas_de_espera += 1;
-        if voltas_de_espera > LIMITE_VOLTAS {
+        spins += 1;
+        if spins > SPIN_LIMIT {
             break;
         }
     }
 
-    let depois = rtc.now_wide();
-    let wraps = VOLTAS_NO_HANDLER.load(Ordering::Relaxed);
-    let entradas = ENTRADAS_NO_HANDLER.load(Ordering::Relaxed);
-    let delta = depois.wrapping_sub(antes) as u32;
+    let after = rtc.now_wide();
+    let wraps = WRAPS_IN_HANDLER.load(Ordering::Relaxed);
+    let entries = ENTRIES_IN_HANDLER.load(Ordering::Relaxed);
+    let delta = after.wrapping_sub(before) as u32;
     let ticks = rtc.now();
 
-    // O tick tem de subir. Com o bit alto vindo da sondagem desligada, ou ausente, `depois` seria menor que
-    // `antes` e este teste diria exactamente isso.
-    let subiu = depois > antes;
-    // A distância entre os dois instantes é o que faltava para a volta mais o que já passou depois dela. Se o bit
-    // alto não tivesse entrado, `delta` seria uma diferença de 32 bits sem sentido -- daí a janela.
-    let coerente = delta >= TICKS_ATE_VOLTAR && delta <= TICKS_ATE_VOLTAR + 3_276;
-    let ok = wraps == 1 && subiu && coerente;
+    // The tick has to go up. With the high bit coming from polling switched off, or absent, `after` would be smaller
+    // than `before` and this test would say exactly that.
+    let went_up = after > before;
+    // The distance between the two instants is what was left until the wrap plus what has passed after it. Had the
+    // high bit not come in, `delta` would be a meaningless 32-bit difference -- hence the window.
+    let coherent = delta >= TICKS_UNTIL_WRAP && delta <= TICKS_UNTIL_WRAP + 3_276;
+    let ok = wraps == 1 && went_up && coherent;
 
-    report(
-        ok,
-        wraps,
-        entradas,
-        baixo_antes,
-        depois as u32,
-        delta,
-        ticks,
-    );
+    report(ok, wraps, entries, low_before, after as u32, delta, ticks);
     led.on();
 
     loop {

@@ -1,26 +1,26 @@
-//! EM2: dez sonecas de um segundo, com o SYSRTC a acordar.
+//! EM2: ten one-second naps, with the SYSRTC doing the waking.
 //!
-//! ## O que este exemplo prova
+//! ## What this example proves
 //!
-//! Que o núcleo **entra** em EM2 e **volta**, e que o caminho de volta é o que se pediu: o SYSRTC
-//! acorda o núcleo por comparação, e `take_compare_event()` diz se foi ele. Sem essa verificação, um
-//! `wfi` que regressa imediatamente parecia igual a um sono de um segundo — o contador diria dez
-//! sonecas e o tempo não teria passado.
+//! That the core **enters** EM2 and **comes back**, and that the way back is the one that was asked for: the SYSRTC
+//! wakes the core by comparison, and `take_compare_event()` says whether it was that. Without the check, a `wfi` that
+//! returns immediately looks just like a one-second sleep -- the counter would report ten naps and no time would have
+//! passed.
 //!
-//! ## Como se lê o resultado
+//! ## How to read the result
 //!
-//! `defmt` pela RTT, uma linha por acordar. Com `--release` a compilar e a placa ligada ao lnx:
+//! `defmt` over RTT, one line per wake-up. With `--release` built and the board attached to lnx:
 //!
 //! ```text
 //! probe-rs run --chip EFR32MG24B220F1536IM48 target/thumbv8m.main-none-eabihf/release/examples/hal_em2_sleep
 //! ```
 //!
-//! O sinal de sucesso não é a ausência de erro, é o **relógio da parede**: dez linhas separadas por
-//! cerca de um segundo, e a última depois de ~10 s. Sintomas que se distinguem assim:
+//! The sign of success is not the absence of an error, it is the **wall clock**: ten lines about a second apart, the
+//! last one after ~10 s. The symptoms it tells apart:
 //!
-//! - dez linhas de imediato -> o sono não aconteceu (`SLEEPDEEP` não entrou, ou o `wfi` regressou);
-//! - uma linha e depois nada -> acordou não acordou: a interrupção não estava armada;
-//! - nenhuma linha, RTT morta -> entrou em EM2 e o debugger foi com ele (`keep_debugger` em falta).
+//! - ten lines at once -> the sleep did not happen (`SLEEPDEEP` never took, or the `wfi` returned);
+//! - one line and then nothing -> it woke, it did not wake: the interrupt was not armed;
+//! - no line at all, dead RTT -> it entered EM2 and the debugger went with it (`keep_debugger` missing).
 
 #![no_std]
 #![no_main]
@@ -67,17 +67,17 @@ fn main() -> ! {
     let rtc = board.sysrtc().expect("SYSRTC is handed out once");
     let sleep = board.sleep();
 
-    // Antes de dormir, uma vez: o debugger tem de sobreviver a EM2, senão perdemos a linha de
-    // relato no primeiro sono e o que resta é uma placa muda.
+    // Before sleeping, once: the debugger has to survive EM2, or the report line is lost on the first sleep and what
+    // is left is a silent board.
     sleep.keep_debugger();
 
-    // A interrupção do comparador tem de estar ligada no periférico antes do primeiro `wfi`.
+    // The comparator's interrupt has to be enabled in the peripheral before the first `wfi`.
     rtc.unmask_interrupt();
 
-    // ## Fase 1: o comparador sozinho, sem EM2 nenhum
+    // ## Phase 1: the comparator alone, with no EM2 at all
     //
-    // Duas coisas foram mudadas de uma vez -- o sono e o caminho da interrupcao -- e o resultado "uma linha e
-    // silencio" nao diz qual das duas falhou. Esta fase tira o sono da equacao: se o comparador acordar o nucleo
+    // Two things were changed at once -- the sleep and the interrupt path -- and "one line then silence" does not say
+    // which of the two failed. This phase takes the sleep out of the equation: if the comparator wakes the core
     // aqui, o problema esta' no EM2; se ficar calado, o comparador nunca disparou e o EM2 nao tem culpa nenhuma.
     defmt::info!("fase 1: comparador sem EM2");
     // Antes de esperar por uma interrupcao, ver se ha' um contador a andar. Quatro numeros dizem qual das tres
@@ -140,8 +140,8 @@ fn main() -> ! {
         ACORDARES.load(core::sync::atomic::Ordering::Relaxed)
     );
 
-    // Fica quieto, mas acordado: se entrasse em EM2 outra vez sem interrupção armada, o exemplo
-    // nunca chegaria a dizer o resultado.
+    // Quiet, but awake: entering EM2 again with no interrupt armed would mean this example never got to say what the
+    // result was.
     loop {
         cortex_m::asm::nop();
     }
