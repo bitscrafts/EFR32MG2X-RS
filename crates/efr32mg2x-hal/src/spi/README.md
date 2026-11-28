@@ -85,7 +85,11 @@ spi.transfer(&mut rx_data, &tx_data).unwrap();
 
 ## What was measured
 
-No mailbox record in `docs/` names this module, so treat its API as unmeasured on hardware. The first measurement belongs here, with the line the board produced and the controls around it.
+```
+    spi3: n=8 eusart0=8 usart0=8 eusart1=8 cross=0 control=0 err=0      PASS
+```
+
+Controls and the full story: [SPI-MASTERS-2026-11-27.md](../../../../docs/04-reference/SPI-MASTERS-2026-11-27.md)
 
 ## What is not proven
 

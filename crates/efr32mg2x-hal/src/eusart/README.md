@@ -65,9 +65,10 @@ None directly: this module composes other drivers and reaches no `pac::` periphe
 ```
     eusart: ok=1 n=8 am=8 wr=8 err=0 ctl=0 div=297 cal=3290 ct=23 tt=23 bd=113975 if=0x000c2007 ft=0x000c2007 fc=0x000c2007 cf=0x00000002
     eusart1: n=8 matched=8 seen=8 cfg0=0x00000002 st=0x00003063 control=0 div=297 want=115200 err=0x00000000 routed=1 refused=1
+    spi3: n=8 eusart0=8 usart0=8 eusart1=8 cross=0 control=0 err=0      PASS
 ```
 
-Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md), [EUSART1-2026-11-27.md](../../../../docs/04-reference/EUSART1-2026-11-27.md)
+Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-reference/EUSART-ASYNC-2026-11-27.md), [EUSART1-2026-11-27.md](../../../../docs/04-reference/EUSART1-2026-11-27.md), [SPI-MASTERS-2026-11-27.md](../../../../docs/04-reference/SPI-MASTERS-2026-11-27.md)
 
 ## What is not proven
 
