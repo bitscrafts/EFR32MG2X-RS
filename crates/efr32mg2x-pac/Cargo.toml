@@ -1,5 +1,9 @@
 [package]
 name = "efr32mg2x-pac"
+# Not for the registry until the operator says so, in an express order in the conversation where it happens
+# (`CLAUDE.md`, HARD RULE "no publication without an express order"). Lifting this line is the visible act of
+# publishing; the gate fails while it is absent from any package.
+publish = false
 version.workspace = true
 edition = "2021"
 license.workspace = true

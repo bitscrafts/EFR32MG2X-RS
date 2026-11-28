@@ -32,6 +32,11 @@ The repository is allowed to *verify* that a package would be publishable — `s
 `gen-crate-readme.py --check`, `cargo package --list` — and the gate runs those. Reading, packaging and listing are fine.
 Sending bytes to crates.io is not.
 
+**And the manifests now say it too (2026-11-27):** every package carries `publish = false`, including `efr32mg2x-pac`
+(already on the registry at 0.1.1) and `efr32mg2x-hal` (withdrawn, and the only candidate). Lifting that line from a
+manifest *is* the visible act of publishing, and `scripts/check-publishable.py` — in the gate — fails while it is
+absent from any package. The rule stopped being a sentence an agent could talk itself past.
+
 ## Project Context
 
 This project provides Rust support (PAC + HAL + radio + Bluetooth) for the Silicon Labs EFR32MG24 wireless MCU.

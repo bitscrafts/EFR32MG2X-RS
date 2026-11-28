@@ -126,7 +126,7 @@ def check_own_urls(name, d, failures):
 
 
 def unpublished_problems() -> list[str]:
-    """Every package that is not in CRATES must say `publish = false`.
+    """Every package must say `publish = false`, and lifting it is an operator act.
 
     The alternative is what existed until 2026-11-27: one crate said it, and `efr32mg2x-rail-sys`,
     `efr32mg2x-bluetooth-sys`, `efr32mg2x-radio`, both BSPs, `cmsis-stubs`, the embassy runtime and both
@@ -141,11 +141,12 @@ def unpublished_problems() -> list[str]:
             continue
         text = manifest.read_text(errors="replace")
         name = re.search(r'^name\s*=\s*"([^"]+)"', text, re.M)
-        if name is None or name.group(1) in CRATES:
+        if name is None:
             continue
         if not re.search(r"^publish\s*=\s*false", text, re.M):
             problems.append(
-                f"{name.group(1)}: not in the publishable list and does not say `publish = false`"
+                f"{name.group(1)}: says nothing about publishing; every package carries `publish = false` until an "
+                f"express order lifts it"
             )
     return problems
 
