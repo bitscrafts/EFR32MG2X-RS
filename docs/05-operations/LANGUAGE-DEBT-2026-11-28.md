@@ -10,8 +10,6 @@ Measured 2026-11-28 by counting lines containing a Portuguese accented character
 | File | Lines |
 |---|---|
 | `crates/efr32mg24-rail-sys/examples/rail_ieee802154_tx.rs` | 70 |
-| `crates/efr32mg2x-hal/examples/hal_sysrtc_wide.rs` | 37 |
-| `crates/efr32mg2x-hal/examples/hal_i2c_async.rs` | 30 |
 | `crates/xiao-mg24-bsp/examples/embassy_driver_systrc.rs` | 21 |
 | `crates/efr32mg2x-hal/examples/hal_sysrtc_wrap.rs` | 18 |
 | `crates/xiao-mg24-bsp/examples/embassy_task_systrc.rs` | 13 |
@@ -20,17 +18,23 @@ Measured 2026-11-28 by counting lines containing a Portuguese accented character
 | `apps/dosimeter-ble/src/main.rs` | 5 |
 | `crates/efr32mg24-radio/examples/ble_beacon.rs` | 3 |
 | `crates/efr32mg24-radio/examples/ble_boot_probe.rs` | 2 |
-| **Total** | **215** |
+| **Total** | **148** |
 
 **Every library and driver source is clean.** What is left is documentation inside examples -- which is the worst
 place to leave it, because an example's header is where this repository records the measurement that makes the code
-look the way it does. Those 215 lines are worth a deliberate pass: bulk substitution would cost the measurements that
+look the way it does. Those 148 lines are worth a deliberate pass: bulk substitution would cost the measurements that
 make the files worth reading.
+
+The two examples translated here were re-measured on the board afterwards, because a translation that changes a
+number is a defect: `i2c-async: who=0x6a pending=23 irq=12 wfi=12` and
+`wide: sleep_ms=1000 wakes=10 spin_ms=1000 spin_wall=997 c0=138 c1=18946342 wraps=0`, both `status=PASS`.
 
 ## Done in this pass (2026-11-28)
 
 | File | Lines before | Now |
 |---|---|---|
+| `crates/efr32mg2x-hal/examples/hal_sysrtc_wide.rs` | 37 | 0 |
+| `crates/efr32mg2x-hal/examples/hal_i2c_async.rs` | 30 | 0 |
 | `crates/efr32mg2x-hal/src/i2c/async_impl.rs` | 68 | 0 |
 | `crates/efr32mg2x-hal/src/sleep.rs` | 19 | 0 |
 | `crates/efr32mg2x-hal/src/clock/clocks.rs` | 19 | 0 |

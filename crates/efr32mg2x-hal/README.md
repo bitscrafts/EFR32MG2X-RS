@@ -322,7 +322,7 @@ mean it works.
 | `hal_gpcrc.rs` | Is the CRC accelerator right? Check it against a number computed elsewhere. | -- |
 | `hal_gpio_interrupt.rs` | The pad moved by its own pull resistor, `IEN` and the NVIC armed, and a counter only the handler increments. | 2026-11-27 |
 | `hal_hfxo.rs` | HFXO: run from the crystal, and prove the rest of the system followed it. | 2026-11-25 |
-| `hal_i2c_async.rs` | O IMU lido pelo caminho **assíncrono** do I2C, num executor mínimo. | -- |
+| `hal_i2c_async.rs` | The IMU read through I2C's **asynchronous** path, in a minimal executor. | -- |
 | `hal_i2c_bitbang.rs` | The bit-banged transport: scan whatever two pins you give it. | 2026-11-15 |
 | `hal_i2c_hardware_imu.rs` | The IMU on the hardware I2C bus: routed pins, a power gate, one byte back. | -- |
 | `hal_i2c_recovery.rs` | After a NACK, does the bus still work? | 2026-11-23 |
@@ -337,7 +337,7 @@ mean it works.
 | `hal_rtt_hello.rs` | Deferred-formatting logging over RTT, and a panic that says what happened. | 2026-11-15 |
 | `hal_spi_loopback.rs` | SPI with a wire between MOSI and MISO: eight bytes out, the same eight bytes back. | 2026-11-25 |
 | `hal_spi_masters.rs` | All three SPI masters on the same pads, one after the other, and each with its own control. | -- |
-| `hal_sysrtc_wide.rs` | O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo. | -- |
+| `hal_sysrtc_wide.rs` | SYSRTC's 64-bit tick, the comparator waking the core, and an independent clock confirming it. | -- |
 | `hal_sysrtc_wrap.rs` | A volta do contador de 32 bits, exercida em milissegundos em vez de 36,4 horas. | -- |
 | `hal_timer0_pwm.rs` | Buzzer through the HAL: a calibrated tone on the base's piezo. | -- |
 | `hal_timer0_repacing.rs` | Pace TIMER0 twice, and a third time: does the second write to `CFG` still land? | -- |

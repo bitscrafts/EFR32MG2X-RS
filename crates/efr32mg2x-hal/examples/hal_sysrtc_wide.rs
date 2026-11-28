@@ -1,25 +1,26 @@
-//! O tick de 64 bits do SYSRTC, o comparador a acordar o núcleo, e um relógio independente a confirmá-lo.
+//! SYSRTC's 64-bit tick, the comparator waking the core, and an independent clock confirming it.
 //!
-//! ## As duas fases, e porque é que são duas
+//! ## The two phases, and why there are two
 //!
-//! **Fase A -- dormir.** Dez prazos de 100 ms armados no comparador, com o núcleo em `wfi` entre eles. Prova que o
-//! comparador dispara (a contagem de interrupções) e que o tick de 64 bits mede o total.
+//! **Phase A -- sleep.** Ten 100 ms deadlines armed on the comparator, with the core in `wfi` between them. It proves
+//! the comparator fires (the interrupt count) and that the 64-bit tick measures the total.
 //!
-//! **Fase B -- girar.** Os mesmos dez intervalos, mas à espera do tick largo **sem** `wfi`. Aqui o contador de
-//! ciclos do DWT vale, porque o núcleo está acordado.
+//! **Phase B -- spin.** The same ten intervals, but waiting for the wide tick **without** `wfi`. Here the DWT's cycle
+//! counter is worth something, because the core is awake.
 //!
-//! A segunda fase existe por causa de uma medição, não por simetria. A primeira versão cronometrava a fase A com o
-//! DWT e leu `wall_ms=1` para um segundo de sono: **o `CYCCNT` conta ciclos do núcleo, e com o núcleo em `wfi` o
-//! relógio do núcleo está parado**. O instrumento não podia responder à pergunta, e um critério que o usasse estava
-//! a medir a ferramenta em vez do driver. Na fase B o DWT mede um intervalo que contém o mesmo contador do SYSRTC,
-//! e os dois números passam a poder discordar -- que é o que faz deles um controlo.
+//! The second phase exists because of a measurement, not for symmetry. The first version timed phase A with the DWT
+//! and read `wall_ms=1` for a second of sleep: **`CYCCNT` counts core cycles, and with the core in `wfi` the core's
+//! clock is stopped**. The instrument could not answer the question, and a criterion that used it was measuring the
+//! tool instead of the driver. In phase B the DWT measures an interval that contains the same SYSRTC counter, and the
+//! two numbers can now disagree -- which is what makes them a control.
 //!
-//! ## O critério
+//! ## The criterion
 //!
-//! Dez disparos do comparador; o tick largo diz 1000 ms nas duas fases; o DWT, na fase em que vale, concorda com o
-//! tick largo dentro de 5 %; nenhuma volta perdida. A tolerância cobre o cristal de 32 kHz e o custo de acordar.
+//! Ten comparator firings; the wide tick says 1000 ms in both phases; the DWT, in the phase where it is worth
+//! anything, agrees with the wide tick to within 5%; no wrap lost. The tolerance covers the 32 kHz crystal and the
+//! cost of waking.
 //!
-//! Lê-se com `scripts/read-mailbox.sh`.
+//! Read it with `scripts/read-mailbox.sh`.
 
 #![no_std]
 #![no_main]
@@ -32,38 +33,38 @@ use core::sync::atomic::{AtomicU32, Ordering};
 use cortex_m_rt::entry;
 use efr32mg2x_hal::board::Board;
 use efr32mg2x_hal::pin::Port;
-// `panic-probe` e não `panic-halt`: o `defmt` que a HAL liga precisa de um transporte, e o panic sobre o mesmo
-// cabo de SWD é o que transforma um panic mudo numa linha legível.
+// `panic-probe` and not `panic-halt`: the `defmt` the HAL pulls in needs a transport, and a panic over the same SWD
+// cable is what turns a silent panic into a readable line.
 use defmt_rtt as _;
 use panic_probe as _;
 
-/// Quantas esperas de 100 ms cada fase faz.
-const ESPERAS: u32 = 10;
+/// How many 100 ms waits each phase makes.
+const WAITS: u32 = 10;
 
-/// Uma espera de 100 ms no contador do SYSRTC: 3276,8 ticks a 32768 Hz, arredondado para baixo.
+/// A 100 ms wait in the SYSRTC counter: 3276.8 ticks at 32768 Hz, rounded down.
 const TICKS_100MS: u32 = 3_276;
 
-/// Ticks do SYSRTC num segundo, para o relatório.
+/// SYSRTC ticks in a second, for the report.
 const TICKS_HZ: u64 = 32_768;
 
-/// Quantas vezes o comparador acordou o núcleo.
+/// How many times the comparator woke the core.
 ///
-/// O handler escreve aqui porque o `main` está dentro do `wfi`: não há como emprestar-lhe o `Sysrtc`, e sem um
-/// sítio partilhado onde contar, "acordou dez vezes" e "acordou uma e ficou preso" davam o mesmo registo.
-static ACORDARES: AtomicU32 = AtomicU32::new(0);
+/// The handler writes here because `main` is inside the `wfi`: there is no way to lend it the `Sysrtc`, and without a
+/// shared place to count in, "it woke ten times" and "it woke once and got stuck" would produce the same record.
+static WAKES: AtomicU32 = AtomicU32::new(0);
 
-/// O handler forte que substitui o `DefaultHandler` do vector.
+/// The strong handler that takes the vector's `DefaultHandler`'s place.
 ///
-/// O PAC declara `PROVIDE(SYSRTC_APP_IRQHandler = DefaultHandler)` em `device.x`, portanto uma definição com este
-/// nome exacto toma o lugar do handler que não regressa. O atributo `#[interrupt]` do `cortex-m-rt` precisa da
-/// feature `device`, que a HAL não liga; o nome do vector é o que o linker procura.
+/// The PAC declares `PROVIDE(SYSRTC_APP_IRQHandler = DefaultHandler)` in `device.x`, so a definition with this exact
+/// name takes the place of the handler that does not return. `cortex-m-rt`'s `#[interrupt]` attribute needs the
+/// `device` feature, which the HAL does not enable; the vector's name is what the linker looks for.
 #[no_mangle]
 pub extern "C" fn SYSRTC_APP_IRQHandler() {
     efr32mg2x_hal::sysrtc::Sysrtc::acknowledge_compare_interrupt();
-    ACORDARES.fetch_add(1, Ordering::Relaxed);
+    WAKES.fetch_add(1, Ordering::Relaxed);
 }
 
-/// Um relatório só, com os números que decidem.
+/// One report, with the numbers that decide.
 fn report(
     ok: bool,
     sleep_ms: u32,
@@ -77,7 +78,7 @@ fn report(
     let mut m = [0u8; 160];
     let mut n = 0usize;
 
-    fn texto(m: &mut [u8], n: &mut usize, s: &[u8]) {
+    fn text(m: &mut [u8], n: &mut usize, s: &[u8]) {
         for b in s {
             if *n < m.len() {
                 m[*n] = *b;
@@ -85,7 +86,7 @@ fn report(
             }
         }
     }
-    fn numero(m: &mut [u8], n: &mut usize, v: u32) {
+    fn number(m: &mut [u8], n: &mut usize, v: u32) {
         let mut d = [0u8; 10];
         let mut k = 0usize;
         let mut v = v;
@@ -106,20 +107,20 @@ fn report(
         }
     }
 
-    texto(&mut m, &mut n, b"wide: sleep_ms=");
-    numero(&mut m, &mut n, sleep_ms);
-    texto(&mut m, &mut n, b" wakes=");
-    numero(&mut m, &mut n, wakes);
-    texto(&mut m, &mut n, b" spin_ms=");
-    numero(&mut m, &mut n, spin_ms);
-    texto(&mut m, &mut n, b" spin_wall=");
-    numero(&mut m, &mut n, wall_b_ms);
-    texto(&mut m, &mut n, b" c0=");
-    numero(&mut m, &mut n, cyc0);
-    texto(&mut m, &mut n, b" c1=");
-    numero(&mut m, &mut n, cyc1);
-    texto(&mut m, &mut n, b" wraps=");
-    numero(&mut m, &mut n, wraps);
+    text(&mut m, &mut n, b"wide: sleep_ms=");
+    number(&mut m, &mut n, sleep_ms);
+    text(&mut m, &mut n, b" wakes=");
+    number(&mut m, &mut n, wakes);
+    text(&mut m, &mut n, b" spin_ms=");
+    number(&mut m, &mut n, spin_ms);
+    text(&mut m, &mut n, b" spin_wall=");
+    number(&mut m, &mut n, wall_b_ms);
+    text(&mut m, &mut n, b" c0=");
+    number(&mut m, &mut n, cyc0);
+    text(&mut m, &mut n, b" c1=");
+    number(&mut m, &mut n, cyc1);
+    text(&mut m, &mut n, b" wraps=");
+    number(&mut m, &mut n, wraps);
 
     if ok {
         mailbox::write(mailbox::Status::Pass, &m[..n]);
@@ -132,78 +133,78 @@ fn report(
 fn main() -> ! {
     mailbox::invalidate();
     let board = Board::take().unwrap();
-    let mut led = board.output_on(Port::A, 7, false);
+    let led = board.output_on(Port::A, 7, false);
     let rtc = board.sysrtc().expect("SYSRTC is handed out once");
 
-    // A interrupção do comparador tem de estar ligada no periférico antes do primeiro `wfi`.
+    // The comparator's interrupt has to be enabled in the peripheral before the first `wfi`.
     rtc.unmask_interrupt();
 
-    // `Hertz` é um tipo com a unidade dentro: converter para inteiro aqui é explícito, não um `as` disfarçado.
+    // `Hertz` is a type with the unit inside: converting to an integer here is explicit, not a disguised `as`.
     let hw_hz: u32 = board.clock_hz().into();
     let _ = unsafe { efr32mg2x_hal::dwt::start() };
 
-    // ## Fase A: dormir em cada prazo
+    // ## Phase A: sleep on each deadline
     let ticks_a0 = rtc.now_wide();
-    for _ in 0..ESPERAS {
-        // O prazo sai do tick LARGO e só a truncagem para 32 bits é feita no fim: é essa a aritmética que
-        // sobrevive a uma volta do contador, e é o que `schedule_at` recebe.
-        let alvo = rtc.now_wide() + TICKS_100MS as u64;
-        let antes = ACORDARES.load(Ordering::Relaxed);
-        rtc.schedule_at(alvo as u32);
+    for _ in 0..WAITS {
+        // The deadline comes from the WIDE tick and only the truncation to 32 bits is done at the end: that is the
+        // arithmetic that survives one counter wrap, and it is what `schedule_at` receives.
+        let target = rtc.now_wide() + TICKS_100MS as u64;
+        let before = WAKES.load(Ordering::Relaxed);
+        rtc.schedule_at(target as u32);
 
-        // Espera pelo disparo do comparador. O limite de iterações existe para que um comparador mudo dê um
-        // vermelho em vez de um exemplo pendurado -- um `wfi` regressa com qualquer interrupção, não só a nossa.
-        let mut voltas = 0u32;
-        while ACORDARES.load(Ordering::Relaxed) == antes {
+        // Wait for the comparator to fire. The iteration bound exists so that a mute comparator gives a red instead
+        // of a hung example -- a `wfi` returns on any interrupt, not only ours.
+        let mut spins = 0u32;
+        while WAKES.load(Ordering::Relaxed) == before {
             cortex_m::asm::wfi();
-            voltas += 1;
-            if voltas > 4_000_000 {
+            spins += 1;
+            if spins > 4_000_000 {
                 break;
             }
         }
     }
     let ticks_a = (rtc.now_wide() - ticks_a0) as u32;
-    let wakes = ACORDARES.load(Ordering::Relaxed);
+    let wakes = WAKES.load(Ordering::Relaxed);
 
-    // ## Fase B: os mesmos intervalos, com o núcleo acordado
+    // ## Phase B: the same intervals, with the core awake
     //
-    // Sem `wfi`, e à espera do MESMO tick largo. É a fase em que o DWT mede tempo de parede; na fase A o contador
-    // do núcleo pára quando o núcleo dorme.
-    // **O DWT não sobrevive ao sono.** Medido duas vezes, de duas maneiras: com o contador a cronometrar a fase A
-    // deu 1 ms para um segundo (o núcleo dorme e o relógio do núcleo pára), e com os valores em bruto no registo
-    // viu-se `c0=27297 c1=27297` -- congelado no primeiro `wfi`, sem voltar depois de acordar. Portanto ele é
-    // reiniciado AQUI, depois do sono, e só mede a fase em que o núcleo não dorme. Um instrumento que não
-    // responde à pergunta não entra no critério.
+    // Without `wfi`, and waiting for the SAME wide tick. This is the phase where the DWT measures wall time; in phase
+    // A the core's counter stops when the core sleeps.
+    // **The DWT does not survive sleep.** Measured twice, in two ways: with the counter timing phase A it gave 1 ms
+    // for a second (the core sleeps and the core's clock stops), and with the raw values in the record one saw
+    // `c0=27297 c1=27297` -- frozen at the first `wfi`, not resuming after waking. So it is restarted HERE, after the
+    // sleep, and measures only the phase in which the core does not sleep. An instrument that cannot answer the
+    // question does not enter the criterion.
     let _ = unsafe { efr32mg2x_hal::dwt::start() };
     let ticks_b0 = rtc.now_wide();
-    let ciclos_b0 = efr32mg2x_hal::dwt::cycles();
-    for _ in 0..ESPERAS {
-        let alvo = rtc.now_wide() + TICKS_100MS as u64;
-        // `is_future` é a comparação em 32 bits que sobrevive à volta do contador; a decisão vive no núcleo
-        // testado, não aqui.
-        while efr32mg2x_hal::sysrtc::is_future(rtc.now(), alvo as u32) {
+    let cycles_b0 = efr32mg2x_hal::dwt::cycles();
+    for _ in 0..WAITS {
+        let target = rtc.now_wide() + TICKS_100MS as u64;
+        // `is_future` is the 32-bit comparison that survives the counter wrap; the decision lives in the tested core,
+        // not here.
+        while efr32mg2x_hal::sysrtc::is_future(rtc.now(), target as u32) {
             cortex_m::asm::nop();
         }
     }
     let ticks_b = (rtc.now_wide() - ticks_b0) as u32;
-    let ciclos_b1 = efr32mg2x_hal::dwt::cycles();
-    let ciclos = ciclos_b1.wrapping_sub(ciclos_b0);
+    let cycles_b1 = efr32mg2x_hal::dwt::cycles();
+    let cycles = cycles_b1.wrapping_sub(cycles_b0);
 
     let sleep_ms = (ticks_a as u64 * 1000 / TICKS_HZ) as u32;
     let spin_ms = (ticks_b as u64 * 1000 / TICKS_HZ) as u32;
     let wall_b_ms = if hw_hz == 0 {
         0
     } else {
-        (ciclos as u64 * 1000 / u64::from(hw_hz)) as u32
+        (cycles as u64 * 1000 / u64::from(hw_hz)) as u32
     };
 
-    let esperado = ESPERAS * 100;
-    let margem = esperado / 20;
-    let perto = |v: u32| v >= esperado - margem && v <= esperado + margem;
-    // O DWT e o SYSRTC medem o mesmo intervalo na fase B: um factor de dois, uma volta perdida ou um relógio
-    // trocado aparecem aqui como uma diferença que a margem não cobre.
-    let concordam = wall_b_ms.abs_diff(spin_ms) <= margem;
-    let ok = wakes == ESPERAS && perto(sleep_ms) && perto(spin_ms) && concordam;
+    let expected = WAITS * 100;
+    let margin = expected / 20;
+    let near = |v: u32| v >= expected - margin && v <= expected + margin;
+    // The DWT and the SYSRTC measure the same interval in phase B: a factor of two, a lost wrap or a swapped clock
+    // all show up here as a difference the margin does not cover.
+    let agree = wall_b_ms.abs_diff(spin_ms) <= margin;
+    let ok = wakes == WAITS && near(sleep_ms) && near(spin_ms) && agree;
 
     report(
         ok,
@@ -211,8 +212,8 @@ fn main() -> ! {
         wakes,
         spin_ms,
         wall_b_ms,
-        ciclos_b0,
-        ciclos_b1,
+        cycles_b0,
+        cycles_b1,
         rtc.wraps(),
     );
     led.on();
