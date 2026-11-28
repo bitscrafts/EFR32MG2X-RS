@@ -291,7 +291,7 @@ mod tests {
     #[test]
     fn o_tick_largo_conta_uma_volta() {
         // O defeito B7: alargar o contador sem contar a volta devolve 5 depois de 0xFFFF_FFF0, ou seja o tempo
-        // anda para trás. Aqui tem de devolver 2^32 + 5.
+        // goes backwards. Here it must return 2^32 + 5.
         let mut w = WideTick::default();
         w.update(0xFFFF_FFF0);
         let depois = w.update(5);
@@ -334,8 +334,8 @@ mod tests {
 
     #[test]
     fn the_tick_does_not_go_backwards_across_a_wrap() {
-        // O que este parenteses prova: o tick tem de ser monotónico na volta, senão uma espera a cavalo dela
-        // mede 36,4 h a menos e o comparador arma-se contra um instante que já passou.
+        // What this parenthesis proves: the tick has to be monotonic across the wrap, or a wait that straddles it
+        // measures 36.4 h too little and the comparator arms against an instant that has already passed.
         let antes = wide_from_wraps(0, u32::MAX - 2);
         let depois = wide_from_wraps(1, 1);
         assert!(depois > antes, "{depois} deve ser maior que {antes}");

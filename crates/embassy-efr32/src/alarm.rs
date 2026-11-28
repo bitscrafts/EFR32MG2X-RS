@@ -34,7 +34,7 @@ pub fn store(at: u64, waker: &Waker) -> Option<u64> {
         let actual = guarda.as_ref().map(|(d, _)| *d);
         let escolhido = earliest(actual, at);
         if Some(escolhido) == actual {
-            // Já há um prazo igual ou anterior: guarda o waker novo só se substituir o antigo.
+            // A deadline at least as early already exists: keep the new waker only if it replaces the old one.
             if let Some((d, w)) = guarda.as_mut() {
                 if *d > at {
                     *d = at;

@@ -573,7 +573,7 @@ impl Sysrtc {
             // would hand the handler an event it does not serve.
             .write(|w| unsafe { w.bits(ja | bits::GRP0_OVF) });
         self.wait_sync();
-        // Um overflow que já esteja no flag é consumido agora, senão o handler dispara por um evento antigo.
+        // An overflow already sitting in the flag is consumed now, or the handler fires on stale news.
         Self::service_interrupts();
     }
 

@@ -23,6 +23,19 @@ until another one is on the bench. The board left running `hal_wdog_feed`, its r
    `CALRDY`). Selecting LFXO stays refused, for a narrower and truer reason.
 4. `/projects/docs/01-overview/DO-NOT-REPEAT.md` §11 — a gate run beside another `cargo` job in the same target
    directory reports a shortfall that does not exist (7 examples read as 5, 27 as 8). Re-run alone: `VERDICT: PASS`.
+5. **The timer had two period planners and the tested one was not the shipped one.** `timer/mod.rs` took the first
+   prescaler that fitted and clamped `TOP`; `libraries/timer-core::period_for` compared every candidate, reported ppm
+   and refused the impossible -- and only the second was under test. The planner now lives in
+   `crates/efr32mg2x-hal/src/cores/timer.rs`, the library is a shim, and the handle answers
+   `get_actual_frequency()` / `get_frequency_error_ppm()` instead of only echoing the request. Measured twice,
+   byte-identical: `want=1000 actual=1000 ppm=0 top=18999 measured=960` (`measured` is the polled witness reading 4%
+   low because the loop costs about the period; both attempts to remove that bias are recorded in the example,
+   including the counter read that returned `counts=235` because the counter wraps once per period).
+6. `scripts/check-core-split.py` now **runs in the gate**. It had existed since July, called by nothing, and the timer
+   duplication is what that cost. Three of its five failures turned out to be its own line-counting (a `pub mod`, a
+   wrapped `pub use`, a `#[cfg(test)]` harness), each now a case in its self-test; `gpcrc-core` declares itself a
+   reference implementation in `libraries/gpcrc-core/REFERENCE_IMPLEMENTATION` and is reported by name rather than
+   passed over.
 
 **Open**
 
@@ -30,7 +43,10 @@ until another one is on the bench. The board left running `hal_wdog_feed`, its r
   rewritten in English; the rest of the file needs the same, as a separate job.
 - LFXO for real: start the gate, settle for a time from the crystal's specification, then **prove the rate** against
   an independent base (SYSRTC on the LFRCO). A measurement, not a register.
-- `scripts/check-core-split.py` still fails on five crates and is **not in the gate** -- a decision to take.
+- The parity audit's rows are all read, but "read" is not "exhausted": `usart`/`eusart`, `spi` and `i2c` were compared
+  on the order of their writes and their aliases, not register by register against every branch of the vendor's
+  driver. The next pass, if it happens, starts with `em_usart.c`'s timeout and auto-baud paths, which this crate does
+  not implement at all.
 - `apps/dosimeter-ble`: 6 warnings; the gate does not run `deny(warnings)` under `apps/`.
 
 **The lesson of the night, beyond §11:** a hypothesis dies against the vendor's own code, not on the bench. The PCNT's

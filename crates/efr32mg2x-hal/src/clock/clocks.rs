@@ -29,53 +29,53 @@ pub const DEFAULT_SYSCLK_HZ: u32 = 19_000_000;
 
 /// Start the HFXO, wait for it, and only then point SYSCLK at it.
 ///
-/// ## A ordem não é negociável
+/// ## The order is not negotiable
 ///
-/// Ligar (`FORCEEN`), esperar que o cristal estabilize (`STATUS.RDY`), e só então apontar o `CLKSEL` para ele.
-/// Seleccionar antes do `RDY` dá um núcleo a correr de um relógio que ainda não existe.
+/// Enable (`FORCEEN`), wait for the crystal to settle (`STATUS.RDY`), and only then point `CLKSEL` at it. Selecting
+/// before `RDY` gives a core running from a clock that does not exist yet.
 ///
-/// ## Porque é que isto saiu do construtor
+/// ## Why this left the constructor
 ///
-/// Estava lá dentro, e por isso só `Clocks::new` a conseguia correr -- e o `Clocks::new` pede a CMU **por valor**,
-/// que o `Board` não pode ceder sem deixar de ser o dono dela. O resultado era uma sequência implementada e
-/// inalcançável a partir da API que o produto usa: nenhum exemplo conseguia pedir o cristal sem roubar a PAC, e
-/// roubar a PAC num exemplo é o defeito que o gate recusa. A sequência é uma só e vive aqui; o `Board` e o
-/// construtor chamam-na os dois.
+/// It used to live inside it, so only `Clocks::new` could run it -- and `Clocks::new` takes the CMU **by value**, which
+/// the `Board` cannot hand over without ceasing to be its owner. The result was a sequence that was implemented and
+/// unreachable from the API the product uses: no example could ask for the crystal without stealing the PAC, and
+/// stealing the PAC in an example is the defect the gate refuses. There is one sequence and it lives here; the
+/// `Board` and the constructor both call it.
 ///
-/// ## O tecto
+/// ## The ceiling
 ///
-/// Um laço infinito num arranque é uma placa que nunca mais responde a ninguém, e num produto isso é
-/// indistinguível de brick. O limite é um tecto, não uma espera -- sai no primeiro `RDY`.
+/// An endless loop in a start-up is a board that never answers anyone again, and in a product that is
+/// indistinguishable from brick. The bound is a ceiling, not a wait: it leaves on the first `RDY`.
 pub(crate) fn start_hfxo(cmu: &crate::pac::CmuS, frequency: Hertz) -> Result<(), ClockError> {
-    // ## O gate do relógio do próprio HFXO, antes de tudo
+    // ## The HFXO's own clock gate, before anything else
     //
-    // Sem `CMU_CLKEN0.HFXO0` ligado, o primeiro acesso aos registos do oscilador dá falta de bus -- e não uma
-    // falta silenciosa: o núcleo vai abaixo. Medido 2026-11-21 na placa: `antes: clock_hz = 19000000`, e 0,16 s
-    // depois o `probe-rs` reportava `Error: Exception`. O `apply_hfrco_cal` liga o gate do HFRCO0 e do DPLL0
-    // exatamente pela mesma razão (sem ele, a primeira leitura de `HFRCO0_STATUS` falha em 0x4001_000C); o HFXO
-    // ficou de fora porque a sequência foi escrita contra o registo e não contra o arranque do periférico.
+    // Without `CMU_CLKEN0.HFXO0` set, the first access to the oscillator's registers is a bus fault -- and not a
+    // quiet one: the core goes down. Measured 2026-11-21 on the board: `before: clock_hz = 19000000`, and 0.16 s
+    // later `probe-rs` reported `Error: Exception`. `apply_hfrco_cal` opens the HFRCO0 and DPLL0 gates for exactly the
+    // same reason (without it, the first read of `HFRCO0_STATUS` faults at 0x4001_000C); the HFXO was left out
+    // because the sequence was written against the register rather than against the peripheral's start-up.
     cmu.clken0().modify(|_r, w| w.hfxo0().set_bit());
 
-    // SAFETY: o HFXO0 não é exposto por nenhuma outra API deste crate, e quem chega aqui está a configurar a
-    // árvore de relógios -- ou seja, é o dono dela por construção. É o mesmo padrão que o `Board` usa para o
-    // EMU e o WDOG.
+    // SAFETY: HFXO0 is not exposed by any other API in this crate, and a caller who reaches here is configuring the
+    // clock tree -- that is, is its owner by construction. It is the same pattern the `Board` uses for the EMU and the
+    // WDOG.
     let hfxo = unsafe { crate::pac::Hfxo0Ns::steal() };
 
     hfxo.ctrl().modify(|_r, w| w.forceen().set_bit());
 
-    let mut voltas = 0u32;
-    const TECTO: u32 = 2_000_000;
+    let mut spins = 0u32;
+    const CEILING: u32 = 2_000_000;
     while !hfxo.status().read().rdy().bit_is_set() {
-        voltas += 1;
-        if voltas > TECTO {
+        spins += 1;
+        if spins > CEILING {
             return Err(ClockError::HfxoTimeout);
         }
         core::hint::spin_loop();
     }
 
     cmu.sysclkctrl().modify(|_r, w| w.clksel().hfxo());
-    // O relógio mudou: o número que o resto do sistema usa para calibrar tem de o saber. `frequency` é o que o
-    // chamador pediu, e é o valor que o Cristal desta placa tem -- 39 MHz no XIAO MG24.
+    // The clock changed: the number the rest of the system calibrates against has to know. `frequency` is what the
+    // caller asked for, and is the value this board's crystal has -- 39 MHz on the XIAO MG24.
     let _ = frequency;
     Ok(())
 }
