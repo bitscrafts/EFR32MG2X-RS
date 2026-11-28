@@ -76,7 +76,7 @@ const SECURITY_REQUIRED: bool = false;
 ///
 /// Era 600 -- dez minutos, o tempo do criterio de aceitacao E1-BLE.2. Na pratica isso e' uma
 /// armadilha: passados dez minutos o aparelho continua a medir e a anunciar mas recusa ligacoes, sem
-/// dizer porquê, e uma demonstracao que comeca meia hora depois do arranque nao liga. Medido
+/// say why, and a demonstration that starts half an hour after boot does not turn on. Measured
 /// 2026-11-19: a placa foi ligada as 01:09 e as 03:15 nao havia como emparelhar.
 ///
 /// Para a demonstracao a janela fica aberta sem limite: o aparelho tem de funcionar sem ninguem lhe
@@ -387,11 +387,11 @@ fn service_stack(ble: &mut Bluetooth, link: &mut Link, boot_second: u32) -> bool
                 if bond_heal::after_failure(link.smstreak, holds_a_bond)
                     == bond_heal::Decision::DropBond
                 {
-                    // **A base de bonds é externa, e é por isso que a cura anterior não funcionava.**
-                    // `sl_bt_sm_delete_bondings` responde `SL_STATUS_NOT_AVAILABLE` com uma base externa e não
+                    // **The bond base is external, and that is why the earlier heal did not work.**
+                    // `sl_bt_sm_delete_bondings` answers `SL_STATUS_NOT_AVAILABLE` with an external base and does not
                     // apaga nada (`bonding_ext.rs`, medido 2026-11-17: uma fase de teste pediu ao stack para
                     // limpar e o aparelho continuou a responder com a chave anterior). O comando certo é o que
-                    // apaga na NOSSA base -- o mesmo que o gesto do botão usa.
+                    // delete from OUR base -- the same one the button gesture uses.
                     #[cfg(feature = "external-bonding")]
                     let removed = efr32mg24_radio::bonding_clear_all();
                     #[cfg(not(feature = "external-bonding"))]
@@ -549,7 +549,7 @@ fn main() -> ! {
     let sec = if SECURITY_REQUIRED {
         SEC_BONDED_READ | SEC_BONDED_NOTIFY
     } else {
-        0 // sem exigencia de seguranca: leitura aberta, e' o que o protótipo de demonstracao usa
+        0 // no security requirement: open read, which is what the demonstration prototype uses
     };
     let characteristics = [
         Characteristic {

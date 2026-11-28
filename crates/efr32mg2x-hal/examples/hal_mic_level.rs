@@ -88,14 +88,15 @@ fn main() -> ! {
         }
     };
 
-    // ## Aqui não há PWM no LED, de propósito: TIMER0 é o pace do microfone
+    // ## There is no PWM on the LED here, on purpose: TIMER0 is the microphone's pace
     //
     // Este exemplo tinha os dois -- o LED num canal PWM do TIMER0 e o microfone a usar o mesmo TIMER0 como pace do
-    // IADC -- e o segundo a configurar o timer desfazia o primeiro. Medido 2026-11-21 na placa: a verificação do
-    // PWM dizia `TIMER0 is not counting (clock?)`, e dizia a verdade: o timer já não estava no modo que o PWM
-    // deixou. O exemplo pedia um periférico que a HAL só pode dar uma vez, e o aviso certo era o que aparecia.
+    // IADC -- and the second one to configure the timer undid the first. Measured 2026-11-21 on the board: the PWM's
+    // self-check said `TIMER0 is not counting (clock?)`, and it was telling the truth: the timer was no longer in the
+    // mode PWM had left it in. The example asked for a peripheral the HAL can hand out only once, and the right
+    // warning was the one that appeared.
     //
-    // O microfone é o assunto aqui; o LED era decoração sobre o mesmo recurso. Para ver o PWM do LED, há
+    // The microphone is the subject here; the LED was decoration on the same resource. To see the LED's PWM, there
     // `hal_timer0_pwm`, onde ele é o assunto e nada mais o disputa.
 
     // ## Dez leituras, uma por segundo

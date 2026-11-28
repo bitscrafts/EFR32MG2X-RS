@@ -14,11 +14,7 @@ Measured 2026-11-28 by counting lines containing a Portuguese accented character
 | `crates/efr32mg2x-hal/examples/hal_sysrtc_wrap.rs` | 18 |
 | `crates/xiao-mg24-bsp/examples/embassy_task_systrc.rs` | 13 |
 | `crates/efr32mg2x-hal/examples/hal_em2_sleep.rs` | 11 |
-| `crates/efr32mg2x-hal/examples/hal_mic_level.rs` | 5 |
-| `apps/dosimeter-ble/src/main.rs` | 5 |
-| `crates/efr32mg24-radio/examples/ble_beacon.rs` | 3 |
-| `crates/efr32mg24-radio/examples/ble_boot_probe.rs` | 2 |
-| **Total** | **148** |
+| **Total** | **133** |
 
 **Every library and driver source is clean.** What is left is documentation inside examples -- which is the worst
 place to leave it, because an example's header is where this repository records the measurement that makes the code
@@ -34,6 +30,10 @@ number is a defect: `i2c-async: who=0x6a pending=23 irq=12 wfi=12` and
 | File | Lines before | Now |
 |---|---|---|
 | `crates/efr32mg2x-hal/examples/hal_sysrtc_wide.rs` | 37 | 0 |
+| `crates/efr32mg24-radio/examples/ble_beacon.rs` | 3 | 0 |
+| `crates/efr32mg24-radio/examples/ble_boot_probe.rs` | 2 | 0 |
+| `crates/efr32mg2x-hal/examples/hal_mic_level.rs` | 5 | 0 |
+| `apps/dosimeter-ble/src/main.rs` | 5 | 0 |
 | `crates/efr32mg2x-hal/examples/hal_i2c_async.rs` | 30 | 0 |
 | `crates/efr32mg2x-hal/src/i2c/async_impl.rs` | 68 | 0 |
 | `crates/efr32mg2x-hal/src/sleep.rs` | 19 | 0 |

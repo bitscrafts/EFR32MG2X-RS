@@ -33,9 +33,9 @@ use panic_halt as _;
 #[path = "../../xiao-mg24-bsp/examples/common/mailbox.rs"]
 mod mailbox;
 
-// O redireccionador do `PendSV` **não** se define aqui: a biblioteca define-o (`efr32mg24_radio::ble`), porque
-// todos os consumidores da pilha precisam dele. Ficou aqui primeiro e o dosímetro, que nunca viu este exemplo,
-// parou no arranque com o `ICSR` a nomear o vector 14. A contagem lê-se com `ble::pendsv_redirects()`.
+// The `PendSV` redirector is **not** defined here: the library defines it (`efr32mg24_radio::ble`), because every
+// consumer of the stack needs it. Living here first, it stopped the dosimeter -- which never saw this example -- from
+// booting, with `ICSR` naming vector 14. The count is read with `ble::pendsv_redirects()`.
 
 fn push_dec(out: &mut [u8], mut at: usize, mut value: u32) -> usize {
     let mut digits = [0u8; 10];

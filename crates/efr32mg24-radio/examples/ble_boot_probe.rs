@@ -113,8 +113,8 @@ pub extern "C" fn BURTC_IRQHandler() {
     efr32mg24_bluetooth_sys::stack_init::service_link_layer();
 }
 
-/// O kick de arranque do vendor, entregue à linha 17. Também ele está na biblioteca -- mas a biblioteca só o compila
-/// com a feature `stack`, e esta sonda constrói sem ela de propósito.
+/// The vendor's start-up kick, delivered at line 17. It is in the library too -- but the library only compiles it
+/// with the `stack` feature, and this probe builds without it on purpose.
 #[no_mangle]
 pub extern "C" fn PendSV() {
     efr32mg24_bluetooth_sys::stack_init::request_service();
