@@ -591,3 +591,22 @@ O desenho que isto pede, e porque não é uma linha:
 
 Passo 2 muda API pública em dois módulos e mexe em todos os exemplos que escrevem -- é do mesmo tamanho do `f5`, e por
 isso não se faz a seguir ao `f6` na mesma sessão.
+
+### f20, o instrumento: uma tentativa, um resultado negativo medido (2026-11-28)
+
+    tx-timeout: control=240 written=240 refused_at=240 of=240      FAIL
+
+A ideia era fechar o bloco em si mesmo com `CFG0.LOOPBK` e não drenar o receptor: o FIFO de RX enche, o transmissor
+fica sem sítio para o frame seguinte, `TXFL` deixa de limpar, e `write_byte` devolve `Timeout`. Medido: **não**. 240
+bytes atravessaram sem uma única recusa, com e sem drenagem. O loopback desta parte não faz back-pressure no
+transmissor — o RX transborda (é o que o `hal_usart_link` mede do outro lado) e o TX continua a aceitar.
+
+Consequência para o instrumento: o caminho do `Timeout` só é alcançável desligando o relógio do bloco ou não pondo
+`TXENS`, e nenhum dos dois é alcançável por API pública. Ficam as duas opções já escritas:
+
+  a) o exemplo escreve no PAC directamente — quebra a regra de que nenhum chamador nomeia `pac::*`;
+  b) a HAL ganha um gancho explícito, `#[cfg(feature = "test-hooks")]`, que entrega um EUSART/USART com o relógio por
+     ligar. Feio, honesto, e fora de qualquer binário de produto.
+
+O exemplo da tentativa está em `_trash/tx-timeout-instrument-2026-11-28/hal_tx_timeout.rs` — não fica na árvore a
+falhar, mas também não se apaga: é a prova de que o caminho óbvio não existe.
