@@ -79,9 +79,10 @@ yet: none of them has an instrument in this crate, and a driver written without 
     letimer: clk=0x00000101 top0=1000 top=1000 comp0=500 comp1=250 refused=1 cnt0=1000 p1=501 qe=0 ql=1 pq=250 wrap=1 if1=0x00000001 ifc=0x00000000 if2=0x00000001 p2=499 cnt=499
     letimer: clk=0x00000101 top0=0    top=1000 comp0=500 comp1=250 refused=1 cnt0=1000 p1=501 qe=0 ql=1 pq=250 wrap=1 if1=0x00000001 ifc=0x00000000 if2=0x00000001 p2=499 cnt=499
     letimer: clk=00000401 want=500 rb=500 fired1=0 rtc1=1600 fired2=0 rtc2=1600 cnt_start=65525 cnt=62315
+    letimer: clk=0x00000101 top0=1000 top=1000 comp0=500 comp1=250 refused=1 cnt0=1000 p1=501 qe=0 ql=1 pq=250
 ```
 
-Controls and the full story: [LETIMER-COMPARE-2026-11-26.md](../../../../docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md)
+Controls and the full story: [LETIMER-COMPARE-2026-11-26.md](../../../../docs/04-reference/LETIMER-COMPARE-2026-11-26.md), [LETIMER-TOP-2026-11-26.md](../../../../docs/04-reference/LETIMER-TOP-2026-11-26.md), [SDK-PARITY-AUDIT-2026-11-28.md](../../../../docs/04-reference/SDK-PARITY-AUDIT-2026-11-28.md)
 
 ## What is not proven
 

@@ -59,13 +59,12 @@ Read from the source, so it cannot drift:
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `X` | `src/cores/slots.rs` |
 | `acmp0_s` | `src/acmp/mod.rs` |
-| `aliases` | `src/pcnt.rs` |
+| `aliases` | `src/letimer.rs`, `src/pcnt.rs` |
 | `cmu_s` | `src/board.rs`, `src/pcnt.rs` |
 | `emu_ns` | `src/sleep.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |
 | `i2c0_ns` | `src/i2c/async_impl.rs` |
 | `iadc0_s` | `src/board.rs`, `src/microphone.rs` |
-| `letimer0_ns` | `src/letimer.rs` |
 | `pcnt0_ns` | `src/pcnt.rs` |
 | `prs_s` | `src/adc/mod.rs`, `src/pcnt.rs` |
 | `timer0_s` | `src/board.rs`, `src/pwm.rs` |

@@ -91,9 +91,6 @@ const IF_ALL: u32 = 0x1F;
 /// `IF`, relative to the peripheral base (the PAC's own offset).
 const IF_OFFSET: usize = 0x034;
 
-/// Where the write-1-to-clear alias of every register in this family lives: base + 0x2000 + the register's offset.
-const CLEAR_ALIAS: usize = 0x2000;
-
 /// `LETIMER0`, owned by one caller.
 pub struct Letimer {
     regs: pac::Letimer0Ns,
@@ -306,11 +303,12 @@ impl Letimer {
     /// added instead. The clear lives at `IF + 0x2000`, the alias window every peripheral in this family has (the I2C
     /// driver learned the same lesson on 2026-11-24: `docs/04-reference/I2C0-READ-DEFECT.md`).
     fn clear_if(&mut self, bits: u32) {
-        let base = &*self.regs as *const pac::letimer0_ns::RegisterBlock as usize;
-        // SAFETY: `base + IF + 0x2000` is the clear alias of a register the caller owns through this value; the write is
-        // 32 bits wide, which is the register's own width. It has no effect on any other register.
-        unsafe {
-            core::ptr::write_volatile((base + IF_OFFSET + CLEAR_ALIAS) as *mut u32, bits);
-        }
+        // `pac::Letimer0Ns::ptr()` is the address the PAC was built with, which is what an alias write needs; taking the
+        // address of the handle instead would target RAM.
+        let base = pac::Letimer0Ns::ptr() as usize;
+        // SAFETY: `IF_OFFSET` is `IF`'s offset in this block's frame, `base` is the PAC's own address for LETIMER0, and
+        // the word is built from the block's own flag bits; the alias block is the one every peripheral in this family
+        // has (`pac::aliases`, where the SVD does not describe it).
+        unsafe { pac::aliases::clr(base, IF_OFFSET, bits) };
     }
 }

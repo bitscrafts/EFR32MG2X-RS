@@ -29,7 +29,7 @@ Status: `not started` · `read` · `differs` · `parity` · `parity measured` (a
 | `spi` | `src/spi/` | `em_usart.c`, `em_eusart.c` (sync mode) | `series2/usart/*_spi*` | **read** (same blocks as usart/eusart) |
 | `i2c` | `src/i2c/` | `em_i2c.c` | `series2/i2c/*` | **read**: aliases only for `IEN_SET` (`em_i2c.c:933`); commands are written plain, as we do |
 | `timer` | `src/timer/` | `em_timer.c` | `series2/timer/*` | **read**: `EN_CLR`/`EN_SET` (`em_timer.c:185`, `:201`, `:273`, `:291`); we write `EN` plain and the timer is measured working |
-| `letimer` | `src/letimer.rs` | `em_letimer.c` | `series2/letimer/*` | **read**: `EN_SET` then a sync **before** `SWRST_SET` (`em_letimer.c:548`, `:553`) -- the enable-before-sync rule again |
+| `letimer` | `src/letimer.rs` | `em_letimer.c` | `series2/letimer/*` | **parity measured**, with one deliberate divergence |
 | `pwm` | `src/pwm.rs` | `em_timer.c` | `series2/timer/timer_pwm*` | not started |
 | `pcnt` | `src/pcnt.rs` | `em_pcnt.c` | `series2/pcnt/pcnt_single_oversampling_overflow` | **parity measured** |
 | `adc` | `src/adc/` | `em_iadc.c` | `series2/iadc/*` | not started |
@@ -95,6 +95,28 @@ Two conclusions that change how this audit is run:
   from the vendor's `.c` for that block.
 * **`sysrtc` takes no aliases at all**, which is why nothing there ever looked like the PCNT. A module that works is not
   evidence that the pattern is absent elsewhere; it is evidence about that block.
+
+## Module: LETIMER — a divergence that is deliberate, and one that was tidy-up
+
+Read against `em_letimer.c` on 2026-11-28:
+
+| Check | Vendor | Ours | Verdict |
+|---|---|---|---|
+| Which register gets the command | plain `CMD` (`em_letimer.c:274`) | plain `cmd()` | parity -- unlike the PCNT, this block accepts the plain write |
+| Sync before the command | `regSync(SYNCBUSY_STOP \| SYNCBUSY_START)` before `CMD = START/STOP` (`:267`) | **no poll at all**, on purpose | **deliberate divergence**: our module records that reading `SYNCBUSY` on this block stalls the bus, measured three times (`src/letimer.rs:21`), and the caller settles with `SETTLE_US` instead |
+| Clearing flags | `IF_CLR` | wrote `IF + 0x2000` by hand | same effect; now expressed through `pac::aliases::clr` |
+| Enable order | `EN_SET`, then a sync, then `SWRST_SET` (`:548`, `:553`) | enable first, settle, then clear | same order |
+
+The divergence is worth keeping and worth *labelling*: the vendor busy-waits on `SYNCBUSY` and its own comment warns that
+the wait can stall with an external clock; on this part the read stalls even with an internal one. A busy-wait we cannot
+complete is worse than a settle time the caller keeps, so the record stands -- but it is a difference from the vendor and
+this row exists so nobody "fixes" it back.
+
+Instrument after the alias tidy-up:
+
+    seq=1 status=PASS len=173
+    letimer: clk=0x00000101 top0=1000 top=1000 comp0=500 comp1=250 refused=1 cnt0=1000 p1=501 qe=0 ql=1 pq=250
+             wrap=1 if1=0x00000001 ifc=0x00000000 if2=0x00000001 p2=499 cnt=499
 
 ## Module: PCNT — the worked example
 
