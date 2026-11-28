@@ -1,5 +1,7 @@
 [package]
 name = "efr32mg2x-bootloader"
+# Not for the registry: see `scripts/check-publishable.py` for the two crates that may ship.
+publish = false
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"

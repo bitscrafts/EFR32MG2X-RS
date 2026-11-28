@@ -1,5 +1,7 @@
 [package]
 name = "efr32mg2x-rail-sys"
+# Not for the registry: see `scripts/check-publishable.py` for the two crates that may ship.
+publish = false
 version = "0.1.0"
 authors = ["Marcelo Correa <mvcorrea+github@gmail.com>"]
 edition = "2021"

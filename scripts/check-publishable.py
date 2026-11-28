@@ -125,6 +125,31 @@ def check_own_urls(name, d, failures):
 
 
 
+def unpublished_problems() -> list[str]:
+    """Every package that is not in CRATES must say `publish = false`.
+
+    The alternative is what existed until 2026-11-27: one crate said it, and `efr32mg2x-rail-sys`,
+    `efr32mg2x-bluetooth-sys`, `efr32mg2x-radio`, both BSPs, `cmsis-stubs`, the embassy runtime and both
+    bootloader crates were all one `cargo publish` away from the registry. Only a missing token stopped the
+    2026-11-15 attempt; the intent is the defect, not the outcome. A crate that carries vendor binaries or a
+    board's own pin map is not something a stranger can build, and shipping it publishes a broken package.
+    """
+    problems = []
+    for directory in sorted(list(ROOT.glob("crates/*/")) + list(ROOT.glob("apps/*/"))):
+        manifest = directory / "Cargo.toml"
+        if not manifest.exists():
+            continue
+        text = manifest.read_text(errors="replace")
+        name = re.search(r'^name\s*=\s*"([^"]+)"', text, re.M)
+        if name is None or name.group(1) in CRATES:
+            continue
+        if not re.search(r"^publish\s*=\s*false", text, re.M):
+            problems.append(
+                f"{name.group(1)}: not in the publishable list and does not say `publish = false`"
+            )
+    return problems
+
+
 def main():
     failures = []
     for name, spec in CRATES.items():
@@ -174,6 +199,11 @@ def main():
                     failures.append(f"{name}: {doc.relative_to(d)}:{line} says '{m.group(0)}'")
 
         print(f"  {name}: {len(files)} files packaged, README links and includes checked")
+
+    closed = unpublished_problems()
+    failures.extend(closed)
+    if closed:
+        print(f"  {len(closed)} package(s) can reach the registry without a decision")
 
     if failures:
         print("\nFAIL what would be published does not match the tree:")
