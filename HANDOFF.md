@@ -610,3 +610,40 @@ Consequência para o instrumento: o caminho do `Timeout` só é alcançável des
 
 O exemplo da tentativa está em `_trash/tx-timeout-instrument-2026-11-28/hal_tx_timeout.rs` — não fica na árvore a
 falhar, mas também não se apaga: é a prova de que o caminho óbvio não existe.
+
+### f20, segunda tentativa com o gancho: também sem registo (2026-11-28)
+
+Ordem invertida, como o Sonnet propôs e como a primeira tentativa pedia: `eusart0_async` constrói o driver **com** o
+relógio ligado, e só depois o gancho limpa `CLKEN1.EUSART0`.
+
+    no complete record after 12 attempts; last magic seen: 00000000
+
+Duas leituras, mesma resposta. O construtor já não bloqueia (é esse o gancho), portanto o que falha agora é depois: uma
+escrita em `TXDATA` num bloco sem relógio é, muito provavelmente, um acesso barrado que leva a fault -- e o programa não
+tem handler de fault que escreva o mailbox, por isso o `panic_halt` não deixa rasto nenhum. A hipótese é verificável: um
+handler de `HardFault` que grave `magic`+`CFSR` no mailbox diria se é fault ou espera.
+
+O que isto deixa assente, medido duas vezes: **o caminho do `Timeout` não se alcança desligando o relógio**, nem antes
+nem depois de configurar. As saídas que restam:
+
+  a) não pôr `TXENS` no `CTRL` -- o transmissor fica ligado mas não habilitado, e `TXFL` não limpa. Não precisa de
+     gancho nenhum se o `Config` tiver como dizer "não habilites o transmissor", o que é API pública, não hook;
+  b) um handler de `HardFault` que escreve no mailbox, para o caso de o acesso barrado ser o mecanismo -- mais caro, e
+     só faz sentido depois de (a), que é o caminho que descreve o defeito real (um `TXENS` que ninguém pôs é o que
+     acontece a quem monta o periférico à mão).
+
+Terceiro resultado negativo seguido nesta matéria. O instrumento não fica na árvore a falhar: o exemplo está escrito, o
+gancho por trás de `test-hooks` está documentado, e nenhum dos dois afirma uma medição que não houve.
+
+### f20 — a documentação completa, e o teste que falta (2026-11-28)
+
+`docs/04-reference/F20-TX-TIMEOUT-INSTRUMENT-2026-11-28.md` reúne o que foi pago: o defeito com as linhas, a correcção
+(`9621f31`), os **quatro instrumentos que não mediram nada** com o registo literal de cada um, o que fica estabelecido
+e o que não fica, e o teste que o próximo tenta primeiro.
+
+O teste que falta é barato e é o único que ainda não se fez: escrever o mailbox **por etapas** (depois do `Board::take`,
+depois do construtor, antes da primeira escrita, depois do ciclo). A última etapa presente é o sítio onde o programa
+pára, e isso transforma "nenhum registo" num número de linha -- o que quatro iterações às cegas não compraram.
+
+O dispatch ao Sonnet voltou vazio por culpa do script (sessão de leitura, sem `--permission-mode acceptEdits`); o
+conserto está escrito na secção 7 do documento.

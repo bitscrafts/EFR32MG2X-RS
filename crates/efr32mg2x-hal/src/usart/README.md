@@ -93,4 +93,4 @@ Controls and the full story: [EUSART-ASYNC-2026-11-27.md](../../../../docs/04-re
 
 ## Using it
 
-See `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_one_of_each.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`
+See `examples/hal_eusart1_loopback.rs`, `examples/hal_eusart_loopback.rs`, `examples/hal_one_of_each.rs`, `examples/hal_tx_timeout.rs`, `examples/hal_usart_link.rs`, `examples/hal_usart_rx_recovery.rs`

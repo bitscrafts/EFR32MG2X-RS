@@ -41,6 +41,11 @@ default = ["mg24"]
 # where the register map lives -- no second guard is needed here.
 mg24 = ["efr32mg2x-pac/mg24"]
 rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
+# Hooks that exist only so an instrument can reach a path public API deliberately does not offer -- today the
+# transmit timeout, which needs a block whose clock is off. Never enable this in a product: it defeats the guard that
+# says a caller cannot name a peripheral the board has not handed out. Every item behind it is documented as a test
+# hook, and the gate builds the examples that use it with the feature on purpose.
+test-hooks = []
 
 [dev-dependencies]
 # Examples are applications: they may compose the HAL with an algorithm crate.
@@ -65,3 +70,10 @@ panic-probe = { version = "1.0", features = ["print-defmt"] }
 [package.metadata.docs.rs]
 targets = ["thumbv8m.main-none-eabihf"]
 rustdoc-args = ["--cfg", "docsrs"]
+
+# The timeout instrument needs the hook, which only exists with `test-hooks`; declaring it here means a
+# plain `cargo build --examples` skips the example instead of failing, and the gate's group builder
+# (`scripts/example-groups.py`) builds it with exactly these features.
+[[example]]
+name = "hal_tx_timeout"
+required-features = ["rt", "test-hooks"]

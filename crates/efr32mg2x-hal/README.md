@@ -96,7 +96,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-35 public modules (`pub mod` in `src/lib.rs`) and 44 examples. A date next to an example means a record was
+35 public modules (`pub mod` in `src/lib.rs`) and 45 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -294,7 +294,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-44 examples, **32 of them watched on the part**. A `--` in the last column means nobody
+45 examples, **32 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -341,6 +341,7 @@ mean it works.
 | `hal_timer_compare.rs` | Does the compare channel fire? Measured against the counter itself, with a wait long enough to matter. | 2026-11-24 |
 | `hal_timer_instances.rs` | Do the other four timer instances actually count? `TIMER1`–`TIMER4` were "compiled, not measured" for months, and | 2026-11-27 |
 | `hal_timer_ticks.rs` | The tick timer, measured rather than assumed. | 2026-11-24 |
+| `hal_tx_timeout.rs` | A transmitter that never drains returns `Err(Timeout)` instead of hanging. | -- |
 | `hal_usart_link.rs` | USART on the header pads: a jumper D6–D7 for the on-board proof, or an adapter for an outside witness. | 2026-11-25 |
 | `hal_usart_rx_recovery.rs` | Does the receiver recover after an overrun? It is the property a product depends on. | -- |
 | `hal_wdog_feed.rs` | The watchdog, fed on purpose, and asked whether it took the lock. | 2026-11-24 |
