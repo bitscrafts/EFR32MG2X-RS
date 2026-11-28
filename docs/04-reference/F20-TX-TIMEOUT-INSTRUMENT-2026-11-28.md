@@ -165,6 +165,28 @@ So the earlier "constructor hangs" was not the constructor: it was the **write t
 returned. Moving the same line into a driver method (`disable_transmitter_for_test`) made it pass -- the difference
 being that the driver's copy is the block's own handle, while the board's was a second `steal()`.
 
+## RETRACTION, same evening: the three "facts" below were measured through a broken hook
+
+An outside review (`claude-opus-5-5`, `OPUS-REVIEW-F20-2026-11-28.md`) read the PAC and found the defect that makes
+this section worthless as written:
+
+* **`CMD` acts only on bits written as one.** `txen().clear_bit()` writes a **zero** into that register and therefore
+  does nothing at all. The bit that disables a transmitter is `CMD.TXDIS` (bit 3, `usart0_s/cmd.rs:43`). Every
+  measurement taken "with the transmitter disabled" was taken with the transmitter **running**.
+* **`STATUS.TXC` is clear after reset** (`STATUS` reads `0x2040`), so a `flush` that looked only at it reported
+  `Timeout` on a port that had never transmitted. That, and not the bound, is what `flush_timeout=1` measured -- and
+  what `control_flush=0` measured, from the other side. The defect is fixed in `c344432` (`tx_pending`).
+* None of the records carried `STATUS.TXENS`, the bit that would have shown the transmitter was still enabled. A
+  record that cannot distinguish "disabled" from "enabled" cannot settle this question at all.
+
+So: facts 1 and 3 below are **not established** -- they describe a transmitter that was never disabled. Fact 2's
+observation (a `Timeout` appeared) is real, but its cause was the `flush` bug, not a stalled transmitter. What remains
+true is only what does not depend on the hook: the loopback experiment (the receiver overruns, it does not
+back-pressure) and the fact that a `CMD` write from a second `steal()` in `board.rs` never returned.
+
+The corrected design, and the record that would settle it, is at the end of `OPUS-REVIEW-F20-2026-11-28.md`: one boot
+with `flush->Ok`, `TXDIS`, `TXENS` recorded as zero, writes until a refusal, `flush->Timeout`, `TXEN`, `flush->Ok`.
+
 ## Three facts the board settled
 
 1. **`write_byte` cannot be made to block.** With `CMD.TXEN` clear the block accepts every byte and discards it: `TXFL`
