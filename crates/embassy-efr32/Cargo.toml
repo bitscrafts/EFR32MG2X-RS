@@ -12,6 +12,10 @@ critical-section = "1"
 cortex-m = "0.7"
 
 [dev-dependencies]
+# The provider of `critical-section` for this crate's examples: an application chooses one, a library does not.
+# `efr32mg2x-hal` stopped selecting it for its consumers on 2026-11-27 (B3), so every application in this
+# workspace that links a binary declares it here.
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
 

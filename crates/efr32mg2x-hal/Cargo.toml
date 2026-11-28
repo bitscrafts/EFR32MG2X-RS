@@ -11,7 +11,13 @@ categories = ["embedded", "hardware-support", "no-std"]
 
 [dependencies]
 efr32mg2x-pac = { path = "../efr32mg2x-pac", version = "0.1.1" }
-cortex-m = { workspace = true, features = ["critical-section-single-core"] }
+# No `critical-section-single-core` here. That feature names a *provider* of the critical-section API, and a library
+# that selects one for its users takes the choice away from them: an application with an RTOS, or with TrustZone
+# splitting the two worlds, brings its own provider and would hit duplicate symbols at link time. The HAL needs
+# `cortex-m`; it does not need to decide who implements a critical section. The examples and tests still link,
+# because they are applications and a provider is declared for them below. (An outside review found this on
+# 2026-11-27, B3; `efr32mg2x-pac` already had it right, in dev-dependencies.)
+cortex-m = { workspace = true }
 embedded-hal = { workspace = true }
 critical-section = { workspace = true }
 nb = "1.1"
@@ -33,6 +39,9 @@ rt = ["efr32mg2x-pac/rt", "cortex-m-rt"]
 # Examples are applications: they may compose the HAL with an algorithm crate.
 # The dependency never goes the other way — the HAL does not know what a fall is.
 cortex-m-rt = { workspace = true, default-features = false }
+# The provider of `critical-section` for the examples and the host tests: an application picks one, a library does
+# not. This is the same line the PAC carries in its dev-dependencies.
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 panic-halt = "0.2"
 # Diagnostics for the examples, not a dependency of the HAL: deferred formatting keeps the format strings on the host,
 # and panic-probe prints the panic with a backtrace over the same SWD cable that flashes the board.

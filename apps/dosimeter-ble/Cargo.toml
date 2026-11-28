@@ -25,10 +25,14 @@ xiao-mg24-bsp = { package = "efr32mg2x-xiao-bsp", path = "../../crates/xiao-mg24
 efr32mg24-radio = { package = "efr32mg2x-radio", path = "../../crates/efr32mg24-radio", features = ["stack", "external-bonding"] }
 efr32mg2x-ble-bond-heal-core = { path = "../../libraries/ble-bond-heal-core" }
 
+
 # Machine-local, by design. See the note above.
 dosimeter-mg24 = { path = "/projects/dosimeter-mg24" }
 
-cortex-m = "0.7"
+# This firmware is an application, so it chooses the provider of `critical-section`: until 2026-11-27 it did not
+# have to, because `efr32mg2x-hal` selected one for every consumer -- the defect B3 removed. Without the feature
+# the link fails with `undefined symbol: _critical_section_1_0_acquire`, measured on the first attempt.
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
 cortex-m-rt = "0.7"
 panic-halt = "0.2"
 defmt-rtt = "0.4"

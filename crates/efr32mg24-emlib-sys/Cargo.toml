@@ -11,6 +11,10 @@ links = "emlib_min"
 cc = "1.0"
 
 [dev-dependencies]
+# The provider of `critical-section` for this crate's examples: an application chooses one, a library does not.
+# `efr32mg2x-hal` stopped selecting it for its consumers on 2026-11-27 (B3), so every application in this
+# workspace that links a binary declares it here.
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 # The example needs a board to read the DWT counter and a delay to measure the clock against. That is
 # a dev-dependency on purpose: nothing in the radio path should depend on the HAL.
 efr32mg2x-hal = { package = "efr32mg2x-hal", path = "../efr32mg2x-hal", features = ["rt"] }

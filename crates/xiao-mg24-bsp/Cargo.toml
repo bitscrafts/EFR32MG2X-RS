@@ -38,6 +38,10 @@ embassy-executor = { version = "0.7", features = ["arch-spin", "executor-thread"
 # efr32mg24-zigbee-sys = { workspace = true, optional = true }     # Phase D3
 
 [dev-dependencies]
+# The provider of `critical-section` for this crate's examples: an application chooses one, a library does not.
+# `efr32mg2x-hal` stopped selecting it for its consumers on 2026-11-27 (B3), so every application in this
+# workspace that links a binary declares it here.
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
 # Only for `module_ble_beacon`: the radio stack is three MSLA blobs, and a user of a GPIO must not
 # inherit them. The example opts in; the crate does not.
 efr32mg24-radio = { package = "efr32mg2x-radio", path = "../efr32mg24-radio" }

@@ -67,3 +67,9 @@ required-features = ["ble", "gatt", "stack"]
 [[example]]
 name = "ble_diag"
 required-features = ["ble", "stack", "diag"]
+
+[dev-dependencies]
+# The provider of `critical-section` for this crate's examples: an application chooses one, a library does not.
+# `efr32mg2x-hal` stopped selecting it for its consumers on 2026-11-27 (B3), so every application in this
+# workspace that links a binary declares it here.
+cortex-m = { workspace = true, features = ["critical-section-single-core"] }
