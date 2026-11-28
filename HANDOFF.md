@@ -5,6 +5,37 @@ was found faulty on 2026-11-15 and is away for replacement (about a month); that
 anything already measured with it — those dates stand — and the examples that need the carrier say so
 until another one is on the bench. The board left running `hal_wdog_feed`, its record `PASS`.
 
+## Session 2026-11-28 (night) — the parity audit closed, and a gate that went red on a green tree
+
+**State:** `master` clean, gate **PASS**, 105 host tests, tree building, board attached and idle. HEAD `2bf70e7`.
+
+**Done tonight**
+
+1. `docs/04-reference/SDK-PARITY-AUDIT-2026-11-28.md` — **all twenty rows carry a verdict**. One defect (the PCNT's
+   `CMD`), one statement corrected (the `clock/` module's claim about the crystal), two measured parities (`pcnt`,
+   `letimer`), the rest read and found at parity or outside what this crate drives. The rules at the top of the file
+   are what keeps the remaining work honest: plain `EN` is accepted almost everywhere, and a module that works is
+   evidence about that block, not about the family.
+2. `letimer.rs` — flag clearing moved to `pac::aliases::clr`, with the base from `Letimer0Ns::ptr()` (the PAC's address,
+   not the handle's -- the difference that cost the PCNT a fault). Recorded: `seq=1 PASS len=173`.
+3. `clock/clocks.rs` — a **false** statement corrected: the crystal *can* be started (`CMU_CLKEN0.LFXO`, bit 23,
+   `efr32mg24_cmu.h:545`). What is absent is the readiness bit (`STATUS.LFXORDY` does not exist on this part; only
+   `CALRDY`). Selecting LFXO stays refused, for a narrower and truer reason.
+4. `/projects/docs/01-overview/DO-NOT-REPEAT.md` §11 — a gate run beside another `cargo` job in the same target
+   directory reports a shortfall that does not exist (7 examples read as 5, 27 as 8). Re-run alone: `VERDICT: PASS`.
+
+**Open**
+
+- `clock/clocks.rs` still carries its reasoning in Portuguese, against the project's rule. The LFXO block has been
+  rewritten in English; the rest of the file needs the same, as a separate job.
+- LFXO for real: start the gate, settle for a time from the crystal's specification, then **prove the rate** against
+  an independent base (SYSRTC on the LFRCO). A measurement, not a register.
+- `scripts/check-core-split.py` still fails on five crates and is **not in the gate** -- a decision to take.
+- `apps/dosimeter-ble`: 6 warnings; the gate does not run `deny(warnings)` under `apps/`.
+
+**The lesson of the night, beyond §11:** a hypothesis dies against the vendor's own code, not on the bench. The PCNT's
+`CMD` cost four experiments; `em_pcnt.c` says it on its first page.
+
 ## Session 2026-11-27 — TIMER1–TIMER4 measured, and the constructor nobody could call was wrong twice
 
 **State: green.** Branch `master`, pushed. Board left running `hal_timer_instances`, `status=PASS`
@@ -651,6 +682,10 @@ conserto está escrito na secção 7 do documento.
 ---
 
 # Sessão de 2026-11-28 — estado para retomar
+
+> **Superseded.** This section was written mid-session and has been carried to the top of the file (see
+> *Session 2026-11-28 (night)*) and to `docs/04-reference/SDK-PARITY-AUDIT-2026-11-28.md`. It is left in place
+> only so a reader arriving from an older link is not silently handed a stale HEAD.
 
 ## Onde está a árvore
 
