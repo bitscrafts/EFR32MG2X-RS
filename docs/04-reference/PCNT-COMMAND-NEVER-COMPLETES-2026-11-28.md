@@ -136,3 +136,103 @@ never lands, `CORERST` is the wrong first command on this part and `init` should
 
 Until one of those is measured, `src/pcnt.rs` stays as it was, and the give-up stays -- with this file as the reason it
 is a give-up and not an oversight.
+
+---
+
+# The source was one `curl` away, and it names the defect
+
+This document said "the emlib implementation is not in the repository -- only headers are vendored", and treated that
+as the end of what could be known. It was not: `SiliconLabs/gecko_sdk` publishes `platform/emlib/src/em_pcnt.c`, and the
+file is one request away.
+
+    curl -sL https://raw.githubusercontent.com/SiliconLabs/gecko_sdk/master/platform/emlib/src/em_pcnt.c \
+      -o /projects/_tmp/efr32mg24-rs/emlib/em_pcnt.c      # 1067 lines
+
+## What the official Series-2 sequence does, and what this driver does instead
+
+`PCNT_Init`, Series-2 branch (`#else` at `em_pcnt.c:699`):
+
+    if (pcnt->EN == 1U) { PCNT_Sync(pcnt, _PCNT_SYNCBUSY_MASK); }
+    pcnt->EN_CLR = PCNT_EN_EN;
+    while (pcnt->EN & _PCNT_EN_DISABLING_MASK) { }
+    ... CFG writes ...
+    pcnt->EN_SET = PCNT_EN_EN;
+    PCNT_Sync(pcnt, _PCNT_SYNCBUSY_MASK);
+
+and `PCNT_CounterReset` (`em_pcnt.c:128`):
+
+    PCNT_Sync(pcnt, PCNT_SYNCBUSY_CMD);
+    pcnt->CMD_SET = PCNT_CMD_CNTRST | PCNT_CMD_AUXCNTRST;
+    PCNT_Sync(pcnt, PCNT_SYNCBUSY_TOP);
+    pcnt->TOP = _PCNT_TOP_RESETVALUE;
+
+`CORERST` appears **once** in the whole file, at `em_pcnt.c:755`, inside a
+`#if defined(_SILICON_LABS_32B_SERIES_0) || defined(_SILICON_LABS_32B_SERIES_1)` branch, and there it is issued only
+to change to an **external** clock -- with the comment that the reset must be held while the source changes.
+
+`Pcnt::init` in this crate does the opposite of both: it writes `CMD.CORERST` as the **first** thing it does, on a
+Series-2 block running from an internal clock, and then waits for `EN.DISABLING` -- a bit that, as the measurement above
+showed, is clear throughout. So the block is left with a command pending in the low-frequency domain that nothing
+completes, which is exactly what `SYNCBUSY.CMD = 0x2` says, and it explains every later symptom: `set_top`, `start` and
+every other command in this driver queues behind it.
+
+## What that changes
+
+The three experiments above were all chasing the *consequence*: the pending command keeps `SYNCBUSY` set no matter
+which clock sources the branch, which is why neither LFRCO nor ULFRCO changed anything. The cause is that `init` issues
+a Series-1 command on a Series-2 block.
+
+The fix is to follow the SDK: no `CORERST`; disable (`EN_CLR`), wait out `DISABLING`, configure, `EN_SET`, and use
+`CMD.CNTRST | CMD.AUXCNTRST` when a counter reset is actually wanted. That has to be measured -- the instrument is in
+the tree and takes one boot.
+
+---
+
+# SOLVED, 2026-11-28 late: two rules from the vendor SDK, and the counter runs
+
+Reading `em_pcnt.c` and the Series-2 example (`peripheral_examples/series2/pcnt/pcnt_single_oversampling_overflow`)
+against our driver found **two** rules, and violating either one alone is enough to leave `SYNCBUSY` set for ever.
+
+## 1. Commands go through the SET/CLR alias blocks, not the plain register
+
+`efr32mg24_pcnt.h:62` shows `uint32_t RESERVED0[1008U]` immediately after `LOCK`, and then `EN_SET`, `CMD_SET`, ...
+followed by `EN_CLR`, `CMD_CLR`. The aliases live **inside each peripheral's frame** at `0x1000` (SET) and `0x2000`
+(CLR). The SVD this PAC was generated from describes only the plain block, so `cmd().write()` lands on `0x14` -- and on
+this part that write is refused: measured twice, a precise bus error, `BFAR = PCNT0 + 0x14`, `CFSR = 0x8200`. The
+vendor's driver never writes the plain register (`em_pcnt.c:131`, `:170`, `:191`).
+
+Fixed in the PAC: `crates/efr32mg2x-pac/src/aliases.rs`, hand-written and documented as such, with `set()` and `clr()`
+taking the block's base. The HAL uses it through `write_alias`; `Pcnt::base()` is `pac::Pcnt0Ns::ptr()`, not the address
+of the handle (the first attempt used the latter, wrote into RAM and faulted with `BFAR = 0x2004_0f2c`).
+
+## 2. `SYNCBUSY` only clears while the block is enabled
+
+Every `PCNT_Sync` in the SDK happens with `EN` high: `PCNT_Init` sets `EN_SET` and *then* syncs (`em_pcnt.c:191`), and
+`PCNT_Enable`'s disable path syncs *before* clearing `EN`. With `EN` low a command sits in the low-frequency domain and
+the pending bit never drops -- which is what every earlier record showed, and why changing the clock source made no
+difference.
+
+Fixed in the HAL: `Pcnt::init` disables, then **enables**, then issues `CNTRST | AUXCNTRST`; `disable()` writes
+`EN_CLR` and waits out `DISABLING`, and no command is issued while the block is off.
+
+## The record
+
+`hal_pcnt_request`, two boots identical:
+
+    pcnt-req: en0=00000001 sync0=00000000 en1=00000001 sync1=00000000
+              clk=00000001 clken0=05400000 clken1=00200000 em23=00000003 sync_ulfrco=00000000
+
+`init` returns with `SYNCBUSY` clear, `start()` completes, and a command issued after the ULFRCO switch completes too.
+
+And the example that had been recording `magic 0` for days now passes:
+
+    seq=1 status=PASS len=178
+    pcnt: ch=3 cfg=0x00000100 ctrl=0x00000010 st=0x00000000 a=4 lv=4 b=2 c=3 off=0 stop=0 q=0 mm=0
+          p0=4 ok=25000 bad=50000 g=85 e=200 of=0 ar=4 br=2 cf=2 cm=4 hr=4 em=8 if=0x00000000
+
+## What this says about the three "excluded" causes above
+
+They were excluded correctly, and all three were consequences: a command pending in the synchroniser keeps
+`SYNCBUSY` set whatever the clock does, and the fault at `PCNT0 + 0x14` was the plain-register write, not the `EN` state.
+The lesson is the one that cost the most today: three careful experiments on the wrong premise are worth less than ten
+minutes with the vendor's implementation.

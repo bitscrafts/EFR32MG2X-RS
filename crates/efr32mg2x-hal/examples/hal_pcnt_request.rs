@@ -34,12 +34,6 @@ mod mailbox;
 #[path = "common/fault_record.rs"]
 mod fault_record;
 
-/// `CMD.CORERST`: reset the counter's clock domain, the first thing `Pcnt::init` does.
-const CORERST: u32 = 0x001;
-
-/// The iterations `wait_disabled` allows before it gives up: 200 000 x `delay(64)`.
-const BOUND: u32 = 200_000;
-
 #[entry]
 fn main() -> ! {
     mailbox::invalidate();
@@ -54,33 +48,25 @@ fn main() -> ! {
         Err(_) => fail(b"pcnt-req: the counter is not available"),
     };
 
-    // SAFETY: the driver is idle -- nothing has been commanded yet -- and every access below is a read except the one
-    // `CMD` write the driver itself would do next. The borrow is held for this block only; no driver method runs while
-    // the second handle is alive.
-    let (en0, sync0, en1, sync1, en2, sync2, spins) = unsafe {
+    // The driver's own `init`, which now writes the SET/CLR aliases this PAC cannot express. Then the same reading.
+    pcnt.init();
+
+    // SAFETY: `init` has returned, so the driver is idle; the borrow lasts for this block and no driver method runs
+    // inside it.
+    let (en0, sync0) = unsafe {
         let block = pcnt.raw_block();
-        let en0 = block.en().read().bits();
-        let sync0 = block.syncbusy().read().bits();
-
-        // The same word `Pcnt::init` writes, written here so the three moments can be read around it.
-        block.cmd().write(|w| w.bits(CORERST));
-        let en1 = block.en().read().bits();
-        let sync1 = block.syncbusy().read().bits();
-
-        // The wait, spelled out and counted, with the same margin the driver uses.
-        cortex_m::asm::delay(4_000);
-        let mut spins = 0u32;
-        while block.en().read().disabling().bit_is_set() {
-            spins += 1;
-            if spins > BOUND {
-                break;
-            }
-            cortex_m::asm::delay(64);
-        }
-        let en2 = block.en().read().bits();
-        let sync2 = block.syncbusy().read().bits();
-        (en0, sync0, en1, sync1, en2, sync2, spins)
+        (block.en().read().bits(), block.syncbusy().read().bits())
     };
+
+    // One command through the driver, then the same reading: this is the pair that used to sit pending for ever.
+    let _ = pcnt.start();
+    cortex_m::asm::delay(4_000);
+    // SAFETY: as above, `start` has returned.
+    let (en1, sync1) = unsafe {
+        let block = pcnt.raw_block();
+        (block.en().read().bits(), block.syncbusy().read().bits())
+    };
+    let _ = pcnt.stop();
 
     // ---- second experiment: the same command, with the branch sourced from ULFRCO ---------------------------------
     // ULFRCO is the one oscillator on this part that has no enable and always runs. If `SYNCBUSY.CMD` clears under it,
@@ -91,7 +77,7 @@ fn main() -> ! {
         cmu.clken0().modify(|_r, w| w.ulfrco().set_bit());
         cmu.em23grpaclkctrl().modify(|_r, w| w.clksel().ulfrco());
         let block = pcnt.raw_block();
-        block.cmd().write(|w| w.bits(CORERST));
+        block.cmd().write(|w| w.cntrst().set_bit());
         let mut spins = 0u32;
         while block.syncbusy().read().cmd().bit_is_set() {
             spins += 1;
@@ -140,12 +126,6 @@ fn main() -> ! {
     l.h32(en1);
     l.s(b" sync1=");
     l.h32(sync1);
-    l.s(b" en2=");
-    l.h32(en2);
-    l.s(b" sync2=");
-    l.h32(sync2);
-    l.s(b" spins=");
-    l.u(spins);
     l.s(b" clk=");
     l.h32(clk);
     l.s(b" clken0=");

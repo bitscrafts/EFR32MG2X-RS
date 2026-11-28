@@ -74,10 +74,11 @@ producer looks like a counter that cannot keep up. [`Pcnt::set_top`] is called b
 ```
     pcntrate: r1k=0/13 r5k=0/68 r10k=0/137 r16k=0/219 r20k=0/274 r50k=0/686 w=450 followed=0 ceiling=0k
     pcntpwm: r1k=0/13 r5k=0/68 r10k=0/137 r16k=0/219 r25k=0/343 w=450 followed=0 ceiling=0k
+    pcnt: ch=3 cfg=0x00000100 ctrl=0x00000010 st=0x00000000 a=4 lv=4 b=2 c=3 off=0 stop=0 q=0 mm=0
     pcnt: ch=3 cfg=0x00000100 ctrl=0x00000010 st=0x00000000 a=4 lv=4 b=2 c=3 off=0 stop=0 q=0 mm=0 p0=4 ok=25000 bad=50000 g=77 e=200 of=0 ar=4 br=2 cf=2 cm=4 hr=4 em=8 if=0x00000000
 ```
 
-Controls and the full story: [PCNT-CEILING-2026-11-26.md](../../../../docs/04-reference/PCNT-CEILING-2026-11-26.md), [PCNT-GPIO-2026-11-26.md](../../../../docs/04-reference/PCNT-GPIO-2026-11-26.md)
+Controls and the full story: [PCNT-CEILING-2026-11-26.md](../../../../docs/04-reference/PCNT-CEILING-2026-11-26.md), [PCNT-COMMAND-NEVER-COMPLETES-2026-11-28.md](../../../../docs/04-reference/PCNT-COMMAND-NEVER-COMPLETES-2026-11-28.md), [PCNT-GPIO-2026-11-26.md](../../../../docs/04-reference/PCNT-GPIO-2026-11-26.md), [SDK-PARITY-AUDIT-2026-11-28.md](../../../../docs/04-reference/SDK-PARITY-AUDIT-2026-11-28.md)
 
 ## What is not proven
 

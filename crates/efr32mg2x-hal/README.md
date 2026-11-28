@@ -59,6 +59,7 @@ Read from the source, so it cannot drift:
 | `Wdog0Ns` | `src/board.rs`, `src/wdog/mod.rs` |
 | `X` | `src/cores/slots.rs` |
 | `acmp0_s` | `src/acmp/mod.rs` |
+| `aliases` | `src/pcnt.rs` |
 | `cmu_s` | `src/board.rs`, `src/pcnt.rs` |
 | `emu_ns` | `src/sleep.rs` |
 | `gpio_s` | `src/board.rs`, `src/bus/bitbang.rs`, `src/pin.rs` |

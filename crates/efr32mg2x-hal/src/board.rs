@@ -922,15 +922,21 @@ impl Board {
     pub fn pcnt(&self) -> Result<crate::pcnt::Pcnt<'_>, Handout<()>> {
         self.claim(crate::cores::slots::Slot::Pcnt)
             .map_err(Handout::Taken)?;
-        self.dp.cmu_s.clken1().modify(|_r, w| w.pcnt0().set_bit());
-        self.dp
-            .cmu_s
-            .pcnt0clkctrl()
-            .modify(|_r, w| w.clksel().em23grpaclk());
+        // The order the SDK uses (`pcnt_single_oversampling_overflow/src/main.c`): the source oscillator first, then the
+        // branch, then the block's own select and gate. Starting from the block and working backwards leaves the
+        // branch with no clock, and a block whose clock domain does not advance accepts a command and never completes
+        // it -- measured, `SYNCBUSY.CMD` set for 0.7 s with a command pending, see
+        // `docs/04-reference/PCNT-COMMAND-NEVER-COMPLETES-2026-11-28.md`.
+        self.dp.cmu_s.clken0().modify(|_r, w| w.lfrco().set_bit());
         self.dp
             .cmu_s
             .em23grpaclkctrl()
             .modify(|_r, w| w.clksel().lfrco());
+        self.dp
+            .cmu_s
+            .pcnt0clkctrl()
+            .modify(|_r, w| w.clksel().em23grpaclk());
+        self.dp.cmu_s.clken1().modify(|_r, w| w.pcnt0().set_bit());
         // SAFETY: `Board` holds the PAC singletons and hands PCNT0 out through the claim table, so no second driver
         // can reach the same registers. The CMU block is lent, not moved, for the clock-select write the driver owns.
         Ok(unsafe { crate::pcnt::Pcnt::new(pac::Pcnt0Ns::steal(), &self.dp.cmu_s) })

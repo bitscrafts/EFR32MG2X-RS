@@ -63,11 +63,14 @@ pub enum Error {
 /// `adc::Adc::use_prs_trigger` uses for `CONSUMER_IADC0_SINGLETRIGGER`.
 const PRS_BASE: usize = 0x4003_8000;
 
-/// `CMD.CORERST`: reset the counter's clock domain.
-const CORERST: u32 = 0x001;
+// `CMD.CORERST` is deliberately absent: it appears once in `em_pcnt.c` (`:755`), inside a Series-0/1 branch, and there
+// only to change to an external clock with the block held in reset. Issuing it here was the defect.
 
 /// `CMD.CNTRST`: zero the count.
 const CNTRST: u32 = 0x002;
+
+/// `CMD.AUXCNTRST`: zero the auxiliary count. Reset together with `CNTRST`, as the SDK's `PCNT_CounterReset` does.
+const AUXCNTRST: u32 = 0x004;
 
 /// `CMD.STARTCNT`: start the main counter.
 const STARTCNT: u32 = 0x100;
@@ -81,7 +84,27 @@ pub struct Pcnt<'a> {
     cmu: &'a pac::cmu_s::RegisterBlock,
 }
 
+/// Writes this block takes through the SET/CLR alias blocks, which the generated PAC cannot express.
+///
+/// `efr32mg24_pcnt.h:62` puts `RESERVED0[1008]` right after `LOCK`: the aliases start there, at offset **0x1000** for
+/// SET and **0x2000** for CLR, with the same register offsets inside each block (`EN` 0x04, `CMD` 0x14). The SVD this
+/// PAC was generated from omits both blocks, so `cmd().write()` lands on the plain register at 0x14 -- and on this part
+/// that register is not writable: measured 2026-11-28, a precise bus error with `BFAR = PCNT0 + 0x14`, twice, and
+/// `CFSR = 0x8200`. The SDK never writes the plain register; it writes `CMD_SET` and `EN_SET`/`EN_CLR`
+/// (`em_pcnt.c:131`, `:170`, `:191`).
+const REG_EN: usize = 0x04;
+const REG_CMD: usize = 0x14;
+
 impl<'a> Pcnt<'a> {
+    /// The block's base address, which is what the alias writes need.
+    ///
+    /// `pac::Pcnt0Ns::ptr()` is the address the PAC was built with (`0x5903_0000`, `lib.rs:1033`), not the address of the
+    /// handle held in this struct: taking `&self.regs` gave a stack address, and the first attempt wrote into RAM and
+    /// faulted with `BFAR = 0x2004_0f2c`.
+    fn base(&self) -> usize {
+        pac::Pcnt0Ns::ptr() as usize
+    }
+
     /// SAFETY: `Board` holds the PAC singletons and hands this out through its claim table, so no second `Pcnt` exists.
     pub(crate) unsafe fn new(regs: pac::Pcnt0Ns, cmu: &'a pac::cmu_s::RegisterBlock) -> Self {
         Self { regs, cmu }
@@ -118,13 +141,35 @@ impl<'a> Pcnt<'a> {
     /// Disabled on purpose: `CFG` is refused with `EN` set (see the module documentation), so the block takes its
     /// configuration with `EN` low and is enabled before it starts counting.
     pub fn init(&mut self) {
-        self.write_cmd(CORERST);
-        self.wait_disabled();
+        // Disable, wait for the block to say it has stopped, then zero the counters -- the order the SDK uses for a
+        // Series-2 block (`PCNT_Init`, `em_pcnt.c:699`, and `PCNT_CounterReset`, `em_pcnt.c:128`).
+        //
+        // This used to start with `CMD.CORERST`. That command appears once in the whole of `em_pcnt.c` (`:755`), inside
+        // a Series-0/1 branch, and there only to change to an **external** clock with the block held in reset. On this
+        // Series-2 part it leaves a command pending in the low-frequency domain that nothing completes: measured
+        // `SYNCBUSY.CMD = 0x2` for 0.7 s, with the bus gate open (`CLKEN1` bit 21) and the branch sourced from ULFRCO,
+        // an oscillator that always runs. Every later command queued behind it, which is why this counter never
+        // counted. See `docs/04-reference/PCNT-COMMAND-NEVER-COMPLETES-2026-11-28.md`.
+        self.disable();
+        // The SDK enables the block and *then* syncs (`PCNT_Init`, `em_pcnt.c:191`); a command issued while `EN` is low
+        // never leaves the synchroniser, measured `SYNCBUSY.CMD = 0x2` for 0.7 s.
+        self.enable();
+        self.write_cmd(CNTRST | AUXCNTRST);
+    }
+
+    /// Set `EN` through the SET alias. Every `PCNT_Sync` in the SDK happens with the block enabled, which is the rule
+    /// this driver was missing: with `EN` low a command sits in the low-frequency domain and `SYNCBUSY` never clears.
+    fn enable(&mut self) {
+        // SAFETY: `REG_EN` is `EN`'s offset in this block's frame and the base is the PAC's own address for PCNT0; the
+        // word is the single documented `EN` bit.
+        unsafe { self.write_alias(false, REG_EN, 1) };
     }
 
     /// Clear `EN` and wait for the block to report that it has stopped.
     fn disable(&mut self) {
-        self.regs.en().write(|w| w.en().clear_bit());
+        // `EN_CLR`, not a read-modify-write of the plain register: see `write_alias`.
+        // SAFETY: as in `enable` -- `EN`'s offset, this block's base, the documented `EN` bit.
+        unsafe { self.write_alias(true, REG_EN, 1) };
         self.wait_disabled();
     }
 
@@ -180,7 +225,7 @@ impl<'a> Pcnt<'a> {
             // SAFETY: `PRSSEL` is a four-bit field and `channel` was checked against 15 above.
             .write(|w| unsafe { w.prssel().bits(channel) });
         if was_enabled {
-            self.regs.en().write(|w| w.en().set_bit());
+            unsafe { self.write_alias(false, REG_EN, 1) };
         }
         Ok(())
     }
@@ -204,7 +249,9 @@ impl<'a> Pcnt<'a> {
             w.cntev().up()
         });
         self.sync(|s| s.ctrl().bit_is_set());
-        self.regs.en().write(|w| w.en().set_bit());
+        // SAFETY: a documented register offset inside this block's frame, with the base the PAC
+        // supplies for PCNT0 and a word built from documented bits.
+        unsafe { self.write_alias(false, REG_EN, 1) };
         self.write_cmd(CNTRST | STARTCNT);
     }
 
@@ -227,9 +274,27 @@ impl<'a> Pcnt<'a> {
     /// One command word, written only when `SYNCBUSY.CMD` is clear.
     fn write_cmd(&mut self, word: u32) {
         self.sync(|s| s.cmd().bit_is_set());
-        // SAFETY: the word is a combination of the documented single-bit command fields; no other bit is set.
-        self.regs.cmd().write(|w| unsafe { w.bits(word) });
+        // SAFETY: `REG_CMD` is `CMD`'s offset and `word` is built from the documented command bits by the caller.
+        unsafe { self.write_alias(false, REG_CMD, word) };
         self.sync(|s| s.cmd().bit_is_set());
+    }
+
+    /// One word into the SET or CLR alias of a register, through the PAC's hand-written alias module.
+    ///
+    /// # Safety
+    ///
+    /// `register` is a real offset inside this block's frame and `word` is built from the documented command bits; the
+    /// base comes from the PAC, so the address is this peripheral and no other.
+    unsafe fn write_alias(&mut self, clear: bool, register: usize, word: u32) {
+        let base = self.base();
+        // SAFETY: the caller's contract, plus a base that is the PAC's own address for PCNT0.
+        unsafe {
+            if clear {
+                pac::aliases::clr(base, register, word);
+            } else {
+                pac::aliases::set(base, register, word);
+            }
+        }
     }
 
     /// The counter's wrap value. Reset is `0x00FF`; call this before trusting a count above 255.
@@ -245,7 +310,9 @@ impl<'a> Pcnt<'a> {
         self.regs.top().write(|w| unsafe { w.top().bits(top) });
         self.sync(|s| s.top().bit_is_set());
         if was_enabled {
-            self.regs.en().write(|w| w.en().set_bit());
+            // SAFETY: a documented register offset inside this block's frame, with the base the PAC
+            // supplies for PCNT0 and a word built from documented bits.
+            unsafe { self.write_alias(false, REG_EN, 1) };
         }
     }
 

@@ -17,6 +17,12 @@ compile_error!("enable a device feature: `mg24` (EFR32MG24B220F1536IM48)");
 use generic::*;
 #[doc = "Common register and bit access and modify traits"]
 pub mod generic;
+
+/// Hand-written: the SET/CLR alias blocks the vendor SVD omits.
+///
+/// Not generated -- see the module's own documentation. It exists because writing a plain register where this hardware
+/// wants the SET alias raises a precise bus error, measured on the PCNT block on 2026-11-28.
+pub mod aliases;
 #[cfg(feature = "rt")]
 extern "C" {
     fn ACMP0_IRQHandler();
