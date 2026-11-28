@@ -368,6 +368,17 @@ impl Usart0 {
             .write(|w| w.txdis().set_bit().rxen().set_bit());
     }
 
+    /// Whether the block currently reports its transmitter enabled, for an instrument to record.
+    ///
+    /// `STATUS.TXENS` is the bit that tells "disabled" from "enabled", and no record taken before 2026-11-28 carried
+    /// it -- which is how four measurements came to be described as taken on a disabled transmitter while it was
+    /// running. A record that cannot show this bit cannot settle the question, so the instrument asks for it.
+    #[cfg(feature = "test-hooks")]
+    #[must_use]
+    pub fn transmitter_enabled_for_test(&self) -> bool {
+        self.usart.status().read().txens().bit_is_set()
+    }
+
     /// Flush the TX buffer (blocking)
     ///
     /// Waits until all transmitted data has been sent (TX complete).

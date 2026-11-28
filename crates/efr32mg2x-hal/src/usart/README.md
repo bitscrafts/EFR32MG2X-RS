@@ -70,6 +70,7 @@ if let Some(data) = usart.read_byte() {
 | `rx_errors` | fn | — |
 | `rx_flags` | fn | — |
 | `set_internal_loopback` | fn | Connect the receiver to this peripheral's own transmitter, inside the part. |
+| `transmitter_enabled_for_test` | fn | — |
 | `write` | fn | Write a slice of bytes (blocking) Writes all bytes in the slice sequentially. |
 | `write_byte` | fn | Write a single byte (blocking) Waits until the TX buffer has space, then writes the byte. |
 

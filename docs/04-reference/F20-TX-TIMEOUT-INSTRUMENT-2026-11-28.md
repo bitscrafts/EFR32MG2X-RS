@@ -220,3 +220,34 @@ never enabled, and does not on one that was", which is exactly what the fix prom
 * `e40d319` -- the documentation of the four negatives, green.
 * the staged-mailbox instrument and the two hooks (`disable_transmitter_for_test` on `Usart0` and on the EUSARTs) are in
   the tree, **uncommitted**, with the seventh attempt's record still FAIL because it tries to hold both halves at once.
+
+---
+
+# MEASURED, 2026-11-28 late: both halves in one boot, with the bit that proves the switch
+
+After the two defects the review found were fixed -- `CMD.TXDIS` instead of `CMD.TXEN.clear_bit()`, and `flush` asking
+`tx_pending` instead of only `STATUS.TXC` -- the instrument was run again, twice, and both boots are byte-identical:
+
+    seq=7 status=PASS len=52
+    tx-timeout:  control_flush=1 flush_timeout=1 txens=2
+
+Read it as three claims, each with the number that carries it:
+
+* `txens=2` -- bit 1 is `STATUS.TXENS` read **before** the switch, bit 0 **after**: enabled then disabled. This is the
+  field every earlier record lacked, and the one that shows the transmitter was really off. `2` means `1` then `0`.
+* `control_flush=1` -- eight bytes written and `flush()` returned `Ok` on the enabled transmitter. That half is not
+  decoration: without it a `Timeout` would prove only that something failed.
+* `flush_timeout=1` -- eight bytes written to the disabled transmitter, then `flush()` returned
+  `Error::Timeout` after `TX_SPINS`. The bound fires, on a real disabled transmitter, in the same boot as its control.
+
+The pass condition now requires all three, so a record cannot go green on a switch that never happened -- which is
+exactly how the four earlier attempts went wrong.
+
+## What this establishes, and what it does not
+
+Established: `Error::Timeout` is reachable through the crate's own API on this part, that the blocking `flush` returns
+it, and that the same call returns `Ok` when the transmitter is enabled. The bound turns a hang into an error.
+
+Not established, and not claimed: that `write`'s bound can fire on a healthy block (measured before to not fire, though
+that measurement used the broken hook and needs redoing), and the same proof for the EUSART and for `flush_receiver`.
+The SPI now has the same shape (`edaed9c`) and has not been re-measured on the bench since.

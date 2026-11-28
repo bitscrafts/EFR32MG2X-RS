@@ -14,21 +14,17 @@
 //! `test-hooks` feature: a block whose `CLKEN1` bit is clear reads zero in every status register, so `TXFL` never sets
 //! and the write must be refused.
 //!
-//! ## Bench state, 2026-11-28: no record yet, and the reason is one level below the fix
+//! ## Bench state, 2026-11-28: measured, two boots, identical
 //!
-//! With `Board::eusart0_unclocked_for_test` the image boots, invalidates the mailbox and then writes nothing at all:
-//! twelve reads, `magic 0`, no record. The constructor does not return -- `Eusart0::new_at` waits on the block it is
-//! configuring, and a block with no clock never reports. So the hook reaches the driver but not the write path, and the
-//! timeout is still unentered.
+//!     seq=7 status=PASS len=52
+//!     tx-timeout:  control_flush=1 flush_timeout=1 txens=2
 //!
-//! What that means for the next attempt: the instrument has to hand out a block that is **configured but ungated** --
-//! build it with the clock on, then clear `CLKEN1.EUSART0` before the first write -- instead of building it ungated.
-//! That is a second hook, and it is written down in the handoff rather than half-built here.
-//!
-//! ## The control, and the near-miss
-//!
-//! The same 240 bytes on `USART0`, whose clock is on, must all be accepted. Without that run a `Timeout` would prove
-//! only that something failed, not that the bound is what failed.
+//! `txens=2` is the field the earlier attempts did not record: bit 1 is `STATUS.TXENS` before the switch, bit 0 after.
+//! `2` means enabled then disabled, so the transmitter really was off, and `flush_timeout=1` is `Error::Timeout`
+//! returned on it while `control_flush=1` shows the same call returning `Ok` on the enabled one -- both halves, one
+//! boot. Before this, two defects made the record lie: `CMD` acts only on bits written as one, so
+//! `txen().clear_bit()` never disabled anything, and `flush` looked only at `STATUS.TXC`, which is clear after reset,
+//! so it reported a `Timeout` on a port that had never transmitted.
 
 #![no_std]
 #![no_main]
@@ -78,9 +74,14 @@ fn main() -> ! {
         .and_then(|()| usart.flush())
         .is_ok();
 
-    // ---- the measurement: the same call on a transmitter that was never enabled ----------------------------------
-    mailbox::info(b"stage 4: clearing TXEN");
+    // ---- the measurement: the same call on a transmitter that is now disabled ----------------------------
+    // `TXENS` is recorded on both sides of the switch. Without it, four earlier attempts described themselves as taken
+    // on a disabled transmitter while `CMD.TXDIS` had never been written -- `txen().clear_bit()` writes a zero, and
+    // `CMD` acts only on ones. A record that cannot tell the two states apart settles nothing.
+    let enabled_before = u32::from(usart.transmitter_enabled_for_test());
+    mailbox::info(b"stage 4: disabling the transmitter");
     usart.disable_transmitter_for_test();
+    let enabled_after = u32::from(usart.transmitter_enabled_for_test());
     // A write clears `TXC`; without one, `flush` would see the flag the control left behind and return `Ok` on a
     // disabled transmitter -- measured, `flush_timeout=0`. With the transmitter disabled the write is accepted and
     // discarded, `TXC` never sets again, and the flush has to time out.
@@ -98,10 +99,14 @@ fn main() -> ! {
     l.u(u32::from(control_flush));
     l.s(b" flush_timeout=");
     l.u(flush_err);
+    l.s(b" txens=");
+    l.u((enabled_before << 1) | enabled_after);
 
     // The control must return `Ok` on a live transmitter, and the same call on a disabled one must be a `Timeout`. Both
     // halves are needed: without the first, a `Timeout` would prove only that something failed.
-    if control_flush && flush_err == 1 {
+    // The third term is the one that was missing: the switch has to have actually happened. `txens=2` means
+    // "enabled before, disabled after" (bit 1 = before, bit 0 = after).
+    if control_flush && flush_err == 1 && enabled_before == 1 && enabled_after == 0 {
         mailbox::pass(l.bytes());
     } else {
         mailbox::fail(l.bytes());
