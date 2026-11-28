@@ -77,3 +77,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 [[example]]
 name = "hal_tx_timeout"
 required-features = ["rt", "test-hooks"]
+
+[[example]]
+name = "hal_fault_record"
+required-features = ["rt"]
+# `doc` is not a key for an example target: the description lives in the file's own header.

@@ -251,3 +251,27 @@ it, and that the same call returns `Ok` when the transmitter is enabled. The bou
 Not established, and not claimed: that `write`'s bound can fire on a healthy block (measured before to not fire, though
 that measurement used the broken hook and needs redoing), and the same proof for the EUSART and for `flush_receiver`.
 The SPI now has the same shape (`edaed9c`) and has not been re-measured on the bench since.
+
+---
+
+# A fault now says so, and the four silent runs have a shape to compare against
+
+Four runs in this file ended with `magic 0` and were read as "the program hung". One of them did hang -- inside a `CMD`
+write. The other three could have faulted, and nothing in the firmware could tell the two apart: `cortex-m-rt`'s
+default `HardFault` handler is an infinite loop that writes nothing.
+
+`examples/common/fault_record.rs` installs a handler that writes `CFSR`, `HFSR`, `MFAR`, `BFAR` and the stacked `PC`
+into the same mailbox, and `examples/hal_fault_record.rs` provokes a fault on purpose to prove it does -- an instrument
+that cannot fail does not count. Two boots, byte-identical:
+
+    seq=2 status=FAIL len=75
+    fault: cfsr=00008200 hfsr=40000000 bfar=50100000 mmfar=50100000 pc=08006310
+
+Read: `CFSR = 0x8200` is `BFARVALID` (bit 15) with `PRECISERR` (bit 9), so the offending address is in `BFAR`;
+`HFSR = 0x40000000` is `FORCED` (bit 30), the escalation a BusFault takes to a HardFault; `BFAR = 0x50100000` is the
+address the example wrote.
+
+That `0x8200` is the **same** `CFSR` the project already met twice by hand -- `BURTC_NS + 0x08` (`bfar=0x50064008`) and
+`ACMP0_S + 0x04` (`bfar=0x49008004`), both a write to a peripheral whose clock had not been enabled. So the class of
+fault the f20 instrument could have been taking now has a signature, and the next silent run will say whether it
+matches.

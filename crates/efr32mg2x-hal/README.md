@@ -96,7 +96,7 @@ crate has no binary, so it installs only with `--example`, and its crate page wo
 
 ## What is in the tree, measured
 
-35 public modules (`pub mod` in `src/lib.rs`) and 45 examples. A date next to an example means a record was
+35 public modules (`pub mod` in `src/lib.rs`) and 46 examples. A date next to an example means a record was
 read back off the part — not that the code compiled; the table below is counted by the README generator, not by hand.
 
 **Watched on the board (2026-11-15)**
@@ -294,7 +294,7 @@ cargo doc --no-deps --features rt --open
 
 ## Examples
 
-45 examples, **32 of them watched on the part**. A `--` in the last column means nobody
+46 examples, **32 of them watched on the part**. A `--` in the last column means nobody
 has read a value back off the hardware for it; it does not mean the code is unverified and it does not
 mean it works.
 
@@ -317,6 +317,7 @@ mean it works.
 | `hal_emu_voltage.rs` | The EMU's voltage scale, changed and put back, reported rather than assumed. | 2026-11-24 |
 | `hal_eusart1_loopback.rs` | EUSART1 in asynchronous mode: eight bytes out and back through `CFG0.LOOPBK`, and a control that reads none. | 2026-11-27 |
 | `hal_eusart_loopback.rs` | EUSART0 in asynchronous mode: eight distinct bytes out and back through `CFG0.LOOPBK`, and a control that reads | 2026-11-27 |
+| `hal_fault_record.rs` | Prove that the fault handler records: take a fault on purpose and read what it left. | -- |
 | `hal_gpcrc.rs` | Is the CRC accelerator right? Check it against a number computed elsewhere. | -- |
 | `hal_gpio_interrupt.rs` | The pad moved by its own pull resistor, `IEN` and the NVIC armed, and a counter only the handler increments. | 2026-11-27 |
 | `hal_hfxo.rs` | HFXO: run from the crystal, and prove the rest of the system followed it. | 2026-11-25 |
