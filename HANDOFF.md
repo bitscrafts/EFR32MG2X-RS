@@ -647,3 +647,54 @@ pára, e isso transforma "nenhum registo" num número de linha -- o que quatro i
 
 O dispatch ao Sonnet voltou vazio por culpa do script (sessão de leitura, sem `--permission-mode acceptEdits`); o
 conserto está escrito na secção 7 do documento.
+
+---
+
+# Sessão de 2026-11-28 — estado para retomar
+
+## Onde está a árvore
+
+    HEAD c344432 · árvore limpa · master = origin/master · gate PASS
+    HAL: 105 testes de host · usart-core: 10 + 3 · placa no lnx, livre
+
+## O que ficou feito e provado (por ordem)
+
+    748a65d  delay com dois handles, tick livre, registo na placa
+    9621f31  as quatro esperas de transmissão com limite e `Error::Timeout`
+    e40d319  os quatro instrumentos que não mediram nada, documentados
+    c344432  `flush` pergunta se há algo pendente (era bug meu: TXC está a 0 depois do reset),
+             limite por instância (`cores::usart::tx_spins`), `Eusart::flush` com Result,
+             ganchos corrigidos para `CMD.TXDIS` (o `clear_bit` escrevia um zero e não fazia nada)
+
+    Revisão externa do Opus sobre isto: `docs/04-reference/OPUS-REVIEW-F20-2026-11-28.md`
+    (verbatim, com proveniência). Os quatro negativos: `docs/04-reference/F20-TX-TIMEOUT-INSTRUMENT-2026-11-28.md`.
+
+## O que falta, por ordem, com as linhas
+
+1. **SPI — o único defeito real ainda aberto** (o `flush` do Spi0 encrava um bus que ainda não transferiu):
+   `spi/mod.rs:214`, `:376`, `:509` (`transfer_byte`, duas esperas cada: TXBL e RXDATAV, sem limite);
+   `spi/traits.rs:34` e os gémeos de Spi1/Spi2 (`flush` sem limite).
+   Padrão provado hoje: campo `tx_spins: u32` por struct, inicializado com
+   `cores::usart::tx_spins(clock_hz, baud, 16)`; as esperas contam para `self.tx_spins` e devolvem
+   `Error::Timeout`; o `flush` ganha o `tx_pending` que o USART e o EUSART já têm.
+   **Não tentar por regex**: o ficheiro tem três structs, três construtores e três corpos que não são iguais --
+   foi assim que hoje se partiu o `board.rs` duas vezes. Ler e editar à mão, bloco a bloco.
+2. **17 ciclos que limitam e depois deitam o timeout fora**:
+   `eusart:126/156/185` · `pcnt:114/193` · `pwm:106` · `timer:120` · `sysrtc:373/465/486` ·
+   `board:1162/1263/1487/1535` · `i2c:260`.
+3. **Handler de `HardFault`** no módulo comum do mailbox, a gravar CFSR/HFSR/BFAR/PC: os runs que não deixaram
+   registo eram provavelmente faults, não hangs.
+4. **Cair a feature `test-hooks`** (features do Cargo fundem-se em toda a árvore: "nunca em produto" não é
+   imponível). A injecção passa para o exemplo, com escrita `unsafe` no PAC e comentário de segurança.
+5. **O instrumento do f20**, agora com `TXDIS` a funcionar: um só boot e a sequência
+   `flush->Ok`, `TXDIS`, registar `txens=0`, escrever até recusar, `flush->Timeout`, `TXEN`, `flush->Ok`.
+   O exemplo está na árvore com `required-features = ["rt", "test-hooks"]` e o cabeçalho ainda descreve o gancho
+   antigo (`eusart0_unclocked_for_test`) — corrigir o texto quando o item 4 o tornar obsoleto.
+
+## Disciplina que esta sessão pagou para aprender
+
+- `CMD` só actua em bits escritos a **1**: `clear_bit()` é um zero e não faz nada. `TXDIS` é o bit.
+- `STATUS.TXC` está a **0** depois do reset: um `flush` que só olha para ele devolve `Timeout` num porto novo.
+- `open(p,"w").write(open(p).read()...)` **trunca o ficheiro antes de o ler** — foi assim que o `board.rs` ficou
+  com 0 linhas. Usar `patch`, ou ler primeiro para uma variável.
+- Um commit com `-F <ficheiro>` e um heredoc ao mesmo tempo: o heredoc não vai a lado nenhum e o `-F` falha.
