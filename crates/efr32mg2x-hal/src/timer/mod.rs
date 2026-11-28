@@ -67,8 +67,14 @@ macro_rules! impl_timer {
         /// Timer instance
         pub struct $TimerX {
             timer: pac::$timerX_s,
+            /// What the caller asked for. Use `get_actual_frequency` for what the timer produces.
             frequency: u32,
             top_value: u32,
+            /// The rate this configuration really produces, from the clock it was built with.
+            actual_hz: u32,
+            /// How far `actual_hz` is from `frequency`, in parts per million; `None` when the request is not
+            /// expressible at all and `actual_hz` is the nearest reachable bound.
+            error_ppm: Option<u32>,
             pwm_enabled: bool,
         }
 
@@ -124,16 +130,34 @@ macro_rules! impl_timer {
                     }
                 }
 
-                // Calculate prescaler and top value for desired frequency
-                let (prescaler, top) =
-                    Self::calculate_prescaler_and_top(hfclk_hz, config.frequency);
+                // The prescaler/`TOP` pair comes from `cores::timer::period_for`, the same function the host tests
+                // exercise. Before 2026-11-28 this module had a private second implementation that took the first
+                // prescaler that fitted and clamped `TOP` in its fallback, so a frequency the fields cannot express
+                // silently became a faster timer. The pair chosen here is the closest expressible one, and how close
+                // it is travels with the handle (`get_actual_frequency`, `get_frequency_error_ppm`) instead of being
+                // lost.
+                let (period, error_ppm) =
+                    match crate::cores::timer::period_for(hfclk_hz, config.frequency) {
+                        Ok((period, ppm)) => (period, Some(ppm)),
+                        // Refused: the request is outside what the prescaler and a 16-bit `TOP` can reach. The nearest
+                        // bound is used so the timer still runs, and `error_ppm` stays `None` -- "not expressible" is a
+                        // different statement from "expressible but off", and the two must not be confused.
+                        Err(_) => (
+                            crate::cores::timer::nearest_bound(hfclk_hz, config.frequency),
+                            None,
+                        ),
+                    };
+                let top = period.top;
+                // The field takes the exponent: 1 -> 0, 2 -> 1, ... 1024 -> 10. `period_for` returns only members of
+                // `PRESCALERS`, so the shift is exact.
+                let prescaler = (period.prescaler.trailing_zeros() as u16) & 0xF;
 
                 // Configure PWM mode if requested
                 let pwm_enabled = if let Some(pwm_mode) = config.pwm_mode {
                     match pwm_mode {
                         PwmMode::EdgeAligned => {
                             // Edge-aligned PWM: count up
-                            // SAFETY: Prescaler value (0-10) is validated by calculate_prescaler_and_top().
+                            // SAFETY: `prescaler` is the exponent of a member of `cores::timer::PRESCALERS`, so it is 0..=10, the field's range.
                             // Mode enum variant is type-safe and always valid.
                             timer
                                 .cfg()
@@ -141,7 +165,7 @@ macro_rules! impl_timer {
                         }
                         PwmMode::CenterAligned => {
                             // Center-aligned PWM: count up/down
-                            // SAFETY: Prescaler value (0-10) is validated by calculate_prescaler_and_top().
+                            // SAFETY: `prescaler` is the exponent of a member of `cores::timer::PRESCALERS`, so it is 0..=10, the field's range.
                             // Mode enum variant is type-safe and always valid.
                             timer
                                 .cfg()
@@ -151,7 +175,7 @@ macro_rules! impl_timer {
                     true
                 } else {
                     // Basic timer mode: count up
-                    // SAFETY: Prescaler value (0-10) is validated by calculate_prescaler_and_top().
+                    // SAFETY: `prescaler` is the exponent of a member of `cores::timer::PRESCALERS`, so it is 0..=10, the field's range.
                     // Mode enum variant is type-safe and always valid.
                     timer
                         .cfg()
@@ -164,42 +188,18 @@ macro_rules! impl_timer {
                 // here the other way round: with `EN` still clear this write is a bus fault at `base + 0x1c`
                 // (`Escalated BusFault at 0x4004c01c`). `CFG` wants the timer stopped, `TOP` wants it running.
                 timer.en().write(|w| w.en().set_bit());
-                // SAFETY: `TOP` is the timer's own 16-bit field and `top` is computed to fit it (`calculate_prescaler_and_top`
-                // refuses a value above `0xFFFF`).
+                // SAFETY: `TOP` is the timer's own 16-bit field, and `top` comes either from `cores::timer::period_for`
+                // (which skips any candidate above `MAX_TOP`) or from `nearest_bound` (which returns `MAX_TOP` itself).
                 timer.top().write(|w| unsafe { w.bits(top) });
 
                 Self {
                     timer,
                     frequency: config.frequency,
                     top_value: top,
+                    actual_hz: period.frequency(hfclk_hz),
+                    error_ppm,
                     pwm_enabled,
                 }
-            }
-
-            /// Calculate prescaler and top value for desired frequency
-            ///
-            /// Formula: Timer_freq = HFCLK / (prescaler * (TOP + 1))
-            fn calculate_prescaler_and_top(hfclk: u32, target_freq: u32) -> (u16, u32) {
-                // Try prescalers from 0 to 10 (dividers: 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024)
-                for prescaler in 0..=10u16 {
-                    let divider = 1u32 << prescaler;
-                    let timer_clk = hfclk / divider;
-
-                    // Calculate TOP value
-                    if timer_clk > target_freq {
-                        let top = (timer_clk / target_freq).saturating_sub(1);
-                        if top <= 0xFFFF {
-                            // 16-bit limit
-                            return (prescaler, top);
-                        }
-                    }
-                }
-
-                // Fallback: maximum prescaler with best TOP
-                let divider = 1024u32;
-                let timer_clk = hfclk / divider;
-                let top = (timer_clk / target_freq).saturating_sub(1).min(0xFFFF);
-                (10, top)
             }
 
             /// Start the timer
@@ -465,9 +465,25 @@ macro_rules! impl_timer {
                 });
             }
 
-            /// Get the configured PWM frequency
+            /// The frequency the caller asked for. Not necessarily the one the timer produces -- see
+            /// [`Self::get_actual_frequency`].
             pub fn get_frequency(&self) -> u32 {
                 self.frequency
+            }
+
+            /// The frequency this timer really produces from the clock it was built with.
+            ///
+            /// A request that no prescaler and 16-bit `TOP` can express returns the nearest reachable bound here, and
+            /// [`Self::get_frequency_error_ppm`] returns `None` to say so.
+            pub fn get_actual_frequency(&self) -> u32 {
+                self.actual_hz
+            }
+
+            /// How far the produced frequency is from the requested one, in parts per million.
+            ///
+            /// `None` means the request is outside what the fields can reach; `Some(0)` means it is exact.
+            pub fn get_frequency_error_ppm(&self) -> Option<u32> {
+                self.error_ppm
             }
 
             /// Get the TOP value (period)

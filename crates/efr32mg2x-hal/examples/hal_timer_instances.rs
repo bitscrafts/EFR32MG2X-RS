@@ -124,6 +124,10 @@ fn main() -> ! {
 
     let top = t1.get_top_value();
     let want = t1.get_frequency();
+    // What the handle says it really produces, and how far that is from the request. These two travel with the handle
+    // precisely so this instrument can compare them against the count it is about to observe.
+    let actual = t1.get_actual_frequency();
+    let ppm = t1.get_frequency_error_ppm();
 
     t1.start();
     t2.start();
@@ -171,7 +175,7 @@ fn main() -> ! {
     // SYSRTC ticks -> milliseconds at 32.768 kHz.
     let expected = elapsed / 32;
 
-    let mut l = Record::<200>::new();
+    let mut l = Record::<280>::new();
     l.s(b"timers: ms=");
     l.u(expected);
     l.s(b" o1=");
@@ -188,6 +192,31 @@ fn main() -> ! {
     l.u(top);
     l.s(b" want=");
     l.u(want);
+    l.s(b" actual=");
+    l.u(actual);
+    l.s(b" ppm=");
+    match ppm {
+        Some(v) => l.u(v),
+        None => l.s(b"none"),
+    };
+    // The rate the polled witness saw. This reads LOW, and the reason is the instrument, not the timer: at 1 kHz the
+    // loop clears four flags and reads the SYSRTC between polls, which takes about a millisecond, so an overflow now
+    // and then is set and cleared before anyone looks. Measured 2026-11-28: 48 of 50 counts in a 49 ms window (4%),
+    // and 487 of 500 in a 488 ms one (2.6%) -- the loss is a per-poll event, not a proportional one. The counter was
+    // tried instead and cannot help: it wraps once per period, 500 times in that window, so two reads of it say
+    // nothing (`counts=235`).
+    //
+    // So `measured` is a cross-check that the configuration took effect, to within the loop's own loss; the claim about
+    // the rate itself is `actual`/`ppm`, which is arithmetic on `(prescaler, TOP, clock)` and can be checked by hand.
+    let measured = if expected == 0 {
+        0
+    } else {
+        o1.saturating_mul(1_000) / expected
+    };
+    l.s(b" measured=");
+    l.u(measured);
+    // Within 5%: the measured bias above is 4% in this window on this hardware.
+    let close = measured.abs_diff(actual) * 20 <= actual.max(1);
     l.s(b" clean=");
     l.bit(clean);
     l.s(b" refused=");
@@ -195,7 +224,8 @@ fn main() -> ! {
 
     // Every field is part of the verdict: the two free-running instances must match the window and each other, the
     // third must have counted while running and stopped when asked, the fourth must never have counted at all, the
-    // registers must hold what was asked, and the second hand-out must have been refused.
+    // registers must hold what was asked, the second hand-out must have been refused -- and, since 2026-11-28, the
+    // handle's claim about the rate it produces must agree with the rate the counter observed.
     let passed = refused
         && clean
         && want == FREQUENCY_HZ
@@ -204,7 +234,8 @@ fn main() -> ! {
         && o2.abs_diff(o1) <= SLACK
         && o3 > 0
         && o4 == 0
-        && o3_stopped == 0;
+        && o3_stopped == 0
+        && close;
     if passed {
         mailbox::pass(l.bytes());
     } else {

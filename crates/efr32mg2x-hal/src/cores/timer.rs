@@ -166,3 +166,136 @@ mod capture_tests {
         assert_eq!(slot.take(), Err(CaptureError::Nothing));
     }
 }
+
+// --- Period planning: which prescaler and which `TOP` produce a wanted frequency ---------------
+//
+// This block used to live in `libraries/timer-core`, host-tested there, while `timer/mod.rs` shipped a second and
+// weaker implementation of the same decision: it took the first prescaler that fitted and clamped `TOP` when none
+// did, so a frequency the fields cannot express came back as a faster timer rather than as a refusal. The tests
+// exercised the copy nobody shipped. Moved here on 2026-11-28 so the tested one is the one that runs.
+
+/// The prescalers this family offers: powers of two from 1 to 1024.
+pub const PRESCALERS: [u32; 11] = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
+
+/// `TOP` is 16 bits, so a period is at most 65536 timer clocks.
+pub const MAX_TOP: u32 = 0xFFFF;
+
+/// Why a period cannot be produced.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimerError {
+    /// A zero clock or wanted frequency.
+    Zero,
+    /// The wanted frequency is faster than the timer clock: no prescaler of 1 with a top of 0 can reach it.
+    TooFast,
+    /// The wanted frequency is slower than the slowest the prescaler and top allow.
+    TooSlow,
+    /// The timer is running: stop it before writing its configuration (H6).
+    Enabled,
+}
+
+/// A timer configuration: a prescaler and a top count.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Period {
+    /// One of [`PRESCALERS`].
+    pub prescaler: u32,
+    /// The value written to `TOP`; the period is `top + 1` timer clocks.
+    pub top: u32,
+}
+
+impl Period {
+    /// The frequency this configuration produces from `clock_hz`.
+    pub fn frequency(self, clock_hz: u32) -> u32 {
+        let divisor = self.prescaler * (self.top + 1);
+        if divisor == 0 {
+            return 0;
+        }
+        clock_hz / divisor
+    }
+}
+
+/// The closest expressible period for `wanted_hz` from `clock_hz`, and how far off it is in parts per million.
+///
+/// "Closest" is over both the prescaler and the top, because the pair is what decides the rate: with a 19 MHz clock,
+/// 16 kHz is 1187,5 timer clocks, and the nearest expressible pair is prescaler 1 with top 1187 (16 006 Hz, 375 ppm
+/// off).
+pub fn period_for(clock_hz: u32, wanted_hz: u32) -> Result<(Period, u32), TimerError> {
+    if clock_hz == 0 || wanted_hz == 0 {
+        return Err(TimerError::Zero);
+    }
+    if wanted_hz > clock_hz {
+        return Err(TimerError::TooFast);
+    }
+    let mut best: Option<(Period, u32, u32)> = None; // (period, actual, error_ppm)
+    for prescaler in PRESCALERS {
+        let ticks = clock_hz / (prescaler * wanted_hz);
+        if ticks == 0 {
+            continue;
+        }
+        // Both sides of the truncation, because the nearest period is not always below the wanted one.
+        //
+        // The first version only took `ticks - 1`, which is the floor: at 32 kHz from 19 MHz that chose a top of 592
+        // (32 040 Hz, 1250 ppm) while a top of 593 gives 31 986 Hz (437 ppm). The test that checks the chosen
+        // candidate is the closest of all of them is what found it.
+        for candidate_top in [ticks.saturating_sub(1), ticks] {
+            // No clamping: a top beyond the field would shorten the period silently. Skipped, so a period the fields
+            // cannot express comes back as `TooSlow` instead of as a faster timer than the caller asked for.
+            if candidate_top > MAX_TOP {
+                continue;
+            }
+            let candidate = Period {
+                prescaler,
+                top: candidate_top,
+            };
+            let actual = candidate.frequency(clock_hz);
+            if actual == 0 {
+                continue;
+            }
+            let error_ppm = (((actual as i64 - wanted_hz as i64).unsigned_abs() * 1_000_000)
+                / wanted_hz as u64) as u32;
+            let better = match best {
+                None => true,
+                Some((_, _, e)) => error_ppm < e,
+            };
+            if better {
+                best = Some((candidate, actual, error_ppm));
+            }
+        }
+    }
+    match best {
+        Some((period, _, error_ppm)) => Ok((period, error_ppm)),
+        None => Err(TimerError::TooSlow),
+    }
+}
+
+/// The nearest period the fields can reach when `period_for` refuses the request.
+///
+/// It exists so a driver handed an impossible frequency still produces a running timer, and so that the fact it is
+/// impossible is carried separately from the fact it is inexact: the caller sees `None` for the error and knows the
+/// rate is a bound, not a compromise.
+pub fn nearest_bound(clock_hz: u32, wanted_hz: u32) -> Period {
+    if wanted_hz == 0 || clock_hz == 0 || wanted_hz > clock_hz {
+        // Faster than the clock, or nothing to divide: the fastest pair there is.
+        return Period {
+            prescaler: PRESCALERS[0],
+            top: 0,
+        };
+    }
+    // Slower than the slowest expressible rate: the slowest pair there is.
+    Period {
+        prescaler: PRESCALERS[PRESCALERS.len() - 1],
+        top: MAX_TOP,
+    }
+}
+
+/// Whether a timer may be configured, given whether it is enabled.
+///
+/// The whole of H6 as one function: on this family the configuration registers must be written while the timer is
+/// stopped. The driver did the opposite and faulted, which is why the working PWM path and this crate agree on the
+/// order.
+pub fn may_configure(enabled: bool) -> Result<(), TimerError> {
+    if enabled {
+        Err(TimerError::Enabled)
+    } else {
+        Ok(())
+    }
+}

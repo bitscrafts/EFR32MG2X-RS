@@ -1,0 +1,9 @@
+The software CRC-32 in this crate is not a moved core: it is the oracle the accelerator is checked against.
+
+`crates/efr32mg2x-hal/examples/hal_gpcrc.rs` compares the GPCRC engine against this implementation, and both
+conventions (MSB-first and reflected) are kept and pinned to their published vectors so that a disagreement can be
+localised rather than merely noticed. Moving it into the HAL would ship a bit-by-bit CRC in every firmware image
+that does not use it, which is the opposite of the reason the HAL exists.
+
+The crate still compiles the HAL's `cores/gpcrc.rs` by `#[path]`, so the parts it shares are shared; what it adds is
+the arithmetic that checks the hardware.

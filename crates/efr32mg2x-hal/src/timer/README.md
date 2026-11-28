@@ -71,8 +71,10 @@ timer.enable_channel(PwmChannel::Channel0);
 | `disable_channel` | fn | Disable PWM output on a channel # Arguments * `channel` - PWM channel to disable. |
 | `enable_channel` | fn | Enable PWM output on a channel # Arguments * `channel` - PWM channel to enable # PWM Output Configuration This configures the CC channel for PWM mode with: - **CMOA (Compare Match Output Action)**: SET - Output goes high on compare match - **COFOA (Counter Overflow Output Action)**: TOGGLE - Output toggles on overflow/underflow For edge-aligned PWM (up-counting): - Counter counts from 0 to TOP - Output goes HIGH when CNT == CCx_OC (compare match) - Output goes LOW when CNT reaches TOP (counter overflow) - Duty cycle = (CCx_OC / TOP) × 100% For center-aligned PWM (up-down counting): - Counter counts 0→TOP→0 - Output toggles on compare matches in both directions - Creates symmetric waveform **Note**: This configuration has been validated against EFR32MG24 reference manual section on Timer PWM generation. |
 | `fn` | const | Create a new timer configuration # Arguments * `frequency` - Timer frequency in Hz # Example ```no_run let config = Config::new(1_000_000); // 1 MHz timer ```. |
+| `get_actual_frequency` | fn | The frequency this timer really produces from the clock it was built with. |
 | `get_counter` | fn | Get current counter value. |
-| `get_frequency` | fn | Get the configured PWM frequency. |
+| `get_frequency` | fn | The frequency the caller asked for. |
+| `get_frequency_error_ppm` | fn | How far the produced frequency is from the requested one, in parts per million. |
 | `get_top_value` | fn | Get the TOP value (period). |
 | `is_overflow` | fn | Check if overflow interrupt flag is set. |
 | `listen_overflow` | fn | Enable timer overflow interrupt This enables the overflow/underflow interrupt, useful for periodic tasks synchronized with the timer period. |

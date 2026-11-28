@@ -27,9 +27,19 @@ def contar_codigo(texto: str) -> list[str]:
     surely as `mod` does. Both are the shim's business, so both are skipped -- a multi-line re-export is tracked
     until its terminating semicolon rather than judged line by line.
     """
-    codigo, dentro_do_uso = [], False
+    codigo, dentro_do_uso, dentro_de_teste, chavetas = [], False, False, 0
     for linha in texto.splitlines():
         tira = linha.strip()
+        if dentro_de_teste:
+            # A test module is a harness, not a second copy: it is compiled by `cargo test` and by nothing else.
+            chavetas += linha.count("{") - linha.count("}")
+            if chavetas <= 0:
+                dentro_de_teste = False
+            continue
+        if tira == "#[cfg(test)]":
+            dentro_de_teste = True
+            chavetas = 0
+            continue
         if dentro_do_uso:
             if tira.endswith(";"):
                 dentro_do_uso = False
@@ -62,14 +72,22 @@ def analisar(lib: pathlib.Path, raiz: pathlib.Path):
 
 def correr(raiz: pathlib.Path):
     libs = sorted((raiz / "libraries").glob("*/src/lib.rs"))
-    movidos, falhas = 0, []
+    movidos, referencias, falhas = 0, [], []
     for lib in libs:
+        # A library that is an independent reference implementation -- an oracle the hardware is checked against -- is
+        # not a moved core, and the rule above does not describe it. That is declared in a file beside its manifest,
+        # so the exemption is a line in a diff rather than an inference: delete the file and this check asks again.
+        marca = lib.parent.parent / "REFERENCE_IMPLEMENTATION"
+        if marca.is_file():
+            razao = " ".join(marca.read_text().split())[:200]
+            referencias.append(f"{lib.parent.parent.name}: {razao}")
+            continue
         ok, msg = analisar(lib, raiz)
         if not ok:
             falhas.append(msg)
         elif msg != "not moved":
             movidos += 1
-    return movidos, falhas
+    return movidos, referencias, falhas
 
 def self_test():
     with tempfile.TemporaryDirectory() as td:
@@ -91,6 +109,14 @@ def self_test():
             # ... and a real line of code after them is still a copy.
             ("codigo_depois_das_declaracoes",
              bom + "pub mod sim;\npub use spi::{um, dois};\nconst LIMITE: u32 = 4;\n", False),
+            # A harness is what this crate becomes: the host tests live beside the shim and are not a second copy.
+            ("com_teste",
+             bom + "#[cfg(test)]\nmod tests {\n    use super::*;\n    #[test]\n    fn soma() { assert_eq!(1 + 1, 2); }\n}\n",
+             True),
+            # ... and the same code outside a test block is still a copy.
+            ("codigo_depois_do_teste",
+             bom + "#[cfg(test)]\nmod tests {\n    #[test]\n    fn t() { assert!(true); }\n}\nconst LIMITE: u32 = 4;\n",
+             False),
         ]
         for nome, conteudo, esperado in casos:
             (lib / "lib.rs").write_text(conteudo)
@@ -106,10 +132,12 @@ def self_test():
 if __name__ == "__main__":
     if "--self-test" in sys.argv:
         sys.exit(self_test())
-    movidos, falhas = correr(RAIZ)
+    movidos, referencias, falhas = correr(RAIZ)
+    for r in referencias:
+        print(f"REFERENCE  {r}")
     for f in falhas:
         print(f"FAIL  {f}")
     if falhas:
         print(f"VERDICT: FAIL ({len(falhas)} problem(s))")
         sys.exit(1)
-    print(f"OK: {movidos} core(s) moved, one copy each")
+    print(f"OK: {movidos} core(s) moved, one copy each; {len(referencias)} reference implementation(s) declared")
