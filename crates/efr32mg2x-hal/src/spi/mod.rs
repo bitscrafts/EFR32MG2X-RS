@@ -61,19 +61,51 @@ pub use types::{BitOrder, Config, Error, Mode, Phase, Polarity};
 use crate::clock::FrozenClocks;
 use crate::pac;
 
+/// Wait until `ready` says the bus can take or offer a byte, or give up after `bound` spins.
+///
+/// Six waits in this module asked a status bit in a bare `while` and would spin for ever if the answer never came: a
+/// pad nobody routed, a clock nobody enabled, a slave that never answers. An outside review named them (f20, 2026-11-28)
+/// and this is the one place the answer is written, so the six cannot drift apart.
+fn wait_ready(mut ready: impl FnMut() -> bool, bound: u32) -> Result<(), Error> {
+    let mut spins = 0u32;
+    loop {
+        if ready() {
+            return Ok(());
+        }
+        if spins >= bound {
+            return Err(Error::Timeout);
+        }
+        spins += 1;
+        core::hint::spin_loop();
+    }
+}
+
 /// SPI0 using USART0 in SPI master mode
 pub struct Spi0 {
     usart: pac::Usart0S,
+    /// This instance's transfer bound, from `cores::usart::tx_spins`.
+    tx_spins: u32,
+    /// Whether a frame was written and its response not yet read. See `flush`: `STATUS.TXC` is clear after reset, so
+    /// asking only that flag would report `Timeout` on a bus that has never transferred.
+    tx_pending: bool,
 }
 
 /// SPI1 using EUSART0 in SPI master mode
 pub struct Spi1 {
     eusart: pac::Eusart0S,
+    /// This instance's transfer bound, from `cores::usart::tx_spins`.
+    tx_spins: u32,
+    /// Whether a frame was written and its response not yet read.
+    tx_pending: bool,
 }
 
 /// SPI2 using EUSART1 in SPI master mode
 pub struct Spi2 {
     eusart: pac::Eusart1S,
+    /// This instance's transfer bound, from `cores::usart::tx_spins`.
+    tx_spins: u32,
+    /// Whether a frame was written and its response not yet read.
+    tx_pending: bool,
 }
 
 impl Spi0 {
@@ -138,7 +170,13 @@ impl Spi0 {
         usart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
         usart.cmd().write(|w| w.masteren().set_bit());
 
-        Self { usart }
+        Self {
+            usart,
+            // One frame at a time on this bus, so two frames of slack; the clock is the one the divider was computed
+            // from, and the rate is the bus rate, which is what bounds a transfer.
+            tx_spins: crate::cores::usart::tx_spins(hfclk_hz, config.frequency, 2),
+            tx_pending: false,
+        }
     }
 
     /// Calculate clock divider for desired SPI frequency
@@ -212,8 +250,11 @@ impl Spi0 {
 
     /// Transfer a single byte (blocking)
     fn transfer_byte(&mut self, byte: u8) -> Result<u8, Error> {
-        // Wait for TX buffer to be ready
-        while self.usart.status().read().txbl().bit_is_clear() {}
+        // Wait for TX buffer to be ready, with a bound.
+        wait_ready(
+            || self.usart.status().read().txbl().bit_is_set(),
+            self.tx_spins,
+        )?;
 
         // Write byte to TX buffer
         self.usart
@@ -222,11 +263,18 @@ impl Spi0 {
             // bit the field would have to drop.
             .write(|w| unsafe { w.bits(byte as u32) });
 
-        // Wait for RX data to be valid
-        while self.usart.status().read().rxdatav().bit_is_clear() {}
+        self.tx_pending = true;
+
+        // Wait for RX data to be valid, with the same bound counted from zero: the slave has a whole frame time to
+        // answer, and a slave that never answers must not stop the master.
+        wait_ready(
+            || self.usart.status().read().rxdatav().bit_is_set(),
+            self.tx_spins,
+        )?;
 
         // Read received byte
         let received = self.usart.rxdata().read().bits() as u8;
+        self.tx_pending = false;
 
         Ok(received)
     }
@@ -298,7 +346,11 @@ impl Spi1 {
         eusart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
         eusart.en().write(|w| w.en().set_bit());
 
-        Self { eusart }
+        Self {
+            eusart,
+            tx_spins: crate::cores::usart::tx_spins(hfclk_hz, config.frequency, 2),
+            tx_pending: false,
+        }
     }
 
     /// Calculate clock divider for desired SPI frequency
@@ -358,8 +410,11 @@ impl Spi1 {
 
     /// Transfer a single byte (blocking)
     fn transfer_byte(&mut self, byte: u8) -> Result<u8, Error> {
-        // Wait for TX buffer to be ready (TXFL > 0 means space available)
-        while self.eusart.status().read().txfl().bit_is_clear() {}
+        // Wait for TX buffer to be ready (TXFL > 0 means space available), with a bound.
+        wait_ready(
+            || self.eusart.status().read().txfl().bit_is_set(),
+            self.tx_spins,
+        )?;
 
         // Write byte to TX buffer
         self.eusart
@@ -367,11 +422,17 @@ impl Spi1 {
             // SAFETY: as in `Spi1`: `TXDATA` holds the frame and `byte` is a `u8`, so nothing is truncated.
             .write(|w| unsafe { w.bits(byte as u32) });
 
-        // Wait for RX data to be valid (RXFL > 0 means data available)
-        while self.eusart.status().read().rxfl().bit_is_clear() {}
+        self.tx_pending = true;
+
+        // Wait for RX data to be valid (RXFL > 0 means data available), with the same bound.
+        wait_ready(
+            || self.eusart.status().read().rxfl().bit_is_set(),
+            self.tx_spins,
+        )?;
 
         // Read received byte
         let received = self.eusart.rxdata().read().bits() as u8;
+        self.tx_pending = false;
 
         Ok(received)
     }
@@ -433,7 +494,11 @@ impl Spi2 {
         eusart.cmd().write(|w| w.txen().set_bit().rxen().set_bit());
         eusart.en().write(|w| w.en().set_bit());
 
-        Self { eusart }
+        Self {
+            eusart,
+            tx_spins: crate::cores::usart::tx_spins(hfclk_hz, config.frequency, 2),
+            tx_pending: false,
+        }
     }
 
     /// Transfer data (full-duplex)
@@ -491,14 +556,22 @@ impl Spi2 {
     }
 
     fn transfer_byte(&mut self, byte: u8) -> Result<u8, Error> {
-        while self.eusart.status().read().txfl().bit_is_clear() {}
+        wait_ready(
+            || self.eusart.status().read().txfl().bit_is_set(),
+            self.tx_spins,
+        )?;
         self.eusart
             .txdata()
             // SAFETY: `TXDATA` holds the frame; `byte` is a `u8`, so the widening to `u32` adds no bits, and `TXFL` was just
             // seen clear, which is what makes the write land in the FIFO rather than overwrite it.
             .write(|w| unsafe { w.bits(byte as u32) });
-        while self.eusart.status().read().rxfl().bit_is_clear() {}
+        self.tx_pending = true;
+        wait_ready(
+            || self.eusart.status().read().rxfl().bit_is_set(),
+            self.tx_spins,
+        )?;
         let received = self.eusart.rxdata().read().bits() as u8;
+        self.tx_pending = false;
         Ok(received)
     }
 }
