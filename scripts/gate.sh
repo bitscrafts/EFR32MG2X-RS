@@ -132,6 +132,14 @@ stated_mods=$(grep -oE '[0-9]+ public modules' crates/efr32mg2x-hal/README.md | 
 stated_examples=$(grep -oE 'public modules \(`pub mod` in `src/lib.rs`\) and [0-9]+ examples' crates/efr32mg2x-hal/README.md | head -1 | grep -oE '[0-9]+ examples' | grep -oE '[0-9]+')
 real_mods=$(grep -c '^pub mod' crates/efr32mg2x-hal/src/lib.rs)
 real_examples=$(ls crates/efr32mg2x-hal/examples/*.rs 2>/dev/null | wc -l)
+echo "=== memory layout ==="
+if python3 scripts/check-one-layout.py >/tmp/gate-layout.log 2>&1; then
+  tail -1 /tmp/gate-layout.log
+else
+  cat /tmp/gate-layout.log | sed 's/^/  /'
+  fail "memory layout: one provider and its reservation"
+fi
+
 if [ "$stated_mods" = "$real_mods" ] && [ "$stated_examples" = "$real_examples" ]; then
   pass "hal README counts: $real_mods modules, $real_examples examples"
 else

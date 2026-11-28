@@ -20,7 +20,15 @@ MEMORY
   /* Application flash - starts after 24 KB Gecko bootloader */
   /* Bootloader occupies 0x08000000 - 0x08005FFF (first 24 KB) */
   /* MUST match Arduino's bootloader layout for compatibility */
-  FLASH : ORIGIN = 0x08006000, LENGTH = 1512K
+  /* 1472K, not 1512K: the top 40 KB (0x0817_6000 - 0x0819_FFFF) is left to NVM3, which is where the Bluetooth stack
+   * keeps bonds, pairing keys and its own page bookkeeping. 1512K is "all the flash after the bootloader" and is the
+   * wrong default for a product on this part: a program that grows into that window does not fail to link, it wipes
+   * the pairing state of every phone that had bonded. A consumer that genuinely needs the whole flash passes its own
+   * `-Tmemory.x` -- a visible decision, in one place.
+   *
+   * This file is the only memory layout in the workspace. Until 2026-11-27 the HAL, the embassy runtime and both BSPs
+   * each shipped their own copy, and the linker took whichever came first on the search path, which was this one. */
+  FLASH : ORIGIN = 0x08006000, LENGTH = 1472K
 
   /* SRAM - 256 KB total, but the last 4 KB page is reserved as the SWD mailbox
    * (0x2003_F000), so the linker gets 252 KB. */
