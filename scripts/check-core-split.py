@@ -1,6 +1,13 @@
 #!/usr/bin/env python3
 """A moved core lives in the HAL; the library compiles it by #[path]; there is one copy.
 
+Counting "lines of its own" means counting *code*, and declarations are not code. Measured 2026-11-28: the first
+version of this check called `libraries/i2c-core` a copy because of `pub mod sim;`, and `libraries/aes-core` a copy
+because of a `pub use ...::{a, b, c};` whose continuation lines do not begin with `pub use`. Both are one-item
+declarations, exactly what a shim is made of. The self-test now carries both as cases that must PASS, next to the
+real copy that must FAIL -- because the way to loosen a check safely is to leave it failing on the thing it exists
+to catch.
+
 The item that uses this (C1) exists because the HAL cannot be published while it depends on
 `libraries/` crates by path. The fix moves the source into the HAL and leaves the library as a
 harness that compiles that same file, so the host tests keep running and nothing is duplicated.
@@ -12,6 +19,29 @@ import re, sys, tempfile, pathlib
 
 RAIZ = pathlib.Path(__file__).resolve().parent.parent
 LIMITE_SHIM = 0  # um shim nao tem uma linha de codigo: so o #[path], o mod e o pub use
+
+def contar_codigo(texto: str) -> list[str]:
+    """The lines that are code, not the shim's own declarations.
+
+    A `pub use` may span lines, and only its first line carries the keyword; a `pub mod` declares a module as
+    surely as `mod` does. Both are the shim's business, so both are skipped -- a multi-line re-export is tracked
+    until its terminating semicolon rather than judged line by line.
+    """
+    codigo, dentro_do_uso = [], False
+    for linha in texto.splitlines():
+        tira = linha.strip()
+        if dentro_do_uso:
+            if tira.endswith(";"):
+                dentro_do_uso = False
+            continue
+        if not tira or tira.startswith(("//", "#!", "#[path", "#[")):
+            continue
+        if tira.startswith(("mod ", "pub mod ", "pub use ", "pub(crate) use ", "use ")):
+            dentro_do_uso = not tira.endswith(";")
+            continue
+        codigo.append(linha)
+    return codigo
+
 
 def analisar(lib: pathlib.Path, raiz: pathlib.Path):
     """Devolve (ok, mensagem). Um crate sem #[path] nao foi movido: nao e erro."""
@@ -25,8 +55,7 @@ def analisar(lib: pathlib.Path, raiz: pathlib.Path):
     esperado = (raiz / "crates" / "efr32mg2x-hal" / "src").resolve()
     if esperado not in alvo.parents:
         return False, f"{lib} compiles {alvo}, which is outside crates/efr32mg2x-hal/src"
-    uteis = [l for l in texto.splitlines()
-             if l.strip() and not l.strip().startswith(("//", "#!", "#[path", "mod ", "pub use"))]
+    uteis = contar_codigo(texto)
     if len(uteis) > LIMITE_SHIM:
         return False, f"{lib} holds code of its own ({len(uteis)} lines); it must be a shim"
     return True, f"shim -> {alvo.relative_to(raiz)}"
@@ -56,6 +85,12 @@ def self_test():
             ("copia", bom + "pub fn sdiv(x: u32) -> u32 { x }\n", False),
             ("ausente", '#[path = "../../../crates/efr32mg2x-hal/src/core/nada.rs"]\nmod nada;\n', False),
             ("fora", '#[path = "/etc/hostname"]\nmod nada;\n', False),
+            # Declarations are not code: a submodule and a re-export that wraps are what a shim legitimately holds.
+            ("declara_modulo", bom + "pub mod sim;\n", True),
+            ("reuso_multilinha", bom + "pub use spi::{um, dois,\n    tres, quatro};\n", True),
+            # ... and a real line of code after them is still a copy.
+            ("codigo_depois_das_declaracoes",
+             bom + "pub mod sim;\npub use spi::{um, dois};\nconst LIMITE: u32 = 4;\n", False),
         ]
         for nome, conteudo, esperado in casos:
             (lib / "lib.rs").write_text(conteudo)
@@ -64,7 +99,8 @@ def self_test():
             print(f"  {estado}  {nome}: {msg}")
             if ok != esperado:
                 return 1
-    print("  OK: the check fails on a copy, on a missing target and on a path outside the tree")
+    print("  OK: the check fails on a copy, on a missing target and on a path outside the tree, and accepts the")
+    print("      declarations a shim is made of")
     return 0
 
 if __name__ == "__main__":
