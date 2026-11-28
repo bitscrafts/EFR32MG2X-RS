@@ -30,20 +30,20 @@ Status: `not started` · `read` · `differs` · `parity` · `parity measured` (a
 | `i2c` | `src/i2c/` | `em_i2c.c` | `series2/i2c/*` | **parity**: clears its NACK through the `+0x2000` alias as `I2C_IntClear` does (`em_i2c.h:295`), and cites it; the base is the *secure* window, which is why the address is computed from there rather than from `pac::aliases` |
 | `timer` | `src/timer/` | `em_timer.c` | `series2/timer/*` | **read**: `EN_CLR`/`EN_SET` (`em_timer.c:185`, `:201`, `:273`, `:291`); we write `EN` plain and the timer is measured working |
 | `letimer` | `src/letimer.rs` | `em_letimer.c` | `series2/letimer/*` | **parity measured**, with one deliberate divergence |
-| `pwm` | `src/pwm.rs` | `em_timer.c` | `series2/timer/timer_pwm*` | not started |
+| `pwm` | `src/pwm.rs` | `em_timer.c` | `series2/timer/timer_pwm*` | not started -- it drives TIMER's `CC[ch].CTRL` directly and deserves the same read `timer` got |
 | `pcnt` | `src/pcnt.rs` | `em_pcnt.c` | `series2/pcnt/pcnt_single_oversampling_overflow` | **parity measured** |
-| `adc` | `src/adc/` | `em_iadc.c` | `series2/iadc/*` | not started |
+| `adc` | `src/adc/` | `em_iadc.c` | `series2/iadc/*` | **read**: vendor `EN_CLR`/`EN_SET` (`em_iadc.c:138`, `:147`) and `MASKREQ_SET/CLR` for masking DMA requests (`:777`); we write `EN` plain (accepted, `hal_adc_read` measured) and never touch `MASKREQ`, so that pair is the form to use the day a scan masks requests |
 | `acmp` | `src/acmp/` | `em_acmp.c` | `series2/acmp/*` | **read**: we write `SWRST` plain and wait `RESETTING` (`src/acmp/mod.rs:162`); measured working, so this block accepts it |
 | `dma` | `src/dma/` | `em_ldma.c` | `series2/ldma/*` | **read**: `IF_CLR` and `REQDIS_SET` (`em_ldma.c:185`, `:272`); we write `IF` plain, which is the same write-1-to-clear |
 | `emu` | `src/emu/` | `em_emu.c` | `series2/emu/*` | not started |
 | `cmu` (`clock/`) | `src/clock/` | `em_cmu.c` | — | not started |
 | `gpio` | `src/gpio/`, `src/pin.rs` | `em_gpio.c` | `series2/gpio/*` | **read**: the vendor's aliases here serve `EXTILEVEL_CLR/SET`, `EM4WUEN_SET`, `EM4WUPOL_SET/CLR` -- the EM4 wake-up polarity surface, which this crate does not implement. Nothing to compare until it does; when it does, those four aliases are the form |
 | `extint` | `src/extint.rs` | `em_gpio.c` (interrupt part) | `series2/gpio/gpio_int*` | **read**: our routing writes `EXTIPSEL`/`EXTIPINSELL`/`EXTIRISE`/`EXTIFALL` plain and is measured (`gpioirq: n=8 ...`); the vendor writes the same registers plain, so the surface we do drive is at parity |
-| `rtc` (`sysrtc`) | `src/rtc/`, `src/sysrtc.rs` | `em_sysrtc.c` | `series2/sysrtc/*` | not started |
-| `burtc` | `src/burtc/` | `em_burtc.c` | `series2/burtc/*` | not started |
-| `wdog` | `src/wdog/` | `em_wdog.c` | `series2/wdog/*` | not started |
+| `rtc` (`sysrtc`) | `src/rtc/`, `src/sysrtc.rs` | `em_sysrtc.c` | `series2/sysrtc/*` | **read**: `em_sysrtc.c` uses **no alias at all**; ours likewise -- the simplest row in the matrix |
+| `burtc` | `src/burtc/` | `em_burtc.c` | `series2/burtc/*` | **read**: `EN_SET`/`EN_CLR`, `IF_CLR` (`em_burtc.c`); ours writes `EN` plain and is measured |
+| `wdog` | `src/wdog/` | `em_wdog.c` | `series2/wdog/*` | **read**: `EN_SET`/`EN_CLR` only; ours writes `EN` plain, measured `hal_wdog_feed` |
 | `aes` | `src/aes/` | `em_aes.c` (Series-1 API) | `series2/crypto/*` | not started |
-| `gpcrc` | `src/gpcrc.rs` | `em_gpcrc.c` | `series2/gpcrc/*` | not started |
+| `gpcrc` | `src/gpcrc.rs` | `em_gpcrc.c` | `series2/gpcrc/*` | **read**: `EN_SET`/`EN_CLR` only; ours plain, measured `hal_gpcrc` |
 | `radio` / BLE | `crates/efr32mg24-radio` | RAIL/Bluetooth (vendor blobs) | `series2/rail/*` | not started |
 
 ## First finding: the alias question is **per block**, not per family
