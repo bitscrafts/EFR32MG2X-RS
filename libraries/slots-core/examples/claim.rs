@@ -31,7 +31,7 @@ fn main() {
     }
 
     // And a different peripheral still gets its own slot: the refusal is per slot, not a global stop.
-    match slots.claim(Slot::Converter) {
+    match slots.claim(Slot::I2c1) {
         Ok(()) => println!("adc: pedido aceite depois da recusa do sysrtc"),
         Err(e) => {
             println!("adc: recusado com {e:?} -- a recusa e' global, o que nao serve");

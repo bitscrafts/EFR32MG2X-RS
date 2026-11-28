@@ -29,14 +29,16 @@ pub enum Slot {
     Mvp,
     /// `SYSRTC0` — one counter, one compare channel set.
     Sysrtc,
-    /// `USART0` — one set of pins.
+    /// `USART0` — one set of pins, whether it is driven as a UART or as a SPI master (`spi::Spi0`). The role is not
+    /// the slot: two roles over one block is the aliasing this table exists to refuse, and `usart0()` beside
+    /// `spi0_on()` was such a pair until 2026-11-27.
     Usart0,
     /// `EUSART0`, the board's SPI.
     Spi,
-    /// The general-purpose `IADC0`.
+    /// `IADC0` -- one converter, whether it is driven as a general-purpose ADC or as the microphone's sampler. The
+    /// slot names the block, not the role: until 2026-11-27 `adc()` and the microphone's `converter()` were two slots
+    /// over one IADC0, and a caller could hold both and reconfigure the scan under the other.
     Adc,
-    /// The microphone's converter, which is the same `IADC0` configured for one pin.
-    Converter,
     /// `I2C0`.
     I2c,
     /// `I2C1` -- the second bus. Its own slot, because a caller that takes I2C0 must not thereby exclude I2C1.
@@ -65,17 +67,43 @@ pub enum Slot {
     Acmp0,
     /// `RADIOAES` — one crypto engine, one descriptor chain in flight.
     Aes,
-    /// `EUSART1` — the second asynchronous block: same driver, its own `CLKEN1` bit.
+    /// `EUSART1` — the second asynchronous block: same driver, its own `CLKEN1` bit, whether it is driven as a UART or
+    /// as a SPI master (`spi::Spi2`). Same reasoning as `Usart0`.
     Eusart1,
-    /// `USART0` in synchronous mode (`spi::Spi0`) — the same block as `Usart0`, a different mode, and a second owner
-    /// would reconfigure the frame under the first.
-    Spi0,
-    /// `EUSART1` in synchronous mode (`spi::Spi2`) — as `Spi0`: same block as `Eusart1`, different mode.
-    Spi2,
 }
 
+/// Every slot, in index order -- **test-only**, because nothing but the drift test has a use for a list of all of
+/// them, and a `pub const` inside a module the twin crate includes privately is dead code in every other build.
+#[cfg(test)]
+/// Every slot, in index order. `index()` is the single place that decides the order; this table is checked against it
+/// by a host test, so the two cannot drift.
+pub const SLOTS: [Slot; SLOT_COUNT] = [
+    Slot::Wdog,
+    Slot::Emu,
+    Slot::Mvp,
+    Slot::Sysrtc,
+    Slot::Usart0,
+    Slot::Spi,
+    Slot::Adc,
+    Slot::I2c,
+    Slot::I2c1,
+    Slot::Timer0,
+    Slot::Timer1,
+    Slot::Timer2,
+    Slot::Timer3,
+    Slot::Timer4,
+    Slot::Gpcrc,
+    Slot::Letimer,
+    Slot::Prs,
+    Slot::Pcnt,
+    Slot::Burtc,
+    Slot::Acmp0,
+    Slot::Aes,
+    Slot::Eusart1,
+];
+
 /// How many slots there are, so the table and the enum cannot drift apart.
-pub const SLOT_COUNT: usize = 25;
+pub const SLOT_COUNT: usize = 22;
 
 impl Slot {
     /// The index of this slot in the table.
@@ -88,24 +116,21 @@ impl Slot {
             Slot::Usart0 => 4,
             Slot::Spi => 5,
             Slot::Adc => 6,
-            Slot::Converter => 7,
-            Slot::I2c => 8,
+            Slot::I2c => 7,
+            Slot::I2c1 => 8,
             Slot::Timer0 => 9,
-            Slot::Gpcrc => 10,
-            Slot::Letimer => 11,
-            Slot::Prs => 12,
-            Slot::Pcnt => 13,
-            Slot::Burtc => 14,
-            Slot::Acmp0 => 15,
-            Slot::Aes => 16,
-            Slot::Timer1 => 17,
-            Slot::Timer2 => 18,
-            Slot::Timer3 => 19,
-            Slot::Timer4 => 20,
+            Slot::Timer1 => 10,
+            Slot::Timer2 => 11,
+            Slot::Timer3 => 12,
+            Slot::Timer4 => 13,
+            Slot::Gpcrc => 14,
+            Slot::Letimer => 15,
+            Slot::Prs => 16,
+            Slot::Pcnt => 17,
+            Slot::Burtc => 18,
+            Slot::Acmp0 => 19,
+            Slot::Aes => 20,
             Slot::Eusart1 => 21,
-            Slot::Spi0 => 22,
-            Slot::Spi2 => 23,
-            Slot::I2c1 => 24,
         }
     }
 }
@@ -190,8 +215,28 @@ mod tests {
         let mut slots = Slots::new();
         assert_eq!(slots.claim(Slot::Adc), Ok(()));
         assert_eq!(slots.claim(Slot::Adc), Err(Taken(Slot::Adc)));
-        assert_eq!(slots.claim(Slot::Converter), Ok(()));
+        assert_eq!(slots.claim(Slot::I2c1), Ok(()));
         assert!(!slots.is_taken(Slot::I2c));
+    }
+
+    /// The table and `index()` agree: every slot appears once, at the position its own index names.
+    ///
+    /// This is the half of the ownership table that can run on the host. The other half -- that two *roles* over one
+    /// block are refused -- needs the board, because it is `Board` that decides which slot a constructor claims.
+    #[test]
+    fn the_table_and_the_index_cannot_drift() {
+        for (position, slot) in SLOTS.iter().enumerate() {
+            assert_eq!(
+                slot.index(),
+                position,
+                "{slot:?} sits at {position} but says {}",
+                slot.index()
+            );
+        }
+        let mut seen = SLOTS.to_vec();
+        seen.sort_by_key(|slot| slot.index());
+        seen.dedup();
+        assert_eq!(seen.len(), SLOT_COUNT, "a slot appears twice in SLOTS");
     }
 
     /// Every slot claims once and only once.
@@ -202,32 +247,10 @@ mod tests {
     #[test]
     fn every_slot_is_claimable_once() {
         let mut slots = Slots::new();
-        for slot in [
-            Slot::Wdog,
-            Slot::Emu,
-            Slot::Mvp,
-            Slot::Sysrtc,
-            Slot::Usart0,
-            Slot::Spi,
-            Slot::Adc,
-            Slot::Converter,
-            Slot::I2c,
-            Slot::Timer0,
-            Slot::Gpcrc,
-            Slot::Letimer,
-            Slot::Prs,
-            Slot::Pcnt,
-            Slot::Burtc,
-            Slot::Acmp0,
-            Slot::Aes,
-            Slot::Timer1,
-            Slot::Timer2,
-            Slot::Timer3,
-            Slot::Timer4,
-            Slot::Eusart1,
-            Slot::Spi0,
-            Slot::Spi2,
-        ] {
+        // The list used to be written by hand and was two slots behind the enum. It now walks every index, so a new
+        // variant is covered the moment it is declared -- and `index()` refusing to compile without an arm is what
+        // guarantees the range is complete.
+        for slot in SLOTS {
             assert_eq!(slots.claim(slot), Ok(()), "{slot:?} could not be claimed");
             assert_eq!(
                 slots.claim(slot),

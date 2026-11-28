@@ -268,7 +268,7 @@ impl Board {
         sclk: (crate::pin::Port, u8),
         config: crate::spi::Config,
     ) -> Result<crate::spi::Spi0, Handout<crate::route::RouteError>> {
-        self.claim(crate::cores::slots::Slot::Spi0)
+        self.claim(crate::cores::slots::Slot::Usart0)
             .map_err(Handout::Taken)?;
         self.dp.cmu_s.clken0().modify(|_, w| w.usart0().set_bit());
         self.route_usart0_spi(mosi, miso, sclk)
@@ -342,7 +342,7 @@ impl Board {
         sclk: (crate::pin::Port, u8),
         config: crate::spi::Config,
     ) -> Result<crate::spi::Spi2, Handout<crate::route::RouteError>> {
-        self.claim(crate::cores::slots::Slot::Spi2)
+        self.claim(crate::cores::slots::Slot::Eusart1)
             .map_err(Handout::Taken)?;
         self.dp.cmu_s.clken1().modify(|_, w| w.eusart1().set_bit());
         self.route_eusart1_spi(mosi, miso, sclk)
@@ -1461,7 +1461,7 @@ impl Board {
     /// to clock TIMER0 here, so it is forced on and waited for before the IADC
     /// clock is pointed at it.
     pub fn converter(&self) -> Result<crate::microphone::Converter, Handout<()>> {
-        self.claim(crate::cores::slots::Slot::Converter)
+        self.claim(crate::cores::slots::Slot::Adc)
             .map_err(Handout::Taken)?;
         // The analog bus comes first: PC9 is an odd-numbered pin, and an odd pin does not reach ADC0 without it.
         self.allocate_odd_cd_bus();
